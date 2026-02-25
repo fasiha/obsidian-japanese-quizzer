@@ -10,7 +10,9 @@ import Database from 'better-sqlite3';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(__dirname, '../..');
+export const JMDICT_DB = path.join(projectRoot, 'jmdict.sqlite');
 export const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
+export const QUIZ_SESSION = path.join(projectRoot, '.claude', 'quiz-session.txt');
 export const SCHEMA_VERSION = 1;
 
 /**
@@ -71,6 +73,38 @@ export function intersectSets(sets) {
     }
   }
   return result;
+}
+
+// Extract bullet text from all <details><summary>Vocab</summary> blocks in a file.
+// Returns plain strings (no line numbers). Used by get-quiz-context.mjs.
+// check-vocab.mjs has its own version that also tracks line numbers.
+export function extractVocabBullets(content) {
+  const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
+  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
+  const bullets = [];
+  let match;
+  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
+    const inner = match[1];
+    if (!SUMMARY_REGEXP.test(inner)) continue;
+    for (const line of inner.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('-')) continue;
+      const bullet = trimmed.slice(1).trim();
+      if (bullet) bullets.push(bullet);
+    }
+  }
+  return bullets;
+}
+
+// Produce a compact one-line summary of a JMDict Word entry.
+// Format: "kanji, kana meaning1; meaning2 / sense2meaning1 (#id)"
+export function summarizeWord(word) {
+  const forms = word.kanji.map(k => k.text).concat(word.kana.map(k => k.text)).join(', ');
+  const meanings = word.sense
+    .map(s => s.gloss.filter(g => g.lang === 'eng').map(g => g.text).join('; '))
+    .filter(Boolean)
+    .join(' / ');
+  return `${forms} ${meanings} (#${word.id})`;
 }
 
 // Parse YAML frontmatter and return key-value pairs, or null if none present.

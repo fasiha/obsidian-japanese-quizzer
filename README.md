@@ -79,33 +79,34 @@ Claude will **not** edit your Markdown files — it only suggests corrections.
 /quiz
 ```
 
-Claude runs two scripts:
+Claude runs a session-based, one-question-at-a-time quiz:
 
-1. **`get-vocab.mjs`** — collects all vocab from all Markdown files and enriches
-   each entry with its JMDict kanji forms, kana forms, and English meanings.
-   Only entries with exactly one JMDict match are quizzable (broken entries are
-   skipped).
+1. **`get-quiz-context.mjs`** — scans all opted-in Markdown files and outputs one
+   compact line per quizzable vocab entry, merged with its all-time review history:
+   ```
+   1398530  体中, からだじゅう all over the body (#1398530) [never reviewed]
+   1584060  包む, つつむ to wrap; to pack (#1584060) [5d ago, avg 0.80, 2 reviews]
+   ```
+   Only entries with exactly one JMDict match are included (broken bullets are
+   skipped automatically).
 
-2. **`get-quiz-history.mjs --days 30`** — queries `quiz.sqlite` for the last 30
-   days of review history, including per-word average score and days since last
-   review.
+2. Claude picks 5–10 words, prioritising never-reviewed words, then words with
+   long gaps or low average scores, and writes a **session file** via
+   `write-quiz-session.mjs`.
 
-Claude then picks 5–10 words to quiz, prioritising words that have never been
-reviewed, words reviewed long ago, and words with low average scores. Questions
-vary in type (reading → meaning, kanji → reading, meaning → kanji/kana). Each
-multiple-choice question has four options; distractors are chosen from your own
-vocab lists and semantically related words.
+3. Claude asks **one question per message** (kanji → reading, kanji+reading →
+   meaning, or meaning → kanji/kana multiple-choice). It waits for your answer,
+   grades it (0.0–1.0), records the result via `record-review.mjs`, and asks the
+   next question.
 
-After you answer, Claude grades each response (0.0–1.0), explains any mistakes,
-and records every result into `quiz.sqlite` via `record-review.mjs`.
+4. After the last question, the session file is cleared and Claude gives a brief
+   summary of the session.
 
-The `--reviewer` flag defaults to your OS username. To quiz as your roommate, run:
+If the quiz is interrupted mid-session, Claude can resume from where it left off
+by reading the session file on the next `/quiz` invocation.
 
-```
-/quiz --reviewer roommate
-```
-
-*(Not yet implemented — see Future work below.)*
+The `--reviewer` flag on `record-review.mjs` defaults to your OS username. Passing
+it explicitly is not yet wired up to the `/quiz` skill — see Future work below.
 
 ---
 
@@ -139,10 +140,13 @@ llm-review/
     │   ├── check-vocab.md      /check-vocab skill prompt
     │   └── quiz.md             /quiz skill prompt
     └── scripts/
+        ├── shared.mjs          shared constants, DB helpers, parsing utilities
         ├── check-vocab.mjs     checks vocab against JMDict, outputs JSON report
-        ├── get-vocab.mjs       dumps all vocab with JMDict enrichment as JSON
+        ├── get-quiz-context.mjs  compact vocab+history output for quiz selection
+        ├── write-quiz-session.mjs  writes a quiz session plan file
+        ├── read-quiz-session.mjs   reads session file, exits 1 if none
+        ├── clear-quiz-session.mjs  deletes session file after quiz ends
         ├── init-quiz-db.mjs    creates quiz.sqlite schema (run once)
-        ├── get-quiz-history.mjs  queries recent review history as JSON
         └── record-review.mjs   inserts one review row into quiz.sqlite
 ```
 

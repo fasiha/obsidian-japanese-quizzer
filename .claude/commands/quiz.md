@@ -2,40 +2,71 @@
 description: Spaced-repetition quiz on vocabulary from all Markdown reading files
 ---
 
-Run these two commands from the project root and read both outputs before doing anything else:
+## Check for an existing session
 
 ```bash
-node .claude/scripts/get-vocab.mjs
+node .claude/scripts/read-quiz-session.mjs
 ```
+
+- **Exit code 1 / "No active quiz session"** → no prior session, proceed to Step 1.
+- **Session found** → tell the user only the session metadata (start timestamp and word count), and ask: resume or start fresh? Do **not** reveal which words are planned.
+  - Resume: skip to Step 3, using quiz history to infer which words were already recorded.
+  - Fresh: run `node .claude/scripts/clear-quiz-session.mjs`, then proceed to Step 1.
+
+---
+
+## Step 1 — Load quiz context
 
 ```bash
-node .claude/scripts/get-quiz-history.mjs --days 30
+node .claude/scripts/get-quiz-context.mjs
 ```
 
-**Step 1 — Select words to quiz**
+This outputs one compact line per quizzable vocab item:
 
-From the vocab list, only consider items where `matchCount === 1` (items with 0 or 2+ matches are broken and can't be quizzed). Pick 5–10 words to review using this priority order:
-1. Never quizzed (not in quiz history at all)
-2. Quizzed longest ago (`daysSinceLastReview` highest)
-3. Lowest `averageScore` (most struggled with)
-4. Spread across different source files if possible
+```
+<jmdictId>  <forms> <meanings> (#<id>) [<review status>]
+```
 
-**Step 2 — Create the quiz**
+Read all lines. You now have the full vocab inventory with semantic content and review history in a compact form.
 
-For each selected word, create one question. Vary the question type to make the quiz interesting:
-- Reading quiz: show kanji, ask for the reading (kana)
-- Meaning quiz: show kanji+kana, ask for the English meaning
-- Production quiz: show English meaning, ask which kanji/kana form is correct
+---
 
-For multiple-choice questions, provide exactly 4 options (A–D) with one correct answer. Choose distractors thoughtfully — draw from other words in the vocab list, semantically similar words, words with similar readings or kanji, or whatever would make a pedagogically useful distractor. Don't make distractors obviously wrong.
+## Step 2 — Select words and write session
 
-Present all questions at once and wait for the user's answers before grading.
+Pick 5–10 words to quiz. Use both the review metadata *and* your semantic understanding:
+- Prioritise never-reviewed words, then words with long gaps or low average scores.
+- Prefer a mix of word types (verbs, nouns, adverbs) and difficulty levels.
+- Notice semantic relationships — words that sound alike or share kanji make good distractor pairs.
 
-**Step 3 — Grade and record**
+Write the session plan (pass IDs as positional args in quiz order):
 
-After the user answers, grade each question (score 0.0–1.0). Award partial credit for close answers. Write a brief note about what the user got right or wrong.
+```bash
+node .claude/scripts/write-quiz-session.mjs <id1> <id2> <id3> ...
+```
 
-Then, for each quizzed word, run:
+---
+
+## Step 3 — Quiz one word at a time
+
+For each word in the session, send **one question per message**. Show progress (e.g. **Question 2 / 7**).
+
+Vary the question type each turn to keep it interesting:
+- Show kanji → ask for the reading (kana)
+- Show kanji + reading → ask for the English meaning
+- Show English meaning → ask which kanji/kana form is correct
+
+For multiple-choice, provide exactly 4 options (A–D). Choose distractors from the other words in the session (you have all their summaries from Step 1) or from your own Japanese knowledge. Make distractors plausible, not obviously wrong.
+
+Wait for the user's answer before continuing.
+
+---
+
+## Step 4 — Grade, record, repeat
+
+After each answer:
+
+1. Grade it (0.0–1.0). Briefly explain what was right or wrong.
+2. Record it immediately:
 
 ```bash
 node .claude/scripts/record-review.mjs \
@@ -45,6 +76,18 @@ node .claude/scripts/record-review.mjs \
   --notes "NOTES"
 ```
 
-Run one command per word. The `--reviewer` flag is optional and defaults to the OS username; pass it explicitly if needed (e.g. `--reviewer roommate`).
+The `--reviewer` flag defaults to the OS username. Pass it explicitly if needed (e.g. `--reviewer roommate`).
 
-Do not ask the user to confirm before recording — record all results immediately after grading.
+3. Ask the next question (go back to Step 3).
+
+---
+
+## Step 5 — Finish
+
+After the last answer is graded and recorded:
+
+```bash
+node .claude/scripts/clear-quiz-session.mjs
+```
+
+Give a brief summary: words quizzed, overall score, any patterns worth noting (e.g. "you consistently mixed up the readings for 市場 and 舞う").

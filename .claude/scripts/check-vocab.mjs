@@ -14,12 +14,7 @@
 import { setup, findExact } from 'jmdict-simplified-node';
 import { readFileSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter } from './shared.mjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const JMDICT_DB = path.join(projectRoot, 'jmdict.sqlite');
+import { findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter, projectRoot, JMDICT_DB } from './shared.mjs';
 
 // Extract bullets (with 1-indexed line numbers) from all Vocab details blocks.
 //
