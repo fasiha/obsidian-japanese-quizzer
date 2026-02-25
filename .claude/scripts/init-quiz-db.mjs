@@ -6,15 +6,9 @@
  * Usage: node .claude/scripts/init-quiz-db.mjs
  */
 
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { openQuizDb, QUIZ_DB, SCHEMA_VERSION } from './shared.mjs';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
-
-const db = new Database(QUIZ_DB);
+const db = openQuizDb();
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS reviews (
@@ -29,5 +23,7 @@ db.exec(`
   )
 `);
 
+db.pragma(`user_version = ${SCHEMA_VERSION}`);
+
 db.close();
-console.log(`Quiz database ready at ${QUIZ_DB}`);
+console.log(`Quiz database ready at ${QUIZ_DB} (schema version ${SCHEMA_VERSION})`);

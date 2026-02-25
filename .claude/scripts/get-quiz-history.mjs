@@ -24,13 +24,7 @@
  * Usage: node .claude/scripts/get-quiz-history.mjs [--days 30] [--reviewer fasiha]
  */
 
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
+import { openQuizDb } from './shared.mjs';
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -41,7 +35,7 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === '--reviewer' && args[i + 1]) reviewer = args[++i];
 }
 
-const db = new Database(QUIZ_DB, { readonly: true });
+const db = openQuizDb({ readonly: true });
 
 // Reviews within the time window
 const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();

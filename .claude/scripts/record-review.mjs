@@ -18,14 +18,8 @@
  *     --notes "Got reading right, hesitated on meaning"
  */
 
-import Database from 'better-sqlite3';
 import os from 'os';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, '../..');
-const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
+import { openQuizDb } from './shared.mjs';
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -60,7 +54,7 @@ if (isNaN(score) || score < 0 || score > 1) {
 
 const timestamp = new Date().toISOString();
 
-const db = new Database(QUIZ_DB);
+const db = openQuizDb();
 const stmt = db.prepare(
   'INSERT INTO reviews (reviewer, timestamp, word_type, word_id, word_text, score, notes) VALUES (?, ?, ?, ?, ?, ?, ?)'
 );

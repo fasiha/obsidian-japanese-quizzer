@@ -1,10 +1,36 @@
 /**
  * shared.mjs
- * Utilities shared by check-vocab.mjs and get-vocab.mjs.
+ * Utilities shared across scripts.
  */
 
 import { readdirSync } from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import Database from 'better-sqlite3';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export const projectRoot = path.resolve(__dirname, '../..');
+export const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
+export const SCHEMA_VERSION = 1;
+
+/**
+ * Open quiz.sqlite, verify the schema version, and return the Database instance.
+ * Pass { readonly: true } for scripts that only read.
+ * Exits with an error if the DB was created by a newer version of the code.
+ */
+export function openQuizDb(options = {}) {
+  const db = new Database(QUIZ_DB, options);
+  const currentVersion = db.pragma('user_version', { simple: true });
+  if (currentVersion > SCHEMA_VERSION) {
+    db.close();
+    console.error(
+      `quiz.sqlite has schema version ${currentVersion} but this script only knows version ${SCHEMA_VERSION}.\n` +
+      `Pull the latest code before running this script.`
+    );
+    process.exit(1);
+  }
+  return db;
+}
 
 // Find all .md files under dir, skipping excludeDirs
 export function findMdFiles(dir, excludeDirs = ['node_modules', '.claude']) {
