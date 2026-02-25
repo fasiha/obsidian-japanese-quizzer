@@ -19,6 +19,7 @@ db.exec(`
     word_id     TEXT    NOT NULL,  -- JMDict entry ID (or grammar point ID later)
     word_text   TEXT    NOT NULL,  -- display text from the vocab bullet
     score       REAL    NOT NULL,  -- 0.0 (wrong) to 1.0 (perfect)
+    quiz_type   TEXT    NOT NULL,  -- 'reading', 'meaning', 'kanji', etc.
     notes       TEXT               -- Claude's notes about this review attempt
   )
 `);

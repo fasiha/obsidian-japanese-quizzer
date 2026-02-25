@@ -39,6 +39,7 @@ forms first (before any English), space-separated:
 | `- 舞う まう` | kanji form then kana reading — both must point to the same JMDict entry |
 | `- ありったけ as many as possible` | kana then English gloss (English is ignored by scripts) |
 | `- ごうとう robber` | ambiguous — prefer `- 強盗 ごうとう robber` to pin the entry |
+| `- 怒鳴る どなる [kanji]` | `[kanji]` tag signals commitment to also learning the kanji form |
 
 The leading Japanese tokens are what the scripts use. English notes after the
 first Latin-alphabet token are preserved for your own reference and ignored by
@@ -86,18 +87,21 @@ Claude runs a session-based, one-question-at-a-time quiz:
    ```
    1398530  体中, からだじゅう all over the body (#1398530) [never reviewed]
    1584060  包む, つつむ to wrap; to pack (#1584060) [5d ago, avg 0.80, 2 reviews]
+   1445740  怒鳴る, どなる to shout in anger (#1445740) {kanji} [meaning:1d/0.50×1, reading:never, kanji:never]
    ```
-   Only entries with exactly one JMDict match are included (broken bullets are
-   skipped automatically).
+   Words with `[kanji]` in their bullet appear with a `{kanji}` marker and
+   per-facet review stats. Only entries with exactly one JMDict match are included.
 
-2. Claude picks 5–10 words, prioritising never-reviewed words, then words with
-   long gaps or low average scores, and writes a **session file** via
-   `write-quiz-session.mjs`.
+2. Claude picks 5–10 words, prioritising never-reviewed words and weak facets,
+   then writes a **session file** via `write-quiz-session.mjs`.
 
-3. Claude asks **one question per message** (kanji → reading, kanji+reading →
-   meaning, or meaning → kanji/kana multiple-choice). It waits for your answer,
-   grades it (0.0–1.0), records the result via `record-review.mjs`, and asks the
-   next question.
+3. Claude asks **one question per message**, choosing the question type by facet:
+   - **reading** — show kanji, ask for kana
+   - **meaning** — show kanji+reading or kana, ask for English
+   - **kanji** — show English/reading, ask to identify the correct kanji form (only for `{kanji}` words)
+
+   Each answer is graded (0.0–1.0) and recorded via `record-review.mjs --quiz-type <facet>`.
+   You can ask for a mnemonic or clarification at any point — Claude will discuss it then re-ask.
 
 4. After the last question, the session file is cleared and Claude gives a brief
    summary of the session.
@@ -189,9 +193,13 @@ CREATE TABLE reviews (
   word_id     TEXT    NOT NULL,   -- JMDict entry ID
   word_text   TEXT    NOT NULL,   -- display text from the bullet
   score       REAL    NOT NULL,   -- 0.0 (wrong) to 1.0 (perfect)
+  quiz_type   TEXT    NOT NULL,   -- 'reading', 'meaning', or 'kanji'
   notes       TEXT                -- Claude's notes on the review attempt
 );
 ```
+
+The `quiz_type` column enables per-facet SRS — a word can be well-known for meaning
+but still weak on kanji recognition, and the quiz targets accordingly.
 
 ### Design principle
 
