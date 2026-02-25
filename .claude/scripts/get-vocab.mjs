@@ -8,31 +8,20 @@
  *   - jmdictId, kanji, kana, meanings       (only when matchCount === 1)
  *   - matchCount                             (always; 1 = quizzable)
  *
+ * Only files with `llm-review: true` in their YAML frontmatter are scanned.
+ *
  * Usage: node .claude/scripts/get-vocab.mjs
  */
 
 import { setup, findExact, idsToWords } from 'jmdict-simplified-node';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter } from './shared.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '../..');
 const JMDICT_DB = path.join(projectRoot, 'jmdict.sqlite');
-
-function findMdFiles(dir, excludeDirs = ['node_modules', '.claude']) {
-  const results = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (excludeDirs.includes(entry.name)) continue;
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...findMdFiles(fullPath, excludeDirs));
-    } else if (entry.name.endsWith('.md')) {
-      results.push(fullPath);
-    }
-  }
-  return results;
-}
 
 function extractVocabBullets(content) {
   const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
@@ -52,29 +41,6 @@ function extractVocabBullets(content) {
   return bullets;
 }
 
-function isJapanese(str) {
-  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]/.test(str);
-}
-
-function extractJapaneseTokens(bulletText) {
-  const result = [];
-  for (const token of bulletText.split(/\s+/)) {
-    if (token && isJapanese(token)) result.push(token);
-    else break;
-  }
-  return result;
-}
-
-function intersectSets(sets) {
-  let result = new Set(sets[0]);
-  for (let i = 1; i < sets.length; i++) {
-    for (const id of result) {
-      if (!sets[i].has(id)) result.delete(id);
-    }
-  }
-  return result;
-}
-
 // Pull English glosses from a Word's senses (all senses, English only)
 function getMeanings(word) {
   const meanings = [];
@@ -92,6 +58,7 @@ const output = [];
 
 for (const filePath of mdFiles) {
   const content = readFileSync(filePath, 'utf8');
+  if (!parseFrontmatter(content)?.['llm-review']) continue;
   const bullets = extractVocabBullets(content);
   const relPath = path.relative(projectRoot, filePath);
 

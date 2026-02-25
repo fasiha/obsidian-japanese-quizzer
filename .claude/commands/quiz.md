@@ -1,3 +1,7 @@
+---
+description: Spaced-repetition quiz on vocabulary from all Markdown reading files
+---
+
 Run these two commands from the project root and read both outputs before doing anything else:
 
 ```bash

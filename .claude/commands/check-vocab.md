@@ -1,3 +1,7 @@
+---
+description: Check all Vocab bullet points in Markdown files against JMDict
+---
+
 Run the following command from the project root and read its JSON output:
 
 ```bash
