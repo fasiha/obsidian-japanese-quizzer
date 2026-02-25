@@ -4,3 +4,8 @@ node_modules/
 *.sqlite
 .DS_Store
 quiz-session.txt
+
+# Large JMDict source files — download separately, delete after processing
+jmdict-eng-*.json
+kanjidic2-*.json
+kradfile-*.json

@@ -72,7 +72,13 @@ For words without `{kanji}`, vary between `reading` and `meaning` questions only
 
 For multiple-choice, provide exactly 4 options (A–D). Choose distractors from the other words in the session (you have all their summaries from Step 1) or from your own Japanese knowledge. Make distractors plausible, not obviously wrong.
 
-**Handling pauses:** If the user asks for a mnemonic, etymology, radical breakdown, clarification, or any other discussion mid-question, engage with it fully — then **re-ask the exact same question** before moving on. Only advance to Step 4 after the user has actually answered the quiz question.
+**Handling pauses:** If the user asks for a mnemonic, etymology, radical breakdown, clarification, or any other discussion mid-question, engage with it fully. For kanji breakdowns, call:
+
+```bash
+node .claude/scripts/get-kanji-info.mjs <kanji1> <kanji2> ...
+```
+
+This outputs each kanji's radicals (from kradfile), on/kun readings, English meanings, stroke count, JLPT level, and school grade. Use this data to suggest concrete mnemonics. After any discussion, **re-ask the exact same question** before moving on. Only advance to Step 4 after the user has actually answered.
 
 Wait for the user's answer before continuing.
 

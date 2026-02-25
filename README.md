@@ -6,6 +6,23 @@ vocab lists against JMDict and runs spaced-repetition quizzes.
 
 ---
 
+- [llm-review — Japanese vocabulary review with Claude](#llm-review--japanese-vocabulary-review-with-claude)
+  - [User guide](#user-guide)
+    - [Authoring a reading](#authoring-a-reading)
+    - [`/check-vocab` — validate your vocab lists](#check-vocab--validate-your-vocab-lists)
+    - [`/quiz` — spaced-repetition quiz](#quiz--spaced-repetition-quiz)
+  - [Setup](#setup)
+  - [Project layout](#project-layout)
+  - [Implementation notes](#implementation-notes)
+    - [Vocab parsing](#vocab-parsing)
+    - [JMDict lookup](#jmdict-lookup)
+    - [Quiz database schema](#quiz-database-schema)
+    - [Design principle](#design-principle)
+  - [Future work](#future-work)
+
+
+---
+
 ## User guide
 
 ### Authoring a reading
@@ -116,17 +133,36 @@ it explicitly is not yet wired up to the `/quiz` skill — see Future work below
 
 ## Setup
 
+Download the following files from the
+[jmdict-simplified releases](https://github.com/scriptin/jmdict-simplified/releases)
+and place them in the project root:
+
+| File | Size | Used for |
+|---|---|---|
+| `jmdict-eng-*.json` | ~50 MB | JMDict vocabulary lookup |
+| `kanjidic2-en-*.json` | ~15 MB | kanji readings, meanings, JLPT level |
+| `kradfile-*.json` | ~500 KB | kanji radical components |
+
+Then run:
+
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Download a JMDict-Simplified JSON release and place it here, then:
-#    (skip if jmdict.sqlite already exists)
+# 2. Build jmdict.sqlite from the source JSON (skip if it already exists)
 node -e "import('jmdict-simplified-node').then(m => m.setup('jmdict.sqlite', 'jmdict-eng-3.6.2.json'))"
 
 # 3. Create the quiz database (safe to re-run)
 node .claude/scripts/init-quiz-db.mjs
+
+# 4. Build kanjidic2.sqlite (happens automatically on first /quiz or get-kanji-info call,
+#    but you can trigger it early):
+node .claude/scripts/get-kanji-info.mjs 日
 ```
+
+After the `.sqlite` files are built, the large source JSONs are no longer needed and
+can be deleted to save space in your Obsidian vault. The `.sqlite` files are
+gitignored and the source JSONs are gitignored too.
 
 ---
 
@@ -144,14 +180,15 @@ llm-review/
     │   ├── check-vocab.md      /check-vocab skill prompt
     │   └── quiz.md             /quiz skill prompt
     └── scripts/
-        ├── shared.mjs          shared constants, DB helpers, parsing utilities
-        ├── check-vocab.mjs     checks vocab against JMDict, outputs JSON report
-        ├── get-quiz-context.mjs  compact vocab+history output for quiz selection
+        ├── shared.mjs              shared constants, DB helpers, parsing utilities
+        ├── check-vocab.mjs         checks vocab against JMDict, outputs JSON report
+        ├── get-quiz-context.mjs    compact vocab+history output for quiz selection
+        ├── get-kanji-info.mjs      radicals, readings, meanings for one or more kanji
         ├── write-quiz-session.mjs  writes a quiz session plan file
         ├── read-quiz-session.mjs   reads session file, exits 1 if none
         ├── clear-quiz-session.mjs  deletes session file after quiz ends
-        ├── init-quiz-db.mjs    creates quiz.sqlite schema (run once)
-        └── record-review.mjs   inserts one review row into quiz.sqlite
+        ├── init-quiz-db.mjs        creates quiz.sqlite schema (run once)
+        └── record-review.mjs       inserts one review row into quiz.sqlite
 ```
 
 ---
