@@ -105,6 +105,14 @@ const kradMap = loadKradfile();
 ensureKanjidicSqlite();
 const db = new Database(KANJIDIC_SQLITE, { readonly: true });
 const query = db.prepare('SELECT * FROM kanji WHERE literal = ?');
+const radicalMeaningQuery = db.prepare('SELECT meanings FROM kanji WHERE literal = ?');
+
+function radicalLabel(r) {
+  const row = radicalMeaningQuery.get(r);
+  if (!row) return r;
+  const meanings = JSON.parse(row.meanings);
+  return meanings.length ? `${r} (${meanings[0]})` : r;
+}
 
 // jlptLevel in kanjidic2: 4=N5, 3=N4, 2=N3, 1=N2
 function jlptStr(level) {
@@ -118,7 +126,7 @@ for (const k of kanjis) {
 
   if (!row) {
     console.log(`${k}: not in kanjidic2`);
-    console.log(`  Radicals: ${radicals.join(' ') || '(none)'}`);
+    console.log(`  Radicals: ${radicals.map(radicalLabel).join('、') || '(none)'}`);
     continue;
   }
 
@@ -127,7 +135,7 @@ for (const k of kanjis) {
   const meanings = JSON.parse(row.meanings);
 
   console.log(`${k}:`);
-  console.log(`  Radicals: ${radicals.join(' ') || '(none)'}`);
+  console.log(`  Radicals: ${radicals.map(radicalLabel).join('、') || '(none)'}`);
   if (on.length)       console.log(`  On:       ${on.join('、')}`);
   if (kun.length)      console.log(`  Kun:      ${kun.join('、')}`);
   if (meanings.length) console.log(`  Meanings: ${meanings.join(', ')}`);

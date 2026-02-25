@@ -172,9 +172,9 @@ gitignored and the source JSONs are gitignored too.
 llm-review/
 ├── *.md                        reading passages (Obsidian notes)
 ├── jmdict.sqlite               JMDict search database
+├── kanjidic2.sqlite            KanjiDic search database
 ├── quiz.sqlite                 quiz review history
 ├── package.json
-├── remove-vocab.js             utility: strips Vocab blocks for clean reading
 └── .claude/
     ├── commands/
     │   ├── check-vocab.md      /check-vocab skill prompt
