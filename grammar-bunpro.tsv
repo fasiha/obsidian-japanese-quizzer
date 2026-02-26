@@ -1,0 +1,945 @@
+# Generated on 2026-02-26T05:41:23.839Z from https://bunpro.jp/grammar_points
+id	href	option	title-jp	title-en
+だ	https://bunpro.jp/grammar_points/だ	jlptN5	だ	To be, Is
+です	https://bunpro.jp/grammar_points/です	jlptN5	です	To be, Is
+は	https://bunpro.jp/grammar_points/は	jlptN5	は	As for... (Highlights sentence topic)
+も	https://bunpro.jp/grammar_points/も	jlptN5	も	Also, Too, As well, Even, Either, Neither
+これ	https://bunpro.jp/grammar_points/これ	jlptN5	これ	This
+それ	https://bunpro.jp/grammar_points/それ	jlptN5	それ	That
+あれ	https://bunpro.jp/grammar_points/あれ	jlptN5	あれ	That (over there)
+の	https://bunpro.jp/grammar_points/の	jlptN5	の	Indicates possession
+いい	https://bunpro.jp/grammar_points/いい	jlptN5	いい	い-Adjective meaning 'good'
+い-adjectives	https://bunpro.jp/grammar_points/い-adjectives	jlptN5	い-Adjectives	Adjectives ending in い
+な-adjectives	https://bunpro.jp/grammar_points/な-adjectives	jlptN5	な-Adjectives	Adjectives that are also nouns
+か	https://bunpro.jp/grammar_points/か	jlptN5	か	Question marking particle
+が	https://bunpro.jp/grammar_points/が	jlptN5	が	Subject marking particle, Identification particle
+よ	https://bunpro.jp/grammar_points/よ	jlptN5	よ	Emphasis (Sentence ending particle)
+ね	https://bunpro.jp/grammar_points/ね	jlptN5	ね	Isn't it?, Right? (Sentence ending particle) 
+る-Verbs	https://bunpro.jp/grammar_points/る-Verbs	jlptN5	る-Verb (Dict...	る + ます (Ichidan Verbs)
+う-Verbs	https://bunpro.jp/grammar_points/う-Verbs	jlptN5	う-Verb (Dict...	う + ます (Godan Verbs)
+を	https://bunpro.jp/grammar_points/を	jlptN5	を	Object marking particle
+polite-verb-endings	https://bunpro.jp/grammar_points/polite-verb-endings	jlptN5	ます	Polite Verb Endings
+るverb-ない	https://bunpro.jp/grammar_points/るverb-ない	jlptN5	る-Verb (Nega...	Will/Does/Do (not)
+うverb--ない	https://bunpro.jp/grammar_points/うverb--ない	jlptN5	う-Verb (Nega...	Will/Does/Do (not)
+と-and	https://bunpro.jp/grammar_points/と-and	jlptN5	と	And
+ここ	https://bunpro.jp/grammar_points/ここ	jlptN5	ここ	Here, This place
+そこ	https://bunpro.jp/grammar_points/そこ	jlptN5	そこ	There, That place
+あそこ	https://bunpro.jp/grammar_points/あそこ	jlptN5	あそこ	Over there
+で	https://bunpro.jp/grammar_points/で	jlptN5	で	At, In
+に	https://bunpro.jp/grammar_points/に	jlptN5	に	In, At, To, For, On
+か-or	https://bunpro.jp/grammar_points/か-or	jlptN5	か	Or
+と-with	https://bunpro.jp/grammar_points/と-with	jlptN5	と	With
+でしょう	https://bunpro.jp/grammar_points/でしょう	jlptN5	でしょう	Right?, Probably, Isn't it?
+だろう	https://bunpro.jp/grammar_points/だろう	jlptN5	だろう	Right?, Probably, Isn't it?
+がある	https://bunpro.jp/grammar_points/がある	jlptN5	がある	To be, There is
+がいる	https://bunpro.jp/grammar_points/がいる	jlptN5	がいる	To be, There is,  To remain (in a state)
+この	https://bunpro.jp/grammar_points/この	jlptN5	この	This
+その	https://bunpro.jp/grammar_points/その	jlptN5	その	That
+あの	https://bunpro.jp/grammar_points/あの	jlptN5	あの	That (over there)
+-んです-のです	https://bunpro.jp/grammar_points/-んです-のです	jlptN5	～んです	Explanatory, Emphasis, The fact is
+past-tense-い-adjectives	https://bunpro.jp/grammar_points/past-tense-い-adjectives	jlptN5	い-Adjective ...	Was, Were (Past tense)
+のは	https://bunpro.jp/grammar_points/のは	jlptN5	の	Verb nominalizer, The one who..., That which...
+い-adjective-noun	https://bunpro.jp/grammar_points/い-adjective-noun	jlptN5	い-Adjective ...	Describing a noun
+な-adjective-noun	https://bunpro.jp/grammar_points/な-adjective-noun	jlptN5	な-Adjective ...	Describing a noun
+へいく	https://bunpro.jp/grammar_points/へいく	jlptN5	へいく	To go to, To head toward
+する	https://bunpro.jp/grammar_points/する	jlptN5	する	To do, To make into
+くる	https://bunpro.jp/grammar_points/くる	jlptN5	くる	To come
+る-verb-past	https://bunpro.jp/grammar_points/る-verb-past	jlptN5	る-Verb (Past)	る - Verbs (Past tense)
+う-verb-past	https://bunpro.jp/grammar_points/う-verb-past	jlptN5	う-Verb (Past)	う - Verbs (Past tense)
+すき	https://bunpro.jp/grammar_points/すき	jlptN5	好き	Like, Fond of
+きらい	https://bunpro.jp/grammar_points/きらい	jlptN5	きらい	Dislike, Not fond of
+のがすき	https://bunpro.jp/grammar_points/のがすき	jlptN5	のがすき	Like doing, Love doing
+がある-noun	https://bunpro.jp/grammar_points/がある-noun	jlptN5	がある + Noun	Noun (B) that has Noun (A), Noun (B) with Noun (A)
+negative-い-adjectives	https://bunpro.jp/grammar_points/negative-い-adjectives	jlptN5	い-Adjectives...	Not (Adjective)
+で-by	https://bunpro.jp/grammar_points/で-by	jlptN5	で	With, By (using)
+ので	https://bunpro.jp/grammar_points/ので	jlptN5	ので	Because, So, Since, The reason being
+から-because	https://bunpro.jp/grammar_points/から-because	jlptN5	から	Because, Since
+から	https://bunpro.jp/grammar_points/から	jlptN5	から	From
+けど-だけど	https://bunpro.jp/grammar_points/けど-だけど	jlptN5	けど	But, However
+が-but	https://bunpro.jp/grammar_points/が-but	jlptN5	が	But, However
+る-verb-neg-past	https://bunpro.jp/grammar_points/る-verb-neg-past	jlptN5	る-Verb (Nega...	る - Verbs (Negative-past tense)
+う-verb-neg-past	https://bunpro.jp/grammar_points/う-verb-neg-past	jlptN5	う-Verb (Nega...	う - Verbs (Negative-past tense)
+verb-て	https://bunpro.jp/grammar_points/verb-て	jlptN5	Verb + て	And, Then (Linking events)
+ている1	https://bunpro.jp/grammar_points/ている1	jlptN5	ている①	Is, Am, Are (~ing)
+へ	https://bunpro.jp/grammar_points/へ	jlptN5	へ	To, Toward
+verb-にいく	https://bunpro.jp/grammar_points/verb-にいく	jlptN5	Verb + にいく	To go ~, To go in order to ~
+だれ	https://bunpro.jp/grammar_points/だれ	jlptN5	誰	Who
+なぜ	https://bunpro.jp/grammar_points/なぜ	jlptN5	なぜ	Why
+どうして	https://bunpro.jp/grammar_points/どうして	jlptN5	どうして	Why
+なんで	https://bunpro.jp/grammar_points/なんで	jlptN5	なんで	Why
+い-adjective-predicate	https://bunpro.jp/grammar_points/い-adjective-predicate	jlptN5	い-Adjective ...	い-Adjective (Predicate)
+な-adjective-predicate	https://bunpro.jp/grammar_points/な-adjective-predicate	jlptN5	な-Adjective だ	な-Adjective (Predicate)
+だった-でした	https://bunpro.jp/grammar_points/だった-でした	jlptN5	だった	Was, Were (Past tense) 
+じゃない	https://bunpro.jp/grammar_points/じゃない	jlptN5	じゃない	Is not, Isn't
+じゃなかった	https://bunpro.jp/grammar_points/じゃなかった	jlptN5	じゃなかった	Was not, Wasn't
+い-Adjective-くなかった	https://bunpro.jp/grammar_points/い-Adjective-くなかった	jlptN5	い-Adjective ...	Was not, Wasn't (Adjective)
+と	https://bunpro.jp/grammar_points/と	jlptN5	と	Quotation
+って	https://bunpro.jp/grammar_points/って	jlptN5	って	Casual quotation
+verb-non-past	https://bunpro.jp/grammar_points/verb-non-past	jlptN5	Verbs (Non-p...	(Non-past)
+verb-た-noun	https://bunpro.jp/grammar_points/verb-た-noun	jlptN5	Verb［た	Verb modified noun, Relative clause
+の-noun-ommission	https://bunpro.jp/grammar_points/の-noun-ommission	jlptN5	の	Possessive use (Noun omission)
+な	https://bunpro.jp/grammar_points/な	jlptN5	な	Do not, Don't (Prohibitive)
+だけ	https://bunpro.jp/grammar_points/だけ	jlptN5	だけ	Only, Just
+どれ	https://bunpro.jp/grammar_points/どれ	jlptN5	どれ	Which (of three or more)
+どこ	https://bunpro.jp/grammar_points/どこ	jlptN5	どこ	Where
+どの	https://bunpro.jp/grammar_points/どの	jlptN5	どの	Which (of three or more), What (kind)
+ている2	https://bunpro.jp/grammar_points/ている2	jlptN5	ている②	State of being, Has (have) done
+てから	https://bunpro.jp/grammar_points/てから	jlptN5	てから	Once...is done, Once...happens, After doing
+verb-て-b	https://bunpro.jp/grammar_points/verb-て-b	jlptN5	Verb + て+ B	And, And then, After that (sequence)
+もう	https://bunpro.jp/grammar_points/もう	jlptN5	もう	Already, Anymore
+まだ	https://bunpro.jp/grammar_points/まだ	jlptN5	まだ	Still
+まだ-ていません	https://bunpro.jp/grammar_points/まだ-ていません	jlptN5	まだ～ていません	Still haven't done (something)
+てもいい	https://bunpro.jp/grammar_points/てもいい	jlptN5	てもいい	It is alright/fine/okay even if, Can/may, ~ is also okay
+たい	https://bunpro.jp/grammar_points/たい	jlptN5	たい	Want to do
+たり-たりする	https://bunpro.jp/grammar_points/たり-たりする	jlptN5	たり～たりする	Things like ~ and ~
+けっこう	https://bunpro.jp/grammar_points/けっこう	jlptN5	けっこう	Quite, A lot, Fairly, Rather
+たくさん	https://bunpro.jp/grammar_points/たくさん	jlptN5	たくさん	Many, A lot of, Plenty, Enough
+まえに	https://bunpro.jp/grammar_points/まえに	jlptN5	まえに	Before, In front of
+くらい1	https://bunpro.jp/grammar_points/くらい1	jlptN5	くらい ①	About, Approximately
+noun-まで	https://bunpro.jp/grammar_points/noun-まで	jlptN5	Noun + まで	Until, Till,  To (but no further than)
+v-まで	https://bunpro.jp/grammar_points/v-まで	jlptN5	Verb + まで	Until (something) happens
+すぎる	https://bunpro.jp/grammar_points/すぎる	jlptN5	すぎる	Too much, Very
+にする	https://bunpro.jp/grammar_points/にする	jlptN5	にする	To decide on, To choose, To make something into, To view something as
+になる-くなる	https://bunpro.jp/grammar_points/になる-くなる	jlptN5	～になる	To become (Adjective)
+のなかで-がいちばん	https://bunpro.jp/grammar_points/のなかで-がいちばん	jlptN5	のなかで～がいちばん～	Out of ~, ~ is the best/most ~
+より-のほうが	https://bunpro.jp/grammar_points/より-のほうが	jlptN5	より～のほうが	To be more ~ than ~
+なにか-なにも	https://bunpro.jp/grammar_points/なにか-なにも	jlptN5	なにか	Something, Nothing, Anything, Not anything, Some kind of, Not any kind of
+誰か-どこか-誰も-どこも	https://bunpro.jp/grammar_points/誰か-どこか-誰も-どこも	jlptN5	誰か	Someone, Somewhere, Not anyone, Not anywhere
+ましょう	https://bunpro.jp/grammar_points/ましょう	jlptN5	ましょう	Let's, Shall we (Polite volitional)
+ましょうか	https://bunpro.jp/grammar_points/ましょうか	jlptN5	～ましょうか	Shall we, Shall I
+ませんか	https://bunpro.jp/grammar_points/ませんか	jlptN5	ませんか	Won't you, Would you not, Why don't we
+verb-てもいい	https://bunpro.jp/grammar_points/verb-てもいい	jlptN5	Verb + てもいい	It's okay to, It's alright to, Can/may
+てください	https://bunpro.jp/grammar_points/てください	jlptN5	てください	Please do (Polite request)
+ないでください	https://bunpro.jp/grammar_points/ないでください	jlptN5	ないでください	Please don't (Polite request)
+てはいけない	https://bunpro.jp/grammar_points/てはいけない	jlptN5	てはいけない	Must not, May not
+なくてはいけない	https://bunpro.jp/grammar_points/なくてはいけない	jlptN5	なくてはいけない	Must do, Have to do
+なくてはならない	https://bunpro.jp/grammar_points/なくてはならない	jlptN5	なくてはならない	Must do, Have to do
+たほうがいい	https://bunpro.jp/grammar_points/たほうがいい	jlptN5	たほうがいい	It'd be better to, Should do
+ないほうがいい	https://bunpro.jp/grammar_points/ないほうがいい	jlptN5	ないほうがいい	It'd be better not to, Shouldn't do
+なくちゃ-なきゃ	https://bunpro.jp/grammar_points/なくちゃ-なきゃ	jlptN5	なくちゃ	Must do, Have to do
+や	https://bunpro.jp/grammar_points/や	jlptN5	や	Things like, And the like
+たことがある	https://bunpro.jp/grammar_points/たことがある	jlptN5	たことがある	Have done before
+ている3	https://bunpro.jp/grammar_points/ている3	jlptN5	ている③	Has/have done, Is ~ing (Repetition)
+adjective-て-noun-で	https://bunpro.jp/grammar_points/adjective-て-noun-で	jlptN5	Adjective + て	And... (Conjunctive)
+adjective-て-b	https://bunpro.jp/grammar_points/adjective-て-b	jlptN5	Adjective + ...	And..., Both and (Conjunctive)
+のがへた	https://bunpro.jp/grammar_points/のがへた	jlptN5	のがへた	To be bad at, Poor at, Unskillful
+のがじょうず	https://bunpro.jp/grammar_points/のがじょうず	jlptN5	のがじょうず	To be good at, Proficient
+adjective-の-は	https://bunpro.jp/grammar_points/adjective-の-は	jlptN5	Adjective + ...	The 'one' that... (Indefinite pronoun, Adjective nominalization)
+あげる	https://bunpro.jp/grammar_points/あげる	jlptN5	あげる	To give (away), To present, To provide
+くれる	https://bunpro.jp/grammar_points/くれる	jlptN5	くれる	To give (me), To be given
+もらう	https://bunpro.jp/grammar_points/もらう	jlptN5	もらう	To receive, To get, To obtain
+けれども	https://bunpro.jp/grammar_points/けれども	jlptN5	けれども	But, Although
+つもりだ	https://bunpro.jp/grammar_points/つもりだ	jlptN5	つもりだ	To plan to, To intend to
+でも	https://bunpro.jp/grammar_points/でも	jlptN4	でも	Or something,  Any... (with question words), No matter (who)
+やすい	https://bunpro.jp/grammar_points/やすい	jlptN4	やすい	Easy to, Likely to
+にくい	https://bunpro.jp/grammar_points/にくい	jlptN4	にくい	Difficult to, Hard to
+づらい	https://bunpro.jp/grammar_points/づらい	jlptN4	づらい	Hard to, Tough to, Painful to, Difficult to
+だんだん	https://bunpro.jp/grammar_points/だんだん	jlptN4	だんだん	Gradually, Little by little, Step by step
+どんどん	https://bunpro.jp/grammar_points/どんどん	jlptN4	どんどん	Progressively, Rapidly increasing, More and more
+ら	https://bunpro.jp/grammar_points/ら	jlptN4	～ら	We, Them, They, These, Those
+ていく	https://bunpro.jp/grammar_points/ていく	jlptN4	ていく	To ~ and go, To go on, To start
+てくる	https://bunpro.jp/grammar_points/てくる	jlptN4	てくる 	To come to, To become, To continue, To be starting to, Has been ~ing
+かた	https://bunpro.jp/grammar_points/かた	jlptN4	かた	Way of ~ing, How to ~, Manner of ~ing
+だけで	https://bunpro.jp/grammar_points/だけで	jlptN4	だけで	Just by, Just with
+だが・ですが	https://bunpro.jp/grammar_points/だが・ですが	jlptN4	だが	But, Still, However, Nevertheless
+なくて-conjunction	https://bunpro.jp/grammar_points/なくて-conjunction	jlptN4	なくて	To not ~ and ~, Not ~ and ~ (Conjugations)
+なくて	https://bunpro.jp/grammar_points/なくて	jlptN4	なくて	Not ~ and, Not so, Because not (Examples)
+ないで	https://bunpro.jp/grammar_points/ないで	jlptN4	ないで	Without doing, Not ~ and ~
+Verb[passive]	https://bunpro.jp/grammar_points/Verb[passive]	jlptN4	Verb［れる	Was done to ~ by ~, Done without consent, Done to one's dismay
+transitive-intransitive-verbs	https://bunpro.jp/grammar_points/transitive-intransitive-verbs	jlptN4	他動詞	Done through action vs. occurring on its own
+なおす	https://bunpro.jp/grammar_points/なおす	jlptN4	なおす	To do over, To redo
+ということ	https://bunpro.jp/grammar_points/ということ	jlptN4	ということ	~ing, The ~ that ~ (Nominalization)
+とき	https://bunpro.jp/grammar_points/とき	jlptN4	とき	When, At the time of
+まず	https://bunpro.jp/grammar_points/まず	jlptN4	まず	To start with, Firstly
+まで	https://bunpro.jp/grammar_points/まで	jlptN4	まで	Even, To even, To the extent of
+までに	https://bunpro.jp/grammar_points/までに	jlptN4	までに	By ~, By the time that ~, Before ~
+また	https://bunpro.jp/grammar_points/また	jlptN4	また	Also, As well, Moreover, Again, Additionally
+はじめる	https://bunpro.jp/grammar_points/はじめる	jlptN4	はじめる	To start, To begin to
+おわる	https://bunpro.jp/grammar_points/おわる	jlptN4	おわる	To finish, To end
+ごろ	https://bunpro.jp/grammar_points/ごろ	jlptN4	ごろ	Around, About
+あとで	https://bunpro.jp/grammar_points/あとで	jlptN4	あとで	After, Later
+ていた	https://bunpro.jp/grammar_points/ていた	jlptN4	ていた 	Was doing ~
+に-frequency	https://bunpro.jp/grammar_points/に-frequency	jlptN4	に (Frequency)	Times (In each time period), Every, Frequency of
+とうとう	https://bunpro.jp/grammar_points/とうとう	jlptN4	とうとう	Finally, After all
+より	https://bunpro.jp/grammar_points/より	jlptN4	より	More than, Over
+ごとに	https://bunpro.jp/grammar_points/ごとに	jlptN4	ごとに	Each, Every
+なるべく	https://bunpro.jp/grammar_points/なるべく	jlptN4	なるべく	As ~ as possible, Wherever practicable
+るところだ	https://bunpro.jp/grammar_points/るところだ	jlptN4	るところだ	About to, On the verge of
+のに-despite	https://bunpro.jp/grammar_points/のに-despite	jlptN4	のに 	Despite, Although, Even though
+とおもう	https://bunpro.jp/grammar_points/とおもう	jlptN4	とおもう	I think
+など	https://bunpro.jp/grammar_points/など	jlptN4	など	Such as, Things like, Etc., And so on
+みたい	https://bunpro.jp/grammar_points/みたい	jlptN4	みたい	Like, Similar to, Resembling
+こと	https://bunpro.jp/grammar_points/こと	jlptN4	こと	Converting a verb into a noun
+そう	https://bunpro.jp/grammar_points/そう	jlptN4	そう 	Look like, Appear, Seem, Have a feeling that
+さ	https://bunpro.jp/grammar_points/さ	jlptN4	さ	Converting adjectives to nouns
+とか-とか	https://bunpro.jp/grammar_points/とか-とか	jlptN4	とか～とか	Among other things, For example, Such as
+そういう	https://bunpro.jp/grammar_points/そういう	jlptN4	そういう	Like that, Kind of
+よう-おう	https://bunpro.jp/grammar_points/よう-おう	jlptN4	Verb[よう]	Let's, I shall (Casual volitional)
+ようだ	https://bunpro.jp/grammar_points/ようだ	jlptN4	ようだ	It seems that, It appears that, It looks like
+ぜんぜん	https://bunpro.jp/grammar_points/ぜんぜん	jlptN4	ぜんぜん	(Not) at all
+かな	https://bunpro.jp/grammar_points/かな	jlptN4	かな	I wonder
+あまり-ない	https://bunpro.jp/grammar_points/あまり-ない	jlptN4	あまり～ない	Not very, Not much, Not really, Hardly
+ば	https://bunpro.jp/grammar_points/ば	jlptN4	ば	If… then, (Conditional)
+なら	https://bunpro.jp/grammar_points/なら	jlptN4	なら	Were it, If, If it's the case, As for (Conditional)
+がる	https://bunpro.jp/grammar_points/がる	jlptN4	がる	To feel, To think, To act as if, To want, To desire
+がする	https://bunpro.jp/grammar_points/がする	jlptN4	がする	To give off, Smell, Sound, Taste, Sensation
+たがる	https://bunpro.jp/grammar_points/たがる	jlptN4	たがる	To want to (Third person)
+かもしれない	https://bunpro.jp/grammar_points/かもしれない	jlptN4	かもしれない	Might, Maybe, Probably
+みたいに-みたいな	https://bunpro.jp/grammar_points/みたいに-みたいな	jlptN4	みたいに	Like, Similar to, Resembling
+そうに-そうな	https://bunpro.jp/grammar_points/そうに-そうな	jlptN4	そうに	Seem, Look like, Sound
+のように-のような	https://bunpro.jp/grammar_points/のように-のような	jlptN4	のように	Like (Noun), Similar to (Noun)
+ようと思う-おうと思う	https://bunpro.jp/grammar_points/ようと思う-おうと思う	jlptN4	〜ようと思う	I think I will, I think I shall, Going to, Gonna (Volitional + と思う)
+describing-verbs	https://bunpro.jp/grammar_points/describing-verbs	jlptN4	く	～ly (Describing verbs), Adverbs
+にする-くする	https://bunpro.jp/grammar_points/にする-くする	jlptN4	～にする	Adjective + する, To make something/someone (more)
+といい	https://bunpro.jp/grammar_points/といい	jlptN4	といい	I hope, I wish, You should, It would be good
+ようになる	https://bunpro.jp/grammar_points/ようになる	jlptN4	ようになる	To reach the point that, To come to be that, To turn into
+まい-のように	https://bunpro.jp/grammar_points/まい-のように	jlptN4	まい～のように	Almost every ~, Nearly every ~, On a ~ basis
+じゃないか	https://bunpro.jp/grammar_points/じゃないか	jlptN4	じゃないか	Isn't it?, Is it not?
+らしい1	https://bunpro.jp/grammar_points/らしい1	jlptN4	らしい ①	Seems like, Apparently, I heard
+ておく	https://bunpro.jp/grammar_points/ておく	jlptN4	ておく	To do something in advance
+がほしい	https://bunpro.jp/grammar_points/がほしい	jlptN4	がほしい	To want something, To be in need of
+てほしい	https://bunpro.jp/grammar_points/てほしい	jlptN4	てほしい	I want you to
+ときいた	https://bunpro.jp/grammar_points/ときいた	jlptN4	ときいた	I heard that
+聞こえる	https://bunpro.jp/grammar_points/聞こえる	jlptN4	聞こえる	To be audible, To sound (like), (Can) hear, To be heard
+見える	https://bunpro.jp/grammar_points/見える	jlptN4	見える	To be visible, To seem, To be in sight
+だす	https://bunpro.jp/grammar_points/だす	jlptN4	だす	To suddenly begin, To start doing
+代	https://bunpro.jp/grammar_points/代	jlptN4	～代	Teens, Twenties, Thirties, 1910s, 20s/30s
+number-も	https://bunpro.jp/grammar_points/number-も	jlptN4	Number + も	Emphasis, As ~ as, Not even
+ほとんど	https://bunpro.jp/grammar_points/ほとんど	jlptN4	ほとんど	Almost all, Most, Hardly any, Few (Adverbial noun)
+そんな-こんな-あんな-どんな	https://bunpro.jp/grammar_points/そんな-こんな-あんな-どんな	jlptN4	そんな	Such a・Kind of, Something like ~
+各	https://bunpro.jp/grammar_points/各	jlptN4	各	Each, Every, Respective, Various
+以上1	https://bunpro.jp/grammar_points/以上1	jlptN4	以上 ①	More than (or equal to), Over・(and) above, Any more・Greater, Exceeding
+いか	https://bunpro.jp/grammar_points/いか	jlptN4	いか	Less than (or equal to), Under・(and) below, Any less・fewer, Not exceeding
+いがい	https://bunpro.jp/grammar_points/いがい	jlptN4	いがい	Except・besides, Other than, With the exception of
+ずっと1	https://bunpro.jp/grammar_points/ずっと1	jlptN4	ずっと ①	Continuously, All throughout, Entire time, Ever (since), The whole time, All the way
+だいたい	https://bunpro.jp/grammar_points/だいたい	jlptN4	だいたい	Most・mostly, Adequately・generally, For the most part, Roughly・approximately, In the first place
+のなかで	https://bunpro.jp/grammar_points/のなかで	jlptN4	のなかで	In, Among, Within
+ように-ような	https://bunpro.jp/grammar_points/ように-ような	jlptN4	ように	As・like, Just like
+number-amount-は	https://bunpro.jp/grammar_points/number-amount-は	jlptN4	Number/Amoun...	At least, Sort of, Or so
+なん-counter-か	https://bunpro.jp/grammar_points/なん-counter-か	jlptN4	なん + counter...	Some, Several, A few
+真(っ)	https://bunpro.jp/grammar_points/真(っ)	jlptN4	真(っ)	Completely, Exactly, Right
+number-しか-ない	https://bunpro.jp/grammar_points/number-しか-ない	jlptN4	Number + しか〜ない	No more than, Not exceeding, As few as・as little as, Only
+は-の一つだ	https://bunpro.jp/grammar_points/は-の一つだ	jlptN4	～は～の一つだ	〜 is one of (many) 〜
+ない-はない	https://bunpro.jp/grammar_points/ない-はない	jlptN4	～ない～はない	There is not ~ that is not/does not
+すこしも-ない	https://bunpro.jp/grammar_points/すこしも-ない	jlptN4	すこしも～ない	Not even a little, Not at all, Not in the least, Never
+すくなくない	https://bunpro.jp/grammar_points/すくなくない	jlptN4	すくなくない	Quite a few, Quite a lot, Many, Not a few, Not a little
+ばあいは	https://bunpro.jp/grammar_points/ばあいは	jlptN4	ばあいは	In the event of, In the case of
+verbて-request	https://bunpro.jp/grammar_points/verbて-request	jlptN4	Verb[て]	Please do for me (Casual request)
+てよかった	https://bunpro.jp/grammar_points/てよかった	jlptN4	てよかった	I'm glad that
+causative	https://bunpro.jp/grammar_points/causative	jlptN4	Verb［せる	To make/let/have (somebody do something)
+といってもいい	https://bunpro.jp/grammar_points/といってもいい	jlptN4	といってもいい	You could say, You might say
+ても	https://bunpro.jp/grammar_points/ても	jlptN4	ても	Even if, Even though
+てしまう-ちゃう	https://bunpro.jp/grammar_points/てしまう-ちゃう	jlptN4	てしまう	To do something by accident, To finish completely・totally, Unfortunately
+verbて-b2	https://bunpro.jp/grammar_points/verbて-b2	jlptN4	Verb[て] + B	And・and so, Due to, Because of, Since, Conjunctive
+causative-passive	https://bunpro.jp/grammar_points/causative-passive	jlptN4	Causative-Pa...	Verbs (Causative-passive voice), To be made to do something, To be forced to do
+verb-て-noun-で-b	https://bunpro.jp/grammar_points/verb-て-noun-で-b	jlptN4	Verb[て]	By, With, On, By means of, ~ing with
+てある	https://bunpro.jp/grammar_points/てある	jlptN4	てある 	Something is done, Has been done, Remaining state
+ように-てほしい	https://bunpro.jp/grammar_points/ように-てほしい	jlptN4	ように～てほしい	Want ~ to ~ like ~, Want ~ to be able to ~, Want ~ to ~ in the way of ~
+ているあいだに	https://bunpro.jp/grammar_points/ているあいだに	jlptN4	ているあいだに	While, During the time that ~
+なくてもいい	https://bunpro.jp/grammar_points/なくてもいい	jlptN4	なくてもいい	Don't have to
+てみる	https://bunpro.jp/grammar_points/てみる	jlptN4	てみる	To try to
+てすみません	https://bunpro.jp/grammar_points/てすみません	jlptN4	てすみません	I'm sorry for
+てあげる	https://bunpro.jp/grammar_points/てあげる	jlptN4	てあげる	To do something for someone, As a favor for
+てくれる	https://bunpro.jp/grammar_points/てくれる	jlptN4	てくれる	To do something for someone (usually you)
+てもらう	https://bunpro.jp/grammar_points/てもらう	jlptN4	てもらう	To get someone to do, To have someone do
+なさい	https://bunpro.jp/grammar_points/なさい	jlptN4	なさい	Command to do
+verbて-b	https://bunpro.jp/grammar_points/verbて-b	jlptN4	Verb[て] + B	Non-sequence, And, But (Contrast), Parallel action/state
+verb-ないで	https://bunpro.jp/grammar_points/verb-ないで	jlptN4	Verb[ないで]	(Please) do not (for me), Casual request
+てくれてありがとう	https://bunpro.jp/grammar_points/てくれてありがとう	jlptN4	てくれてありがとう	Thank you for ~ ing
+てくれない-てもらえない	https://bunpro.jp/grammar_points/てくれない-てもらえない	jlptN4	てくれない	Won't you?, Will you?, Could you?, Can you?, Would you?
+のだろうか	https://bunpro.jp/grammar_points/のだろうか	jlptN4	～のだろうか	I wonder...
+お-になる	https://bunpro.jp/grammar_points/お-になる	jlptN4	お～になる 	To do (Honorific)
+なさる	https://bunpro.jp/grammar_points/なさる	jlptN4	なさる	To do (Honorific)
+お-ください	https://bunpro.jp/grammar_points/お-ください	jlptN4	お～ください 	Please do (Honorific)
+いらっしゃる	https://bunpro.jp/grammar_points/いらっしゃる	jlptN4	いらっしゃる	To be (Honorific), To come (Honorific), To go (Honorific)
+ございます	https://bunpro.jp/grammar_points/ございます	jlptN4	ございます	To be, To exist (Polite)
+でございます	https://bunpro.jp/grammar_points/でございます	jlptN4	でございます	To be, Polite copula
+お-する	https://bunpro.jp/grammar_points/お-する	jlptN4	お〜する	I humbly do, I am obliged to do, Humble speech
+いたす	https://bunpro.jp/grammar_points/いたす	jlptN4	いたす	To do (Humble), To venerably do
+ていただけませんか	https://bunpro.jp/grammar_points/ていただけませんか	jlptN4	ていただけませんか	Won't you, Could you please (Humble request)
+たら	https://bunpro.jp/grammar_points/たら	jlptN4	たら	When, From when, Just when, If
+ほかにも-ほかには	https://bunpro.jp/grammar_points/ほかにも-ほかには	jlptN4	ほかに(も)	Other, Another, Any other, Anything else, As well as, Besides, In addition
+がひつよう	https://bunpro.jp/grammar_points/がひつよう	jlptN4	がひつよう	Need, Necessary
+そんなに	https://bunpro.jp/grammar_points/そんなに	jlptN4	そんなに	So (much), That much, Like that
+ひつようがある	https://bunpro.jp/grammar_points/ひつようがある	jlptN4	ひつようがある	It is necessary to
+たとえば	https://bunpro.jp/grammar_points/たとえば	jlptN4	たとえば	For example
+Verb[potential]	https://bunpro.jp/grammar_points/Verb[potential]	jlptN4	れる	To be able, Can (Potential)
+んだけど-んですが	https://bunpro.jp/grammar_points/んだけど-んですが	jlptN4	んだけど	But..., And...
+はずだ	https://bunpro.jp/grammar_points/はずだ	jlptN4	はずだ	Bound to (be), Expected to (be), Should be (able)
+かどうか	https://bunpro.jp/grammar_points/かどうか	jlptN4	かどうか	Whether or not, If...or not
+と-conditional	https://bunpro.jp/grammar_points/と-conditional	jlptN4	と	If, When, Whenever, And, [Conditional]
+ないと	https://bunpro.jp/grammar_points/ないと	jlptN4	ないと	Must, Have to
+はずがない	https://bunpro.jp/grammar_points/はずがない	jlptN4	はずがない	Hardly possible, Cannot be, Highly unlikely, Improbable
+しか-ない	https://bunpro.jp/grammar_points/しか-ない	jlptN4	しか～ない 	There's only, Nothing but
+だけでなく	https://bunpro.jp/grammar_points/だけでなく	jlptN4	だけでなく	Not only… but also
+ことができる	https://bunpro.jp/grammar_points/ことができる	jlptN4	ことができる	Can, Be able to
+かい	https://bunpro.jp/grammar_points/かい	jlptN4	かい	Question marker
+もし	https://bunpro.jp/grammar_points/もし	jlptN4	もし	If (For emphasis)
+し-し	https://bunpro.jp/grammar_points/し-し	jlptN4	し～し 	And, Giving reasons
+でできる-からできる	https://bunpro.jp/grammar_points/でできる-からできる	jlptN4	でできる	Made of, Made from, Produced from, Come from
+ながら	https://bunpro.jp/grammar_points/ながら	jlptN4	ながら	While ~ing, During, As
+たところだ	https://bunpro.jp/grammar_points/たところだ	jlptN4	たところだ	Just finished doing, Was just doing
+ているところだ	https://bunpro.jp/grammar_points/ているところだ	jlptN4	ているところだ	In the process of doing ~ right now/at this moment
+と-と-どちらが	https://bunpro.jp/grammar_points/と-と-どちらが	jlptN4	と～と、どちらが 	Between ~ which one
+ようにする	https://bunpro.jp/grammar_points/ようにする	jlptN4	ようにする	To try to, To make sure to, To endeavor to
+なければいけない	https://bunpro.jp/grammar_points/なければいけない	jlptN4	なければいけない	Must do, Have to do
+なければならない	https://bunpro.jp/grammar_points/なければならない	jlptN4	なければならない	Must do, Have to do
+つづける	https://bunpro.jp/grammar_points/つづける	jlptN4	つづける	To continue
+ようにいう	https://bunpro.jp/grammar_points/ようにいう	jlptN4	ようにいう	To tell, request, or order to do (in such a way)
+よていだ	https://bunpro.jp/grammar_points/よていだ	jlptN4	よていだ	Plan to, Intend to
+ようにいのる	https://bunpro.jp/grammar_points/ようにいのる	jlptN4	ようにいのる	Pray that/for, Hope that/for, Keep fingers crossed that
+たばかり	https://bunpro.jp/grammar_points/たばかり	jlptN4	たばかり	Just did, Something just happened
+化する	https://bunpro.jp/grammar_points/化する	jlptN4	化する	-ification, -ization, To make something, To change, To become, Transform into
+命令形	https://bunpro.jp/grammar_points/命令形	jlptN4	命令形	(Verb)!, Do (something)!
+ように	https://bunpro.jp/grammar_points/ように	jlptN4	ように	So that, In order to, In such a way that
+かしら	https://bunpro.jp/grammar_points/かしら	jlptN4	かしら	I wonder
+らしい2	https://bunpro.jp/grammar_points/らしい2	jlptN4	らしい ②	typical of, -ish・like, appropriate for, becoming of, befitting
+にみえる	https://bunpro.jp/grammar_points/にみえる	jlptN4	にみえる	To look, To seem, To appear
+とみえる	https://bunpro.jp/grammar_points/とみえる	jlptN4	とみえる	It seems that, It can be deduced, One can conclude that
+風	https://bunpro.jp/grammar_points/風	jlptN4	風	-style, Way, Fashion
+がみられる	https://bunpro.jp/grammar_points/がみられる	jlptN4	がみられる	Can see, Can be seen, Can observe, Can be observed, Be evident, Chance to see something
+にきがつく	https://bunpro.jp/grammar_points/にきがつく	jlptN4	にきがつく	To notice (that), To realize (that)
+でも-でも	https://bunpro.jp/grammar_points/でも-でも	jlptN4	〜でも 〜でも	Whether ~ or, Neither ~ or
+それに	https://bunpro.jp/grammar_points/それに	jlptN4	それに	And, Besides, Moreover, In addition
+それで	https://bunpro.jp/grammar_points/それで	jlptN4	それで	Because of that, So?, And then?, Therefore, With that
+question-phrase-か	https://bunpro.jp/grammar_points/question-phrase-か	jlptN4	Question-phr...	Including questions within sentences
+それでも	https://bunpro.jp/grammar_points/それでも	jlptN4	それでも	But still, And yet, Even so, Nevertheless
+たらどう	https://bunpro.jp/grammar_points/たらどう	jlptN4	たらどう	Why don't you...?, What if you did...?
+とかんがえられている	https://bunpro.jp/grammar_points/とかんがえられている	jlptN4	とかんがえられている	Is considered, Is thought of as
+とされている	https://bunpro.jp/grammar_points/とされている	jlptN4	とされている	To be considered, To be deemed, Be regarded as, Be accepted as, To be said, To be accredited with
+といわれている	https://bunpro.jp/grammar_points/といわれている	jlptN4	といわれている	It is said that, Is known as
+ばよかった	https://bunpro.jp/grammar_points/ばよかった	jlptN4	ばよかった	Should have, I wish, It would have been better to
+ばいい	https://bunpro.jp/grammar_points/ばいい	jlptN3	ばいい	Can, Should, It'd be good if
+たらいい-といい	https://bunpro.jp/grammar_points/たらいい-といい	jlptN3	たらいい	It would be nice if, It would be good if, Should, I hope
+中	https://bunpro.jp/grammar_points/中	jlptN3	中	During, While, Throughout, In the process of
+の間に	https://bunpro.jp/grammar_points/の間に	jlptN3	の間に	While, During, Between, Period
+うちに	https://bunpro.jp/grammar_points/うちに	jlptN3	うちに	While, During
+ないうちに	https://bunpro.jp/grammar_points/ないうちに	jlptN3	ないうちに	Before it becomes, Before ~ occurs, Without
+べき	https://bunpro.jp/grammar_points/べき	jlptN3	べき	Must, Should , Ought to
+べきではない	https://bunpro.jp/grammar_points/べきではない	jlptN3	べきではない	Should not, Must not , Ought not to
+って-slang	https://bunpro.jp/grammar_points/って-slang	jlptN3	って	As for, Speaking of, Casual は (Sentence topic marker)
+なかなか	https://bunpro.jp/grammar_points/なかなか	jlptN3	なかなか	Very, Quite, Considerably
+あまり	https://bunpro.jp/grammar_points/あまり	jlptN3	あまり	So much...that
+なかなか-ない	https://bunpro.jp/grammar_points/なかなか-ない	jlptN3	なかなか～ない	Not really, Hardly, Not easily or readily, By no means, Far from
+によると-によれば	https://bunpro.jp/grammar_points/によると-によれば	jlptN3	によると	According to
+によって-による	https://bunpro.jp/grammar_points/によって-による	jlptN3	によって	By means of, According to, Depending on, Because of, Due to
+全く-ない	https://bunpro.jp/grammar_points/全く-ない	jlptN3	全く～ない	Not~at all
+ことだ	https://bunpro.jp/grammar_points/ことだ	jlptN3	ことだ	Should, Ought
+そうだ	https://bunpro.jp/grammar_points/そうだ	jlptN3	そうだ 	I heard that, It is said that
+すると	https://bunpro.jp/grammar_points/すると	jlptN3	すると	Having done..., If...is done..., (And/just) then, Thereupon, If so
+そうすると	https://bunpro.jp/grammar_points/そうすると	jlptN3	そうすると	Having done that..., If that is done..., (And/just) then, Thereupon, If so
+のはxの方だ	https://bunpro.jp/grammar_points/のはxの方だ	jlptN3	のはXの方だ	It is...that..., It is...who..., ...is the one that..., ...is the one who...
+noun-型	https://bunpro.jp/grammar_points/noun-型	jlptN3	Noun＋型	Model, Type, Pattern, Kind, Shape, Size(d)
+てごらん	https://bunpro.jp/grammar_points/てごらん	jlptN3	てごらん	(Please) try to, (Please) look
+particle-の	https://bunpro.jp/grammar_points/particle-の	jlptN3	Particle + の	Combined particles
+である	https://bunpro.jp/grammar_points/である	jlptN3	である	Formal or literary だ, Authoritative, Copula
+ところが	https://bunpro.jp/grammar_points/ところが	jlptN3	ところが	Even so, However, Even though, But
+ところで	https://bunpro.jp/grammar_points/ところで	jlptN3	ところで	By the way, Incidentally
+ほど	https://bunpro.jp/grammar_points/ほど	jlptN3	ほど	The more, About, To the extent that, So much… that
+ば-ほど	https://bunpro.jp/grammar_points/ば-ほど	jlptN3	ば〜ほど	The more…the more
+ほど～ない	https://bunpro.jp/grammar_points/ほど～ない	jlptN3	ほど～ない	Is not as…as, Isn't... like..., Not to the extent of...
+では-それでは-じゃあ	https://bunpro.jp/grammar_points/では-それでは-じゃあ	jlptN3	では	If so, Well (then), In that case
+のに	https://bunpro.jp/grammar_points/のに	jlptN3	のに	In order to
+ため-に	https://bunpro.jp/grammar_points/ため-に	jlptN3	ため(に)	For, For the sake of, In order to
+ために	https://bunpro.jp/grammar_points/ために	jlptN3	ために	Due to, Because of, As a result of
+という-called	https://bunpro.jp/grammar_points/という-called	jlptN3	という	Called, Named, Known as, As much as
+ということだ	https://bunpro.jp/grammar_points/ということだ	jlptN3	ということだ	I heard that, Rumor has it that, It is said that, It means that
+というのは	https://bunpro.jp/grammar_points/というのは	jlptN3	というのは	~ Known as ~ is, ~ Called ~ is, ~ Means ~, Because
+的	https://bunpro.jp/grammar_points/的	jlptN3	的	~ly・~like・~al, Typical
+もの-もん	https://bunpro.jp/grammar_points/もの-もん	jlptN3	もの	Because, Cause
+ものだ	https://bunpro.jp/grammar_points/ものだ	jlptN3	ものだ	Supposed to, Should, That's the way it is
+最中に	https://bunpro.jp/grammar_points/最中に	jlptN3	最中に	In the middle of
+上で	https://bunpro.jp/grammar_points/上で	jlptN3	上で	After, Upon
+おかげで	https://bunpro.jp/grammar_points/おかげで	jlptN3	おかげで	Thanks to, Because of
+にもとづいて	https://bunpro.jp/grammar_points/にもとづいて	jlptN3	にもとづいて	Based on, In accordance with
+点	https://bunpro.jp/grammar_points/点	jlptN3	点	Aspect, Respect, Point, Way, In terms of, In that, From the point of view
+なぜなら-から	https://bunpro.jp/grammar_points/なぜなら-から	jlptN3	なぜなら〜から	Because, The reason is, That is because
+こそ	https://bunpro.jp/grammar_points/こそ	jlptN3	こそ	For sure, For certain, Even more so, Underlined or bolded text
+からこそ	https://bunpro.jp/grammar_points/からこそ	jlptN3	からこそ	Emphasized because, Precisely because
+ばかり	https://bunpro.jp/grammar_points/ばかり	jlptN3	ばかり	Just, Only, Nothing but
+ばかりだ	https://bunpro.jp/grammar_points/ばかりだ	jlptN3	ばかりだ	(Only) continue to, Keep on -ing, More and more
+ばかりに	https://bunpro.jp/grammar_points/ばかりに	jlptN3	ばかりに	Simply because, Only because, Just because, Simply on account of
+ことがある	https://bunpro.jp/grammar_points/ことがある	jlptN3	ことがある	Something is possible, Sometimes, Occasionally, There are times when
+ことにする	https://bunpro.jp/grammar_points/ことにする	jlptN3	ことにする	To decide on, Have decided to
+ことなの	https://bunpro.jp/grammar_points/ことなの	jlptN3	ことなの	(A) is (Description of A), (A) means that (Description of A)
+ことになる	https://bunpro.jp/grammar_points/ことになる	jlptN3	ことになる	It will end up being, It is the result of, It has been decided that
+は-で有名	https://bunpro.jp/grammar_points/は-で有名	jlptN3	～は～で有名	Is famous for
+ことはない	https://bunpro.jp/grammar_points/ことはない	jlptN3	ことはない	There is no need to, Never happens
+と言っても	https://bunpro.jp/grammar_points/と言っても	jlptN3	～と言っても	Although ~ might say that ~
+といえば	https://bunpro.jp/grammar_points/といえば	jlptN3	といえば	Speaking of, If it were the case that
+合う	https://bunpro.jp/grammar_points/合う	jlptN3	合う	To do for one another, Mutually, With
+に合わせて-に合った	https://bunpro.jp/grammar_points/に合わせて-に合った	jlptN3	に合わせて	In accordance with, Matching, Fitting, Suitable for, Adjust or tune to
+について	https://bunpro.jp/grammar_points/について	jlptN3	について	Concerning, About, Regarding
+の姿	https://bunpro.jp/grammar_points/の姿	jlptN3	～(の)姿	Figure, Shape, Appearance, Looks, Wearing, Dressed in, Presence
+と言える	https://bunpro.jp/grammar_points/と言える	jlptN3	と言える	Would or could say that..., Can probably say that..., Fair to say that...
+ちゃんと-きちんと	https://bunpro.jp/grammar_points/ちゃんと-きちんと	jlptN3	ちゃんと	Properly, Neatly, Orderly, Sufficiently, Decently
+そのため-に	https://bunpro.jp/grammar_points/そのため-に	jlptN3	そのため(に)	For that reason, Because of that, To that end
+その結果	https://bunpro.jp/grammar_points/その結果	jlptN3	その結果	As a result
+に比べて	https://bunpro.jp/grammar_points/に比べて	jlptN3	に比べて	Compared to, When compared to
+どんなに-ても	https://bunpro.jp/grammar_points/どんなに-ても	jlptN3	どんなに〜ても	No matter how
+いくら-でも	https://bunpro.jp/grammar_points/いくら-でも	jlptN3	いくら〜でも	No matter how (much)
+かは-によって違う	https://bunpro.jp/grammar_points/かは-によって違う	jlptN3	〜かは〜によって違う	Depends on, Changes depending on, Differ depending on
+かなり	https://bunpro.jp/grammar_points/かなり	jlptN3	かなり	Quite, Considerably, Pretty, Fairly
+あまりに	https://bunpro.jp/grammar_points/あまりに	jlptN3	あまりに	So much...that, (Way) too...
+わけだ	https://bunpro.jp/grammar_points/わけだ	jlptN3	わけだ	For that reason, No wonder, As you'd expect, Naturally, Thus, This is why
+わけではない	https://bunpro.jp/grammar_points/わけではない	jlptN3	わけではない	It doesn't mean that, It is not the case, It's not like
+と同時に	https://bunpro.jp/grammar_points/と同時に	jlptN3	と同時に	At the same time as, The instant, The moment, As well as
+ところだった1	https://bunpro.jp/grammar_points/ところだった1	jlptN3	ところだった ①	Almost, Nearly, About to, On the verge of
+だって	https://bunpro.jp/grammar_points/だって	jlptN3	だって	I heard/was said, Because, But, Even or also, Even if or even though
+んだって	https://bunpro.jp/grammar_points/んだって	jlptN3	んだって	I heard that, He or She said that
+関係がある	https://bunpro.jp/grammar_points/関係がある	jlptN3	関係がある	(Not) involved with, (Not) concerned with, (No) connection with, (No) relationship with, (Not) related to
+に関する-に関して	https://bunpro.jp/grammar_points/に関する-に関して	jlptN3	に関する	Related to, About, Regarding
+に対して	https://bunpro.jp/grammar_points/に対して	jlptN3	に対して	In contrast to, While, In regard to, Whereas
+くらい2	https://bunpro.jp/grammar_points/くらい2	jlptN3	くらい ②	To the extent that, So…that, About the only thing that...
+は-くらいです	https://bunpro.jp/grammar_points/は-くらいです	jlptN3	は～くらいです	About the only, To the extent that
+さ-interjection	https://bunpro.jp/grammar_points/さ-interjection	jlptN3	さ - Interjec...	All right, There we go, Now, You see, Well (I don't know, let me see)
+さ-filler	https://bunpro.jp/grammar_points/さ-filler	jlptN3	さ - Filler	Like, You know, You see, Listen, Uhh
+さ-casualよ	https://bunpro.jp/grammar_points/さ-casualよ	jlptN3	さ - Casual よ	Casual よ
+それぞれ	https://bunpro.jp/grammar_points/それぞれ	jlptN3	それぞれ	Each, Respectively
+まま	https://bunpro.jp/grammar_points/まま	jlptN3	まま(に)	As is, While remaining, Left in a state
+そこで	https://bunpro.jp/grammar_points/そこで	jlptN3	そこで	Accordingly, Now, Therefore, To that end
+しかない	https://bunpro.jp/grammar_points/しかない	jlptN3	しかない	Have no choice but, Only, Just
+てもかまわない	https://bunpro.jp/grammar_points/てもかまわない	jlptN3	てもかまわない	It doesn't matter if, I don't mind
+ても-なくても	https://bunpro.jp/grammar_points/ても-なくても	jlptN3	～ても～なくても	Whether ~ or not
+んじゃない	https://bunpro.jp/grammar_points/んじゃない	jlptN3	んじゃない	Don't, Mustn't, Shouldn't have
+わけがない	https://bunpro.jp/grammar_points/わけがない	jlptN3	わけがない	There is no way, There is no reason, It is impossible, Cannot be
+としたら-とすれば-とすると	https://bunpro.jp/grammar_points/としたら-とすれば-とすると	jlptN3	としたら	If it were the case that, Assuming that...
+として	https://bunpro.jp/grammar_points/として	jlptN3	として	As (i.e. in the role of), For
+にしては	https://bunpro.jp/grammar_points/にしては	jlptN3	にしては	(Even) considering, (Even) for
+にしても	https://bunpro.jp/grammar_points/にしても	jlptN3	にしても	Even though, Even if, Even when, Also
+というのは事実だ	https://bunpro.jp/grammar_points/というのは事実だ	jlptN3	～というのは事実だ	It is a fact that ~, There is no doubt that
+から言うと	https://bunpro.jp/grammar_points/から言うと	jlptN3	から言うと	Speaking in terms of, From the point of view of
+に取って	https://bunpro.jp/grammar_points/に取って	jlptN3	に取って	To, For, Concerning
+ことから	https://bunpro.jp/grammar_points/ことから	jlptN3	ことから	From the fact that
+というより	https://bunpro.jp/grammar_points/というより	jlptN3	というより	...is more of a... than a..., Rather than saying that...
+はもちろん	https://bunpro.jp/grammar_points/はもちろん	jlptN3	はもちろん	Not only but also, Let alone, Not to mention, Of course
+をはじめ	https://bunpro.jp/grammar_points/をはじめ	jlptN3	をはじめ	Not only...but also..., Starting with
+て初めて	https://bunpro.jp/grammar_points/て初めて	jlptN3	て初めて	For the first time, Not until, Only after, Only when, Only because
+さえ	https://bunpro.jp/grammar_points/さえ	jlptN3	さえ	Even
+さえ-ば	https://bunpro.jp/grammar_points/さえ-ば	jlptN3	さえ〜ば	If only…then, As long as..., Provided..., Only thing ... needs for ... is ...
+たものだ	https://bunpro.jp/grammar_points/たものだ	jlptN3	たものだ	Used to
+さて	https://bunpro.jp/grammar_points/さて	jlptN3	さて	Well, Well then
+むしろ	https://bunpro.jp/grammar_points/むしろ	jlptN3	むしろ	Rather, Instead, Over
+つまり	https://bunpro.jp/grammar_points/つまり	jlptN3	つまり	In short, To sum up, In other words
+即ち	https://bunpro.jp/grammar_points/即ち	jlptN3	即ち	In other words, That is, Namely
+却って	https://bunpro.jp/grammar_points/却って	jlptN3	却って	All the more, On the contrary, Conversely
+まるで-ようだ	https://bunpro.jp/grammar_points/まるで-ようだ	jlptN3	まるで…ようだ	It is entirely as if, It is just as though
+ような気がする	https://bunpro.jp/grammar_points/ような気がする	jlptN3	ような気がする	Have a feeling that
+とても-ない	https://bunpro.jp/grammar_points/とても-ない	jlptN3	とても～ない	Not ~ at all, Cannot ~ at all
+別に-ない	https://bunpro.jp/grammar_points/別に-ない	jlptN3	別に〜ない	Not really, Not particularly, It's not like...
+ばかりでなく	https://bunpro.jp/grammar_points/ばかりでなく	jlptN3	ばかりでなく	Not only…but also, As well as
+ではなくて-じゃなくて	https://bunpro.jp/grammar_points/ではなくて-じゃなくて	jlptN3	ではなくて	Not A but B, Conjunctive
+だけでなく-て-も	https://bunpro.jp/grammar_points/だけでなく-て-も	jlptN3	だけでなく(て)～も	Not only ~ but ~ also, Not just ~ but ~ also
+だけしか	https://bunpro.jp/grammar_points/だけしか	jlptN3	だけしか	 To emphasize '~only', Nothing but
+は言うまでもない1	https://bunpro.jp/grammar_points/は言うまでもない1	jlptN3	は言うまでもない ①	It goes without saying (that), (It is) needless to say, I don't need to remind you
+決して-ない	https://bunpro.jp/grammar_points/決して-ない	jlptN3	決して〜ない	Never, By no means
+わけにはいかない	https://bunpro.jp/grammar_points/わけにはいかない	jlptN3	わけにはいかない	Cannot afford to, No way, Impossible to do
+-ようとしない	https://bunpro.jp/grammar_points/-ようとしない	jlptN3	〜ようとしない	Not willing to, Not make an effort to, To not attempt or try to, Volitional + としない
+もしかしたら	https://bunpro.jp/grammar_points/もしかしたら	jlptN3	もしかしたら	Perhaps, Maybe, Possibly
+たとえ-ても	https://bunpro.jp/grammar_points/たとえ-ても	jlptN3	たとえ〜ても	Even if…is the case, Supposing that
+ことに	https://bunpro.jp/grammar_points/ことに	jlptN3	ことに	Extremely, Especially, To my ...
+ことか	https://bunpro.jp/grammar_points/ことか	jlptN3	ことか	How…, What..., God knows...
+かというと1	https://bunpro.jp/grammar_points/かというと1	jlptN3	～かというと ①	Why? Well..., Why? Because..., If you ask me why..., The reason why is..., It is because...
+かというと2	https://bunpro.jp/grammar_points/かというと2	jlptN3	～かというと ②	If you ask me..., If I had to say, If I were to say, If I were to choose one, I'd rather
+で言うと	https://bunpro.jp/grammar_points/で言うと	jlptN3	で言うと	In, Of, According to
+ずつ	https://bunpro.jp/grammar_points/ずつ	jlptN3	～ずつ	One at a time, Per, Each, Gradually
+ずっと2	https://bunpro.jp/grammar_points/ずっと2	jlptN3	ずっと ②	By far, Way, Far...er, Far...more
+だらけ	https://bunpro.jp/grammar_points/だらけ	jlptN3	だらけ	Completely covered in, Full of
+もっとも	https://bunpro.jp/grammar_points/もっとも	jlptN3	もっとも	Although, But, However, For all that, Provided that
+再び	https://bunpro.jp/grammar_points/再び	jlptN3	再び	Again, Once more, A second time
+み	https://bunpro.jp/grammar_points/み	jlptN3	み	~ness, Used to indicate conditions or nature
+と同じくらい	https://bunpro.jp/grammar_points/と同じくらい	jlptN3	と同じくらい	About the same as, About as, No less
+と同じで-と違って	https://bunpro.jp/grammar_points/と同じで-と違って	jlptN3	と同じで	Like, Similar to, Unlike, Dissimilar to
+と並んで	https://bunpro.jp/grammar_points/と並んで	jlptN3	と並んで	In line with, Comparable with, Along with, Just like, As … as
+に違いない	https://bunpro.jp/grammar_points/に違いない	jlptN3	に違いない	There is no doubt that, I'm sure
+当たり	https://bunpro.jp/grammar_points/当たり	jlptN3	当たり	Per~, A~, Apiece, Each
+に当たる	https://bunpro.jp/grammar_points/に当たる	jlptN3	に当たる	Correspond to, Amounts to, Equals to, Is appropriate
+に限る	https://bunpro.jp/grammar_points/に限る	jlptN3	に限る	Nothing better than, There's nothing like, Limited to
+とは限らない	https://bunpro.jp/grammar_points/とは限らない	jlptN3	とは限らない	Not necessarily so, Is not always true, There is no guarantee that
+めったに-ない	https://bunpro.jp/grammar_points/めったに-ない	jlptN3	めったに〜ない	Hardly, Rarely, Seldom
+わりに	https://bunpro.jp/grammar_points/わりに	jlptN3	割に	Although, Despite, Rather...for, Unexpectedly, Comparatively, Considering
+verb-volitionalとする	https://bunpro.jp/grammar_points/verb-volitionalとする	jlptN3	Verb[volitio...	Try to, Attempt to, To be about to
+verb-volitional-としたが	https://bunpro.jp/grammar_points/verb-volitional-としたが	jlptN3	Verb[volitio...	Tried to ~ but ~, Was about to ~ but ~, Was going to ~ but ~
+言うまでもない2	https://bunpro.jp/grammar_points/言うまでもない2	jlptN3	言うまでもない ②	It goes without saying, It is needless to say, Of course, Obviously
+そうもない	https://bunpro.jp/grammar_points/そうもない	jlptN3	そうもない	Very unlikely to, Does not seem that, Does not appear that
+ないことはない	https://bunpro.jp/grammar_points/ないことはない	jlptN3	ないことはない	Is not impossible, It doesn't mean that it isn't
+なんか-なんて	https://bunpro.jp/grammar_points/なんか-なんて	jlptN3	なんか	Such as, Things like, Emphasis
+又-も	https://bunpro.jp/grammar_points/又-も	jlptN3	又〜も	Moreover, Additionally, And also, In addition, Furthermore, Or
+ついでに	https://bunpro.jp/grammar_points/ついでに	jlptN3	ついでに	While you are at it, On the occasion
+と共に	https://bunpro.jp/grammar_points/と共に	jlptN3	と共に	Together with, At the same time,  As well as
+につれて	https://bunpro.jp/grammar_points/につれて	jlptN3	につれて	As…then, In proportion to, (Along) with
+直ちに	https://bunpro.jp/grammar_points/直ちに	jlptN3	直ちに	At once, Immediately, As soon as
+たとたんに	https://bunpro.jp/grammar_points/たとたんに	jlptN3	たとたんに	The instant or moment, As soon as, Just as
+おきに	https://bunpro.jp/grammar_points/おきに	jlptN3	おきに	Repeated at intervals, Every other, Every, At intervals of
+たびに	https://bunpro.jp/grammar_points/たびに	jlptN3	たびに	Each time, Every time, Whenever
+あるいは	https://bunpro.jp/grammar_points/あるいは	jlptN3	あるいは	Or, Possibly, Maybe, Perhaps, Or possibly
+ながらも	https://bunpro.jp/grammar_points/ながらも	jlptN3	ながらも	But, Even while, Even though, Despite, Although
+において-における	https://bunpro.jp/grammar_points/において-における	jlptN3	において	In, On, At, Regarding, In terms of
+第一	https://bunpro.jp/grammar_points/第一	jlptN3	第一	Start, First (point), Foremost, To begin with
+ますます	https://bunpro.jp/grammar_points/ますます	jlptN3	ますます	Increasingly, More and more, Decreasingly, Less and less, Keep -ing
+一方だ	https://bunpro.jp/grammar_points/一方だ	jlptN3	一方だ	More and more, Continue to, Keep on, -er and -er
+一方で	https://bunpro.jp/grammar_points/一方で	jlptN3	一方で	On the other hand, At the same time, While
+遂に	https://bunpro.jp/grammar_points/遂に	jlptN3	遂に	Finally, At last
+すでに	https://bunpro.jp/grammar_points/すでに	jlptN3	すでに	Already, Too late
+ずに	https://bunpro.jp/grammar_points/ずに	jlptN3	ずに	Without doing
+ずにはいられない	https://bunpro.jp/grammar_points/ずにはいられない	jlptN3	ずにはいられない	Cannot help doing something, Cannot resist doing something
+なし	https://bunpro.jp/grammar_points/なし	jlptN3	なし	Without, No
+あり	https://bunpro.jp/grammar_points/あり	jlptN3	あり	Possibility, To have, With
+考えられない	https://bunpro.jp/grammar_points/考えられない	jlptN3	考えられない	Unthinkable, Inconceivable, Unimaginable, Cannot think
+必ずしも	https://bunpro.jp/grammar_points/必ずしも	jlptN3	必ずしも 	Not always, Not entirely, Not necessarily
+連用形	https://bunpro.jp/grammar_points/連用形	jlptN3	連用形	Formal Conjunctive
+向き	https://bunpro.jp/grammar_points/向き	jlptN3	向き	Suitable for, Facing
+向け	https://bunpro.jp/grammar_points/向け	jlptN3	向け	Intended for, Aimed at
+上がる-上げる	https://bunpro.jp/grammar_points/上がる-上げる	jlptN3	上がる	Something is finished, To finish something, Something has come to an end, To do something completely, To do something through
+切る	https://bunpro.jp/grammar_points/切る	jlptN3	切る	To do something completely to the end, Utterly, Resolutely
+切れない	https://bunpro.jp/grammar_points/切れない	jlptN3	切れない	Being unable to finish or complete
+きり	https://bunpro.jp/grammar_points/きり	jlptN3	きり	Only, Just, Since
+かけ	https://bunpro.jp/grammar_points/かけ	jlptN3	かけ	Half-, Not yet finished, About to, Begin to
+にかけて	https://bunpro.jp/grammar_points/にかけて	jlptN3	にかけて	Over (a period), From ~ until, Through
+たて	https://bunpro.jp/grammar_points/たて	jlptN3	たて	Freshly ~ed, Just ~ed
+込む1	https://bunpro.jp/grammar_points/込む1	jlptN3	込む ①	To go into, To put into 
+込む2	https://bunpro.jp/grammar_points/込む2	jlptN3	込む ②	Remain, To do thoroughly, Deeply, Intensely
+ふりをする	https://bunpro.jp/grammar_points/ふりをする	jlptN3	ふりをする	To pretend, To act as if
+できれば-できたら	https://bunpro.jp/grammar_points/できれば-できたら	jlptN3	できれば	If possible
+でよければ	https://bunpro.jp/grammar_points/でよければ	jlptN3	でよければ	If it is alright, If you don't mind, If you would like, If possible
+次第	https://bunpro.jp/grammar_points/次第	jlptN3	次第	As soon as
+とおり	https://bunpro.jp/grammar_points/とおり	jlptN3	とおり	In that way, Exactly, Precisely, Just as
+でもある	https://bunpro.jp/grammar_points/でもある	jlptN3	でもある	Be also, It also is
+どうしても	https://bunpro.jp/grammar_points/どうしても	jlptN3	どうしても	Regardless of, No matter what
+もしも～なら・もしも～でも	https://bunpro.jp/grammar_points/もしも～なら・もしも～でも	jlptN3	もしも～なら	 If, Supposing
+同士	https://bunpro.jp/grammar_points/同士	jlptN3	同士	Fellow, With each other, Mutually, Between, Among, Together, With
+がたい	https://bunpro.jp/grammar_points/がたい	jlptN3	がたい	Hard to, Difficult to
+まさか	https://bunpro.jp/grammar_points/まさか	jlptN3	まさか	I never dreamed, Never, No way, Don't tell me, You don't say
+前者は-後者は	https://bunpro.jp/grammar_points/前者は-後者は	jlptN3	前者は	The former ~ the latter, The first ~ the second
+つい	https://bunpro.jp/grammar_points/つい	jlptN3	つい	Accidentally, Unconsciously, Against one's better judgement
+せいで	https://bunpro.jp/grammar_points/せいで	jlptN3	せいで	Because of, Due to, Blame
+くせに	https://bunpro.jp/grammar_points/くせに	jlptN3	くせに	Even though, And yet, Despite
+がち	https://bunpro.jp/grammar_points/がち	jlptN3	がち	Apt to do, Tend to do, Prone to do
+ぎみ	https://bunpro.jp/grammar_points/ぎみ	jlptN3	ぎみ	Looking, Feeling a little, Touch of, Tending to, Slightly
+っぽい	https://bunpro.jp/grammar_points/っぽい	jlptN3	っぽい	-ish, -like, Characteristic of, Typical of, Tendency to
+っぱなし	https://bunpro.jp/grammar_points/っぱなし	jlptN3	っぱなし	Leaving something in a certain state, Left as is, Keep on -ing
+わざわざ	https://bunpro.jp/grammar_points/わざわざ	jlptN3	わざわざ	Expressly, Especially, Go out of one's way, Take the trouble to
+一体	https://bunpro.jp/grammar_points/一体	jlptN3	一体	(What) the heck?, (Who) in the world?, (Where) on earth?, (How many) f*ing...
+せっかく	https://bunpro.jp/grammar_points/せっかく	jlptN3	折角	With trouble, At great pains, Take the trouble, Might as well..., Rare/long-awaited occasion
+っけ	https://bunpro.jp/grammar_points/っけ	jlptN3	っけ	What is…again?, Was it... that... ?, Did you say...?
+代わりに	https://bunpro.jp/grammar_points/代わりに	jlptN3	代わりに	Instead of,  In place of, In exchange for
+に代わって	https://bunpro.jp/grammar_points/に代わって	jlptN3	に代わって	In place of, On behalf of, To succeed
+どころか	https://bunpro.jp/grammar_points/どころか	jlptN3	どころか	Far from, Anything but
+という理由で	https://bunpro.jp/grammar_points/という理由で	jlptN3	という理由で	For (that) reason; on the grounds of (that), With the reasoning, Under the pretext of, Due to
+は-となっている	https://bunpro.jp/grammar_points/は-となっている	jlptN3	～は～となっている	It is (has been), Have/has become, Happen to be, Has been established
+左右する	https://bunpro.jp/grammar_points/左右する	jlptN3	左右する	Influence, Impact, Control
+得る-得る	https://bunpro.jp/grammar_points/得る-得る	jlptN2	得る	Is able to, Can, Possible
+得ない	https://bunpro.jp/grammar_points/得ない	jlptN2	〜得ない	Unable to, Cannot
+ざるを得ない	https://bunpro.jp/grammar_points/ざるを得ない	jlptN2	ざるを得ない	Can't help doing, Have no choice but
+ざる	https://bunpro.jp/grammar_points/ざる	jlptN2	～ざる	To not ~, Un~
+つもりで	https://bunpro.jp/grammar_points/つもりで	jlptN2	つもりで	With the intention of doing, Instead of..., Act as if or pretend, Believing that..., Thinking that...
+どうせ	https://bunpro.jp/grammar_points/どうせ	jlptN2	どうせ	Anyhow, At any rate, In any case, I have no doubt that, Probably
+せめて	https://bunpro.jp/grammar_points/せめて	jlptN2	せめて	At least
+どうやら	https://bunpro.jp/grammar_points/どうやら	jlptN2	どうやら	Apparently, Looks Like, Seems like
+なにやら	https://bunpro.jp/grammar_points/なにやら	jlptN2	なにやら	Something (or other), Some kind of
+よりほかない	https://bunpro.jp/grammar_points/よりほかない	jlptN2	よりほかない	To have no choice but, No other way than, Have to
+確かに	https://bunpro.jp/grammar_points/確かに	jlptN2	確かに	Surely, Certainly
+一応1	https://bunpro.jp/grammar_points/一応1	jlptN2	一応 ①	Just in case, Just to be sure
+一応2	https://bunpro.jp/grammar_points/一応2	jlptN2	一応 ②	more or less, for the time being, tentatively, roughly
+に相違ない	https://bunpro.jp/grammar_points/に相違ない	jlptN2	に相違ない	Without a doubt, Certainly, Surely, Not mistaken
+万が一	https://bunpro.jp/grammar_points/万が一	jlptN2	万が一	Just in case, In the worst-case scenario, In the unlikely event, By any chance
+ようがない・ようもない	https://bunpro.jp/grammar_points/ようがない・ようもない	jlptN2	ようがない	There's no way to, It's impossible to
+にほかならない	https://bunpro.jp/grammar_points/にほかならない	jlptN2	にほかならない	Nothing but, None other than, Simply
+っこない	https://bunpro.jp/grammar_points/っこない	jlptN2	っこない	There is no chance of, There is no way of, Impossible
+それなら	https://bunpro.jp/grammar_points/それなら	jlptN2	それなら	Then, If that's the case
+ものなら①	https://bunpro.jp/grammar_points/ものなら①	jlptN2	ものなら①	If, If one could, If something would be possible
+を-に任せる	https://bunpro.jp/grammar_points/を-に任せる	jlptN2	～を～に任せる	Leave 〜 up to, Entrust 〜 to
+活かす	https://bunpro.jp/grammar_points/活かす	jlptN2	活かす	To make use of (something), To take full advantage of, To capitalize on, To leverage (skills), Bring out (the quality of)
+おおよそ	https://bunpro.jp/grammar_points/おおよそ	jlptN2	おおよそ	Approximately, Roughly, About, Outline, Gist
+まい	https://bunpro.jp/grammar_points/まい	jlptN2	まい	Won't, Intend not to, Probably not
+上	https://bunpro.jp/grammar_points/上	jlptN2	上	From the standpoint of
+上に	https://bunpro.jp/grammar_points/上に	jlptN2	上に	As well, Besides, In addition to
+以上2	https://bunpro.jp/grammar_points/以上2	jlptN2	以上 ②	Since, Now that, As long as, If
+以上に	https://bunpro.jp/grammar_points/以上に	jlptN2	以上に	More than, No less than, Even more
+途中に・途中で	https://bunpro.jp/grammar_points/途中に・途中で	jlptN2	途中に	On the way, Partway, In the middle of
+中を	https://bunpro.jp/grammar_points/中を	jlptN2	中を	In, On, Into, Inside of
+を中心に	https://bunpro.jp/grammar_points/を中心に	jlptN2	を中心に	Focused on, Centered on or around, Mainly, Most notably
+その上	https://bunpro.jp/grammar_points/その上	jlptN2	その上	Besides, In addition, Furthermore
+上は	https://bunpro.jp/grammar_points/上は	jlptN2	上は	Once, Since, Now that, As long as
+の下で	https://bunpro.jp/grammar_points/の下で	jlptN2	の下で	Under, Under the supervision of, On the basis of
+後-のnoun	https://bunpro.jp/grammar_points/後-のnoun	jlptN2	後(の) Noun	…left, Rest, Remaining, In, …to, …else
+手前	https://bunpro.jp/grammar_points/手前	jlptN2	手前	Before, In front of, From one's standpoint or side
+を巡って	https://bunpro.jp/grammar_points/を巡って	jlptN2	を巡って	Concerning, In regard to, About, (Split) over
+にわたって	https://bunpro.jp/grammar_points/にわたって	jlptN2	にわたって	Across, Throughout, Extends, Over (a period of time or range)
+に沿って	https://bunpro.jp/grammar_points/に沿って	jlptN2	に沿って	Along, In accordance with, In line with
+た末-の末	https://bunpro.jp/grammar_points/た末-の末	jlptN2	た末	After, As a conclusion of
+にしたがって	https://bunpro.jp/grammar_points/にしたがって	jlptN2	にしたがって	As, Following, As then, According to, In accordance with
+に伴って-に伴い	https://bunpro.jp/grammar_points/に伴って-に伴い	jlptN2	に伴って	As, Due,  Along with, Hand-in-hand with, Resulted in, Be consequent upon
+につき	https://bunpro.jp/grammar_points/につき	jlptN2	につき	Due to, On account of, Each or every
+につけ	https://bunpro.jp/grammar_points/につけ	jlptN2	につけ	Whenever, Every time something happens
+にかかわる	https://bunpro.jp/grammar_points/にかかわる	jlptN2	にかかわる	To relate to, To have to do with, Concerning, Depends on
+に向かって-に向けて	https://bunpro.jp/grammar_points/に向かって-に向けて	jlptN2	に向かって	Towards, To face, To head to
+が気になる	https://bunpro.jp/grammar_points/が気になる	jlptN2	が気になる	To be interested in, To be concerned about
+に気をつける	https://bunpro.jp/grammar_points/に気をつける	jlptN2	に気をつける	Take care, Be careful, Pay attention, Make sure, Watch out
+もかまわず	https://bunpro.jp/grammar_points/もかまわず	jlptN2	も構わず	Without worrying about
+かねる	https://bunpro.jp/grammar_points/かねる	jlptN2	かねる	Cannot, Be unable to, Hard to, Hesitant to
+かねない	https://bunpro.jp/grammar_points/かねない	jlptN2	かねない	Might, Could be, Capable of, Possible
+を除いて	https://bunpro.jp/grammar_points/を除いて	jlptN2	を除いて	Except, With the exception of, Unless
+にかかわらず	https://bunpro.jp/grammar_points/にかかわらず	jlptN2	にかかわらず	Regardless of, Whether or, No matter, With or without
+にもかかわらず	https://bunpro.jp/grammar_points/にもかかわらず	jlptN2	にもかかわらず	Despite, In spite of, Regardless, Nevertheless
+に限って	https://bunpro.jp/grammar_points/に限って	jlptN2	に限って	Particularly when, Those who, Only when
+に限らず	https://bunpro.jp/grammar_points/に限らず	jlptN2	に限らず	Not just, Not only… but also
+なお1	https://bunpro.jp/grammar_points/なお1	jlptN2	なお①	Still, Even, Yet
+なお2	https://bunpro.jp/grammar_points/なお2	jlptN2	なお②	In addition, Incidentally, Furthermore, Moreover
+限り	https://bunpro.jp/grammar_points/限り	jlptN2	限り	As long as, While… is the case, Limited to
+次第だ-次第で	https://bunpro.jp/grammar_points/次第だ-次第で	jlptN2	次第だ	Depending on, So
+次第に	https://bunpro.jp/grammar_points/次第に	jlptN2	次第に	Gradually
+-てこそ	https://bunpro.jp/grammar_points/-てこそ	jlptN2	～てこそ	Only if, Because, By, Unless, Until
+を問わず	https://bunpro.jp/grammar_points/を問わず	jlptN2	を問わず	Regardless of, Whether or not, No matter, With or without
+よりしかたがない	https://bunpro.jp/grammar_points/よりしかたがない	jlptN2	よりしかたがない	There is no choice but, Can't be helped, Inevitable
+に越したことはない	https://bunpro.jp/grammar_points/に越したことはない	jlptN2	に越したことはない	There is nothing better than, It is the best, Would be the best
+要するに	https://bunpro.jp/grammar_points/要するに	jlptN2	要するに	To sum up, In summary, In short
+てからでないと	https://bunpro.jp/grammar_points/てからでないと	jlptN2	てからでないと	(Not) unless ~ cannot, (Not) until ~ cannot
+なくはない	https://bunpro.jp/grammar_points/なくはない	jlptN2	なくはない	It's not that…, Kind of, might, Slightly, Somewhat, In some respects
+ないことには-ない	https://bunpro.jp/grammar_points/ないことには-ない	jlptN2	ないことには～ない	Unless you do something
+ないではいられない	https://bunpro.jp/grammar_points/ないではいられない	jlptN2	ないではいられない	Cannot help doing something, Cannot resist doing something
+ねばならない	https://bunpro.jp/grammar_points/ねばならない	jlptN2	ねばならない	Must, Have to, Should
+たまえ	https://bunpro.jp/grammar_points/たまえ	jlptN2	たまえ	(Please) do!, Ask to, Beg to, (Order somebody to do something)
+-のうち-で	https://bunpro.jp/grammar_points/-のうち-で	jlptN2	～のうち(で)	Of the, Among(st)
+つつ	https://bunpro.jp/grammar_points/つつ	jlptN2	つつ	While, And
+つつ-も	https://bunpro.jp/grammar_points/つつ-も	jlptN2	つつ(も)	Even while ~ing, Even though ~ing, Despite ~ing, Although ~ing
+に際して	https://bunpro.jp/grammar_points/に際して	jlptN2	に際して	On the occasion of, At the time of
+際に	https://bunpro.jp/grammar_points/際に	jlptN2	際に	When, At the time of, In case of, On the occasion of
+にあたり-にあたって	https://bunpro.jp/grammar_points/にあたり-にあたって	jlptN2	にあたり	When, When doing something, On the occasion, At the time
+を契機に	https://bunpro.jp/grammar_points/を契機に	jlptN2	を契機に	Lead to, As a good opportunity to, As a result of, As a trigger
+つつある	https://bunpro.jp/grammar_points/つつある	jlptN2	つつある	-ing, Be -ing
+～ところに・～ところへ	https://bunpro.jp/grammar_points/～ところに・～ところへ	jlptN2	～ところに	At the time, When, While, Timing
+か-ないかのうちに	https://bunpro.jp/grammar_points/か-ないかのうちに	jlptN2	か〜ないかのうちに	Right after, As soon as, Just when, Barely
+がけに	https://bunpro.jp/grammar_points/がけに	jlptN2	がけに	On the way to, As you go
+ていては	https://bunpro.jp/grammar_points/ていては	jlptN2	ていては	If one keeps doing something, When, If something is...
+ところだった2	https://bunpro.jp/grammar_points/ところだった2	jlptN2	ところだった ②	Was just about to do something, Was in the middle of...
+どころではない	https://bunpro.jp/grammar_points/どころではない	jlptN2	どころではない	This is not the time for…, Far from, Out of the question
+ぶりに	https://bunpro.jp/grammar_points/ぶりに	jlptN2	ぶりに	For the first time in, Haven't done for some time
+ては	https://bunpro.jp/grammar_points/ては	jlptN2	ては	If, With, Since, Because
+ては-ては	https://bunpro.jp/grammar_points/ては-ては	jlptN2	ては〜ては	Repeating action, If, Since
+も又	https://bunpro.jp/grammar_points/も又	jlptN2	も又	Too, Also (with more emphasis than も alone), Again
+結果・の結果	https://bunpro.jp/grammar_points/結果・の結果	jlptN2	結果	As a result of
+以来	https://bunpro.jp/grammar_points/以来	jlptN2	以来	Since, Henceforth
+に先立ち	https://bunpro.jp/grammar_points/に先立ち	jlptN2	に先立ち	Before, Prior to, In preference over
+はたして	https://bunpro.jp/grammar_points/はたして	jlptN2	はたして	Wonder if ~ (really)?, Wonder how ~ (actually)?, Sure enough, As expected
+甲斐がある	https://bunpro.jp/grammar_points/甲斐がある	jlptN2	甲斐がある	To be (not) worth, To (not) pay off
+やがて	https://bunpro.jp/grammar_points/やがて	jlptN2	やがて	Before long, All too soon, In the end, Eventually
+したがって	https://bunpro.jp/grammar_points/したがって	jlptN2	したがって	Therefore, Thus, As a result
+あげく	https://bunpro.jp/grammar_points/あげく	jlptN2	あげく	After, In the end, After all, Eventually
+きっかけ	https://bunpro.jp/grammar_points/きっかけ	jlptN2	きっかけ	Lead to, Because of, As a start or trigger of, An opportunity
+にかけては	https://bunpro.jp/grammar_points/にかけては	jlptN2	にかけては	When it comes to, Regarding, Concerning
+とっくに	https://bunpro.jp/grammar_points/とっくに	jlptN2	とっくに	Already, A long time ago, Long ago
+未だに	https://bunpro.jp/grammar_points/未だに	jlptN2	未だに	Still, Not yet, Even now
+をもとに	https://bunpro.jp/grammar_points/をもとに	jlptN2	をもとに	Based on, From, According to
+からには	https://bunpro.jp/grammar_points/からには	jlptN2	からには	As long as, Since, Given
+いつの間にか	https://bunpro.jp/grammar_points/いつの間にか	jlptN2	いつの間にか	Suddenly, Unnoticed, Without noticing, Too soon
+一旦	https://bunpro.jp/grammar_points/一旦	jlptN2	一旦	Once …, If … for a short time, Temporarily (stop), For now or the time being
+はもとより	https://bunpro.jp/grammar_points/はもとより	jlptN2	はもとより	Not only... but also, Let alone, Of course
+そうにない	https://bunpro.jp/grammar_points/そうにない	jlptN2	そうにない	Unlikely to, Showing no signs of
+に反して	https://bunpro.jp/grammar_points/に反して	jlptN2	に反して	Go against, Contrary to
+逆に	https://bunpro.jp/grammar_points/逆に	jlptN2	逆に	On the contrary
+反面	https://bunpro.jp/grammar_points/反面	jlptN2	反面	While, On the other hand, Although, However, On the flip side
+抜く	https://bunpro.jp/grammar_points/抜く	jlptN2	抜く	All~, Completely, See through, Overcome, To the bitter end
+抜きで	https://bunpro.jp/grammar_points/抜きで	jlptN2	抜きで	Without, Unless
+いよいよ	https://bunpro.jp/grammar_points/いよいよ	jlptN2	いよいよ	At last, Finally, More and more
+ずに済む	https://bunpro.jp/grammar_points/ずに済む	jlptN2	ずに済む	Get by without doing something, To get away with
+に応じて	https://bunpro.jp/grammar_points/に応じて	jlptN2	に応じて	Depending or based on, According to, In response to, Suitable for or to
+を通じて-を通して	https://bunpro.jp/grammar_points/を通じて-を通して	jlptN2	を通じて	Through, Via, Throughout
+に応えて	https://bunpro.jp/grammar_points/に応えて	jlptN2	に応えて	In response to, Meet
+それとも	https://bunpro.jp/grammar_points/それとも	jlptN2	それとも	Or, Or else, Rather
+にしたら	https://bunpro.jp/grammar_points/にしたら	jlptN2	にしたら	From the point of view of
+にしても-にしても	https://bunpro.jp/grammar_points/にしても-にしても	jlptN2	にしても～にしても	Regardless of whether
+としては	https://bunpro.jp/grammar_points/としては	jlptN2	としては	As a, For a, As for
+としても	https://bunpro.jp/grammar_points/としても	jlptN2	としても	Even if (we assume), Assuming,  Also as
+それにしても	https://bunpro.jp/grammar_points/それにしても	jlptN2	それにしても	Nevertheless, Even so
+ぬ	https://bunpro.jp/grammar_points/ぬ	jlptN2	ぬ	Classical negative, Classical verb [ない]
+ことなく	https://bunpro.jp/grammar_points/ことなく	jlptN2	ことなく	Without ~ing
+にて	https://bunpro.jp/grammar_points/にて	jlptN2	にて	In, At, With, Using, By
+には	https://bunpro.jp/grammar_points/には	jlptN2	には	In order to, In regard to, For
+思うように	https://bunpro.jp/grammar_points/思うように	jlptN2	思うように	As one hopes, As desired, As one thought
+かと思ったら-かと思うと	https://bunpro.jp/grammar_points/かと思ったら-かと思うと	jlptN2	かと思ったら	Then again, Just when I thought, No sooner than
+～ばと思います	https://bunpro.jp/grammar_points/～ばと思います	jlptN2	～ばと思います	I would appreciate it if, If you could, I would like to think that
+というものでもない	https://bunpro.jp/grammar_points/というものでもない	jlptN2	というものでもない	There is no guarantee that…, Not necessarily
+と考えられる	https://bunpro.jp/grammar_points/と考えられる	jlptN2	と考えられる	Can be considered as, Is thought to be, One can think that, It is conceivable that
+という点から考えると	https://bunpro.jp/grammar_points/という点から考えると	jlptN2	という点から考えると	From the standpoint of, From the perspective of, From the viewpoint of, Think in terms of, Viewed from the angle of
+ということは	https://bunpro.jp/grammar_points/ということは	jlptN2	ということは	That means, That is to say
+ふうに	https://bunpro.jp/grammar_points/ふうに	jlptN2	ふうに	~ way, In a way that suggests, Like ~
+という風に	https://bunpro.jp/grammar_points/という風に	jlptN2	という風に	As if to say, As if to suggest that, In such a way that, Things like
+ものの	https://bunpro.jp/grammar_points/ものの	jlptN2	ものの	Although, But, Even Though
+というものだ	https://bunpro.jp/grammar_points/というものだ	jlptN2	というものだ	Speaker's impression, Criticism or conclusion
+から見ると	https://bunpro.jp/grammar_points/から見ると	jlptN2	から見ると	From the point of view of, By the look of
+ところを見ると	https://bunpro.jp/grammar_points/ところを見ると	jlptN2	ところを見ると	Judging from, Seeing that
+からすると-からすれば	https://bunpro.jp/grammar_points/からすると-からすれば	jlptN2	からすると	Judging from, Considering
+からして	https://bunpro.jp/grammar_points/からして	jlptN2	からして	Even..., Judging from, Based on
+からといって	https://bunpro.jp/grammar_points/からといって	jlptN2	からといって	Just because
+そういえば	https://bunpro.jp/grammar_points/そういえば	jlptN2	そういえば	Speaking of which, By the way, Come to think of it
+お-願う	https://bunpro.jp/grammar_points/お-願う	jlptN2	お～願う	Please, Could you please
+て頂戴	https://bunpro.jp/grammar_points/て頂戴	jlptN2	～て頂戴	Please do
+とか	https://bunpro.jp/grammar_points/とか	jlptN2	とか	I heard that… something like, They said ... or something 
+ようではないか	https://bunpro.jp/grammar_points/ようではないか	jlptN2	〜ようではないか	Let's do something, Why don't we
+かのようだ	https://bunpro.jp/grammar_points/かのようだ	jlptN2	かのようだ	As if, Just like
+のではないだろうか	https://bunpro.jp/grammar_points/のではないだろうか	jlptN2	のではないだろうか	I think ... isn't it?, It might be that..., Don't you agree?
+て当然だ	https://bunpro.jp/grammar_points/て当然だ	jlptN2	て当然だ	Natural, As a matter of course
+のも当然だ	https://bunpro.jp/grammar_points/のも当然だ	jlptN2	のも当然だ	It is only natural that, It is no wonder
+たった-の	https://bunpro.jp/grammar_points/たった-の	jlptN2	たった(の)	Only, Just, No more than
+恐れがある	https://bunpro.jp/grammar_points/恐れがある	jlptN2	恐れがある	There is a risk or fear that, Be in danger of, Possibility of
+おそらく	https://bunpro.jp/grammar_points/おそらく	jlptN2	おそらく	Probably, Perhaps, (Most) likely, (I) fear that
+ものか	https://bunpro.jp/grammar_points/ものか	jlptN2	ものか	Definitely not, Absolutely not, Impossible, Do you really think~?
+おまけに	https://bunpro.jp/grammar_points/おまけに	jlptN2	おまけに	In addition, On top of that, What is more, To make matters worse
+に決まっている	https://bunpro.jp/grammar_points/に決まっている	jlptN2	に決まっている	Surely, Bound to, Certainly, Be decided
+ことになっている	https://bunpro.jp/grammar_points/ことになっている	jlptN2	ことになっている	To be expected to, To be scheduled to
+気	https://bunpro.jp/grammar_points/気	jlptN2	気	Feel like ~, Spirit
+げ	https://bunpro.jp/grammar_points/げ	jlptN2	げ	Seemingly, Giving appearance of, [Expresses emotions or feelings]
+ことだから	https://bunpro.jp/grammar_points/ことだから	jlptN2	ことだから	It is exactly because
+ものだから	https://bunpro.jp/grammar_points/ものだから	jlptN2	ものだから	Because, The reason is
+ものですから-もので	https://bunpro.jp/grammar_points/ものですから-もので	jlptN2	ものですから	Because, My excuse is, My explanation is
+ものがある	https://bunpro.jp/grammar_points/ものがある	jlptN2	ものがある	Strong judgement, There is something, Feel strongly that
+傾向がある	https://bunpro.jp/grammar_points/傾向がある	jlptN2	傾向がある	Tendency, Trend, Inclination
+に値する	https://bunpro.jp/grammar_points/に値する	jlptN2	～に値する	Be worthy of, Deserving of, Amounts to
+てしょうがない	https://bunpro.jp/grammar_points/てしょうがない	jlptN2	てしょうがない	Extremely, Very, Really, It can't be helped
+だけましだ	https://bunpro.jp/grammar_points/だけましだ	jlptN2	だけましだ	At least, It's better than..., One should feel grateful for
+幸い-幸いなことに	https://bunpro.jp/grammar_points/幸い-幸いなことに	jlptN2	幸い	Luckily, Fortunately
+ようでは-ようじゃ	https://bunpro.jp/grammar_points/ようでは-ようじゃ	jlptN2	ようでは	If, If it is true that
+さすが	https://bunpro.jp/grammar_points/さすが	jlptN2	さすが	as one would expect, only natural, that is just like..., even
+ことは-が	https://bunpro.jp/grammar_points/ことは-が	jlptN2	ことは〜が	It is true...but, although, but
+さらに	https://bunpro.jp/grammar_points/さらに	jlptN2	更に	Even more or further, Again, More and more
+精々	https://bunpro.jp/grammar_points/精々	jlptN2	精々	(At) most , (At) best, No more than, Barely
+僅かに	https://bunpro.jp/grammar_points/僅かに	jlptN2	僅かに	Only, Slightly, A little, Barely, Merely
+および	https://bunpro.jp/grammar_points/および	jlptN2	および	And, As well as
+たちまち	https://bunpro.jp/grammar_points/たちまち	jlptN2	たちまち	Immediately, Quickly, Suddenly, In a moment or flash
+いきなり	https://bunpro.jp/grammar_points/いきなり	jlptN2	いきなり	For no reason, Suddenly, All of a sudden
+といった	https://bunpro.jp/grammar_points/といった	jlptN2	といった	Such as, Like, So much as
+を込めて	https://bunpro.jp/grammar_points/を込めて	jlptN2	を込めて	Full of, Filled with, With ～
+に加えて	https://bunpro.jp/grammar_points/に加えて	jlptN2	に加えて	Not only...but also, In addition, Not to mention
+何から何まで	https://bunpro.jp/grammar_points/何から何まで	jlptN2	何から何まで	Everything and anything, From A to Z, From head to toe, Everything
+は別として	https://bunpro.jp/grammar_points/は別として	jlptN2	は別として	Apart from, (Setting) aside, Whether or, Except for, Save for
+だけに	https://bunpro.jp/grammar_points/だけに	jlptN2	だけに	As might be expected, Because, All the more because, It's only natural
+だけは	https://bunpro.jp/grammar_points/だけは	jlptN2	だけは	To do all that one can, As much or many ~ as one could
+だけあって	https://bunpro.jp/grammar_points/だけあって	jlptN2	だけあって	Is only natural, …Being the case, Because, As might be expected
+何より	https://bunpro.jp/grammar_points/何より	jlptN2	何より	Be glad, Be relieved, Most, Best, Above all else, More than anything
+何といっても	https://bunpro.jp/grammar_points/何といっても	jlptN2	何といっても	By any account, All the same, No doubt
+か何か	https://bunpro.jp/grammar_points/か何か	jlptN2	か何か	Or something, Or something like that
+てならない	https://bunpro.jp/grammar_points/てならない	jlptN2	てならない	Very, Extremely, Can't help but do
+のみならず	https://bunpro.jp/grammar_points/のみならず	jlptN2	のみならず	Not only...but, Not just...but, What is more
+それなのに	https://bunpro.jp/grammar_points/それなのに	jlptN2	それなのに	And yet, Despite this
+いわゆる	https://bunpro.jp/grammar_points/いわゆる	jlptN2	いわゆる	What is called, So-called, Generally known
+にすぎない	https://bunpro.jp/grammar_points/にすぎない	jlptN2	にすぎない	No more than, Just, Merely
+も-ば-も	https://bunpro.jp/grammar_points/も-ば-も	jlptN2	も～ば～も	…And…, Both ... and ..., ... And ... as well
+でしかない	https://bunpro.jp/grammar_points/でしかない	jlptN2	でしかない	Merely, Nothing but, No more than
+てたまらない	https://bunpro.jp/grammar_points/てたまらない	jlptN2	てたまらない	Can't help but want to, Very, Extremely
+にせよ-にしろ	https://bunpro.jp/grammar_points/にせよ-にしろ	jlptN2	にせよ	Even if, Even though, No matter, Whether… or
+何しろ	https://bunpro.jp/grammar_points/何しろ	jlptN2	何しろ	No wonder, After all, In fact, Because, At any rate
+にしろ-にしろ	https://bunpro.jp/grammar_points/にしろ-にしろ	jlptN2	にしろ～にしろ	Whether… or
+はともかく	https://bunpro.jp/grammar_points/はともかく	jlptN2	はともかく	Setting aside, Apart from
+ならともかく	https://bunpro.jp/grammar_points/ならともかく	jlptN2	ならともかく	If it's (A), sure, but (B), Putting aside (A), (B)
+やら-やら	https://bunpro.jp/grammar_points/やら-やら	jlptN2	やら～やら	Whether or, Things like, And … so on
+しかしながら	https://bunpro.jp/grammar_points/しかしながら	jlptN2	しかしながら	However, Nevertheless, But
+ことにはならない	https://bunpro.jp/grammar_points/ことにはならない	jlptN2	ことにはならない	Just because… doesn't mean…
+だけのことはある	https://bunpro.jp/grammar_points/だけのことはある	jlptN2	だけのことはある	No wonder, Not surprising that, As expected
+てはならない	https://bunpro.jp/grammar_points/てはならない	jlptN2	てはならない	Must not, Cannot, Should not
+てはいられない	https://bunpro.jp/grammar_points/てはいられない	jlptN2	てはいられない	Can't afford to, Unable to
+陸に-ない	https://bunpro.jp/grammar_points/陸に-ない	jlptN2	陸に～ない	Not well or properly, Not much or enough, Barely, Hardly
+しかも	https://bunpro.jp/grammar_points/しかも	jlptN2	しかも	Moreover, Furthermore
+てでも	https://bunpro.jp/grammar_points/てでも	jlptN2	てでも	Even if I have to, By any or all means, No matter what
+とも	https://bunpro.jp/grammar_points/とも	jlptN2	とも	Even if, No matter
+ないわけにはいかない	https://bunpro.jp/grammar_points/ないわけにはいかない	jlptN2	ないわけにはいかない	Can't not, No way to avoid
+というわけではない	https://bunpro.jp/grammar_points/というわけではない	jlptN2	というわけではない	It is not that, It doesn't mean that, It is not always the case
+のももっともだ	https://bunpro.jp/grammar_points/のももっともだ	jlptN2	のももっともだ	May well, Have or has good reason for, No wonder, … Is only natural
+たって	https://bunpro.jp/grammar_points/たって	jlptN2	たって	Even if, Even though, No matter how
+に至るまで	https://bunpro.jp/grammar_points/に至るまで	jlptN1	に至るまで	(Everything) from...to..., From…up until..., Starting with...ending with...
+たところで	https://bunpro.jp/grammar_points/たところで	jlptN1	たところで	Even if ~ cannot or will not, Even though ~ not
+如く-如き-如し	https://bunpro.jp/grammar_points/如く-如き-如し	jlptN1	如く	Like, Similar to, As if, The same as
+に足る	https://bunpro.jp/grammar_points/に足る	jlptN1	に足る	To be worthy of, To be enough, To be sufficient
+極まりない-極まる	https://bunpro.jp/grammar_points/極まりない-極まる	jlptN1	極まりない	Extreme, Extremely
+といえども	https://bunpro.jp/grammar_points/といえども	jlptN1	といえども	Even (if), Although, Even though
+を以て	https://bunpro.jp/grammar_points/を以て	jlptN1	を以て	By means of, With, By, Via, In view of
+きらいがある	https://bunpro.jp/grammar_points/きらいがある	jlptN1	きらいがある	Have a tendency to, Tend to, Be slightly~
+ならまだしも	https://bunpro.jp/grammar_points/ならまだしも	jlptN1	ならまだしも	A is fine...but B is not, If it's ~ then it is ok...but ~ is not, It's different when...but, It's not so bad when...but
+までもない	https://bunpro.jp/grammar_points/までもない	jlptN1	までもない	There is no need to, Do not have to, It is not necessary to, Needless to
+ともなると-にもなると	https://bunpro.jp/grammar_points/ともなると-にもなると	jlptN1	ともなると	When, If, Once, As
+をいいことに	https://bunpro.jp/grammar_points/をいいことに	jlptN1	をいいことに	To take advantage of
+如何	https://bunpro.jp/grammar_points/如何	jlptN1	如何	Depending on
+～るまでだ	https://bunpro.jp/grammar_points/～るまでだ	jlptN1	～るまでだ	Just, Merely, Simply, Only
+にあって	https://bunpro.jp/grammar_points/にあって	jlptN1	にあって	At, In the (place or situation), Under ~ conditions or circumstances, During, Suited to
+を余儀なくされる	https://bunpro.jp/grammar_points/を余儀なくされる	jlptN1	を余儀なくされる	To be forced to do something
+とは	https://bunpro.jp/grammar_points/とは	jlptN1	とは	That..., (Surprised) that..., (Never expected) that..., (Shocked) that...
+じゃあるまいし	https://bunpro.jp/grammar_points/じゃあるまいし	jlptN1	じゃあるまいし	You are not ~ so..., it isn't ~ so...
+てからというもの	https://bunpro.jp/grammar_points/てからというもの	jlptN1	てからというもの	After, Since, Ever since then
+かたわら	https://bunpro.jp/grammar_points/かたわら	jlptN1	かたわら	While, Besides, In addition to
+を皮切りに	https://bunpro.jp/grammar_points/を皮切りに	jlptN1	を皮切りに	Beginning of, Starting with
+に至っては	https://bunpro.jp/grammar_points/に至っては	jlptN1	に至っては	When it comes to, As for, In particular, What is worse or more
+なり	https://bunpro.jp/grammar_points/なり	jlptN1	なり	As soon as, The moment, When
+ともなく-ともなしに	https://bunpro.jp/grammar_points/ともなく-ともなしに	jlptN1	ともなく	Absentmindedly, Mindlessly, Unconsciously, Without paying attention
+塗れ	https://bunpro.jp/grammar_points/塗れ	jlptN1	塗れ	Stained, Covered in, Smeared, Dirty with, Soaked in
+-よう--う-まい-が-と	https://bunpro.jp/grammar_points/-よう--う-まい-が-と	jlptN1	ようが～まいが	Even if, No matter what, Whether or not, [Emphatic], Volitional + が
+からする	https://bunpro.jp/grammar_points/からする	jlptN1	からする	About, Or more, Over, Starts at
+にして1	https://bunpro.jp/grammar_points/にして1	jlptN1	にして①	At, Over, In, Only (after, when, or because)
+ものを	https://bunpro.jp/grammar_points/ものを	jlptN1	ものを	But, Although, If only, I wish I had
+であれ	https://bunpro.jp/grammar_points/であれ	jlptN1	であれ	Even if, Even, No matter
+をおいてほかに-ない	https://bunpro.jp/grammar_points/をおいてほかに-ない	jlptN1	をおいてほかに〜ない	No...but, Nothing else but, None other than
+をもって	https://bunpro.jp/grammar_points/をもって	jlptN1	をもって	As of, With, Effective from
+とはいえ	https://bunpro.jp/grammar_points/とはいえ	jlptN1	とはいえ	Though, Although (I admit that), Be that as it may, Nonetheless
+ならでは	https://bunpro.jp/grammar_points/ならでは	jlptN1	ならでは	Unique to, Only, Impossible if not, Expected only of
+すら	https://bunpro.jp/grammar_points/すら	jlptN1	すら	Even
+あっての	https://bunpro.jp/grammar_points/あっての	jlptN1	あっての	Exist only because of or due to, Owe everything to
+たまでだ	https://bunpro.jp/grammar_points/たまでだ	jlptN1	～たまでだ	Just, Merely, Simply, Only
+を経て	https://bunpro.jp/grammar_points/を経て	jlptN1	を経て	Via, Through, After (experience at job, university, etc.), Pass through
+ながらに	https://bunpro.jp/grammar_points/ながらに	jlptN1	ながらに	While being, Born (with), Traditional (old-fashioned, as it was long ago), As always, While crying or in tears, (Burned) alive
+たなり-なり	https://bunpro.jp/grammar_points/たなり-なり	jlptN1	たなり	While... ~ing, Remaining, Not or ever since, Keep or leave
+の極み	https://bunpro.jp/grammar_points/の極み	jlptN1	の極み	Ultimate, Extreme, Utter, Epitome, Peak
+にしてみれば	https://bunpro.jp/grammar_points/にしてみれば	jlptN1	にしてみれば	For (A), In the case of (A), From (A)'s point of view, In the eyes of (A)
+だの	https://bunpro.jp/grammar_points/だの	jlptN1	だの	Things like, And so on, Or something, And whatnot
+あくまでも	https://bunpro.jp/grammar_points/あくまでも	jlptN1	あくまでも	To the (bitter) end, Stubbornly, Persistently
+べく	https://bunpro.jp/grammar_points/べく	jlptN1	べく	For the purpose of, In order to, To ensure
+ところを	https://bunpro.jp/grammar_points/ところを	jlptN1	ところを	When, While, In spite of (the circumstances), Regardless of (the circumstances)
+からある	https://bunpro.jp/grammar_points/からある	jlptN1	からある	As much as, As many as, At least
+にして2	https://bunpro.jp/grammar_points/にして2	jlptN1	にして②	To be ~ and ~, To be ~ as well as ~, Both ~ and ~
+つ-つ	https://bunpro.jp/grammar_points/つ-つ	jlptN1	つ〜つ	two contrasting actions
+飽くまで-も	https://bunpro.jp/grammar_points/飽くまで-も	jlptN1	飽くまで(も)	Just, Only, Merely, Strictly
+であれ-であれ	https://bunpro.jp/grammar_points/であれ-であれ	jlptN1	であれ〜であれ	Whether or, Or, No matter which, In either case
+たら最後	https://bunpro.jp/grammar_points/たら最後	jlptN1	たら最後	Once, Now that, As soon as
+いかなる	https://bunpro.jp/grammar_points/いかなる	jlptN1	いかなる	What kind of, No matter what kind of, No … (with a negative verb), Any... (with a negative verb)
+なりに	https://bunpro.jp/grammar_points/なりに	jlptN1	なりに	In one's own way, Of someone's own, Do one's best in one's own way, As much as one can
+verb-passive-ままに	https://bunpro.jp/grammar_points/verb-passive-ままに	jlptN1	れる	Do as (one is told or ordered…), In accordance with, In compliance with, Just like
+にまつわる	https://bunpro.jp/grammar_points/にまつわる	jlptN1	にまつわる	Surrounding, Related or relating to, Associated with, Connected to
+たる	https://bunpro.jp/grammar_points/たる	jlptN1	たる	To be (in a position of), As a, For
+なら-で	https://bunpro.jp/grammar_points/なら-で	jlptN1	なら〜で	If ~ should, Before ~ should
+をものともせず	https://bunpro.jp/grammar_points/をものともせず	jlptN1	をものともせず	Making nothing of, Ignoring, In defiance of, Regardless of, Disregarding
+には当たらない	https://bunpro.jp/grammar_points/には当たらない	jlptN1	には当たらない	No need to/for, Cannot, Not worth it to, Not suitable
+ものと思う	https://bunpro.jp/grammar_points/ものと思う	jlptN1	ものと思う	Think that, Believe that, Expect that, Have confidence that, Absolutely
+を踏まえて	https://bunpro.jp/grammar_points/を踏まえて	jlptN1	を踏まえて	Based on, Considering, Keeping in mind, Taking into account, Therefore
+ゆえに	https://bunpro.jp/grammar_points/ゆえに	jlptN1	ゆえに	Because, The reason is, Due to, Therefore, So
+という	https://bunpro.jp/grammar_points/という	jlptN1	という	Every single, Each and every, Emphasis, Everything that could be called
+にとどまらず	https://bunpro.jp/grammar_points/にとどまらず	jlptN1	にとどまらず	Not limited to, Not only...but also, Not stopping at
+と思いきや	https://bunpro.jp/grammar_points/と思いきや	jlptN1	と思いきや	Thought...but, When...thought that...but, Despite having thought...
+どうにも	https://bunpro.jp/grammar_points/どうにも	jlptN1	どうにも	Cannot, There is no way one can, Nothing one can do, Cannot possibly not by any means, Cannot do no matter how hard one tries, Nothing will come out, It is meaningless to
+ことだし	https://bunpro.jp/grammar_points/ことだし	jlptN1	ことだし	(And) so, Because, Since
+がん-totally	https://bunpro.jp/grammar_points/がん-totally	jlptN1	がん～	Totally, Seriously, Completely, Furiously, Majorly
+か否か	https://bunpro.jp/grammar_points/か否か	jlptN1	か否か	Whether or not
+たら-で	https://bunpro.jp/grammar_points/たら-で	jlptN1	たら〜で	Even if, If
+べくして	https://bunpro.jp/grammar_points/べくして	jlptN1	べくして	As expected, Meant to, Supposed to, Destined to, Sure to
+ままに	https://bunpro.jp/grammar_points/ままに	jlptN1	まま(に)	As (one likes, feels or pleases), Spur of the moment, Wherever one fancies, Spontaneously, On a whim
+かれ-かれ	https://bunpro.jp/grammar_points/かれ-かれ	jlptN1	かれ〜かれ	Or, Either or
+-に-ない	https://bunpro.jp/grammar_points/-に-ない	jlptN1	〜に〜ない	Cannot even...if wants, Would like to...but cannot, Wants to...but cannot
+なくして-は	https://bunpro.jp/grammar_points/なくして-は	jlptN1	なくして(は)	Without, If not for
+のなんのって	https://bunpro.jp/grammar_points/のなんのって	jlptN1	のなんのって	So much that, Extremely, Very
+にかかっている	https://bunpro.jp/grammar_points/にかかっている	jlptN1	にかかっている	To depend on
+てやまない	https://bunpro.jp/grammar_points/てやまない	jlptN1	てやまない	Never cease to, Always, Sincerely, Greatly, From the bottom of one's heart
+ぐらいなら	https://bunpro.jp/grammar_points/ぐらいなら	jlptN1	ぐらいなら	Would rather...than, Rather than, Better off
+ってば-ったら	https://bunpro.jp/grammar_points/ってば-ったら	jlptN1	ってば	I said...!, I told you...!, !
+ずとも	https://bunpro.jp/grammar_points/ずとも	jlptN1	ずとも	Even if not, Without, Don't have to
+とあって	https://bunpro.jp/grammar_points/とあって	jlptN1	とあって	Since...(it is no wonder that), Because...(it is no wonder that), Due to...(it is no wonder that)
+でもなんでもない	https://bunpro.jp/grammar_points/でもなんでもない	jlptN1	でもなんでもない	Not at all, By no means, Definitely not, Nothing like that, Not really
+ぐるみで	https://bunpro.jp/grammar_points/ぐるみで	jlptN1	ぐるみで	Whole, -wide, Across the, Entire, All of, With … altogether
+そばから	https://bunpro.jp/grammar_points/そばから	jlptN1	そばから	As soon as, Right after, Even if … still
+訳あり	https://bunpro.jp/grammar_points/訳あり	jlptN1	訳あり(訳あって)	～ with reasons, Due to reasons, Defective, Problematic, Unique
+に至って-に至り	https://bunpro.jp/grammar_points/に至って-に至り	jlptN1	に至って	When it came to, Only when, Only after, Go as far as
+だに-しない	https://bunpro.jp/grammar_points/だに-しない	jlptN1	だに + しない	Not even, Not at all, Never could have
+がてら	https://bunpro.jp/grammar_points/がてら	jlptN1	がてら	On the occasion of, While … as well, While …  (one is) at it, During, Along the way
+んがため-に	https://bunpro.jp/grammar_points/んがため-に	jlptN1	んがため(に)	In order to, To, For the purpose of
+いかん-ず	https://bunpro.jp/grammar_points/いかん-ず	jlptN1	いかん〜ず	Regardless of (whatever … is), Irrespective of (whatever … is)
+にも-ない	https://bunpro.jp/grammar_points/にも-ない	jlptN1	にも～ない	Cannot... even if one wants or tries, Would like but cannot, Wants or tries but cannot
+い-adj-く-もなんともない	https://bunpro.jp/grammar_points/い-adj-く-もなんともない	jlptN1	い-Adj[く] + も...	Not... or anything, Not at all, Not, By no means, Definitely not, Nothing like that
+verb-だに	https://bunpro.jp/grammar_points/verb-だに	jlptN1	Verb + だに	Just, Even just, Even merely
+-なり-なり	https://bunpro.jp/grammar_points/-なり-なり	jlptN1	～なり～なり	Or, Either or
+ないでもない	https://bunpro.jp/grammar_points/ないでもない	jlptN1	ないでもない	Kind of, Might, Slightly, It’s not (impossible) that, Somewhat, In some respects
+もさることながら	https://bunpro.jp/grammar_points/もさることながら	jlptN1	もさることながら	It is a fact that, But, Even more than, It goes without saying, Not only but also,
+ものと思っていた	https://bunpro.jp/grammar_points/ものと思っていた	jlptN1	ものと思っていた	Was under the impression that, (Always) the thought used to think
+でなくてなんだろう	https://bunpro.jp/grammar_points/でなくてなんだろう	jlptN1	でなくてなんだろう	If … is not … then what is?
+はさておき-はさておいて	https://bunpro.jp/grammar_points/はさておき-はさておいて	jlptN1	はさておき	(Leaving or putting) aside, Apart
+折には	https://bunpro.jp/grammar_points/折には	jlptN1	折には	When, Occasion, Opportunity, Time
+とばかり	https://bunpro.jp/grammar_points/とばかり	jlptN1	とばかり（に）	As if (to say), Seeming that
+わ-わ	https://bunpro.jp/grammar_points/わ-わ	jlptN1	わ〜わ	~and ~and, Keep ~ing, One after another, So much, So many, One after the other
+なりとも	https://bunpro.jp/grammar_points/なりとも	jlptN1	なりとも	Even (a little), At least
+に至っても	https://bunpro.jp/grammar_points/に至っても	jlptN1	に至っても	Even when
+を兼ねて	https://bunpro.jp/grammar_points/を兼ねて	jlptN1	を兼ねて	And also, Also (partly) to, Also (partly) for (the purpose of), At the same time, To double as, When … also, While … as well, And as
+verb-ないもの-だろうか	https://bunpro.jp/grammar_points/verb-ないもの-だろうか	jlptN1	Verb[ない]もの(だ...	(Why) can’t, Isn’t there, Wish that, If only
+verb-て-みせる	https://bunpro.jp/grammar_points/verb-て-みせる	jlptN1	Verb[て] + みせる	I will definitely, I will certainly, Just watch, Whatever it takes, I swear, for sure
+相まって	https://bunpro.jp/grammar_points/相まって	jlptN1	相まって	Combined with, Coupled with, Together with
+に足りない	https://bunpro.jp/grammar_points/に足りない	jlptN1	に足りない	To not be worthy, To not be enough, To not be sufficient, To lack
+べからず	https://bunpro.jp/grammar_points/べからず	jlptN1	べからず	Do not, Must not, Should not, Cannot (べからざる)
+んばかりに	https://bunpro.jp/grammar_points/んばかりに	jlptN1	んばかりに	As if, As if it were about to, About to
+に則って-に則り	https://bunpro.jp/grammar_points/に則って-に則り	jlptN1	に則って	According to, In accordance with, Based on, In line with
+adj限りだ	https://bunpro.jp/grammar_points/adj限りだ	jlptN1	Adj限りだ	Extremely, Really, Very, As ... as one can be
+はおろか	https://bunpro.jp/grammar_points/はおろか	jlptN1	はおろか	Let alone, Much less, Needless to say, Not to mention, Not only but also
+めく-めいた	https://bunpro.jp/grammar_points/めく-めいた	jlptN1	めく	Like, To show signs of,  To have the appearance of, To come to a (state) similar to, Somewhat, An air of,  Feels almost like
+といわず	https://bunpro.jp/grammar_points/といわず	jlptN1	といわず	Not only A or B but every-; A, B and every-; Not only A or B but all over;  A, B both, whether A or B
+にもほどがある	https://bunpro.jp/grammar_points/にもほどがある	jlptN1	にもほどがある	There is a limit to, You are too ..., How …!, How … one can be!
+にもまして	https://bunpro.jp/grammar_points/にもまして	jlptN1	にもまして	Even -er than, Even more than, More than anything, More than anybody, More than ever
+まくる	https://bunpro.jp/grammar_points/まくる	jlptN1	まくる	Like crazy, Keep doing (without a second thought), Nothing but, On and on, Do … all around, To do a lot of, One after another, All over, Keep, Everything, Constantly, All the time 
+わ-わで	https://bunpro.jp/grammar_points/わ-わで	jlptN1	わ〜わ（で）	And...so, And...because, Since
+どうにか	https://bunpro.jp/grammar_points/どうにか	jlptN1	どうにか	Somehow (or other)
+や否や	https://bunpro.jp/grammar_points/や否や	jlptN1	や否や	As soon as, No sooner than, The minute
+次第です	https://bunpro.jp/grammar_points/次第です	jlptN1	次第です	Because the reason is, Therefore, The present situation is like this, This is how (it is), Those are the circumstances, This is why
+というところ	https://bunpro.jp/grammar_points/というところ	jlptN1	というところ	I would say (about), I guess (about), It could be said that, About, At best
+１-りとも-ない	https://bunpro.jp/grammar_points/１-りとも-ない	jlptN1	１～たりとも～ない	Not even one, Not a single, No (at all)
+ったらない・といったらない	https://bunpro.jp/grammar_points/ったらない・といったらない	jlptN1	ったらない	Cannot tell, describe, say or express how, Words cannot express, Too … for words, Extremely
+に照らして・に照らすと	https://bunpro.jp/grammar_points/に照らして・に照らすと	jlptN1	に照らして	In light of, Based on, According to, Referencing, Comparing against, In view of
+とあれば	https://bunpro.jp/grammar_points/とあれば	jlptN1	とあれば	(Emphatic) if, If it is the case that, As (you wish)
+さぞ	https://bunpro.jp/grammar_points/さぞ	jlptN1	さぞ	You must be very, How … you must be, I dare to say, I am sure or certain that you must be very
+ときたら1	https://bunpro.jp/grammar_points/ときたら1	jlptN1	ときたら	When it comes to, That or this … of mine, That or this darn …, That or this blasted …
+びる	https://bunpro.jp/grammar_points/びる	jlptN1	びる	-like, Looking, Feeling, With an air of, To become
+にしたところで	https://bunpro.jp/grammar_points/にしたところで	jlptN1	にしたところで	Even, Even for, Even from the perspective of, Even in the case of
+ばこそ	https://bunpro.jp/grammar_points/ばこそ	jlptN1	～ばこそ	Precisely because, Only because, Because, Due to, Only if
+ても差し支えない	https://bunpro.jp/grammar_points/ても差し支えない	jlptN1	ても差し支えない	May, Is it a bother if, Do you mind if, Is it a problem if
+には及ばない1	https://bunpro.jp/grammar_points/には及ばない1	jlptN1	には及ばない①	There is no need to, It is fine if you don’t, Unnecessary
+に即して	https://bunpro.jp/grammar_points/に即して	jlptN1	に即して	In line with, Based on, In accordance with
+ないまでも	https://bunpro.jp/grammar_points/ないまでも	jlptN1	ないまでも	May not … but (at least), Even though not, Even if not
+をよそに	https://bunpro.jp/grammar_points/をよそに	jlptN1	をよそに	Ignoring, Disregarding, Despite
+に限ったことではない	https://bunpro.jp/grammar_points/に限ったことではない	jlptN1	に限ったことではない	Not limited to, Not restricted to, Not only
+とは比べものにならない	https://bunpro.jp/grammar_points/とは比べものにならない	jlptN1	とは比べものにならない	Nothing compared to, Cannot be compared to, Much more, Way better, Above comparison (beyond comparison), Far greater than
+まじき	https://bunpro.jp/grammar_points/まじき	jlptN1	まじき	Unbecoming of, Unworthy of, Not proper for, Should not, Must not, Cannot
+の至り	https://bunpro.jp/grammar_points/の至り	jlptN1	の至り	Utmost, Height of, Extreme, Heartiest, Such a, Very, really, Completely, Deeply
+に恥じない	https://bunpro.jp/grammar_points/に恥じない	jlptN1	に恥じない	Lives up to, Truly to …’s name, Worthy of, Not dishonor, Not putting to shame, Measure to
+ずじまい	https://bunpro.jp/grammar_points/ずじまい	jlptN1	ずじまい	Ended up not, Did not (in the end), Never did
+に言わせれば	https://bunpro.jp/grammar_points/に言わせれば	jlptN1	に言わせれば	If you ask, In … opinion, According to
+ったら-といったら	https://bunpro.jp/grammar_points/ったら-といったら	jlptN1	ったら	Cannot tell, describe, say, express or find words for how, Words cannot express, Too … for words, Extremely
+こととて	https://bunpro.jp/grammar_points/こととて	jlptN1	こととて	Due to, Since, On account of, Because
+ずくめ	https://bunpro.jp/grammar_points/ずくめ	jlptN1	ずくめ	Completely, Entirely, All in, Nothing but, A real streak of, Without exception, Jet
+には及ばない②	https://bunpro.jp/grammar_points/には及ばない②	jlptN1	には及ばない②	To be no match (for), To not compare (with), To fall short (of), To not reach, Cannot win with, To be out of reach (for), To not be on par (with)
+とは言うものの	https://bunpro.jp/grammar_points/とは言うものの	jlptN1	とは言うものの	Although, But, Although I say, Although it is said, Having said that
+が早いか	https://bunpro.jp/grammar_points/が早いか	jlptN1	が早いか	As soon as, No sooner than, The instant that, No sooner had
+に難くない	https://bunpro.jp/grammar_points/に難くない	jlptN1	に難くない	Not hard to, Not difficult to, Easy to, Is obvious that
+ならばいざ知らず	https://bunpro.jp/grammar_points/ならばいざ知らず	jlptN1	ならいざ知らず	Don’t know about it, Maybe it would or might be possible for
+を禁じ得ない	https://bunpro.jp/grammar_points/を禁じ得ない	jlptN1	を禁じ得ない	Cannot help feeling, Cannot but, Cannot hold back
+にかこつけて	https://bunpro.jp/grammar_points/にかこつけて	jlptN1	にかこつけて	In the name of, Using the excuse of, To use as a pretext of, Under the guise or pretense of
+ようによっては	https://bunpro.jp/grammar_points/ようによっては	jlptN1	ようによっては	Depending on the way, Depending on how
+べくもない	https://bunpro.jp/grammar_points/べくもない	jlptN1	べくもない	No (doubt or hope), There is no way, It is impossible, Not a hope in hell
+ときたら2	https://bunpro.jp/grammar_points/ときたら2	jlptN1	と来たら	For …(is the best), When it comes to, Concerning
+ものとして	https://bunpro.jp/grammar_points/ものとして	jlptN1	ものとして	Assuming, Supposing, (Interpret) as, On the assumption, Regarding, Considering
+を前提に	https://bunpro.jp/grammar_points/を前提に	jlptN1	を前提に	On the premise of
+ずにはすまない	https://bunpro.jp/grammar_points/ずにはすまない	jlptN1	ずにはすまない	Won't get away without, Won't get off without, Have to, Have no choice but to, Can’t not
+に堪えない	https://bunpro.jp/grammar_points/に堪えない	jlptN1	に堪えない	Cannot bear to, Cannot stand to, Too much to, Cannot go on doing, Cannot tolerate
+始末だ	https://bunpro.jp/grammar_points/始末だ	jlptN1	始末だ	Ends up, Finally, In the end, (Unfortunately) As a result, This is what happened, To come about, To wind up
+ものなら②	https://bunpro.jp/grammar_points/ものなら②	jlptN1	ものなら②	If you were to do, If you try to, If … happens, Should there be
+にひきかえ	https://bunpro.jp/grammar_points/にひきかえ	jlptN1	にひきかえ	In stark contrast, In comparison, On the other hand, While, In sharp contrast
+それまでだ	https://bunpro.jp/grammar_points/それまでだ	jlptN1	それまでだ	If… then it is all in vain, It's done, It is useless, No point, It is a waste, That's it, It is all gone, 
+といおうか	https://bunpro.jp/grammar_points/といおうか	jlptN1	といおうか	How to put it, How shall I put it, How should I put it, Or perhaps, Or maybe, Call it … or
+ずにはおかない	https://bunpro.jp/grammar_points/ずにはおかない	jlptN1	ずにはおかない	Will definitely, Will certainly, Bound to, Not fail to
+を限りに	https://bunpro.jp/grammar_points/を限りに	jlptN1	を限りに	As of (the end of), (Starting) from, (No longer) after, By (the), Ending with
+てはかなわない	https://bunpro.jp/grammar_points/てはかなわない	jlptN1	てはかなわない	It's unbearable when, It'd be unbearable if, I can't stand it when, I couldn’t stand it if
+かたがた	https://bunpro.jp/grammar_points/かたがた	jlptN1	かたがた	Partly for (the purpose of), In addition to, Along with, By the way, And also to, Incidentally, While
+を余儀なくさせる	https://bunpro.jp/grammar_points/を余儀なくさせる	jlptN1	を余儀なくさせる	Force to, To compel, Make unavoidable
+てやる	https://bunpro.jp/grammar_points/てやる	jlptN1	～てやる	Just wait and see, Just you wait, To do a favor, For you, Definitely, For sure
+ただ-のみ	https://bunpro.jp/grammar_points/ただ-のみ	jlptN1	ただ〜のみ	Nothing but, Should, Have to, Only, All that remains,
+ものとする	https://bunpro.jp/grammar_points/ものとする	jlptN1	ものとする	Shall, To assume, To suppose, To consider
+との	https://bunpro.jp/grammar_points/との	jlptN1	との	That, To
+以前	https://bunpro.jp/grammar_points/以前	jlptN1	以前	Before, Not even, Before even, Precede, Far from
+ともあろう	https://bunpro.jp/grammar_points/ともあろう	jlptN1	ともあろう	Of all people, Such,
+こそすれ-ない	https://bunpro.jp/grammar_points/こそすれ-ない	jlptN1	こそすれ〜ない	And certainly not, But certainly not, But, Although, Even though
+並み	https://bunpro.jp/grammar_points/並み	jlptN1	並み	As, On par with, Worthy of
+に先駆けて	https://bunpro.jp/grammar_points/に先駆けて	jlptN1	に先駆けて	First, Prior to, Pioneer, Ahead of
+を機に	https://bunpro.jp/grammar_points/を機に	jlptN1	を機に	Opportunity, Occasion
+ぞ	https://bunpro.jp/grammar_points/ぞ	jlptNT	ぞ	Strong emphasis (toward anyone), !
+ぜ	https://bunpro.jp/grammar_points/ぜ	jlptNT	ぜ	Strong emphasis (friendly or familiar), !
+わ	https://bunpro.jp/grammar_points/わ	jlptNT	わ	You know?, Oh?, Ever so, Oh how I ever (emphasis)
+い	https://bunpro.jp/grammar_points/い	jlptNT	い	So?, Well? (friendly or familiar)
+ん-slang	https://bunpro.jp/grammar_points/ん-slang	jlptNT	ん (Slang)	Slang abbreviation
+つ-slang	https://bunpro.jp/grammar_points/つ-slang	jlptNT	つ (Slang)	Called, Said that (slang abbreviation)
+やがる	https://bunpro.jp/grammar_points/やがる	jlptNT	～やがる	To have the nerve to (A), To have the gall to (A), To freaking (A)
+がいい	https://bunpro.jp/grammar_points/がいい	jlptNT	がいい	You should, It would be good to
+かろう	https://bunpro.jp/grammar_points/かろう	jlptNT	かろう	Probably, Right?
+やや	https://bunpro.jp/grammar_points/やや	jlptNT	やや	A little bit, Marginally, Slightly
+いずれも	https://bunpro.jp/grammar_points/いずれも	jlptNT	いずれも	All (positive), None (negative), Both, Whatever, Whatsoever
+あわよくば	https://bunpro.jp/grammar_points/あわよくば	jlptNT	あわよくば	If luck is on my side, If the time is right, If possible, all going well
+むず	https://bunpro.jp/grammar_points/むず	jlptNT	むず	Shall, Isn't it?, I wonder
