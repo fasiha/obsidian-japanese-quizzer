@@ -11,10 +11,17 @@
  * Usage: node .claude/scripts/check-vocab.mjs
  */
 
-import { setup, findExactIds } from 'jmdict-simplified-node';
-import { readFileSync } from 'fs';
-import path from 'path';
-import { findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter, projectRoot, JMDICT_DB } from './shared.mjs';
+import { setup, findExactIds } from "jmdict-simplified-node";
+import { readFileSync } from "fs";
+import path from "path";
+import {
+  findMdFiles,
+  extractJapaneseTokens,
+  intersectSets,
+  parseFrontmatter,
+  projectRoot,
+  JMDICT_DB,
+} from "./shared.mjs";
 
 // Extract bullets (with 1-indexed line numbers) from all Vocab details blocks.
 //
@@ -33,15 +40,15 @@ function extractVocabBullets(content) {
 
     // inner starts at: match.index + (opening tag length)
     // opening tag length = match[0].length - inner.length - '</details>'.length
-    const openingTagLen = match[0].length - inner.length - '</details>'.length;
+    const openingTagLen = match[0].length - inner.length - "</details>".length;
     const innerStartIdx = match.index + openingTagLen;
     // Line number (1-indexed) of the first character of inner
-    const innerStartLine = content.slice(0, innerStartIdx).split('\n').length;
+    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
 
-    const innerLines = inner.split('\n');
+    const innerLines = inner.split("\n");
     for (let i = 0; i < innerLines.length; i++) {
       const trimmed = innerLines[i].trim();
-      if (!trimmed.startsWith('-')) continue;
+      if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
       if (bullet) bullets.push({ bullet, line: innerStartLine + i });
     }
@@ -55,8 +62,8 @@ const problems = [];
 let totalChecked = 0;
 
 for (const filePath of mdFiles) {
-  const content = readFileSync(filePath, 'utf8');
-  if (!parseFrontmatter(content)?.['llm-review']) continue;
+  const content = readFileSync(filePath, "utf8");
+  if (!parseFrontmatter(content)?.["llm-review"]) continue;
   const bullets = extractVocabBullets(content);
   const relPath = path.relative(projectRoot, filePath);
 
@@ -82,10 +89,16 @@ for (const filePath of mdFiles) {
         tokens,
         tokenResults,
         matchCount: matchIds.length,
-        matchIds
+        matchIds,
       });
     }
   }
 }
 
-console.log(JSON.stringify({ totalChecked, problemCount: problems.length, problems }, null, 2));
+console.log(
+  JSON.stringify(
+    { totalChecked, problemCount: problems.length, problems },
+    null,
+    2,
+  ),
+);

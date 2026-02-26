@@ -6,7 +6,7 @@
  * Usage: node .claude/scripts/init-quiz-db.mjs
  */
 
-import { openQuizDb, QUIZ_DB, SCHEMA_VERSION } from './shared.mjs';
+import { openQuizDb, QUIZ_DB, SCHEMA_VERSION } from "./shared.mjs";
 
 const db = openQuizDb();
 
@@ -27,4 +27,6 @@ db.exec(`
 db.pragma(`user_version = ${SCHEMA_VERSION}`);
 
 db.close();
-console.log(`Quiz database ready at ${QUIZ_DB} (schema version ${SCHEMA_VERSION})`);
+console.log(
+  `Quiz database ready at ${QUIZ_DB} (schema version ${SCHEMA_VERSION})`,
+);

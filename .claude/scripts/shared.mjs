@@ -3,16 +3,20 @@
  * Utilities shared across scripts.
  */
 
-import { readdirSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import Database from 'better-sqlite3';
+import { readdirSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import Database from "better-sqlite3";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const projectRoot = path.resolve(__dirname, '../..');
-export const JMDICT_DB = path.join(projectRoot, 'jmdict.sqlite');
-export const QUIZ_DB = path.join(projectRoot, 'quiz.sqlite');
-export const QUIZ_SESSION = path.join(projectRoot, '.claude', 'quiz-session.txt');
+export const projectRoot = path.resolve(__dirname, "../..");
+export const JMDICT_DB = path.join(projectRoot, "jmdict.sqlite");
+export const QUIZ_DB = path.join(projectRoot, "quiz.sqlite");
+export const QUIZ_SESSION = path.join(
+  projectRoot,
+  ".claude",
+  "quiz-session.txt",
+);
 export const SCHEMA_VERSION = 1;
 
 /**
@@ -22,12 +26,12 @@ export const SCHEMA_VERSION = 1;
  */
 export function openQuizDb(options = {}) {
   const db = new Database(QUIZ_DB, options);
-  const currentVersion = db.pragma('user_version', { simple: true });
+  const currentVersion = db.pragma("user_version", { simple: true });
   if (currentVersion > SCHEMA_VERSION) {
     db.close();
     console.error(
       `quiz.sqlite has schema version ${currentVersion} but this script only knows version ${SCHEMA_VERSION}.\n` +
-      `Pull the latest code before running this script.`
+        `Pull the latest code before running this script.`,
     );
     process.exit(1);
   }
@@ -35,14 +39,14 @@ export function openQuizDb(options = {}) {
 }
 
 // Find all .md files under dir, skipping excludeDirs
-export function findMdFiles(dir, excludeDirs = ['node_modules', '.claude']) {
+export function findMdFiles(dir, excludeDirs = ["node_modules", ".claude"]) {
   const results = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (excludeDirs.includes(entry.name)) continue;
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...findMdFiles(fullPath, excludeDirs));
-    } else if (entry.name.endsWith('.md')) {
+    } else if (entry.name.endsWith(".md")) {
       results.push(fullPath);
     }
   }
@@ -51,7 +55,9 @@ export function findMdFiles(dir, excludeDirs = ['node_modules', '.claude']) {
 
 // True if the string contains at least one Japanese character
 export function isJapanese(str) {
-  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]/.test(str);
+  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]/.test(
+    str,
+  );
 }
 
 // Extract leading Japanese tokens from a bullet (stop at first non-Japanese token)
@@ -86,9 +92,9 @@ export function extractVocabBullets(content) {
   while ((match = DETAILS_REGEXP.exec(content)) !== null) {
     const inner = match[1];
     if (!SUMMARY_REGEXP.test(inner)) continue;
-    for (const line of inner.split('\n')) {
+    for (const line of inner.split("\n")) {
       const trimmed = line.trim();
-      if (!trimmed.startsWith('-')) continue;
+      if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
       if (bullet) bullets.push(bullet);
     }
@@ -99,11 +105,19 @@ export function extractVocabBullets(content) {
 // Produce a compact one-line summary of a JMDict Word entry.
 // Format: "kanji, kana meaning1; meaning2 / sense2meaning1 (#id)"
 export function summarizeWord(word) {
-  const forms = word.kanji.map(k => k.text).concat(word.kana.map(k => k.text)).join(', ');
+  const forms = word.kanji
+    .map((k) => k.text)
+    .concat(word.kana.map((k) => k.text))
+    .join(", ");
   const meanings = word.sense
-    .map(s => s.gloss.filter(g => g.lang === 'eng').map(g => g.text).join('; '))
+    .map((s) =>
+      s.gloss
+        .filter((g) => g.lang === "eng")
+        .map((g) => g.text)
+        .join("; "),
+    )
     .filter(Boolean)
-    .join(' / ');
+    .join(" / ");
   return `${forms} ${meanings} (#${word.id})`;
 }
 
@@ -111,17 +125,20 @@ export function summarizeWord(word) {
 // Only handles simple scalar values (strings, booleans, numbers) — no arrays/objects.
 // Tolerates: BOM, Windows (CRLF) line endings, leading blank lines before ---.
 export function parseFrontmatter(content) {
-  const s = content.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/^\n+/, '');
+  const s = content
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/^\n+/, "");
   const match = s.match(/^---\n([\s\S]*?)\n---(\n|$)/);
   if (!match) return null;
   const fm = {};
-  for (const line of match[1].split('\n')) {
-    const colon = line.indexOf(':');
+  for (const line of match[1].split("\n")) {
+    const colon = line.indexOf(":");
     if (colon === -1) continue;
     const key = line.slice(0, colon).trim();
     const raw = line.slice(colon + 1).trim();
     if (!key) continue;
-    fm[key] = raw === 'true' ? true : raw === 'false' ? false : raw;
+    fm[key] = raw === "true" ? true : raw === "false" ? false : raw;
   }
   return fm;
 }

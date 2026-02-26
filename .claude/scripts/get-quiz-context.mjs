@@ -20,24 +20,39 @@
  * Usage: node .claude/scripts/get-quiz-context.mjs [--reviewer fasiha]
  */
 
-import { setup, findExact, idsToWords } from 'jmdict-simplified-node';
-import { readFileSync } from 'fs';
+import { setup, findExact, idsToWords } from "jmdict-simplified-node";
+import { readFileSync } from "fs";
 import {
-  findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter,
-  extractVocabBullets, summarizeWord, openQuizDb, projectRoot, JMDICT_DB,
-} from './shared.mjs';
+  findMdFiles,
+  extractJapaneseTokens,
+  intersectSets,
+  parseFrontmatter,
+  extractVocabBullets,
+  summarizeWord,
+  openQuizDb,
+  projectRoot,
+  JMDICT_DB,
+} from "./shared.mjs";
 
 const args = process.argv.slice(2);
 let reviewer = null;
 for (let i = 0; i < args.length; i++) {
-  if (args[i] === '--reviewer' && args[i + 1]) reviewer = args[++i];
+  if (args[i] === "--reviewer" && args[i + 1]) reviewer = args[++i];
 }
 
 // Load all-time quiz history, keyed by word_id
 const quizDb = openQuizDb({ readonly: true });
 const historyRows = reviewer
-  ? quizDb.prepare('SELECT word_id, score, timestamp, quiz_type FROM reviews WHERE reviewer = ? ORDER BY timestamp ASC').all(reviewer)
-  : quizDb.prepare('SELECT word_id, score, timestamp, quiz_type FROM reviews ORDER BY timestamp ASC').all();
+  ? quizDb
+      .prepare(
+        "SELECT word_id, score, timestamp, quiz_type FROM reviews WHERE reviewer = ? ORDER BY timestamp ASC",
+      )
+      .all(reviewer)
+  : quizDb
+      .prepare(
+        "SELECT word_id, score, timestamp, quiz_type FROM reviews ORDER BY timestamp ASC",
+      )
+      .all();
 quizDb.close();
 
 // stats: word_id -> { total: {totalReviews, scoreSum, lastTimestamp},
@@ -46,14 +61,23 @@ quizDb.close();
 const stats = new Map();
 for (const row of historyRows) {
   if (!stats.has(row.word_id)) {
-    stats.set(row.word_id, { total: { totalReviews: 0, scoreSum: 0, lastTimestamp: null }, byType: new Map(), nullCount: 0 });
+    stats.set(row.word_id, {
+      total: { totalReviews: 0, scoreSum: 0, lastTimestamp: null },
+      byType: new Map(),
+      nullCount: 0,
+    });
   }
   const s = stats.get(row.word_id);
   s.total.totalReviews++;
   s.total.scoreSum += row.score;
   s.total.lastTimestamp = row.timestamp;
   if (row.quiz_type) {
-    if (!s.byType.has(row.quiz_type)) s.byType.set(row.quiz_type, { totalReviews: 0, scoreSum: 0, lastTimestamp: null });
+    if (!s.byType.has(row.quiz_type))
+      s.byType.set(row.quiz_type, {
+        totalReviews: 0,
+        scoreSum: 0,
+        lastTimestamp: null,
+      });
     const ts = s.byType.get(row.quiz_type);
     ts.totalReviews++;
     ts.scoreSum += row.score;
@@ -69,7 +93,7 @@ function daysAgo(timestamp) {
 
 function reviewStatus(wordId, targetedFacets) {
   const s = stats.get(String(wordId));
-  if (!s) return 'never reviewed';
+  if (!s) return "never reviewed";
 
   // If we have any quiz_type-tagged reviews, show per-facet breakdown
   if (s.byType.size > 0) {
@@ -78,21 +102,28 @@ function reviewStatus(wordId, targetedFacets) {
     const facetsToShow = new Set([...targetedFacets, ...s.byType.keys()]);
     for (const facet of facetsToShow) {
       const ts = s.byType.get(facet);
-      if (!ts) { parts.push(`${facet}:never`); continue; }
+      if (!ts) {
+        parts.push(`${facet}:never`);
+        continue;
+      }
       const avg = (ts.scoreSum / ts.totalReviews).toFixed(2);
-      parts.push(`${facet}:${daysAgo(ts.lastTimestamp)}d/${avg}×${ts.totalReviews}`);
+      parts.push(
+        `${facet}:${daysAgo(ts.lastTimestamp)}d/${avg}×${ts.totalReviews}`,
+      );
     }
     // If there are also untracked (null quiz_type) reviews, note them
     if (s.nullCount > 0) {
       const avg = (s.total.scoreSum / s.total.totalReviews).toFixed(2);
-      parts.push(`untracked:${daysAgo(s.total.lastTimestamp)}d/${avg}×${s.nullCount}`);
+      parts.push(
+        `untracked:${daysAgo(s.total.lastTimestamp)}d/${avg}×${s.nullCount}`,
+      );
     }
-    return parts.join(', ');
+    return parts.join(", ");
   }
 
   // Old-style: all reviews have quiz_type = null — show overall summary
   const avg = (s.total.scoreSum / s.total.totalReviews).toFixed(2);
-  return `${daysAgo(s.total.lastTimestamp)}d ago, avg ${avg}, ${s.total.totalReviews} review${s.total.totalReviews !== 1 ? 's' : ''}`;
+  return `${daysAgo(s.total.lastTimestamp)}d ago, avg ${avg}, ${s.total.totalReviews} review${s.total.totalReviews !== 1 ? "s" : ""}`;
 }
 
 // True if the bullet text contains a [kanji] tag
@@ -105,24 +136,30 @@ const { db } = await setup(JMDICT_DB);
 const lines = [];
 
 for (const filePath of findMdFiles(projectRoot)) {
-  const content = readFileSync(filePath, 'utf8');
-  if (!parseFrontmatter(content)?.['llm-review']) continue;
+  const content = readFileSync(filePath, "utf8");
+  if (!parseFrontmatter(content)?.["llm-review"]) continue;
 
   for (const bullet of extractVocabBullets(content)) {
     const tokens = extractJapaneseTokens(bullet);
     if (tokens.length === 0) continue;
 
-    const idSets = tokens.map(token => new Set(findExact(db, token).map(w => w.id)));
+    const idSets = tokens.map(
+      (token) => new Set(findExact(db, token).map((w) => w.id)),
+    );
     const matchIds = [...intersectSets(idSets)];
     if (matchIds.length !== 1) continue; // skip broken entries
 
     const [word] = idsToWords(db, matchIds);
     const kanjiTag = hasKanjiTag(bullet);
     // Default facets every word is tested on; add kanji if tagged
-    const targetedFacets = kanjiTag ? ['reading', 'meaning', 'kanji'] : ['reading', 'meaning'];
-    const facetMarker = kanjiTag ? ' {kanji}' : '';
-    lines.push(`${word.id}  ${summarizeWord(word)}${facetMarker} [${reviewStatus(word.id, targetedFacets)}]`);
+    const targetedFacets = kanjiTag
+      ? ["reading", "meaning", "kanji"]
+      : ["reading", "meaning"];
+    const facetMarker = kanjiTag ? " {kanji}" : "";
+    lines.push(
+      `${word.id}  ${summarizeWord(word)}${facetMarker} [${reviewStatus(word.id, targetedFacets)}]`,
+    );
   }
 }
 
-console.log(lines.join('\n'));
+console.log(lines.join("\n"));
