@@ -11,7 +11,7 @@
  * Usage: node .claude/scripts/check-vocab.mjs
  */
 
-import { setup, findExact } from 'jmdict-simplified-node';
+import { setup, findExactIds } from 'jmdict-simplified-node';
 import { readFileSync } from 'fs';
 import path from 'path';
 import { findMdFiles, extractJapaneseTokens, intersectSets, parseFrontmatter, projectRoot, JMDICT_DB } from './shared.mjs';
@@ -66,16 +66,24 @@ for (const filePath of mdFiles) {
     totalChecked++;
 
     const tokenResults = {};
-    const idSets = tokens.map(token => {
-      const words = findExact(db, token);
-      tokenResults[token] = words.map(w => w.id);
-      return new Set(tokenResults[token]);
+    const idSets = tokens.map((token) => {
+      const ids = findExactIds(db, token);
+      tokenResults[token] = ids;
+      return new Set(ids);
     });
 
     const matchIds = [...intersectSets(idSets)];
 
     if (matchIds.length !== 1) {
-      problems.push({ file: relPath, line, bullet, tokens, tokenResults, matchCount: matchIds.length, matchIds });
+      problems.push({
+        file: relPath,
+        line,
+        bullet,
+        tokens,
+        tokenResults,
+        matchCount: matchIds.length,
+        matchIds
+      });
     }
   }
 }

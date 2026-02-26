@@ -8,12 +8,12 @@ Run the following command from the project root and read its JSON output:
 node .claude/scripts/check-vocab.mjs
 ```
 
-The script scans all Markdown files for `<details><summary>Vocab</summary>` blocks, extracts each bullet's leading Japanese tokens, and calls `findExact` on each token. A bullet is valid if all its tokens intersect to exactly one JMDict entry. Bullets with 0 or 2+ matches are flagged.
+The script scans all Markdown files for `<details><summary>Vocab</summary>` blocks, extracts each bullet's leading Japanese tokens, and calls `findExactIds` on each token. A bullet is valid if all its tokens intersect to exactly one JMDict entry. Bullets with 0 or 2+ matches are flagged.
 
 The JSON output has:
 - `totalChecked`: total vocab items examined
 - `problemCount`: number of items with issues
-- `problems[]`: each with `file`, `line`, `bullet`, `tokens`, `tokenResults` (IDs per token), `matchCount`
+- `problems[]`: each with `file`, `line`, `bullet`, `tokens`, `tokenResults` (IDs per token), `matchCount`, `matchIds`
 
 For each problem, link directly to the offending line using markdown: `[Bunsho Dokkai 3.md:14](Bunsho Dokkai 3.md#L14)`. Then explain the likely cause and suggest corrected text that would produce exactly one match. Common causes:
 - **matchCount 0, conjugated form**: e.g. `入りこも` is the 未然形 of `入り込む` — suggest the dictionary form
