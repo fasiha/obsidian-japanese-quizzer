@@ -1,8 +1,9 @@
 /**
  * write-quiz-session.mjs
- * Writes a quiz session plan to .claude/quiz-session.txt.
- * Takes JMDict word IDs as positional arguments, looks each up in JMDict and
- * quiz history, and writes one summary line per word.
+ * Writes a quiz session plan to .claude/quiz-session.txt by filtering
+ * the pre-built context file (.claude/quiz-context.txt) for the given IDs.
+ *
+ * Run get-quiz-context.mjs first to generate the context file.
  *
  * Usage: node .claude/scripts/write-quiz-session.mjs <id1> <id2> ...
  *
@@ -10,15 +11,8 @@
  * clear-quiz-session.mjs when the quiz is finished.
  */
 
-import { setup, idsToWords } from "jmdict-simplified-node";
-import { writeFileSync } from "fs";
-import {
-  summarizeWord,
-  openQuizDb,
-  projectRoot,
-  JMDICT_DB,
-  QUIZ_SESSION,
-} from "./shared.mjs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { QUIZ_CONTEXT, QUIZ_SESSION } from "./shared.mjs";
 
 const ids = process.argv.slice(2);
 if (ids.length === 0) {
@@ -26,54 +20,37 @@ if (ids.length === 0) {
   process.exit(1);
 }
 
-// Load review history for these specific words
-const quizDb = openQuizDb({ readonly: true });
-const stats = new Map();
-for (const id of ids) {
-  const rows = quizDb
-    .prepare(
-      "SELECT score, timestamp FROM reviews WHERE word_id = ? ORDER BY timestamp ASC",
-    )
-    .all(id);
-  if (rows.length === 0) continue;
-  const scoreSum = rows.reduce((s, r) => s + r.score, 0);
-  stats.set(id, {
-    totalReviews: rows.length,
-    scoreSum,
-    lastTimestamp: rows[rows.length - 1].timestamp,
-  });
-}
-quizDb.close();
-
-function reviewStatus(id) {
-  const s = stats.get(String(id));
-  if (!s) return "never reviewed";
-  const days = Math.floor(
-    (Date.now() - new Date(s.lastTimestamp).getTime()) / 86_400_000,
-  );
-  const avg = (s.scoreSum / s.totalReviews).toFixed(2);
-  return `${days}d ago, avg ${avg}, ${s.totalReviews} review${s.totalReviews !== 1 ? "s" : ""}`;
-}
-
-// Look up JMDict entries
-const { db } = await setup(JMDICT_DB);
-const words = idsToWords(db, ids);
-
-if (words.length !== ids.length) {
-  const found = new Set(words.map((w) => w.id));
-  const missing = ids.filter((id) => !found.has(id));
+if (!existsSync(QUIZ_CONTEXT)) {
   console.error(
-    `Warning: could not find JMDict entries for IDs: ${missing.join(", ")}`,
+    "No quiz context file found. Run get-quiz-context.mjs first.",
   );
+  process.exit(1);
+}
+
+const contextLines = readFileSync(QUIZ_CONTEXT, "utf8").split("\n");
+
+const sessionLines = [];
+for (const id of ids) {
+  const line = contextLines.find((l) => l.startsWith(id + "  "));
+  if (line) {
+    sessionLines.push(line);
+  } else {
+    console.error(`Warning: ID ${id} not found in quiz context`);
+  }
+}
+
+if (sessionLines.length === 0) {
+  console.error("No matching words found in context.");
+  process.exit(1);
 }
 
 const timestamp = new Date().toISOString();
 const lines = [
   `# Quiz session started ${timestamp}`,
-  `# ${words.length} word${words.length !== 1 ? "s" : ""} — delete this file or run clear-quiz-session.mjs to discard`,
+  `# Delete this file or run clear-quiz-session.mjs to discard`,
   "",
-  ...words.map((w) => `${w.id}  ${summarizeWord(w)} [${reviewStatus(w.id)}]`),
+  ...sessionLines,
 ];
 
 writeFileSync(QUIZ_SESSION, lines.join("\n") + "\n");
-console.log(`Session written: ${words.length} words → ${QUIZ_SESSION}`);
+console.log(`Session written: ${sessionLines.length} words → ${QUIZ_SESSION}`);

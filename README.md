@@ -9,23 +9,26 @@ vocab lists against JMDict and runs spaced-repetition quizzes.
 - [llm-review — Japanese vocabulary review with Claude](#llm-review--japanese-vocabulary-review-with-claude)
   - [User guide](#user-guide)
     - [Authoring a reading](#authoring-a-reading)
-    - [`/check-vocab` — validate your vocab lists](#check-vocab--validate-your-vocab-lists)
-    - [`/quiz` — spaced-repetition quiz](#quiz--spaced-repetition-quiz)
+    - [`/check-vocab`](#check-vocab)
+    - [`/quiz`](#quiz)
   - [Setup](#setup)
   - [Project layout](#project-layout)
-  - [Implementation notes](#implementation-notes)
-    - [Vocab parsing](#vocab-parsing)
-    - [JMDict lookup](#jmdict-lookup)
-    - [Quiz database schema](#quiz-database-schema)
-    - [Design principle](#design-principle)
+  - [Quiz database schema](#quiz-database-schema)
   - [Future work](#future-work)
-
 
 ---
 
 ## User guide
 
 ### Authoring a reading
+
+Add `llm-review: true` frontmatter so the scripts pick up the file:
+
+```markdown
+---
+llm-review: true
+---
+```
 
 Write your reading passage as plain Markdown. Wrap translations in a
 `<details><summary>Translation</summary>…</details>` block and new vocabulary in
@@ -64,70 +67,31 @@ the tooling.
 
 ---
 
-### `/check-vocab` — validate your vocab lists
+### `/check-vocab`
 
 ```
 /check-vocab
 ```
 
-Runs `.claude/scripts/check-vocab.mjs` against every Markdown file in the vault
-(excluding `node_modules` and `.claude`). Each bullet's leading Japanese tokens
-are looked up with `findExact` in JMDict and the results are intersected. A bullet
-is **valid** only when all tokens narrow down to exactly one JMDict entry.
-
-Claude reports any bullet that has **0 matches** (unrecognised form) or **2+
-matches** (ambiguous), links to the exact line in the file, and suggests a fix.
-
-Common problems and fixes:
-
-| Problem | Cause | Fix |
-|---|---|---|
-| 0 matches — `入りこも` | Conjugated form, not in JMDict | Use dictionary form: `入り込む` |
-| 0 matches — `事じょう` | Mixed kanji+kana mid-word | Use full kanji `事情` or full kana `じじょう` |
-| 2+ matches — `気味` | Multiple JMDict entries share that form | Add reading to disambiguate: `気味 きみ` |
-| 2+ matches — `市場` | Different readings, different meanings | `市場 いちば` (market) or `市場 しじょう` (financial market) |
-
-Claude will **not** edit your Markdown files — it only suggests corrections.
+Validates every vocab bullet against JMDict. Claude reports bullets with 0 matches
+(unrecognised form) or 2+ matches (ambiguous), links to the exact line, and
+suggests a fix. Claude will not edit your Markdown files.
 
 ---
 
-### `/quiz` — spaced-repetition quiz
+### `/quiz`
 
 ```
 /quiz
 ```
 
-Claude runs a session-based, one-question-at-a-time quiz:
+Session-based, one-question-at-a-time spaced-repetition quiz. Claude picks 5–10
+words prioritising never-reviewed words and weak facets, asks one question per
+message, and records each answer (0.0–1.0) with per-facet tracking (reading,
+meaning, kanji). Sessions survive interruption and resume on the next `/quiz` (even in a new Claude session).
 
-1. **`get-quiz-context.mjs`** — scans all opted-in Markdown files and outputs one
-   compact line per quizzable vocab entry, merged with its all-time review history:
-   ```
-   1398530  体中, からだじゅう all over the body (#1398530) [never reviewed]
-   1584060  包む, つつむ to wrap; to pack (#1584060) [5d ago, avg 0.80, 2 reviews]
-   1445740  怒鳴る, どなる to shout in anger (#1445740) {kanji} [meaning:1d/0.50×1, reading:never, kanji:never]
-   ```
-   Words with `[kanji]` in their bullet appear with a `{kanji}` marker and
-   per-facet review stats. Only entries with exactly one JMDict match are included.
-
-2. Claude picks 5–10 words, prioritising never-reviewed words and weak facets,
-   then writes a **session file** via `write-quiz-session.mjs`.
-
-3. Claude asks **one question per message**, choosing the question type by facet:
-   - **reading** — show kanji, ask for kana
-   - **meaning** — show kanji+reading or kana, ask for English
-   - **kanji** — show English/reading, ask to identify the correct kanji form (only for `{kanji}` words)
-
-   Each answer is graded (0.0–1.0) and recorded via `record-review.mjs --quiz-type <facet>`.
-   You can ask for a mnemonic or clarification at any point — Claude will discuss it then re-ask.
-
-4. After the last question, the session file is cleared and Claude gives a brief
-   summary of the session.
-
-If the quiz is interrupted mid-session, Claude can resume from where it left off
-by reading the session file on the next `/quiz` invocation.
-
-The `--reviewer` flag on `record-review.mjs` defaults to your OS username. Passing
-it explicitly is not yet wired up to the `/quiz` skill — see Future work below.
+Words with `[kanji]` in their bullet are eligible for all three question types;
+all other words are quizzed on meaning and reading only.
 
 ---
 
@@ -170,56 +134,32 @@ gitignored and the source JSONs are gitignored too.
 
 ```
 llm-review/
-├── *.md                        reading passages (Obsidian notes)
+├── *.md                        reading passages (Obsidian notes, llm-review: true frontmatter)
 ├── jmdict.sqlite               JMDict search database
 ├── kanjidic2.sqlite            KanjiDic search database
 ├── quiz.sqlite                 quiz review history
 ├── package.json
 └── .claude/
+    ├── quiz-context.txt        generated by get-quiz-context.mjs (gitignored)
+    ├── quiz-session.txt        active quiz session queue (gitignored)
     ├── commands/
     │   ├── check-vocab.md      /check-vocab skill prompt
     │   └── quiz.md             /quiz skill prompt
     └── scripts/
         ├── shared.mjs              shared constants, DB helpers, parsing utilities
         ├── check-vocab.mjs         checks vocab against JMDict, outputs JSON report
-        ├── get-quiz-context.mjs    compact vocab+history output for quiz selection
+        ├── get-quiz-context.mjs    writes quiz-context.txt (vocab + review history)
         ├── get-kanji-info.mjs      radicals, readings, meanings for one or more kanji
-        ├── write-quiz-session.mjs  writes a quiz session plan file
+        ├── write-quiz-session.mjs  filters quiz-context.txt into a session queue
         ├── read-quiz-session.mjs   reads session file, exits 1 if none
         ├── clear-quiz-session.mjs  deletes session file after quiz ends
         ├── init-quiz-db.mjs        creates quiz.sqlite schema (run once)
-        └── record-review.mjs       inserts one review row into quiz.sqlite
+        └── record-review.mjs       inserts one review row; removes word from session
 ```
 
 ---
 
-## Implementation notes
-
-### Vocab parsing
-
-All scripts use the same approach to extract vocab bullets:
-
-1. Scan the file content with a regex for `<details>` blocks whose inner content
-   contains `<summary>Vocab</summary>`.
-2. Split the inner block by newline and collect lines that start with `-`.
-3. From each bullet, take the leading space-separated tokens that contain at
-   least one Japanese character (hiragana U+3040–309F, katakana U+30A0–30FF,
-   or kanji U+4E00–9FFF / U+3400–4DBF / U+F900–FAFF). Stop at the first
-   purely Latin token.
-
-Line numbers (used by `check-vocab.mjs`) are derived by counting newlines before
-the start of each `<details>` block's inner content, then adding the line offset
-within that block.
-
-### JMDict lookup
-
-`findExact(db, text)` (from `jmdict-simplified-node`) returns every JMDict `Word`
-where any kanji form *or* any kana form exactly equals `text`. For a bullet with
-multiple Japanese tokens (e.g. `舞う まう`), the script calls `findExact` on each
-token separately and intersects the result ID sets. The bullet is valid iff the
-intersection contains exactly one entry.
-
-### Quiz database schema
+## Quiz database schema
 
 ```sql
 CREATE TABLE reviews (
@@ -235,16 +175,16 @@ CREATE TABLE reviews (
 );
 ```
 
-The `quiz_type` column enables per-facet SRS — a word can be well-known for meaning
-but still weak on kanji recognition, and the quiz targets accordingly.
+Schema version is tracked via `PRAGMA user_version` (currently 1), set in
+`init-quiz-db.mjs`. Migration pattern for future changes:
 
-### Design principle
-
-Claude never writes directly to Markdown files or to SQLite. It only:
-- **Reads** script output (JSON on stdout)
-- **Writes** by calling scripts with explicit arguments
-
-This keeps the data pipeline auditable and prevents hallucinated writes.
+```js
+const v = db.pragma('user_version', { simple: true });
+if (v < 2) {
+  db.exec(`ALTER TABLE reviews ADD COLUMN ...`);
+  db.pragma('user_version = 2');
+}
+```
 
 ---
 

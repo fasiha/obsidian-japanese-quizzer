@@ -20,7 +20,8 @@
  */
 
 import os from "os";
-import { openQuizDb } from "./shared.mjs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import { openQuizDb, QUIZ_SESSION } from "./shared.mjs";
 
 // Parse CLI args
 const args = process.argv.slice(2);
@@ -74,6 +75,13 @@ const result = stmt.run(
   notes ?? null,
 );
 db.close();
+
+// Remove this word from the session queue if a session is active
+if (existsSync(QUIZ_SESSION)) {
+  const lines = readFileSync(QUIZ_SESSION, "utf8").split("\n");
+  const filtered = lines.filter((line) => !line.startsWith(wordId + "  "));
+  writeFileSync(QUIZ_SESSION, filtered.join("\n"));
+}
 
 console.log(
   JSON.stringify({

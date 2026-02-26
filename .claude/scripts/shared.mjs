@@ -17,6 +17,11 @@ export const QUIZ_SESSION = path.join(
   ".claude",
   "quiz-session.txt",
 );
+export const QUIZ_CONTEXT = path.join(
+  projectRoot,
+  ".claude",
+  "quiz-context.txt",
+);
 export const SCHEMA_VERSION = 1;
 
 /**
@@ -118,7 +123,7 @@ export function summarizeWord(word) {
     )
     .filter(Boolean)
     .join(" / ");
-  return `${forms} ${meanings} (#${word.id})`;
+  return `${forms} ${meanings}`;
 }
 
 // Parse YAML frontmatter and return key-value pairs, or null if none present.

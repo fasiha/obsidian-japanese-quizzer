@@ -4,15 +4,15 @@
  * Items where the vocab bullet doesn't resolve to exactly one JMDict entry are omitted.
  *
  * Output format — one line per word:
- *   <jmdictId>  <kanji/kana>, <meanings> (#<id>) [<review status>]
+ *   <jmdictId>  <kanji/kana>, <meanings> {kanji|no-kanji} [<review status>]
  *
- * Words with a [kanji] tag in their vocab bullet get a {kanji} marker:
- *   1445740  怒鳴る, どなる to shout in anger (#1445740) {kanji} [never reviewed]
+ * Words with a [kanji] tag in their vocab bullet get a {kanji-ok} marker:
+ *   1445740  怒鳴る, どなる to shout in anger {kanji-ok} [meaning:0d/0.50×1, kanji:never]
+ * All other words get {no-kanji}:
+ *   1584060  包む, つつむ to wrap {no-kanji} [reading:5d/0.80×2, meaning:never]
  *
- * Review status shows per-facet breakdown when quiz_type data exists:
- *   1445740  怒鳴る, どなる ... {kanji} [meaning:0d/0.50×1, kanji:never]
- * Otherwise falls back to overall summary:
- *   1584060  包む, つつむ ... [5d ago, avg 0.80, 2 reviews]
+ * Also writes the full output to .claude/quiz-context.txt for use by
+ * write-quiz-session.mjs.
  *
  * Options:
  *   --reviewer NAME   Filter quiz history to one reviewer (default: all reviewers)
@@ -21,7 +21,7 @@
  */
 
 import { setup, findExact, idsToWords } from "jmdict-simplified-node";
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import {
   findMdFiles,
   extractJapaneseTokens,
@@ -32,6 +32,7 @@ import {
   openQuizDb,
   projectRoot,
   JMDICT_DB,
+  QUIZ_CONTEXT,
 } from "./shared.mjs";
 
 const args = process.argv.slice(2);
@@ -155,11 +156,12 @@ for (const filePath of findMdFiles(projectRoot)) {
     const targetedFacets = kanjiTag
       ? ["reading", "meaning", "kanji"]
       : ["reading", "meaning"];
-    const facetMarker = kanjiTag ? " {kanji}" : "";
+    const facetMarker = kanjiTag ? " {kanji-ok}" : " {no-kanji}";
     lines.push(
       `${word.id}  ${summarizeWord(word)}${facetMarker} [${reviewStatus(word.id, targetedFacets)}]`,
     );
   }
 }
 
-console.log(lines.join("\n"));
+writeFileSync(QUIZ_CONTEXT, lines.join("\n") + "\n");
+console.log(`Context written: ${lines.length} words → ${QUIZ_CONTEXT}`);
