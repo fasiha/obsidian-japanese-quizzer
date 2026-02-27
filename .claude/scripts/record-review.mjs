@@ -6,7 +6,11 @@
  *   --word-id    TEXT    JMDict entry ID
  *   --word-text  TEXT    Display text (the vocab bullet)
  *   --score      FLOAT   0.0 (wrong) to 1.0 (perfect)
- *   --quiz-type  TEXT    'reading', 'meaning', or 'kanji'
+ *   --quiz-type  TEXT    One of:
+ *                          reading-to-meaning       (all words)
+ *                          meaning-to-reading       (all words)
+ *                          kanji-to-reading         ({kanji-ok} words only)
+ *                          meaning-reading-to-kanji ({kanji-ok} words only)
  *
  * Optional args:
  *   --reviewer   TEXT    Reviewer name (default: OS username)
@@ -54,6 +58,22 @@ if (missing.length > 0) {
 if (isNaN(score) || score < 0 || score > 1) {
   console.error(
     `--score must be a number between 0.0 and 1.0 (got: ${args[args.indexOf("--score") + 1]})`,
+  );
+  process.exit(1);
+}
+
+const VALID_QUIZ_TYPES_BY_WORD_TYPE = {
+  jmdict: new Set([
+    "reading-to-meaning",
+    "meaning-to-reading",
+    "kanji-to-reading",
+    "meaning-reading-to-kanji",
+  ]),
+};
+const validTypes = VALID_QUIZ_TYPES_BY_WORD_TYPE[wordType];
+if (validTypes && !validTypes.has(quizType)) {
+  console.error(
+    `--quiz-type must be one of: ${[...validTypes].join(", ")} (got: ${quizType})`,
   );
   process.exit(1);
 }

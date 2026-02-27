@@ -87,11 +87,20 @@ suggests a fix. Claude will not edit your Markdown files.
 
 Session-based, one-question-at-a-time spaced-repetition quiz. Claude picks 5–10
 words prioritising never-reviewed words and weak facets, asks one question per
-message, and records each answer (0.0–1.0) with per-facet tracking (reading,
-meaning, kanji). Sessions survive interruption and resume on the next `/quiz` (even in a new Claude session).
+message, and records each answer (0.0–1.0) with per-facet tracking. Sessions
+survive interruption and resume on the next `/quiz` (even in a new Claude session).
 
-Words with `[kanji]` in their bullet are eligible for all three question types;
-all other words are quizzed on meaning and reading only.
+Four question types, chosen based on which facet most needs practice:
+
+| `quiz_type` | Prompt | Answer | Words |
+|---|---|---|---|
+| `reading-to-meaning` | kana reading | English meaning | all |
+| `meaning-to-reading` | English meaning | kana reading | all |
+| `kanji-to-reading` | kanji form | kana reading | `[kanji]` words only |
+| `meaning-reading-to-kanji` | English + kana | correct kanji form | `[kanji]` words only |
+
+Words with `[kanji]` in their bullet are eligible for all four question types;
+all other words get only `reading-to-meaning` and `meaning-to-reading`.
 
 ---
 
@@ -170,7 +179,10 @@ CREATE TABLE reviews (
   word_id     TEXT    NOT NULL,   -- JMDict entry ID
   word_text   TEXT    NOT NULL,   -- display text from the bullet
   score       REAL    NOT NULL,   -- 0.0 (wrong) to 1.0 (perfect)
-  quiz_type   TEXT    NOT NULL,   -- 'reading', 'meaning', or 'kanji'
+  quiz_type   TEXT    NOT NULL,   -- 'reading-to-meaning', 'meaning-to-reading',
+                                  --   'kanji-to-reading', 'meaning-reading-to-kanji'
+                                  -- (legacy values 'reading-kanji-to-meaning' and ''
+                                  --  may appear in older rows)
   notes       TEXT                -- Claude's notes on the review attempt
 );
 ```

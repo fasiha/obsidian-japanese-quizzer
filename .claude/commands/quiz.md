@@ -29,8 +29,8 @@ This writes `.claude/quiz-context.txt`. Each line:
 <jmdictId>  <forms> <meanings> {kanji-ok|no-kanji} [<review status>]
 ```
 
-- `{kanji-ok}` — all three question types (reading, meaning, kanji) may be asked.
-- `{no-kanji}` — meaning and reading questions only; no kanji questions.
+- `{kanji-ok}` — all four types apply: `kanji-to-reading`, `reading-to-meaning`, `meaning-to-reading`, `meaning-reading-to-kanji`.
+- `{no-kanji}` — only `reading-to-meaning` and `meaning-to-reading`; no kanji questions.
 
 Also check `MEMORY.md` for `corpus_level` and `corpus_word_count`. If absent or word count has grown >20% since the last estimate, re-estimate from the vocabulary and save both to `MEMORY.md`.
 
@@ -63,17 +63,21 @@ node .claude/scripts/write-quiz-session.mjs <id1> <id2> ...
 Show progress (e.g. **Question 2 / 7**). Send **one question per message** and wait for the answer before continuing.
 
 **Question type** — choose based on which facet most needs practice:
-- **meaning** — show kanji + reading (or kana alone) → ask for English meaning. Do not include any English in the question. Record with `--quiz-type meaning`.
-- **reading** — show kanji only (omit the kana) → ask for the reading. Record with `--quiz-type reading`.
-- **kanji** — show English meaning or reading (without the kanji) → ask to pick the correct written form from a list. Record with `--quiz-type kanji`. **Only for `{kanji-ok}` words.**
 
-**Two hard rules:**
+| Type | Prompt shown | Answer expected | Words | `--quiz-type` value |
+|------|-------------|-----------------|-------|---------------------|
+| reading-to-meaning | kana reading only | English meaning | all | `reading-to-meaning` |
+| meaning-to-reading | English meaning only | kana reading | all | `meaning-to-reading` |
+| kanji-to-reading | kanji form only (hide kana) | kana reading | `{kanji-ok}` only | `kanji-to-reading` |
+| meaning-reading-to-kanji | English meaning + kana reading | correct kanji form | `{kanji-ok}` only | `meaning-reading-to-kanji` |
 
-1. **`{no-kanji}` words: no kanji questions.** Meaning and reading questions are both fine. For meaning questions, show both forms (e.g. **分厚い (ぶあつい)**) for passive exposure.
+**Hard rules:**
 
-2. **Kanji questions: the kanji form must never appear in the question stem.** Give the meaning or reading as the prompt; put the candidate written forms in the answer options (A–D). The correct kanji must appear only as an answer option.
+1. **`{no-kanji}` words: only `reading-to-meaning` and `meaning-to-reading`.** No kanji questions ever.
 
-**Free answer vs. multiple choice:**
+2. **`meaning-reading-to-kanji` is always multiple choice** (4 options, A–D). The kanji form must never appear in the question stem — show meaning + kana as the joint prompt; put the candidate written forms in the answer options. The correct kanji appears only as an answer option.
+
+**Free answer vs. multiple choice** (for the other three types):
 - **Never-reviewed words: always multiple choice** (4 options, A–D). No exceptions.
 - **Well-reviewed words (3+ reviews, good scores): free answer** by default.
 - If the user requests multiple choice after a free-answer question, provide it — but cap the score at 0.7 and note that hints were given.

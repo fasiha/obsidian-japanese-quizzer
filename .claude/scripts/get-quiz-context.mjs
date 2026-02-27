@@ -152,10 +152,9 @@ for (const filePath of findMdFiles(projectRoot)) {
 
     const [word] = idsToWords(db, matchIds);
     const kanjiTag = hasKanjiTag(bullet);
-    // Default facets every word is tested on; add kanji if tagged
     const targetedFacets = kanjiTag
-      ? ["reading", "meaning", "kanji"]
-      : ["reading", "meaning"];
+      ? ["kanji-to-reading", "reading-to-meaning", "meaning-to-reading", "meaning-reading-to-kanji"]
+      : ["reading-to-meaning", "meaning-to-reading"];
     const facetMarker = kanjiTag ? " {kanji-ok}" : " {no-kanji}";
     lines.push(
       `${word.id}  ${summarizeWord(word)}${facetMarker} [${reviewStatus(word.id, targetedFacets)}]`,
