@@ -56,6 +56,8 @@ Write the session (filters the context file for the chosen IDs):
 node .claude/scripts/write-quiz-session.mjs <id1> <id2> ...
 ```
 
+**Session opacity:** Once the session is written, transition immediately to Step 3 with no preamble. Do NOT narrate which words were selected, how many are never-reviewed, what question types are planned, or any other summary of the session contents. The first thing the user sees should be Question 1.
+
 ---
 
 ## Step 3 — Quiz one word at a time
@@ -76,6 +78,11 @@ Show progress (e.g. **Question 2 / 7**). Send **one question per message** and w
 1. **`{no-kanji}` words: only `reading-to-meaning` and `meaning-to-reading`.** No kanji questions ever.
 
 2. **`meaning-reading-to-kanji` is always multiple choice** (4 options, A–D). The kanji form must never appear in the question stem — show meaning + kana as the joint prompt; put the candidate written forms in the answer options. The correct kanji appears only as an answer option.
+
+3. **Prompt purity — never leak the answer form into the prompt:**
+   - `reading-to-meaning`: show kana **only** — never include the kanji form. ❌ "What does 木陰 (こかげ) mean?" ✅ "What does こかげ mean?"
+   - `meaning-to-reading`: show English **only** — never include the Japanese form (neither kanji nor kana). ❌ "What is the reading of 木陰 (shade of a tree)?" ✅ "Give the reading: shade of a tree; bower."
+   - `kanji-to-reading`: show kanji **only** — never include the kana reading alongside it. ❌ "What is the reading of 木陰 (こかげ)?" ✅ "What is the reading of 木陰?"
 
 **Free answer vs. multiple choice** (for the other three types):
 - **Never-reviewed words: always multiple choice** (4 options, A–D). No exceptions.
