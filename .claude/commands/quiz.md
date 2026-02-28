@@ -40,7 +40,7 @@ Also check `MEMORY.md` for `corpus_level` and `corpus_word_count`. If absent or 
 
 *(Only reached when no session was found in Step 1.)*
 
-Pick 5–10 words from the context using the review metadata and your semantic understanding:
+Pick 3–6 words from the context using the review metadata and your semantic understanding:
 - Prioritise never-reviewed words, then long gaps or low average scores.
 - For words with per-facet data, prioritise facets with low scores or no reviews.
 - Prefer a mix of word types and difficulty levels.
