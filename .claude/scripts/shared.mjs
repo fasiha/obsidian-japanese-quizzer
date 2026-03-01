@@ -109,10 +109,16 @@ export function extractVocabBullets(content) {
 
 // Produce a compact one-line summary of a JMDict Word entry.
 // Format: "kanji, kana meaning1; meaning2 / sense2meaning1 (#id)"
+// Irregular kanji (iK) and irregular kana (ik) forms are omitted from the display.
 export function summarizeWord(word) {
   const forms = word.kanji
+    .filter((k) => !k.tags.includes("iK"))
     .map((k) => k.text)
-    .concat(word.kana.map((k) => k.text))
+    .concat(
+      word.kana
+        .filter((k) => !k.tags.includes("ik"))
+        .map((k) => k.text),
+    )
     .join(", ");
   const meanings = word.sense
     .map((s) =>
