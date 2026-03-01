@@ -20,7 +20,7 @@
  * Usage: node .claude/scripts/get-quiz-context.mjs [--reviewer fasiha]
  */
 
-import { setup, findExact, idsToWords } from "jmdict-simplified-node";
+import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync } from "fs";
 import {
   findMdFiles,
@@ -145,7 +145,7 @@ for (const filePath of findMdFiles(projectRoot)) {
     if (tokens.length === 0) continue;
 
     const idSets = tokens.map(
-      (token) => new Set(findExact(db, token).map((w) => w.id)),
+      (token) => new Set(findExactIds(db, token)),
     );
     const matchIds = [...intersectSets(idSets)];
     if (matchIds.length !== 1) continue; // skip broken entries
