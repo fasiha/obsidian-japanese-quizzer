@@ -26,8 +26,10 @@ node .claude/scripts/get-quiz-context.mjs
 This writes `.claude/quiz-context.txt`. Each line:
 
 ```
-<jmdictId>  <forms> <meanings> {kanji-ok|no-kanji} [<review status>]
+<jmdictId>  <forms> <meanings> {kanji-ok|no-kanji} [<N reviews> | <per-facet status>]
 ```
+
+The leading `N reviews` is the total across all facets and is the primary signal for breadth prioritisation. Never-reviewed words show `[never reviewed]`.
 
 - `{kanji-ok}` — all four types apply: `kanji-to-reading`, `reading-to-meaning`, `meaning-to-reading`, `meaning-reading-to-kanji`.
 - `{no-kanji}` — only `reading-to-meaning` and `meaning-to-reading`; no kanji questions.
@@ -41,7 +43,7 @@ Also check `MEMORY.md` for `corpus_level` and `corpus_word_count`. If absent or 
 *(Only reached when no session was found in Step 1.)*
 
 Pick 3–6 words from the context using the review metadata and your semantic understanding:
-- Prioritise never-reviewed words, then long gaps or low average scores.
+- Prioritise breadth: prefer words with fewer total reviews over those already well-practised; within similar review counts, prefer longer gaps and lower scores.
 - For words with per-facet data, prioritise facets with low scores or no reviews.
 - Prefer a mix of word types and difficulty levels.
 - Notice semantic relationships — words that share kanji or sound alike make good distractor pairs.

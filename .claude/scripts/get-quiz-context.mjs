@@ -6,10 +6,13 @@
  * Output format — one line per word:
  *   <jmdictId>  <kanji/kana>, <meanings> {kanji|no-kanji} [<review status>]
  *
- * Words with a [kanji] tag in their vocab bullet get a {kanji-ok} marker:
- *   1445740  怒鳴る, どなる to shout in anger {kanji-ok} [meaning:0d/0.50×1, kanji:never]
+ * The review status begins with the total review count across all facets, then
+ * per-facet breakdown. Words with a [kanji] tag get a {kanji-ok} marker:
+ *   1445740  怒鳴る, どなる to shout in anger {kanji-ok} [6 reviews | meaning:0d/0.50×1, kanji:never]
  * All other words get {no-kanji}:
- *   1584060  包む, つつむ to wrap {no-kanji} [reading:5d/0.80×2, meaning:never]
+ *   1584060  包む, つつむ to wrap {no-kanji} [3 reviews | reading:5d/0.80×2, meaning:never]
+ * Never-reviewed words show:
+ *   1234560  example {no-kanji} [never reviewed]
  *
  * Also writes the full output to .claude/quiz-context.txt for use by
  * write-quiz-session.mjs.
@@ -97,6 +100,8 @@ function reviewStatus(wordId, targetedFacets) {
   if (!s) return "never reviewed";
 
   // If we have any quiz_type-tagged reviews, show per-facet breakdown
+  const totalReviews = s.total.totalReviews;
+
   if (s.byType.size > 0) {
     const parts = [];
     // Show all targeted facets (so "never" entries are visible for unreviewed facets)
@@ -119,12 +124,12 @@ function reviewStatus(wordId, targetedFacets) {
         `untracked:${daysAgo(s.total.lastTimestamp)}d/${avg}×${s.nullCount}`,
       );
     }
-    return parts.join(", ");
+    return `${totalReviews} reviews | ${parts.join(", ")}`;
   }
 
   // Old-style: all reviews have quiz_type = null — show overall summary
   const avg = (s.total.scoreSum / s.total.totalReviews).toFixed(2);
-  return `${daysAgo(s.total.lastTimestamp)}d ago, avg ${avg}, ${s.total.totalReviews} review${s.total.totalReviews !== 1 ? "s" : ""}`;
+  return `${totalReviews} reviews | ${daysAgo(s.total.lastTimestamp)}d ago, avg ${avg}`;
 }
 
 // True if the bullet text contains a [kanji] tag
