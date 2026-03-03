@@ -119,6 +119,9 @@ Default halflife 24 h; 48–72 h if the user already knows the word/angle well.
    - `reading-to-meaning`: show kana **only** — never include the kanji form. ❌ "What does 木陰 (こかげ) mean?" ✅ "What does こかげ mean?"
    - `meaning-to-reading`: show English **only** — never include the Japanese form (neither kanji nor kana). ❌ "What is the reading of 木陰 (shade of a tree)?" ✅ "Give the reading: shade of a tree; bower."
    - `kanji-to-reading`: show kanji **only** — never include the kana reading alongside it. ❌ "What is the reading of 木陰 (こかげ)?" ✅ "What is the reading of 木陰?"
+   - `meaning-reading-to-kanji`: show English meaning + kana **only** — the kanji form must not appear anywhere in the stem. It appears only as answer options. ❌ "怒鳴る (どなる) — to shout. Which is correct?" ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
+
+**Pre-question check:** Before writing out any question, silently verify: is the answer form (kanji / kana / meaning) visible anywhere in the question stem? If yes, rewrite the stem before showing it to the user.
 
 **Free answer vs. multiple choice:**
 - **Context line ends with `free`: free answer** by default.
