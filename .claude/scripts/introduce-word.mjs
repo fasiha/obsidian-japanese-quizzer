@@ -5,14 +5,18 @@
  * enters the spaced-repetition schedule.
  *
  * Required args:
- *   --word-id    TEXT    JMDict entry ID (or other word type ID)
- *   --word-text  TEXT    Display text (used for session removal)
- *   --facets     TEXT    Comma-separated facets to initialise, e.g.
- *                          "reading-to-meaning,meaning-to-reading"
+ *   --word-id        TEXT    JMDict entry ID (or other word type ID)
+ *   --word-text      TEXT    Display text (used for session removal)
+ *   --facets         TEXT    Comma-separated facets to initialise, e.g.
+ *                              "reading-to-meaning,meaning-to-reading"
  *
  * Optional args:
- *   --word-type  TEXT    'jmdict' (default) or 'grammar'
- *   --halflife   FLOAT   Initial halflife in hours (default: 24)
+ *   --word-type      TEXT    'jmdict' (default) or 'grammar'
+ *   --halflife       FLOAT   Initial halflife in hours (default: 24)
+ *   --passive-facets TEXT    Comma-separated already-modelled facets to
+ *                              passively update with score=0.5 (moves model
+ *                              forward in time without changing halflife).
+ *                              Silently skipped if no model exists yet.
  *
  * Usage:
  *   node .claude/scripts/introduce-word.mjs \
@@ -23,16 +27,23 @@
  *   node .claude/scripts/introduce-word.mjs \
  *     --word-id 1009670 --word-text "によると" \
  *     --facets "reading-to-meaning,meaning-to-reading" --halflife 72
+ *
+ *   # Introduce one facet, passively nudge the sibling:
+ *   node .claude/scripts/introduce-word.mjs \
+ *     --word-id 1503510 --word-text "分厚い" \
+ *     --facets "reading-to-meaning" \
+ *     --passive-facets "meaning-to-reading" --halflife 168
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { defaultModel } from "ebisu-js";
+import { defaultModel, updateRecall } from "ebisu-js";
 import { openQuizDb, QUIZ_SESSION, EBISU_ALPHA } from "./shared.mjs";
 
 const args = process.argv.slice(2);
 let wordType = "jmdict";
 let wordId, wordText, halflife = 24;
 let facets = [];
+let passiveFacets = [];
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--word-type" && args[i + 1]) wordType = args[++i];
@@ -41,6 +52,8 @@ for (let i = 0; i < args.length; i++) {
   if (args[i] === "--halflife" && args[i + 1]) halflife = parseFloat(args[++i]);
   if (args[i] === "--facets" && args[i + 1])
     facets = args[++i].split(",").map((s) => s.trim()).filter(Boolean);
+  if (args[i] === "--passive-facets" && args[i + 1])
+    passiveFacets = args[++i].split(",").map((s) => s.trim()).filter(Boolean);
 }
 
 const missing = [];
@@ -69,6 +82,21 @@ for (const facet of facets) {
   stmt.run(wordType, wordId, facet, a, b, t, timestamp);
 }
 
+// Passive updates: nudge existing sibling models forward in time (score=0.5
+// leaves the halflife estimate unchanged, just advances last_review)
+for (const facet of passiveFacets) {
+  const existing = db
+    .prepare(
+      "SELECT alpha, beta, t, last_review FROM ebisu_models WHERE word_type=? AND word_id=? AND quiz_type=?",
+    )
+    .get(wordType, wordId, facet);
+  if (!existing) continue; // no model yet — skip silently
+  const model = [existing.alpha, existing.beta, existing.t];
+  const elapsed = (new Date(timestamp) - new Date(existing.last_review)) / 3_600_000;
+  const [pa, pb, pt] = updateRecall(model, 0.5, 1, Math.max(elapsed, 1e-6));
+  stmt.run(wordType, wordId, facet, pa, pb, pt, timestamp);
+}
+
 db.close();
 
 // Remove this word from the session queue if a session is active
@@ -86,6 +114,7 @@ console.log(
     wordText,
     facets,
     halflife,
+    passiveFacets,
     timestamp,
   }),
 );

@@ -85,13 +85,14 @@ Both call `introduce-word.mjs` instead of `record-review.mjs`. The scope differs
 - `meaning-reading-to-kanji`: show meaning + reading, ask for the kanji form, explain components.
 - `reading-to-meaning` / `meaning-to-reading`: quick check in the new direction.
 
-Pass **only the unmodeled facet(s)** — do not overwrite existing models.
+Pass **only the unmodeled facet(s)** — do not overwrite existing models. Pass the already-modelled sibling(s) via `--passive-facets` so their timestamps advance with a neutral 0.5 score.
 
 ```bash
 node .claude/scripts/introduce-word.mjs \
   --word-id WORD_ID \
   --word-text "WORD_TEXT" \
   --facets "FACET1,FACET2,..." \
+  --passive-facets "SIBLING1,SIBLING2,..." \
   --halflife HOURS
 ```
 
