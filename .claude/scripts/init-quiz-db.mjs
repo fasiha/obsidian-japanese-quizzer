@@ -24,6 +24,19 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ebisu_models (
+    word_type   TEXT    NOT NULL,  -- 'jmdict', 'grammar', etc.
+    word_id     TEXT    NOT NULL,
+    quiz_type   TEXT    NOT NULL,
+    alpha       REAL    NOT NULL,
+    beta        REAL    NOT NULL,
+    t           REAL    NOT NULL,  -- halflife in hours
+    last_review TEXT    NOT NULL,  -- ISO 8601 UTC
+    PRIMARY KEY (word_type, word_id, quiz_type)
+  )
+`);
+
 db.pragma(`user_version = ${SCHEMA_VERSION}`);
 
 db.close();

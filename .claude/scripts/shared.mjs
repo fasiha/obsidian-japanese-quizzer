@@ -24,6 +24,10 @@ export const QUIZ_CONTEXT = path.join(
 );
 export const SCHEMA_VERSION = 1;
 
+// Beta distribution shape parameter for the Ebisu prior (α = β → symmetric).
+// A value slightly above 1 gives a mildly informative prior around 0.5 recall.
+export const EBISU_ALPHA = 1.25;
+
 /**
  * Open quiz.sqlite, verify the schema version, and return the Database instance.
  * Pass { readonly: true } for scripts that only read.

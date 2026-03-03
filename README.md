@@ -155,15 +155,18 @@ llm-review/
     │   ├── check-vocab.md      /check-vocab skill prompt
     │   └── quiz.md             /quiz skill prompt
     └── scripts/
-        ├── shared.mjs              shared constants, DB helpers, parsing utilities
-        ├── check-vocab.mjs         checks vocab against JMDict, outputs JSON report
-        ├── get-quiz-context.mjs    writes quiz-context.txt (vocab + review history)
-        ├── get-kanji-info.mjs      radicals, readings, meanings for one or more kanji
-        ├── write-quiz-session.mjs  filters quiz-context.txt into a session queue
-        ├── read-quiz-session.mjs   reads session file, exits 1 if none
-        ├── clear-quiz-session.mjs  deletes session file after quiz ends
-        ├── init-quiz-db.mjs        creates quiz.sqlite schema (run once)
-        └── record-review.mjs       inserts one review row; removes word from session
+        ├── shared.mjs                  shared constants, DB helpers, parsing utilities
+        ├── check-vocab.mjs             checks vocab against JMDict, outputs JSON report
+        ├── get-quiz-context.mjs        writes quiz-context.txt sorted by Ebisu recall urgency; appends `free` flag when facet qualifies for free-answer (≥3 reviews AND halflife ≥48 h)
+        ├── get-word-history.mjs        full review history + Ebisu models for one word
+        ├── get-kanji-info.mjs          radicals, readings, meanings for one or more kanji
+        ├── write-quiz-session.mjs      filters quiz-context.txt into a session queue
+        ├── read-quiz-session.mjs       reads session file, exits 1 if none
+        ├── clear-quiz-session.mjs      deletes session file after quiz ends
+        ├── init-quiz-db.mjs            creates/migrates quiz.sqlite schema
+        ├── record-review.mjs           inserts review row, updates Ebisu model, removes from session
+        ├── introduce-word.mjs          initialises Ebisu models for a newly-taught word
+        └── backfill-ebisu-models.mjs   one-time migration: replays reviews into ebisu_models
 ```
 
 ---
@@ -185,18 +188,20 @@ CREATE TABLE reviews (
                                   --  may appear in older rows)
   notes       TEXT                -- Claude's notes on the review attempt
 );
+
+CREATE TABLE ebisu_models (
+  word_type   TEXT    NOT NULL,   -- 'jmdict', 'grammar', etc.
+  word_id     TEXT    NOT NULL,
+  quiz_type   TEXT    NOT NULL,
+  alpha       REAL    NOT NULL,   -- Ebisu Beta distribution alpha
+  beta        REAL    NOT NULL,   -- Ebisu Beta distribution beta
+  t           REAL    NOT NULL,   -- halflife in hours
+  last_review TEXT    NOT NULL,   -- ISO 8601 UTC
+  PRIMARY KEY (word_type, word_id, quiz_type)
+);
 ```
 
-Schema version is tracked via `PRAGMA user_version` (currently 1), set in
-`init-quiz-db.mjs`. Migration pattern for future changes:
-
-```js
-const v = db.pragma('user_version', { simple: true });
-if (v < 2) {
-  db.exec(`ALTER TABLE reviews ADD COLUMN ...`);
-  db.pragma('user_version = 2');
-}
-```
+`ebisu_models` stores one Bayesian memory model (via [ebisu-js](https://github.com/fasiha/ebisu.js)) per (word, facet) pair. `get-quiz-context.mjs` calls `predictRecall` to rank items by urgency; `record-review.mjs` calls `updateRecall` after each quiz. Schema version is tracked via `PRAGMA user_version` (currently 1), set in `init-quiz-db.mjs`.
 
 ---
 
