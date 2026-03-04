@@ -166,6 +166,7 @@ llm-review/
         ├── init-quiz-db.mjs            creates/migrates quiz.sqlite schema
         ├── record-review.mjs           inserts review row, updates Ebisu model, removes from session
         ├── introduce-word.mjs          initialises Ebisu models for a newly-taught word
+        ├── rescale-halflife.mjs        adjusts halflife for one facet without recording a review
         └── backfill-ebisu-models.mjs   one-time migration: replays reviews into ebisu_models
 ```
 
@@ -201,7 +202,18 @@ CREATE TABLE ebisu_models (
 );
 ```
 
-`ebisu_models` stores one Bayesian memory model (via [ebisu-js](https://github.com/fasiha/ebisu.js)) per (word, facet) pair. `get-quiz-context.mjs` calls `predictRecall` to rank items by urgency; `record-review.mjs` calls `updateRecall` after each quiz. Schema version is tracked via `PRAGMA user_version` (currently 1), set in `init-quiz-db.mjs`.
+`ebisu_models` stores one Bayesian memory model (via [ebisu-js](https://github.com/fasiha/ebisu.js)) per (word, facet) pair. `get-quiz-context.mjs` calls `predictRecall` to rank items by urgency; `record-review.mjs` calls `updateRecall` after each quiz. To manually correct a halflife (e.g. "this is clearly too easy, bump it to 200 h"), use `rescale-halflife.mjs --word-id ID --quiz-type FACET --halflife HOURS` — it calls `rescaleHalflife` without inserting a review row. Schema version is tracked via `PRAGMA user_version` (currently 1), set in `init-quiz-db.mjs`.
+
+`model_events` is a lightweight audit log for model-level operations that don't correspond to a quiz attempt. One row per (word, facet) per operation — so introducing a `{no-kanji}` word creates two rows (one per facet), and a `{kanji-ok}` word creates four:
+
+```
+event column format (CSV):
+  learned,<halflife>       -- facet initialised via introduce-word.mjs
+  rescaled,<old>,<new>     -- halflife adjusted via rescale-halflife.mjs
+  buried                   -- word removed from rotation (future)
+```
+
+All halflives are raw numbers in hours. This table is append-only; nothing reads it during normal quiz flow.
 
 ---
 

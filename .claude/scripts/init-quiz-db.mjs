@@ -37,6 +37,17 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS model_events (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT    NOT NULL,  -- ISO 8601 UTC
+    word_type TEXT    NOT NULL,
+    word_id   TEXT    NOT NULL,
+    quiz_type TEXT    NOT NULL,
+    event     TEXT    NOT NULL   -- CSV: 'learned,24' | 'rescaled,79.2,120' | 'buried'
+  )
+`);
+
 db.pragma(`user_version = ${SCHEMA_VERSION}`);
 
 db.close();

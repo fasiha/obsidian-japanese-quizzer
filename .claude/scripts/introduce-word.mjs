@@ -77,9 +77,13 @@ const db = openQuizDb();
 const stmt = db.prepare(
   "INSERT OR REPLACE INTO ebisu_models (word_type, word_id, quiz_type, alpha, beta, t, last_review) VALUES (?,?,?,?,?,?,?)",
 );
+const eventStmt = db.prepare(
+  "INSERT INTO model_events (timestamp, word_type, word_id, quiz_type, event) VALUES (?,?,?,?,?)",
+);
 
 for (const facet of facets) {
   stmt.run(wordType, wordId, facet, a, b, t, timestamp);
+  eventStmt.run(timestamp, wordType, wordId, facet, `learned,${halflife}`);
 }
 
 // Passive updates: nudge existing sibling models forward in time (score=0.5

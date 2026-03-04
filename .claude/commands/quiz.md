@@ -132,6 +132,17 @@ Default halflife 24 h; 48–72 h if the user already knows the word/angle well.
 
 **Mid-question pauses:** if the user asks for a mnemonic, etymology, or radical breakdown, engage fully. For kanji info call:
 
+**Halflife rescaling:** if the user says a word is clearly too easy or too hard, adjust its halflife with:
+
+```bash
+node .claude/scripts/rescale-halflife.mjs \
+  --word-id WORD_ID \
+  --quiz-type FACET \
+  --halflife TARGET_HOURS
+```
+
+This calls Ebisu's `rescaleHalflife` without inserting a review row. Use the current facet being quizzed. Typical values: 120–200 h for well-known words, 8–12 h for very unfamiliar ones.
+
 ```bash
 node .claude/scripts/get-kanji-info.mjs <kanji1> <kanji2> ...
 ```
