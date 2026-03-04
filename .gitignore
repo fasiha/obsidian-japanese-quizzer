@@ -10,3 +10,11 @@ quiz-context.txt
 jmdict-eng-*.json
 kanjidic2-*.json
 kradfile-*.json
+
+# Xcode
+AsteroidalDust/DerivedData/
+AsteroidalDust/*.xcodeproj/xcuserdata/
+AsteroidalDust/*.xcworkspace/xcuserdata/
+AsteroidalDust/AsteroidalDust.xcodeproj/xcuserdata/
+AsteroidalDust/AsteroidalDust.xcodeproj/project.xcworkspace/xcuserdata/
+AsteroidalDust/AsteroidalDust.xcodeproj/xcshareddata/xcschemes/

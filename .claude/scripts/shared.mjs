@@ -35,6 +35,7 @@ export const EBISU_ALPHA = 1.25;
  */
 export function openQuizDb(options = {}) {
   const db = new Database(QUIZ_DB, options);
+  if (!options.readonly) db.pragma("journal_mode = WAL");
   const currentVersion = db.pragma("user_version", { simple: true });
   if (currentVersion > SCHEMA_VERSION) {
     db.close();
