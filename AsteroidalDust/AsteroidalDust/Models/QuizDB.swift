@@ -189,8 +189,8 @@ final class QuizDB: Sendable {
 
     // MARK: - Reviews
 
-    func insert(review: inout Review) async throws {
-        try await pool.write { db in try review.insert(db) }
+    func insert(review: Review) async throws {
+        try await pool.write { db in var r = review; try r.insert(db) }
     }
 
     // MARK: - Ebisu models
@@ -247,8 +247,8 @@ final class QuizDB: Sendable {
 
     // MARK: - Model events
 
-    func log(event: inout ModelEvent) async throws {
-        try await pool.write { db in try event.insert(db) }
+    func log(event: ModelEvent) async throws {
+        try await pool.write { db in var e = event; try e.insert(db) }
     }
 
     // MARK: - Quiz session

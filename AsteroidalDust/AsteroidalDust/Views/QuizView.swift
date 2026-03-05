@@ -2,6 +2,7 @@
 // Basic quiz UI: generates questions via Claude, accepts user answers, shows grades.
 
 import SwiftUI
+import UIKit
 
 struct QuizView: View {
     @State var session: QuizSession
@@ -14,12 +15,8 @@ struct QuizView: View {
                     startButton
                 case .loadingItems, .generating:
                     loadingView
-                case .awaitingAnswer:
-                    answerView
-                case .grading:
-                    gradingView
-                case .showingResult:
-                    resultView
+                case .chatting:
+                    chattingView
                 case .noItems:
                     noItemsView
                 case .finished:
@@ -62,91 +59,87 @@ struct QuizView: View {
         .padding()
     }
 
-    // MARK: - Awaiting answer
+    // MARK: - Chatting (open conversation per quiz item)
 
-    private var answerView: some View {
+    private var chattingView: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
+                // Progress + facet badge
                 if let item = session.currentItem {
-                    Text(session.progress)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    facetBadge(item.facet)
+                    HStack {
+                        Text(session.progress)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        facetBadge(item.facet)
+                    }
                 }
 
-                // Question card
-                Text(session.currentQuestion)
-                    .font(.body)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                // Answer input
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Your answer")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    TextField("Type your answer…", text: $session.userAnswer, axis: .vertical)
-                        .textFieldStyle(.roundedBorder)
-                        .lineLimit(3...6)
-                        .submitLabel(.done)
+                // Chat thread
+                ForEach(Array(session.chatMessages.enumerated()), id: \.offset) { _, msg in
+                    HStack(alignment: .top) {
+                        if msg.isUser { Spacer(minLength: 40) }
+                        SelectableText(msg.text)
+                            .padding(10)
+                            .background(
+                                msg.isUser
+                                    ? Color.accentColor.opacity(0.15)
+                                    : Color(.secondarySystemBackground),
+                                in: RoundedRectangle(cornerRadius: 10)
+                            )
+                        if !msg.isUser { Spacer(minLength: 40) }
+                    }
                 }
 
-                Button("Submit") {
-                    session.submitAnswer()
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(session.userAnswer.trimmingCharacters(in: .whitespaces).isEmpty)
-                .frame(maxWidth: .infinity)
-            }
-            .padding()
-        }
-    }
-
-    // MARK: - Grading
-
-    private var gradingView: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("Grading…")
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-    }
-
-    // MARK: - Result
-
-    private var resultView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if let item = session.currentItem {
-                    Text(session.progress)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    facetBadge(item.facet)
+                // Score badge (appears after Claude grades)
+                if let score = session.gradedScore {
+                    HStack(spacing: 8) {
+                        scoreIndicator(score)
+                        Text(scoreLabel(score))
+                            .font(.headline)
+                    }
+                    .padding(.top, 4)
                 }
 
-                // Score display
-                HStack(spacing: 8) {
-                    scoreIndicator(session.currentScore)
-                    Text(scoreLabel(session.currentScore))
-                        .font(.headline)
+                // Input
+                HStack(alignment: .bottom, spacing: 8) {
+                    TextField(
+                        session.gradedScore == nil ? "Answer or ask anything…" : "Ask a follow-up…",
+                        text: $session.chatInput,
+                        axis: .vertical
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...6)
+                    .disabled(session.isSendingChat)
+
+                    if session.isSendingChat {
+                        ProgressView()
+                            .controlSize(.small)
+                            .padding(.bottom, 6)
+                    } else {
+                        Button {
+                            session.sendChatMessage()
+                        } label: {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.title2)
+                        }
+                        .disabled(session.chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .padding(.bottom, 2)
+                    }
                 }
 
-                // Grade explanation
-                Text(session.gradeExplanation)
-                    .font(.body)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                Button(session.currentIndex + 1 < session.items.count ? "Next Question →" : "Finish") {
-                    session.nextQuestion()
+                // Advance button: Skip (no grade yet) or Next Question (graded)
+                let isLast = session.currentIndex + 1 >= session.items.count
+                let isGraded = session.gradedScore != nil
+                if isGraded {
+                    Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Button("Skip →") { session.nextQuestion() }
+                        .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
             }
             .padding()
         }
@@ -226,5 +219,39 @@ struct QuizView: View {
         case 0.5...: return "Partial"
         default:     return "Incorrect"
         }
+    }
+}
+
+// MARK: - SelectableText
+
+/// Non-editable UITextView wrapper that supports long-press word selection and
+/// drag-handle range expansion inside a ScrollView — more reliable than
+/// SwiftUI Text + .textSelection(.enabled), which loses selection gestures to
+/// the scroll gesture recognizer.
+private struct SelectableText: UIViewRepresentable {
+    let text: String
+
+    init(_ text: String) { self.text = text }
+
+    func makeUIView(context: Context) -> UITextView {
+        let tv = UITextView()
+        tv.isEditable = false
+        tv.isSelectable = true
+        tv.isScrollEnabled = false   // parent ScrollView handles scrolling
+        tv.backgroundColor = .clear
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.font = UIFont.preferredFont(forTextStyle: .body)
+        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        return tv
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text { uiView.text = text }
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        let width = proposal.width ?? 390  // fallback; proposal.width is almost always set
+        return uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
     }
 }

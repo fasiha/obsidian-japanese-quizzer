@@ -4,7 +4,11 @@ A SwiftUI iOS app for family distribution via TestFlight. Inspired by the
 [home-cooked app](https://www.robinsloan.com/notes/home-cooked-app/) philosophy — small,
 personal, doesn't need to scale.
 
-**This is not just a port of the Claude Code skill.** The core design shift:
+**This is not just a port of the Claude Code skill — and it is not just another flashcard app.**
+
+The two things this app is trying to be:
+
+### 1. Shared corpus, individual learning paths
 
 - The Claude Code skill's vocab is *author-curated* — words the author personally doesn't
   know. It works for one reader but is too sparse for a family audience.
@@ -15,8 +19,29 @@ personal, doesn't need to scale.
   learner: `pending` (not yet decided), `enrolled` (actively learning via Ebisu),
   `known` (skipped — "I already know this"). Only `enrolled` words appear in quizzes.
 
-This makes the app a *shared corpus, individual learning paths* system rather than a
-personal vocabulary manager.
+### 2. Conversational learning with a frontier model
+
+The `/quiz` Claude Code skill had a quality that a normal flashcard app can't replicate:
+you could stop mid-question and ask "wait, how does this kanji relate to 怒る?" or "give
+me a mnemonic for this reading" or wander off into a question about a completely different
+word — and Claude would engage fully, then circle back and re-ask the original question.
+That *feel* of talking to someone who knows a lot and is genuinely trying to help you
+understand, not just drill you, is what this app is trying to preserve on iOS.
+
+The quiz conversation is therefore **open-ended by design**:
+- Each quiz item is a running chat, not a forced submit-then-grade two-step.
+- The student can answer, ask about the current word, or ask about any word in their
+  corpus — at any point before or after grading.
+- Claude grades organically when it detects a clear answer (`SCORE: X.X`), then keeps
+  chatting if the student has more questions.
+- Claude has access to `get_vocab_context` — the student's full enrolled word list with
+  recall probabilities — so when a tangent question is about another enrolled word, Claude
+  can situate the answer in what that person is actually learning and will see again.
+- Each quiz item starts with a clean context (no cross-item memory), but within an item
+  the conversation is unconstrained.
+
+This makes the app a *shared corpus, individual learning paths* system whose quiz
+experience aims to feel like a knowledgeable tutor rather than a flashcard deck.
 
 ---
 
@@ -137,17 +162,37 @@ pre-annotated ruby markup at publish time; the app renders it and checks spans a
 
 ### Claude integration
 
-**Principle: give the LLM only what it needs.** Send the minimum context required for
-the task — no more. This reduces token burn, latency, and hallucination risk (more
-irrelevant context = more surface for the model to go off-track). Concretely: send only
-the facet rule for the facet being quizzed, not a table of all facets; send only the
-candidate words for pre-selection, not the full corpus; etc.
+**Principle: give the LLM only what it needs, on demand.** The system prompt for each
+quiz item is minimal (word, facet rule, quiz purity rule). Broader context — the enrolled
+word list, dictionary entries — is available as tools that Claude calls when it actually
+needs them. This keeps the default token cost low while letting Claude reach for more when
+the conversation warrants it.
 
 - **Direct API calls** from the app — no edge worker proxy. Simpler; no server to maintain.
 - **API key**: stored in iOS Keychain. Distributed to family via setup deep link (see below).
 - **Model**: defaults to `claude-haiku-4-5-20251001` for dev (fast, cheap). Override via `ANTHROPIC_MODEL` env var in the Xcode scheme, or the future Settings screen. Switch to `claude-sonnet-4-6` for production TestFlight builds. Add a model picker to the Phase 2 Settings screen so it's runtime-configurable without a rebuild.
-- **Tool use for JMdict**: Claude is given a `lookup_jmdict` tool. When generating or validating questions, Claude can call it to get dictionary-accurate readings and meanings. App handles the tool call by querying local SQLite and returning the result.
-- **Two-call question validation** (from `TODO.md`): generate question (call 1), validate that answer form isn't leaked into the stem (call 2, fresh context). Both happen before the question is shown.
+- **Tools available during a quiz item** (`Claude/ToolHandler.swift`):
+  - `lookup_jmdict` — query local `jmdict.sqlite` for dictionary-accurate readings and
+    meanings. Claude calls this during question generation or when the student asks about
+    a word's readings/meanings.
+  - `get_vocab_context` — returns the student's full enrolled word list with recall
+    probabilities (same format as the pre-selection context lines). Claude calls this when
+    the student's message is about a different word they're studying, or when knowing
+    their broader learning context would help — e.g. "yes, that kanji also appears in
+    怒鳴る, which you'll see soon at recall 0.18."
+- **Quiz conversation model** (`Claude/QuizSession.swift`):
+  - Phase: `generating` → `chatting` (single open phase, no forced two-step).
+  - Claude generates the initial question (may call `lookup_jmdict`); shown as the first
+    chat bubble. Student sends any message — answer, question, tangent.
+  - Claude responds, calls tools as needed. When it detects a clear answer, it grades and
+    appends `SCORE: X.X` (0.0–1.0); the app parses this to record the Ebisu review.
+  - Conversation continues freely after grading. "Next Question →" appears; "Skip →" is
+    always available.
+  - Each item starts with a clean context (`conversation = []`). No cross-item memory.
+- **Two-call question validation** (Phase 2 TODO): generate question (call 1), then a
+  second call with fresh context checks whether the question leaks the answer form. Both
+  happen before the student sees the question. Currently skipped — the system prompt's
+  "CRITICAL: Never leak the answer form" instruction works well enough for MVP.
 
 ### Setup / distribution
 - **Setup deep link**: `japanquiz://setup?key=sk-ant-...&vocabUrl=https://...`
@@ -260,10 +305,13 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 
 - `start()` checks `sessionWordIds()`. If non-empty, restores item order (recall probabilities
   recalculated fresh from DB). If empty, runs LLM pre-selection then calls `saveSession(wordIds:)`.
-- `recordReview()` calls `removeFromSession(wordId:)` after each graded item.
+- `recordReview()` calls `removeFromSession(wordId:)` when grading is detected (`SCORE: X.X`).
+  Grading happens organically within the open chat — not at a forced submit step.
 - `nextQuestion()` calls `clearSession()` when the last item is done.
 - `refreshSession()`: clears session, resets state, calls `start()` — wired to "New Session"
   toolbar button in QuizView.
+- The in-memory conversation (`conversation: [AnthropicMessage]`) is reset per item; it is not
+  persisted. On resume, the session word order is restored but each item starts a fresh chat.
 
 ---
 
@@ -293,10 +341,15 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
   - Infers `hasKanji` from which facets exist in `ebisu_models` (no `vocab.json` needed for MVP)
   - Falls back to all words in `ebisu_models` when `vocab_enrollment` is empty (dev/migration mode)
   - Word text sourced from most recent `reviews.word_text` row per word
-- [x] Basic quiz UI — `Views/QuizView.swift`; phase state machine: idle → generating → awaitingAnswer → grading → showingResult → finished
+- [x] Quiz UI — `Views/QuizView.swift`; open chat model per item: `idle → generating → chatting → finished`
+  - Single `chattingView`: chat bubble thread, send input, score badge on grade, Skip/Next button
+  - All text in chat is selectable via `SelectableText` (UIViewRepresentable wrapping UITextView,
+    reliable long-press word selection + drag handles inside ScrollView)
 - [x] Record review (write to quiz.sqlite after each answer) — in `Claude/QuizSession.swift`
-  - Claude grades via `SCORE: X.X` line in response; review + Ebisu model both updated
-  - `QuizSession` is `@Observable @MainActor`; two-turn conversation per item (generate → grade)
+  - Claude grades organically within open chat; `SCORE: X.X` anywhere in response triggers record
+  - `QuizSession` is `@Observable @MainActor`; conversation grows within a single item, resets per item
+  - Two tools available during chat: `lookup_jmdict` + `get_vocab_context`
+  - `get_vocab_context` result pre-computed at handler creation time (snapshot of enrolled list)
 - [x] LLM pre-selection call — `QuizSession.selectItems(candidates:)` sends all enrolled words as
   context lines (one per word, JS-skill format) and asks Claude to pick 3–5 varied items; falls
   back to top-N by recall if LLM returns < 3 valid IDs or errors

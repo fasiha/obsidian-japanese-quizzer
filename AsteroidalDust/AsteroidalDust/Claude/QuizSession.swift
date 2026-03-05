@@ -1,8 +1,9 @@
 // QuizSession.swift
-// Observable session that orchestrates one quiz item at a time:
-//   1. generateQuestion → Claude produces a question (may call lookup_jmdict)
-//   2. submitAnswer    → Claude grades it, app records the review
-//   3. nextQuestion    → advance or finish
+// Observable session that orchestrates one quiz item at a time.
+// The conversation is open: the student can answer, ask tangent questions about
+// the current word, or ask about completely different words. Claude grades when
+// it detects a clear answer (SCORE: X.X) and can call get_vocab_context to
+// situate tangent answers in what the student is learning.
 
 import Foundation
 #if os(iOS)
@@ -17,10 +18,8 @@ final class QuizSession {
     enum Phase: Equatable {
         case idle
         case loadingItems
-        case generating
-        case awaitingAnswer
-        case grading
-        case showingResult
+        case generating        // Claude generating the initial question
+        case chatting          // open conversation: question live, student may answer or ask anything
         case noItems
         case finished
         case error(String)
@@ -32,15 +31,18 @@ final class QuizSession {
     var items: [QuizItem] = []
     var currentIndex: Int = 0
     var currentQuestion: String = ""
-    var gradeExplanation: String = ""
-    var currentScore: Double = 0
-    var userAnswer: String = ""
+
+    // Chat state (active during .chatting)
+    var chatMessages: [(isUser: Bool, text: String)] = []
+    var chatInput: String = ""
+    var isSendingChat: Bool = false
+    var gradedScore: Double? = nil   // nil until Claude grades in this item
 
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
     var isQuizActive: Bool {
         switch phase {
-        case .awaitingAnswer, .grading, .showingResult, .generating: return true
+        case .generating, .chatting: return true
         default: return false
         }
     }
@@ -52,6 +54,7 @@ final class QuizSession {
     private let toolHandler: ToolHandler
     private let db: QuizDB
     private var conversation: [AnthropicMessage] = []
+    private var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
 
     init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB) {
         self.client      = client
@@ -62,14 +65,18 @@ final class QuizSession {
     // MARK: - Public API
 
     func start() {
+        items = []
+        currentIndex = 0
         phase = .loadingItems
         Task { await loadItems() }
     }
 
-    func submitAnswer() {
-        let answer = userAnswer
-        userAnswer = ""
-        Task { await grade(answer: answer) }
+    func sendChatMessage() {
+        let text = chatInput.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !isSendingChat else { return }
+        chatInput = ""
+        isSendingChat = true
+        Task { await doChatTurn(text) }
     }
 
     func nextQuestion() {
@@ -83,14 +90,22 @@ final class QuizSession {
     }
 
     func refreshSession() {
-        Task { try? await db.clearSession() }
+        // Reset UI state synchronously so the view updates immediately.
         items = []
         currentIndex = 0
         conversation = []
         currentQuestion = ""
-        gradeExplanation = ""
-        userAnswer = ""
-        start()
+        chatMessages = []
+        chatInput = ""
+        isSendingChat = false
+        gradedScore = nil
+        phase = .loadingItems
+        // Clear the DB session first, then load — serialised to avoid a race where
+        // loadItems() calls sessionWordIds() before clearSession() has committed.
+        Task {
+            try? await db.clearSession()
+            await loadItems()
+        }
     }
 
     // MARK: - Private: load items
@@ -100,6 +115,7 @@ final class QuizSession {
         do {
             statusMessage = "Loading items…"
             let candidates = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict)
+            allCandidates = candidates
             print("[QuizSession] loadItems: \(candidates.count) candidate(s)")
             if candidates.isEmpty { phase = .noItems; return }
 
@@ -175,6 +191,10 @@ final class QuizSession {
         guard let item = currentItem else { phase = .finished; return }
         phase = .generating
         conversation = []
+        chatMessages = []
+        chatInput = ""
+        isSendingChat = false
+        gradedScore = nil
 
         print("[QuizSession] generating question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
@@ -191,49 +211,49 @@ final class QuizSession {
             )
             conversation = msgs
             currentQuestion = question
-            print("[QuizSession] question generated (\(question.count) chars), awaiting answer")
-            phase = .awaitingAnswer
+            chatMessages = [(isUser: false, text: question)]
+            print("[QuizSession] question generated (\(question.count) chars):\n\(question)")
+            phase = .chatting
         } catch {
             print("[QuizSession] generateQuestion error: \(error)")
             phase = .error(error.localizedDescription)
         }
     }
 
-    // MARK: - Private: grade answer
+    // MARK: - Private: open chat turn
 
-    private func grade(answer: String) async {
-        guard let item = currentItem else { return }
-        phase = .grading
-
-        print("[QuizSession] grading answer for \(item.wordText) facet:\(item.facet), answer='\(answer)'")
-
-        var msgs = conversation
-        msgs.append(AnthropicMessage(role: "user", content: [.text(gradeRequest(answer: answer, item: item))]))
-
+    private func doChatTurn(_ text: String) async {
+        guard let item = currentItem else { isSendingChat = false; return }
+        chatMessages.append((isUser: true, text: text))
+        conversation.append(AnthropicMessage(role: "user", content: [.text(text)]))
         do {
-            let (response, _) = try await client.send(
-                messages: msgs,
+            let (response, updatedMsgs) = try await client.send(
+                messages: conversation,
                 system: systemPrompt(for: item),
-                // No tools needed for grading — Claude already has JMdict info from generation turn.
-                maxTokens: 512
+                tools: [.lookupJmdict, .getVocabContext],
+                maxTokens: 1024,
+                toolHandler: makeToolHandler()
             )
-            let score = parseScore(from: response)
-            currentScore = score
-            gradeExplanation = response
-            print("[QuizSession] score=\(score) explanation='\(response.prefix(100))'")
-            try await recordReview(item: item, score: score, notes: extractNotes(from: response))
-            phase = .showingResult
+            conversation = updatedMsgs
+            chatMessages.append((isUser: false, text: response))
+            print("[QuizSession] chat response (\(response.count) chars):\n\(response)")
+            // Auto-detect grading: first SCORE: in this item records the review.
+            if gradedScore == nil, let score = parseScore(from: response) {
+                gradedScore = score
+                print("[QuizSession] graded: score=\(score)")
+                try? await recordReview(item: item, score: score, notes: extractNotes(from: response))
+            }
         } catch {
-            print("[QuizSession] grade error: \(error)")
-            phase = .error(error.localizedDescription)
+            chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }
+        isSendingChat = false
     }
 
     // MARK: - Private: record review
 
     private func recordReview(item: QuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
-        var review = Review(
+        let review = Review(
             reviewer: deviceName(),
             timestamp: now,
             wordType: item.wordType,
@@ -243,7 +263,7 @@ final class QuizSession {
             quizType: item.facet,
             notes: notes.isEmpty ? nil : notes
         )
-        try await db.insert(review: &review)
+        try await db.insert(review: review)
 
         // Update Ebisu model.
         let existing = try await db.ebisuRecord(
@@ -275,11 +295,11 @@ final class QuizSession {
 
         // Log model event.
         let now2 = ISO8601DateFormatter().string(from: Date())
-        var event = ModelEvent(
+        let event = ModelEvent(
             timestamp: now2, wordType: item.wordType, wordId: item.wordId,
             quizType: item.facet, event: "reviewed,\(String(format: "%.2f", score))"
         )
-        try await db.log(event: &event)
+        try await db.log(event: event)
         try await db.removeFromSession(wordId: item.wordId)
     }
 
@@ -287,34 +307,97 @@ final class QuizSession {
 
     private func makeToolHandler() -> AnthropicClient.ToolHandler {
         let th = toolHandler
+        let vocabContext = buildVocabContextResult()
         return { name, input in
-            try await th.handle(toolName: name, input: input)
+            if name == "get_vocab_context" { return vocabContext }
+            return try await th.handle(toolName: name, input: input)
         }
+    }
+
+    private func buildVocabContextResult() -> String {
+        guard !allCandidates.isEmpty else { return "No enrolled words found." }
+        let lines = allCandidates.map { QuizContext.contextLine(for: $0) }
+        return "Enrolled vocabulary (\(allCandidates.count) words, sorted by urgency — lowest recall first):\n"
+            + lines.joined(separator: "\n")
     }
 
     // MARK: - Private: prompt helpers
 
     private func systemPrompt(for item: QuizItem) -> String {
         let facetRule: String
+        let wordLine: String
+        let englishHint = item.meanings.prefix(3).isEmpty
+            ? ""
+            : " — English: \(item.meanings.prefix(3).joined(separator: "; "))"
+
         switch item.facet {
         case "reading-to-meaning":
-            facetRule = "Show kana ONLY (never kanji). Ask for English meaning."
+            facetRule = """
+            Show kana ONLY (never kanji). Ask for English meaning.
+            ❌ "What does 木陰 (こかげ) mean?"  ✅ "What does こかげ mean?"
+            """
+            wordLine = """
+            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
+            Call lookup_jmdict to get the kana reading, then show ONLY the kana in your question — \
+            never show kanji.
+            """
         case "meaning-to-reading":
-            facetRule = "Show English ONLY (never Japanese). Ask for kana reading."
+            facetRule = """
+            Show English ONLY (never any Japanese). Ask for kana reading.
+            ❌ "What is the reading of 木陰 (shade of a tree)?"  ✅ "Give the reading: shade of a tree; bower."
+            """
+            wordLine = """
+            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
+            Show ONLY the English meaning in your question — never show any Japanese characters.
+            """
         case "kanji-to-reading":
-            facetRule = "Show kanji ONLY (never kana). Ask for kana reading."
+            facetRule = """
+            Show kanji ONLY (never kana). Ask for kana reading.
+            ❌ "What is the reading of 木陰 (こかげ)?"  ✅ "What is the reading of 木陰?"
+            """
+            wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
         case "meaning-reading-to-kanji":
-            facetRule = "Show English + kana ONLY. Ask for kanji form via A/B/C/D options."
+            facetRule = """
+            Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
+            ❌ "怒鳴る (どなる) — to shout. Which is correct?"
+            ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
+            """
+            wordLine = """
+            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
+            Call lookup_jmdict to get kana. Show ONLY English + kana in your question — \
+            never show the kanji form (it is the answer).
+            """
         default:
             facetRule = "Follow standard quiz-purity rules for this facet."
+            wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
         }
         return """
-        Current word: \(item.wordText)  [JMDict id: \(item.wordId)]
-        Facet to quiz: \(item.facet) — \(facetRule)
+        You are quizzing a Japanese learner.
+        \(wordLine)
+        Facet: \(item.facet) — \(facetRule)
         CRITICAL: Never leak the answer form into the question stem.
+        Pre-question check: before outputting your question, silently verify — is the answer form \
+        (kanji / kana / meaning, depending on facet) visible anywhere in the question stem? \
+        If yes, rewrite the stem before showing it.
+        // TODO: spin this pre-question check into a separate Claude call with a fresh context window,
+        // so it can't be "poisoned" by seeing the answer form in the conversation history above.
         \(item.hasKanji ? "{kanji-ok} — all four facets apply" : "{no-kanji} — only reading-to-meaning and meaning-to-reading")
 
-        You may call lookup_jmdict to get accurate dictionary info.
+        This is an open conversation. The student may:
+        - Answer the quiz question → grade it and end your response with: SCORE: X.X
+        - Ask about the current word → answer, then wait for the quiz answer
+        - Ask about unrelated words or topics → answer freely; call get_vocab_context if knowing
+          their full learning context would help situate your answer
+        - Mix the above → address their question first, then re-ask or wait for the quiz answer
+
+        SCORE rules:
+        - Include SCORE: X.X (0.0–1.0) ONLY when grading a clear answer to the quiz question.
+        - Do NOT include SCORE: when answering tangent questions or if no answer was given yet.
+        - Once SCORE is given, keep chatting if the student has follow-up questions.
+
+        Tools available:
+        - lookup_jmdict: dictionary-accurate readings and meanings for any word
+        - get_vocab_context: the student's full enrolled word list with recall probabilities
         """
     }
 
@@ -322,7 +405,9 @@ final class QuizSession {
         let mode: String
         switch item.status {
         case .reviewed(_, let isFree):
-            mode = isFree ? "free answer" : "multiple choice (A–D)"
+            // meaning-reading-to-kanji is always multiple choice even when isFree — the kanji
+            // form must only ever appear as an answer option, never in a free-answer prompt.
+            mode = (isFree && item.facet != "meaning-reading-to-kanji") ? "free answer" : "multiple choice (A–D)"
         case .newFacet:
             mode = "multiple choice (A–D)"
         case .newWord:
@@ -336,29 +421,18 @@ final class QuizSession {
         return "Generate ONE \(mode) question for the \(item.facet) facet. Show only the question — no preamble."
     }
 
-    private func gradeRequest(answer: String, item: QuizItem) -> String {
-        """
-        My answer: \(answer)
-
-        Grade this answer for the \(item.facet) facet of \(item.wordText).
-        Briefly explain what was right or wrong (1–2 sentences).
-        End your response with exactly: SCORE: X.X  (where X.X is 0.0 to 1.0)
-        """
-    }
-
     // MARK: - Private: parsing
 
-    private func parseScore(from text: String) -> Double {
+    private func parseScore(from text: String) -> Double? {
         let pattern = #/SCORE:\s*([\d.]+)/#
         if let match = text.firstMatch(of: pattern),
            let score = Double(match.1) {
             return min(max(score, 0), 1)
         }
-        return 0.5   // neutral fallback
+        return nil
     }
 
     private func extractNotes(from text: String) -> String {
-        // Remove the SCORE line; use the remaining explanation as notes.
         let lines = text.components(separatedBy: .newlines)
             .filter { !$0.hasPrefix("SCORE:") }
             .map { $0.trimmingCharacters(in: .whitespaces) }
