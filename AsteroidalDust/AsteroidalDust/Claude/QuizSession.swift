@@ -54,7 +54,21 @@ final class QuizSession {
     private let toolHandler: ToolHandler
     private let db: QuizDB
     private var conversation: [AnthropicMessage] = []
-    private var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
+    var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
+
+    /// Human-readable ranked context (same format sent to LLM), for debug display.
+    var contextText: String {
+        guard !allCandidates.isEmpty else { return "No candidates loaded." }
+        return allCandidates.map { QuizContext.contextLine(for: $0) }.joined(separator: "\n")
+    }
+
+    /// Checkpoint the WAL and return the quiz DB file URL for sharing.
+    func checkpointAndDBURL() async -> URL? {
+        try? await db.checkpointWAL()
+        return try? FileManager.default.url(
+            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+            .appendingPathComponent("quiz.sqlite")
+    }
 
     init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB) {
         self.client      = client
@@ -281,10 +295,8 @@ final class QuizSession {
             lastReview = now
         }
 
-        let elapsed = max(
-            (ISO8601DateFormatter().date(from: lastReview).map { Date().timeIntervalSince($0) } ?? 0) / 3600,
-            1e-6
-        )
+        let referenceDate = parseISO8601(lastReview) ?? .distantPast
+        let elapsed = max(Date().timeIntervalSince(referenceDate) / 3600, 1e-6)
         let newModel = try updateRecall(oldModel, successes: score, total: 1, tnow: elapsed)
         let record = EbisuRecord(
             wordType: item.wordType, wordId: item.wordId, quizType: item.facet,

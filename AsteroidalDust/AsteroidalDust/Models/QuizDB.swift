@@ -280,6 +280,11 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// Checkpoint the WAL into the main DB file so the exported .sqlite is self-contained.
+    func checkpointWAL() async throws {
+        _ = try await pool.writeWithoutTransaction { db in try db.checkpoint(.full) }
+    }
+
     /// Delete the entire session (call when the quiz sitting is finished or discarded).
     func clearSession() async throws {
         try await pool.write { db in

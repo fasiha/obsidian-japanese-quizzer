@@ -6,6 +6,7 @@ import UIKit
 
 struct QuizView: View {
     @State var session: QuizSession
+    @State private var showDebug = false
 
     var body: some View {
         NavigationStack {
@@ -33,6 +34,14 @@ struct QuizView: View {
                         Button("New Session") { session.refreshSession() }
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { showDebug = true }) {
+                        Image(systemName: "ladybug")
+                    }
+                }
+            }
+            .sheet(isPresented: $showDebug) {
+                DebugSheet(session: session)
             }
         }
     }
@@ -220,6 +229,49 @@ struct QuizView: View {
         default:     return "Incorrect"
         }
     }
+}
+
+// MARK: - Debug sheet
+
+private struct DebugSheet: View {
+    let session: QuizSession
+    @State private var shareURL: URL? = nil
+    @State private var showShareSheet = false
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Quiz context (\(session.allCandidates.count) words, lowest recall first)") {
+                    Text(session.contextText)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+                Section("Export") {
+                    Button("Share quiz.sqlite via AirDrop / Files") { prepareShare() }
+                }
+            }
+            .navigationTitle("Debug")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = shareURL { ShareSheet(items: [url]) }
+        }
+    }
+
+    private func prepareShare() {
+        Task {
+            shareURL = await session.checkpointAndDBURL()
+            showShareSheet = shareURL != nil
+        }
+    }
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - SelectableText

@@ -24,7 +24,8 @@ struct QuizItem: Identifiable {
     let id = UUID()
     let wordType: String        // always "jmdict" for now
     let wordId: String
-    let wordText: String        // display text (kanji and/or kana), e.g. "包む, つつむ"
+    let wordText: String        // single primary form (first kanji, or kana if no kanji) — used in quiz prompts
+    let displayForms: String    // all non-irregular kanji + kana joined by ", " — used in context lines
     let hasKanji: Bool          // true → {kanji-ok}: all 4 facets available
     let facet: String           // the most-urgent facet to quiz
     let status: QuizStatus
@@ -64,13 +65,15 @@ struct QuizContext {
         var wordTexts    = try await db.wordTexts()
         let reviewCounts = try await db.reviewCounts()
 
-        // Fetch word text (for any missing from reviews) and meanings (for all items) from jmdict.
+        // Fetch word text, all forms, and meanings from jmdict.
         var wordMeanings: [String: [String]] = [:]
+        var wordForms: [String: String] = [:]    // all non-irregular forms joined by ", "
         if let jmdict {
             let allIds = Array(Set(records.map(\.wordId)))
             let fromJmdict = try await jmdictWordData(ids: allIds, jmdict: jmdict)
             for (id, entry) in fromJmdict {
                 if wordTexts[id] == nil { wordTexts[id] = entry.text }
+                wordForms[id]    = entry.forms
                 wordMeanings[id] = entry.meanings
             }
             print("[QuizContext] fetched jmdict data for \(fromJmdict.count)/\(allIds.count) word(s)")
@@ -95,7 +98,8 @@ struct QuizContext {
             let hasKanji = wordModels.contains { kanjiFacetSet.contains($0.quizType) }
             let facets = hasKanji ? kanjiOkFacets : noKanjiFacets
 
-            let wordText = wordTexts[wordId] ?? wordId
+            let wordText     = wordTexts[wordId] ?? wordId
+            let displayForms = wordForms[wordId] ?? wordText
 
             // Compute recall for each facet that has a model.
             var recallMap: [String: (recall: Double, halflife: Double)] = [:]
@@ -137,6 +141,7 @@ struct QuizContext {
 
             items.append(QuizItem(
                 wordType: wordType, wordId: wordId, wordText: wordText,
+                displayForms: displayForms,
                 hasKanji: hasKanji, facet: facet, status: status,
                 meanings: wordMeanings[wordId] ?? []))
         }
@@ -146,7 +151,8 @@ struct QuizContext {
     }
 
     private struct JmdictEntry {
-        let text: String        // first kanji form, or kana if no kanji
+        let text: String        // first kanji form, or kana if no kanji (for quiz prompts)
+        let forms: String       // all non-irregular kanji+kana joined by ", " (for context lines)
         let meanings: [String]  // English glosses from all senses
     }
 
@@ -163,7 +169,7 @@ struct QuizContext {
         case .newWord:
             facetPart = "[new]"
         }
-        return "\(item.wordId)  \(item.wordText)  \(kanjiTag)  \(meaningsStr)  \(facetPart)"
+        return "\(item.wordId)  \(item.displayForms)  \(kanjiTag)  \(meaningsStr)  \(facetPart)"
     }
 
     /// Look up canonical word text and English meanings from jmdict entries.
@@ -176,23 +182,42 @@ struct QuizContext {
                       let data = json.data(using: .utf8),
                       let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 else { continue }
-                let kanji = (raw["kanji"] as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }.first
-                let kana  = (raw["kana"]  as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }.first
-                guard let text = kanji ?? kana else { continue }
+                // Filter out irregular kanji (iK) and irregular kana (ik), matching summarizeWord() in shared.mjs.
+                let kanjiTexts = (raw["kanji"] as? [[String: Any]] ?? [])
+                    .filter { !(($0["tags"] as? [String] ?? []).contains("iK")) }
+                    .compactMap { $0["text"] as? String }
+                let kanaTexts  = (raw["kana"]  as? [[String: Any]] ?? [])
+                    .filter { !(($0["tags"] as? [String] ?? []).contains("ik")) }
+                    .compactMap { $0["text"] as? String }
+                guard let text = kanjiTexts.first ?? kanaTexts.first else { continue }
+                let forms = (kanjiTexts + kanaTexts).joined(separator: ", ")
                 let meanings = (raw["sense"] as? [[String: Any]] ?? []).flatMap { sense in
                     (sense["gloss"] as? [[String: Any]] ?? [])
                         .filter { ($0["lang"] as? String) == "eng" }
                         .compactMap { $0["text"] as? String }
                 }
-                result[id] = JmdictEntry(text: text, meanings: meanings)
+                result[id] = JmdictEntry(text: text, forms: forms, meanings: meanings)
             }
             return result
         }
     }
 
     private static func iso8601Date(_ s: String) -> Date {
-        ISO8601DateFormatter().date(from: s) ?? Date()
+        parseISO8601(s) ?? .distantPast
     }
+}
+
+// MARK: - ISO 8601 parsing
+
+/// Parse an ISO 8601 date, supporting both with and without fractional seconds.
+/// Node.js `new Date().toISOString()` includes milliseconds (e.g. "2026-03-04T12:34:56.789Z"),
+/// which iOS's default ISO8601DateFormatter cannot parse. Trying with .withFractionalSeconds
+/// handles those. Returns nil (not now!) on failure so callers can treat stale records as urgent.
+func parseISO8601(_ s: String) -> Date? {
+    let f = ISO8601DateFormatter()
+    if let d = f.date(from: s) { return d }
+    f.formatOptions.insert(.withFractionalSeconds)
+    return f.date(from: s)
 }
 
 // MARK: - QuizDB extensions for quiz context
