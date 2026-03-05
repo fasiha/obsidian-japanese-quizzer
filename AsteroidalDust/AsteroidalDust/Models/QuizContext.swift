@@ -156,7 +156,7 @@ struct QuizContext {
         return items   // caller (QuizSession.selectItems) decides how many to use
     }
 
-    private struct JmdictEntry {
+    struct JmdictEntry {
         let text: String            // first written form, or first kana if no written (for quiz prompts)
         let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
         let kanaTexts: [String]     // non-irregular kana-only forms
@@ -191,7 +191,7 @@ struct QuizContext {
     }
 
     /// Look up canonical word text and English meanings from jmdict entries.
-    private static func jmdictWordData(ids: [String], jmdict: any DatabaseReader) async throws -> [String: JmdictEntry] {
+    static func jmdictWordData(ids: [String], jmdict: any DatabaseReader) async throws -> [String: JmdictEntry] {
         try await jmdict.read { db in
             var result: [String: JmdictEntry] = [:]
             for id in ids {

@@ -343,15 +343,27 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 
 ## Phases / TODO
 
-### Phase 0 — Vocab browser (enrollment UX)
+### Phase 0 — Vocab browser (enrollment UX) ✓ complete
 *The first thing a new user does. Without this, there's nothing to quiz.*
 
-- [ ] Sync Markdown → parse vocab entries from `<details>` blocks
-- [ ] Vocab browser UI: stories list → word list per story, each showing word + reading + meaning + source sentence
-- [ ] Per-word triage: "I know this" (→ `known`) | "Learn this" (→ `enrolled`, triggers introduction) | dismiss/later (stays `pending`)
-- [ ] `vocab_enrollment` table + GRDB model
-- [ ] "Known words" review list (so users can un-skip words they change their mind about)
-- [ ] Onboarding: prompt new users to browse at least one story before quizzing
+- [x] Vocab sync: `Models/VocabSync.swift` downloads `vocab.json` from `vocabUrl` (UserDefaults,
+      set by setup deep link) or `VOCAB_URL` (Xcode env var, for dev). Caches to
+      `Documents/vocab.json`; "Re-download vocab" in the ··· debug menu forces a fresh fetch.
+- [x] Vocab browser UI: `Views/VocabBrowserView.swift` — filterable word list with filter picker
+      (Not yet learned / Learning / Learned / All, defaults to Not yet learned). Status badges on
+      each row. Swipe left for contextual actions:
+      - Not yet learned: "Learn" (green) | "Learned" (blue)
+      - Learning: "Learned" (blue) | "Undo" (orange → back to Not yet learned)
+      - Learned: "Learn" (green) | "Undo" (orange)
+- [x] `vocab_enrollment` table + GRDB model — already in v1 migration in `QuizDB.swift`
+- [x] Enrollment: `VocabCorpus.setStatus(.enrolled)` calls `QuizDB.introduceWord()` which writes
+      two Ebisu model rows (`reading-to-meaning`, `meaning-to-reading`) with `defaultModel(24h)`.
+      Idempotent — skips facets that already exist (handles words enrolled via Node.js quiz).
+- [x] Backward compatibility: words with `ebisu_models` rows but no `vocab_enrollment` row
+      (introduced via Node.js quiz) are shown as "Learning" in the browser automatically.
+- [x] Navigation: `Views/HomeView.swift` — `TabView` with Vocab (books icon) and Quiz tabs.
+- [ ] Onboarding prompt for new users (no enrolled words yet)
+- [ ] "Not yet learned" list shows all corpus words even after all are triaged — no "done" state
 
 ### Phase 1 — MVP (quiz works end to end)
 - [x] Xcode project setup (SwiftUI, iOS 17+, bundle ID) — project is `AsteroidalDust/`
@@ -382,8 +394,11 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [x] Session persistence — `quiz_session` table (migration "v2"); resumes on relaunch; cleared
   item-by-item as each answer is graded; `refreshSession()` + "New Session" toolbar button
 - [ ] Setup deep link handler (Keychain + UserDefaults) — `App/SetupHandler.swift`
-  - For dev: set `ANTHROPIC_API_KEY` in Xcode scheme's Run → Environment Variables
-- [ ] Vocab sync: fetch Markdown from hosted URL on app launch
+  - For dev: set `ANTHROPIC_API_KEY` and `VOCAB_URL` in Xcode scheme's Run → Environment Variables
+  - `VOCAB_URL` = full raw Gist URL printed by `publish.mjs` on success
+    (e.g. `https://gist.githubusercontent.com/<user>/<gist_id>/raw/vocab.json`)
+- [x] Vocab sync + corpus — `Models/VocabSync.swift` + `Models/VocabCorpus.swift`
+      (moved to Phase 0; listed here because it was originally a Phase 1 TODO)
 
 ### Maybe someday
 - [ ] Bake variety rules into Swift (instead of LLM pre-selection): algorithmic pass over urgency-sorted items — cap at 2 items per facet type, at most 1–2 new words, ensure at least 2 different facets if available. Zero latency, zero tokens. Revisit if LLM pre-selection proves too slow/costly.
@@ -425,16 +440,16 @@ AsteroidalDust/                          ← Xcode project root (already created
       QuizDB.swift                       ✓ GRDB setup, migrations (incl. vocab_enrollment)
       EbisuModel.swift                   ✓ predictRecall / updateRecall (635 tests)
       QuizContext.swift                  ✓ get-quiz-context logic (enrolled words only)
-      VocabCorpus.swift                  ← parse vocab from JSON; enrollment state (TODO)
-      VocabSync.swift                    ← fetch vocab.json from hosted URL (TODO)
+      VocabCorpus.swift                  ✓ corpus state: manifest → JMdict-enriched items → enrollment
+      VocabSync.swift                    ✓ URL resolution (UserDefaults / VOCAB_URL env) + cache
     Claude/
       AnthropicClient.swift              ✓ URLSession wrapper, tool-use loop
       ToolHandler.swift                  ✓ lookup_jmdict tool use (DatabaseQueue, readonly)
       QuizSession.swift                  ✓ session orchestration, grading, Ebisu update
     Views/
-      HomeView.swift                     ← (TODO)
-      VocabBrowserView.swift             ← story list → word list → triage (TODO)
-      EnrollmentCardView.swift           ← per-word: know / learn / later (TODO)
+      HomeView.swift                     ✓ TabView root: Vocab + Quiz tabs
+      VocabBrowserView.swift             ✓ filterable word list, swipe triage, debug re-download
+      EnrollmentCardView.swift           ← (future: dedicated per-word card view)
       QuizView.swift                     ✓ basic quiz UI (phase state machine)
       AnswerView.swift                   ← (TODO — currently inline in QuizView)
       SettingsView.swift                 ← (TODO)

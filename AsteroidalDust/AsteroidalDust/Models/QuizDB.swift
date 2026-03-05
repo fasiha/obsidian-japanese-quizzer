@@ -280,6 +280,72 @@ final class QuizDB: Sendable {
         }
     }
 
+    // MARK: - Word introduction (enrollment → Ebisu bootstrap)
+
+    /// Create default Ebisu models for a newly enrolled word.
+    ///
+    /// Facets created:
+    /// - `hasKanji = false`: reading-to-meaning, meaning-to-reading
+    /// - `hasKanji = true`: + kanji-to-reading, meaning-reading-to-kanji
+    ///
+    /// Skips any facet that already has an Ebisu model (idempotent).
+    /// Also logs a `ModelEvent` with event "learned,\(halflife)" for each new facet.
+    func introduceWord(
+        wordType: String,
+        wordId: String,
+        wordText: String,
+        hasKanji: Bool,
+        halflife: Double = 24
+    ) async throws {
+        let facets: [String] = hasKanji
+            ? ["kanji-to-reading", "reading-to-meaning", "meaning-to-reading", "meaning-reading-to-kanji"]
+            : ["reading-to-meaning", "meaning-to-reading"]
+        let now = ISO8601DateFormatter().string(from: Date())
+        let model = defaultModel(halflife: halflife)
+        try await pool.write { db in
+            for facet in facets {
+                let existing = try EbisuRecord
+                    .filter(Column("word_type") == wordType)
+                    .filter(Column("word_id") == wordId)
+                    .filter(Column("quiz_type") == facet)
+                    .fetchOne(db)
+                guard existing == nil else { continue }
+                let record = EbisuRecord(
+                    wordType: wordType, wordId: wordId, quizType: facet,
+                    alpha: model.alpha, beta: model.beta, t: model.t, lastReview: now)
+                try record.save(db)
+                var event = ModelEvent(
+                    timestamp: now, wordType: wordType, wordId: wordId,
+                    quizType: facet, event: "learned,\(halflife)")
+                try event.insert(db)
+            }
+        }
+        print("[QuizDB] introduced \(wordText) (\(wordId)) with \(facets.count) facet(s)")
+    }
+
+    // MARK: - Enrollment queries
+
+    /// All enrollment rows as a [wordId: status] dict. Words not in vocab_enrollment are pending.
+    func allEnrollments() async throws -> [String: EnrollmentStatus] {
+        try await pool.read { db in
+            let rows = try VocabEnrollment.fetchAll(db)
+            return Dictionary(rows.map { ($0.wordId, $0.status) }, uniquingKeysWith: { first, _ in first })
+        }
+    }
+
+    /// Word IDs that have at least one Ebisu model row (jmdict words only).
+    /// Used to infer enrolled status for words introduced via the Node.js quiz
+    /// that predate the iOS vocab_enrollment table.
+    func wordIdsWithEbisuModels() async throws -> Set<String> {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db,
+                sql: "SELECT DISTINCT word_id FROM ebisu_models WHERE word_type = 'jmdict'")
+            return Set(rows.compactMap { $0["word_id"] as? String })
+        }
+    }
+
+    // MARK: - WAL management
+
     /// Checkpoint the WAL into the main DB file so the exported .sqlite is self-contained.
     func checkpointWAL() async throws {
         _ = try await pool.writeWithoutTransaction { db in try db.checkpoint(.full) }
