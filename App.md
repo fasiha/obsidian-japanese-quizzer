@@ -180,6 +180,24 @@ the conversation warrants it.
     the student's message is about a different word they're studying, or when knowing
     their broader learning context would help — e.g. "yes, that kanji also appears in
     怒鳴る, which you'll see soon at recall 0.18."
+- **Ebisu state for the current quiz item**: Claude should be able to answer "how well do I
+  know this word?" or "is this word well-established?" without an extra tool call. Three
+  options were considered:
+  1. *Add halflife to every context line* — doubles numeric density in the 50-item vocab list
+     that Claude already gets via `get_vocab_context`; confuses weaker models with numbers they
+     don't need for most questions.
+  2. *Standalone on-demand tool `get_flashcard_strength(word_type, word_id, facet)`* — lazy,
+     but requires Claude to know to reach for it, adds a round-trip, and the question is common
+     enough that it shouldn't need a tool call.
+  3. *Add recall + halflife to the current item's system prompt* — targeted, zero extra tokens in
+     the vocab list, always available for the one word that's actually being discussed.
+  **Decision: option 3.** `systemPrompt(for:item)` should include a line like
+  `Current memory state: recall=0.73, halflife=96h` for the word currently being quizzed.
+  Requires `halflife` on `QuizItem` (add to `QuizStatus.reviewed`; it's already computed in
+  `QuizContext.build()` at `recallMap[quizType] = (recall, record.t)` but not propagated).
+  Implemented: `QuizStatus.reviewed` now carries `halflife`; `systemPrompt(for:item)` emits
+  `Current memory state: recall=X.XX, halflife=Xh` for reviewed words.
+
 - **Quiz conversation model** (`Claude/QuizSession.swift`):
   - Phase: `generating` → `chatting` (single open phase, no forced two-step).
   - Claude generates the initial question (may call `lookup_jmdict`); shown as the first

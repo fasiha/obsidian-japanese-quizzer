@@ -36,7 +36,10 @@ final class QuizSession {
     var chatMessages: [(isUser: Bool, text: String)] = []
     var chatInput: String = ""
     var isSendingChat: Bool = false
-    var gradedScore: Double? = nil   // nil until Claude grades in this item
+    var gradedScore: Double? = nil     // nil until Claude grades in this item
+    var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
+    var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
+    var gradedHalflife: Double? = nil  // updated halflife after recordReview; nil until graded
 
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
@@ -209,10 +212,18 @@ final class QuizSession {
         chatInput = ""
         isSendingChat = false
         gradedScore = nil
+        gradedHalflife = nil
+        if case .reviewed(let recall, _, let halflife) = item.status {
+            preQuizRecall   = recall
+            preQuizHalflife = halflife
+        } else {
+            preQuizRecall   = nil
+            preQuizHalflife = nil
+        }
 
         print("[QuizSession] generating question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
-        let system = systemPrompt(for: item)
+        let system = systemPrompt(for: item, isGenerating: true)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
@@ -298,6 +309,7 @@ final class QuizSession {
         let referenceDate = parseISO8601(lastReview) ?? .distantPast
         let elapsed = max(Date().timeIntervalSince(referenceDate) / 3600, 1e-6)
         let newModel = try updateRecall(oldModel, successes: score, total: 1, tnow: elapsed)
+        gradedHalflife = newModel.t
         let record = EbisuRecord(
             wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
             alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
@@ -335,7 +347,7 @@ final class QuizSession {
 
     // MARK: - Private: prompt helpers
 
-    private func systemPrompt(for item: QuizItem) -> String {
+    private func systemPrompt(for item: QuizItem, isGenerating: Bool = false) -> String {
         let facetRule: String
         let wordLine: String
         let englishHint = item.meanings.prefix(3).isEmpty
@@ -397,10 +409,21 @@ final class QuizSession {
             facetRule = "Follow standard quiz-purity rules for this facet."
             wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
         }
+        let ebisuLine: String
+        if let preRecall = preQuizRecall, let preHl = preQuizHalflife {
+            if let postHl = gradedHalflife {
+                ebisuLine = "Memory state: recall=\(String(format: "%.2f", preRecall)), halflife=\(String(format: "%.0f", preHl))h → halflife updated to \(String(format: "%.0f", postHl))h after this review"
+            } else {
+                ebisuLine = "Memory state before this review: recall=\(String(format: "%.2f", preRecall)), halflife=\(String(format: "%.0f", preHl))h"
+            }
+        } else {
+            ebisuLine = "Memory state: new word (no review history yet)"
+        }
         let universe = vocabUniverse(excluding: item.wordId)
-        return """
+        let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
+        \(ebisuLine)
         Facet: \(item.facet) — \(facetRule)
         CRITICAL: Never leak the answer form into the question stem.
         Pre-question check: before outputting your question, silently verify — is the answer form \
@@ -411,6 +434,15 @@ final class QuizSession {
         \(item.hasKanji ? "{kanji-ok} — all four facets apply" : "{no-kanji} — only reading-to-meaning and meaning-to-reading")
 
         \(universe)
+        """
+        if isGenerating {
+            return sharedCore + """
+
+        Tools available:
+        - lookup_jmdict: dictionary-accurate readings and meanings for any word
+        """
+        } else {
+            return sharedCore + """
 
         This is an open conversation. The student may:
         - Answer the quiz question → grade it and end your response with: SCORE: X.X
@@ -428,6 +460,7 @@ final class QuizSession {
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
         - get_vocab_context: the student's full enrolled word list with recall probabilities
         """
+        }
     }
 
     /// Compact vocab universe for distractor selection: display text + first meaning,
@@ -445,7 +478,7 @@ final class QuizSession {
     private func questionRequest(for item: QuizItem) -> String {
         let mode: String
         switch item.status {
-        case .reviewed(_, let isFree):
+        case .reviewed(_, let isFree, _):
             // meaning-reading-to-kanji is always multiple choice even when isFree — the kanji
             // form must only ever appear as an answer option, never in a free-answer prompt.
             mode = (isFree && item.facet != "meaning-reading-to-kanji") ? "free answer" : "multiple choice (A–D)"

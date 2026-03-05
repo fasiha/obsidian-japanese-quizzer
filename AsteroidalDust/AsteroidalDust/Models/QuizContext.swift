@@ -13,7 +13,7 @@ import Foundation
 /// The status and urgency of one word+facet pair for a quiz session.
 enum QuizStatus: Equatable {
     /// Word has an Ebisu model for this facet. recall ∈ [0,1]; isFree = qualifies for free answer.
-    case reviewed(recall: Double, isFree: Bool)
+    case reviewed(recall: Double, isFree: Bool, halflife: Double)
     /// Word has Ebisu models for other facets but not this one (e.g. [kanji] tag added later).
     case newFacet(sortRecall: Double)
     /// Word has no Ebisu models at all — full teaching approach.
@@ -35,7 +35,7 @@ struct QuizItem: Identifiable {
     /// Sort key: reviewed/newFacet by recall ascending, newWord at the end.
     var sortKey: Double {
         switch status {
-        case .reviewed(let recall, _): return recall
+        case .reviewed(let recall, _, _): return recall
         case .newFacet(let r):         return r
         case .newWord:                 return Double.infinity
         }
@@ -104,7 +104,7 @@ struct QuizContext {
             let facets = hasKanji ? kanjiOkFacets : noKanjiFacets
 
             let wordText     = wordTexts[wordId] ?? wordId
-            let displayForms = wordForms[wordId] ?? wordText
+            let _ = wordForms[wordId] ?? wordText
 
             // Compute recall for each facet that has a model.
             var recallMap: [String: (recall: Double, halflife: Double)] = [:]
@@ -141,7 +141,7 @@ struct QuizContext {
                 let (recall, halflife) = recallMap[facet]!
                 let reviewCount = reviewCounts["\(wordId)\0\(facet)"] ?? 0
                 let isFree = reviewCount >= freeAnswerMinReviews && halflife >= freeAnswerMinHalflife
-                status = .reviewed(recall: recall, isFree: isFree)
+                status = .reviewed(recall: recall, isFree: isFree, halflife: halflife)
             }
 
             items.append(QuizItem(
@@ -180,7 +180,7 @@ struct QuizContext {
         let meaningsStr = item.meanings.prefix(3).joined(separator: "; ")
         let facetPart: String
         switch item.status {
-        case .reviewed(let recall, let isFree):
+        case .reviewed(let recall, let isFree, _):
             facetPart = "→\(item.facet)@\(String(format: "%.2f", recall))" + (isFree ? " free" : "")
         case .newFacet:
             facetPart = "→\(item.facet)@new"
