@@ -228,7 +228,7 @@ the conversation warrants it.
 
 ### Publishing pipeline (Obsidian → hosted)
 
-Publish step runs locally (`node publish.mjs`, to be written) and produces **two outputs
+Publish step runs locally (`node prepare-publish.mjs && node publish.mjs <gist-id>`) and produces **two outputs
 per story**, served from the same host:
 
 ```
@@ -241,16 +241,16 @@ stories/
 
 **`vocab.json`** — extracted from `<details><summary>Vocab</summary>` blocks:
 ```json
-[{
-  "id": "1234567",
-  "forms": ["怒鳴る", "どなる"],
-  "ruby": "<ruby>怒<rt>ど</rt></ruby><ruby>鳴<rt>な</rt></ruby>る",
-  "hasKanji": true,
-  "meanings": ["to shout at; to yell at"],
-  "sourceSentence": "彼は怒鳴った"
-}]
+{
+  "generatedAt": "2026-03-04T00:00:00Z",
+  "stories": [{ "title": "分章読解3" }],
+  "words": [{ "id": "1234567", "sources": ["分章読解3"] }]
+}
 ```
-Used by: vocab browser, enrollment, quiz context. Rendered with pure SwiftUI.
+`forms`, `meanings`, and `hasKanji` are intentionally omitted — all derivable from the
+bundled `jmdict.sqlite` or left to per-user enrollment triage. The only publish-time
+data that can't be derived is which JMDict IDs are in the corpus and which stories they
+come from. Used by: vocab browser, enrollment. Rendered with pure SwiftUI.
 
 **`story.html`** — full Markdown converted to HTML (pandoc or Node.js `marked`):
 - Raw HTML tags (`<ruby>`, `<details>`) passed through unchanged
@@ -264,12 +264,14 @@ Used by: vocab browser, enrollment, quiz context. Rendered with pure SwiftUI.
 system prompt context — it's compact and Claude handles it well.
 
 Pipeline steps:
-1. Find Markdown files with `llm-review: true`
-2. Run `check-vocab.mjs` — block on failures
-3. Annotate vocab with JmdictFurigana ruby spans
-4. Extract `vocab.json` from `<details>` blocks
-5. Convert Markdown → `story.html` with vocab span injection; copy/upload images
-6. Upload both outputs to host
+1. Find Markdown files with `llm-review: true` **and** `title:` in frontmatter — block if any `title` is missing ✓
+2. Run check-vocab validation (inline in `prepare-publish.mjs`) — block on failures ✓
+3. Extract `vocab.json` from `<details>` blocks → write to project root ✓ (`prepare-publish.mjs`)
+4. Push `vocab.json` to GitHub secret Gist via `git` over SSH ✓ (`publish.mjs`)
+5. Annotate vocab with JmdictFurigana ruby spans (Phase 2+)
+6. Convert Markdown → `story.html` with vocab span injection; copy/upload images (Phase 2+)
+
+**Still needed before first run**: add `title:` to the YAML frontmatter of each enrolled Markdown file.
 
 Vocab in the published files is *comprehensive* (all words a learner might not know),
 not just the author's personal unknowns — this is the authoring job of the
@@ -395,7 +397,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [ ] Halflife rescaling UI ("too easy" / "too hard" buttons)
 - [ ] Session summary screen
 - [ ] Mnemonic and etymology sidebars during quiz
-- [ ] Publish pipeline script (`publish.mjs`)
+- [x] Publish pipeline scripts (`prepare-publish.mjs` + `publish.mjs`) — vocab.json to Gist via SSH git push
 - [ ] Settings screen (API key, vocab URL, reviewer name, model picker)
 
 ### Phase 3 — Future
