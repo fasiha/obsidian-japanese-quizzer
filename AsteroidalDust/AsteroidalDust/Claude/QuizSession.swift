@@ -341,6 +341,10 @@ final class QuizSession {
         let englishHint = item.meanings.prefix(3).isEmpty
             ? ""
             : " — English: \(item.meanings.prefix(3).joined(separator: "; "))"
+        let readingsHint = item.kanaTexts.isEmpty
+            ? "" : " — kana reading(s): \(item.kanaTexts.joined(separator: ", "))"
+        let writtenHint = item.writtenTexts.isEmpty
+            ? "" : " — written form(s): \(item.writtenTexts.joined(separator: ", "))"
 
         switch item.facet {
         case "reading-to-meaning":
@@ -348,10 +352,11 @@ final class QuizSession {
             Show kana ONLY (never kanji). Ask for English meaning.
             ❌ "What does 木陰 (こかげ) mean?"  ✅ "What does こかげ mean?"
             """
+            let kana = item.kanaTexts.first ?? "unknown"
             wordLine = """
-            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-            Call lookup_jmdict to get the kana reading, then show ONLY the kana in your question — \
-            never show kanji.
+            Word to quiz: kana reading is \(kana)\(englishHint). \
+            Show ONLY \(kana) in your question — never show any written/kanji form. \
+            Call lookup_jmdict if you need full dictionary details for distractors or context.
             """
         case "meaning-to-reading":
             facetRule = """
@@ -359,30 +364,40 @@ final class QuizSession {
             ❌ "What is the reading of 木陰 (shade of a tree)?"  ✅ "Give the reading: shade of a tree; bower."
             """
             wordLine = """
-            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-            Show ONLY the English meaning in your question — never show any Japanese characters.
+            Word to quiz: JMDict id \(item.wordId)\(englishHint)\(readingsHint). \
+            The correct answer MUST be one of the listed kana reading(s). \
+            Show ONLY the English meaning in your question stem — never show any Japanese characters. \
+            Call lookup_jmdict if you need full dictionary details for distractors or context.
             """
         case "kanji-to-reading":
             facetRule = """
             Show kanji ONLY (never kana). Ask for kana reading.
             ❌ "What is the reading of 木陰 (こかげ)?"  ✅ "What is the reading of 木陰?"
             """
-            wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
+            wordLine = """
+            Word to quiz: written form is \(item.wordText)\(readingsHint). \
+            Show ONLY \(item.wordText) in your question — never show kana. \
+            The correct answer MUST be one of the listed kana reading(s). \
+            Call lookup_jmdict if you need full dictionary details for distractors or context.
+            """
         case "meaning-reading-to-kanji":
             facetRule = """
             Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
             ❌ "怒鳴る (どなる) — to shout. Which is correct?"
             ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
             """
+            let kana = item.kanaTexts.first ?? "unknown"
             wordLine = """
             Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-            Call lookup_jmdict to get kana. Show ONLY English + kana in your question — \
-            never show the kanji form (it is the answer).
+            Kana reading to show in question stem: \(kana). \
+            Correct written/kanji form (show ONLY as an answer option, NEVER in the stem)\(writtenHint). \
+            Call lookup_jmdict to generate plausible wrong written-form distractors.
             """
         default:
             facetRule = "Follow standard quiz-purity rules for this facet."
             wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
         }
+        let universe = vocabUniverse(excluding: item.wordId)
         return """
         You are quizzing a Japanese learner.
         \(wordLine)
@@ -394,6 +409,8 @@ final class QuizSession {
         // TODO: spin this pre-question check into a separate Claude call with a fresh context window,
         // so it can't be "poisoned" by seeing the answer form in the conversation history above.
         \(item.hasKanji ? "{kanji-ok} — all four facets apply" : "{no-kanji} — only reading-to-meaning and meaning-to-reading")
+
+        \(universe)
 
         This is an open conversation. The student may:
         - Answer the quiz question → grade it and end your response with: SCORE: X.X
@@ -411,6 +428,18 @@ final class QuizSession {
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
         - get_vocab_context: the student's full enrolled word list with recall probabilities
         """
+    }
+
+    /// Compact vocab universe for distractor selection: display text + first meaning,
+    /// excluding the word currently being quizzed to avoid confusion.
+    private func vocabUniverse(excluding wordId: String) -> String {
+        let others = allCandidates.filter { $0.wordId != wordId }
+        guard !others.isEmpty else { return "" }
+        let entries = others.map { item -> String in
+            let meaning = item.meanings.first ?? ""
+            return meaning.isEmpty ? item.wordText : "\(item.wordText) — \(meaning)"
+        }.joined(separator: "; ")
+        return "Vocabulary universe (prefer these as distractors — call lookup_jmdict for readings/details): \(entries)"
     }
 
     private func questionRequest(for item: QuizItem) -> String {

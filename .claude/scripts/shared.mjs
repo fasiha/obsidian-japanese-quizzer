@@ -112,6 +112,37 @@ export function extractVocabBullets(content) {
   return bullets;
 }
 
+// Return the forms portion of a context line in "written:X,Y  reading:A,B" format
+// (or just "reading:A,B" for kana-only words). Irregular forms (iK/ik) are omitted.
+// "written:" = JMDict orthographic (kanji/mixed) forms; "reading:" = kana-only forms.
+// Using "written:" avoids confusion with the quiz-policy tags {kanji-ok}/{no-kanji}.
+// This is the Layer-1 structured format used in quiz-context.txt and Swift contextLine().
+export function wordFormsPart(word) {
+  const writtenTexts = word.kanji
+    .filter((k) => !k.tags.includes("iK"))
+    .map((k) => k.text);
+  const kanaTexts = word.kana
+    .filter((k) => !k.tags.includes("ik"))
+    .map((k) => k.text);
+  if (writtenTexts.length > 0) {
+    return `written:${writtenTexts.join(",")}  reading:${kanaTexts.join(",")}`;
+  }
+  return `reading:${kanaTexts.join(",")}`;
+}
+
+// Return English meanings joined by " / " (one entry per sense).
+export function wordMeanings(word) {
+  return word.sense
+    .map((s) =>
+      s.gloss
+        .filter((g) => g.lang === "eng")
+        .map((g) => g.text)
+        .join("; "),
+    )
+    .filter(Boolean)
+    .join(" / ");
+}
+
 // Produce a compact one-line summary of a JMDict Word entry.
 // Format: "kanji, kana meaning1; meaning2 / sense2meaning1 (#id)"
 // Irregular kanji (iK) and irregular kana (ik) forms are omitted from the display.

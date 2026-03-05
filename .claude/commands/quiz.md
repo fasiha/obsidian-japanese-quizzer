@@ -26,12 +26,15 @@ node .claude/scripts/get-quiz-context.mjs
 This writes `.claude/quiz-context.txt`. Lines are sorted by urgency — lowest Ebisu recall probability first, `[new]` words (no model yet) at the end. Each line:
 
 ```
-<jmdictId>  <forms>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall>
-<jmdictId>  <forms>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall> free
-<jmdictId>  <forms>  {kanji-ok|no-kanji}  <meanings>  →<facet>@new
-<jmdictId>  <forms>  {no-kanji}  <meanings>  [new]
+<jmdictId>  written:<k1>,<k2>  reading:<r1>,<r2>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall>
+<jmdictId>  reading:<r1>,<r2>  {no-kanji}  <meanings>  →<facet>@<recall> free
+<jmdictId>  written:<k1>  reading:<r1>,<r2>  {kanji-ok|no-kanji}  <meanings>  →<facet>@new
+<jmdictId>  reading:<r1>  {no-kanji}  <meanings>  [new]
 ```
 
+- `written:` — orthographic (kanji/mixed) forms from JMDict; omitted entirely for kana-only words.
+- `reading:` — kana-only forms; always present.
+- `{kanji-ok}` / `{no-kanji}` — quiz policy: whether the user has committed to learning this word's kanji. Independent of whether `written:` forms exist.
 - `→<facet>@<recall>` — the single most-urgent facet for this word and its current recall probability (0–1). Lower = more forgotten. Use **multiple choice**.
 - `→<facet>@<recall> free` — same, but this facet qualifies for **free answer** (script has verified ≥3 reviews AND model halflife ≥48 h).
 - `→<facet>@new` — word has Ebisu models for other facets, but this specific facet has never been initialized (e.g. `[kanji]` tag added after introduction). Sorted at the word's lowest existing recall. Use **multiple choice**.

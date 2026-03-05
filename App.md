@@ -193,6 +193,12 @@ the conversation warrants it.
   second call with fresh context checks whether the question leaks the answer form. Both
   happen before the student sees the question. Currently skipped — the system prompt's
   "CRITICAL: Never leak the answer form" instruction works well enough for MVP.
+- **`{kanji-ok}` / `{no-kanji}` label clarity** (TODO): these tags currently reflect
+  whether the user has added a `[kanji]` marker to the vocab bullet, meaning they've
+  committed to learning to read/write that word's kanji. The quiz context line and system
+  prompt could make this intent more explicit (e.g. `{committed-to-kanji}` /
+  `{reading-only}`) to reduce potential model confusion with the separate `written:` vs
+  `reading:` form labels in the context line.
 
 ### Setup / distribution
 - **Setup deep link**: `japanquiz://setup?key=sk-ant-...&vocabUrl=https://...`

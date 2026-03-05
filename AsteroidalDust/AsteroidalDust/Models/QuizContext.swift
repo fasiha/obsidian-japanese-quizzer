@@ -24,8 +24,9 @@ struct QuizItem: Identifiable {
     let id = UUID()
     let wordType: String        // always "jmdict" for now
     let wordId: String
-    let wordText: String        // single primary form (first kanji, or kana if no kanji) — used in quiz prompts
-    let displayForms: String    // all non-irregular kanji + kana joined by ", " — used in context lines
+    let wordText: String        // single primary form (first written, or first kana if no written) — used in quiz prompts
+    let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms — empty for kana-only words
+    let kanaTexts: [String]     // non-irregular kana-only forms
     let hasKanji: Bool          // true → {kanji-ok}: all 4 facets available
     let facet: String           // the most-urgent facet to quiz
     let status: QuizStatus
@@ -65,16 +66,20 @@ struct QuizContext {
         var wordTexts    = try await db.wordTexts()
         let reviewCounts = try await db.reviewCounts()
 
-        // Fetch word text, all forms, and meanings from jmdict.
+        // Fetch word text, structured forms, and meanings from jmdict.
         var wordMeanings: [String: [String]] = [:]
-        var wordForms: [String: String] = [:]    // all non-irregular forms joined by ", "
+        var wordForms:    [String: String]   = [:]  // "written:X  reading:Y" context-line string
+        var wordWritten:  [String: [String]] = [:]  // orthographic (kanji/mixed) forms
+        var wordKana:     [String: [String]] = [:]  // kana-only forms
         if let jmdict {
             let allIds = Array(Set(records.map(\.wordId)))
             let fromJmdict = try await jmdictWordData(ids: allIds, jmdict: jmdict)
             for (id, entry) in fromJmdict {
                 if wordTexts[id] == nil { wordTexts[id] = entry.text }
-                wordForms[id]    = entry.forms
+                wordForms[id]    = formsPart(written: entry.writtenTexts, kana: entry.kanaTexts)
                 wordMeanings[id] = entry.meanings
+                wordWritten[id]  = entry.writtenTexts
+                wordKana[id]     = entry.kanaTexts
             }
             print("[QuizContext] fetched jmdict data for \(fromJmdict.count)/\(allIds.count) word(s)")
         }
@@ -141,7 +146,8 @@ struct QuizContext {
 
             items.append(QuizItem(
                 wordType: wordType, wordId: wordId, wordText: wordText,
-                displayForms: displayForms,
+                writtenTexts: wordWritten[wordId] ?? [],
+                kanaTexts: wordKana[wordId] ?? [],
                 hasKanji: hasKanji, facet: facet, status: status,
                 meanings: wordMeanings[wordId] ?? []))
         }
@@ -151,14 +157,26 @@ struct QuizContext {
     }
 
     private struct JmdictEntry {
-        let text: String        // first kanji form, or kana if no kanji (for quiz prompts)
-        let forms: String       // all non-irregular kanji+kana joined by ", " (for context lines)
-        let meanings: [String]  // English glosses from all senses
+        let text: String            // first written form, or first kana if no written (for quiz prompts)
+        let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
+        let kanaTexts: [String]     // non-irregular kana-only forms
+        let meanings: [String]      // English glosses from all senses
+    }
+
+    /// Build the "written:X,Y  reading:A,B" (or "reading:A,B") forms portion of a context line.
+    /// "written:" = orthographic (kanji/mixed) forms; "reading:" = kana-only forms.
+    /// Mirrors wordFormsPart() in shared.mjs.
+    static func formsPart(written: [String], kana: [String]) -> String {
+        if !written.isEmpty {
+            return "written:\(written.joined(separator: ","))  reading:\(kana.joined(separator: ","))"
+        }
+        return "reading:\(kana.joined(separator: ","))"
     }
 
     /// Format a quiz-context line for LLM pre-selection, mirroring the JS skill's quiz-context.txt.
     static func contextLine(for item: QuizItem) -> String {
-        let kanjiTag    = item.hasKanji ? "{kanji-ok}" : "{no-kanji}"
+        let quizTag     = item.hasKanji ? "{kanji-ok}" : "{no-kanji}"
+        let formStr     = formsPart(written: item.writtenTexts, kana: item.kanaTexts)
         let meaningsStr = item.meanings.prefix(3).joined(separator: "; ")
         let facetPart: String
         switch item.status {
@@ -169,7 +187,7 @@ struct QuizContext {
         case .newWord:
             facetPart = "[new]"
         }
-        return "\(item.wordId)  \(item.displayForms)  \(kanjiTag)  \(meaningsStr)  \(facetPart)"
+        return "\(item.wordId)  \(formStr)  \(quizTag)  \(meaningsStr)  \(facetPart)"
     }
 
     /// Look up canonical word text and English meanings from jmdict entries.
@@ -190,13 +208,12 @@ struct QuizContext {
                     .filter { !(($0["tags"] as? [String] ?? []).contains("ik")) }
                     .compactMap { $0["text"] as? String }
                 guard let text = kanjiTexts.first ?? kanaTexts.first else { continue }
-                let forms = (kanjiTexts + kanaTexts).joined(separator: ", ")
                 let meanings = (raw["sense"] as? [[String: Any]] ?? []).flatMap { sense in
                     (sense["gloss"] as? [[String: Any]] ?? [])
                         .filter { ($0["lang"] as? String) == "eng" }
                         .compactMap { $0["text"] as? String }
                 }
-                result[id] = JmdictEntry(text: text, forms: forms, meanings: meanings)
+                result[id] = JmdictEntry(text: text, writtenTexts: kanjiTexts, kanaTexts: kanaTexts, meanings: meanings)
             }
             return result
         }

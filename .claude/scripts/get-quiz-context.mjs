@@ -5,14 +5,19 @@
  * at the end as [new].
  *
  * Output format — one line per word:
- *   <jmdictId>  <forms>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall>
- *   <jmdictId>  <forms>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall> free
+ *   <jmdictId>  written:<k1>,<k2>  reading:<r1>,<r2>  {kanji-ok|no-kanji}  <meanings>  →<facet>@<recall>
+ *   <jmdictId>  reading:<r1>,<r2>  {no-kanji}  <meanings>  →<facet>@<recall> free
+ *
+ * "written:" = orthographic (kanji/mixed) forms; "reading:" = kana-only forms.
+ * Kana-only words omit the "written:" field entirely.
+ * {kanji-ok}/{no-kanji} is quiz policy (has the user committed to learning these kanji?),
+ * independent of whether "written:" forms exist.
  *
  * Example lines:
- *   1584060  包む, つつむ  {no-kanji}  to wrap up; to pack  →meaning-to-reading@0.31
- *   1445690  怒る, おこる  {kanji-ok}  to get angry; to scold  →meaning-reading-to-kanji@0.42 free
- *   1409600  体中, からだじゅう  {kanji-ok}  all over the body  →reading-to-meaning@new
- *   1009670  によると  {no-kanji}  according to (someone)  [new]
+ *   1584060  written:包む  reading:つつむ  {no-kanji}  to wrap up; to pack  →meaning-to-reading@0.31
+ *   1445690  written:怒る  reading:おこる  {kanji-ok}  to get angry; to scold  →meaning-reading-to-kanji@0.42 free
+ *   1409600  written:体中  reading:からだじゅう  {kanji-ok}  all over the body  →reading-to-meaning@new
+ *   1009670  reading:によると  {no-kanji}  according to (someone)  [new]
  *
  * Four statuses:
  *   →facet@0.XX       fully modeled; use multiple choice for this facet
@@ -46,7 +51,8 @@ import {
   intersectSets,
   parseFrontmatter,
   extractVocabBullets,
-  summarizeWord,
+  wordFormsPart,
+  wordMeanings,
   openQuizDb,
   projectRoot,
   JMDICT_DB,
@@ -139,8 +145,9 @@ for (const filePath of findMdFiles(projectRoot)) {
       }
     }
 
-    const summary = summarizeWord(word);
-    const line = `${word.id}  ${summary}  ${facetMarker}`;
+    const formsPart = wordFormsPart(word);
+    const meanings = wordMeanings(word);
+    const line = `${word.id}  ${formsPart}  ${facetMarker}  ${meanings}`;
 
     if (!anyModel) {
       // All facets unmodeled — completely new word
