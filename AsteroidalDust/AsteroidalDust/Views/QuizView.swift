@@ -12,9 +12,7 @@ struct QuizView: View {
         NavigationStack {
             Group {
                 switch session.phase {
-                case .idle:
-                    startButton
-                case .loadingItems, .generating:
+                case .idle, .loadingItems, .generating:
                     loadingView
                 case .chatting:
                     chattingView
@@ -40,21 +38,13 @@ struct QuizView: View {
                     }
                 }
             }
+            .task {
+                if case .idle = session.phase { session.start() }
+            }
             .sheet(isPresented: $showDebug) {
                 DebugSheet(session: session)
             }
         }
-    }
-
-    // MARK: - Start
-
-    private var startButton: some View {
-        VStack(spacing: 16) {
-            Button("Start Quiz") { session.start() }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-        }
-        .padding()
     }
 
     // MARK: - Loading
@@ -62,7 +52,7 @@ struct QuizView: View {
     private var loadingView: some View {
         VStack(spacing: 12) {
             ProgressView()
-            Text(session.phase == .loadingItems ? session.statusMessage : "Generating question…")
+            Text(session.phase == .generating ? "Generating question…" : session.statusMessage)
                 .foregroundStyle(.secondary)
         }
         .padding()

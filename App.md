@@ -362,10 +362,11 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [x] Backward compatibility: words with `ebisu_models` rows but no `vocab_enrollment` row
       (introduced via Node.js quiz) are shown as "Learning" in the browser automatically.
 - [x] Navigation: `Views/HomeView.swift` — `TabView` with Vocab (books icon) and Quiz tabs.
-- [ ] Onboarding prompt for new users (no enrolled words yet)
+- [x] Onboarding: `AppRootView` shows `ContentUnavailableView("Setup Required")` if API key or
+      vocab URL not yet configured — disappears automatically after setup link is tapped
 - [ ] "Not yet learned" list shows all corpus words even after all are triaged — no "done" state
 
-### Phase 1 — MVP (quiz works end to end)
+### Phase 1 — MVP (quiz works end to end) ✓ complete
 - [x] Xcode project setup (SwiftUI, iOS 17+, bundle ID) — project is `AsteroidalDust/`
 - [x] Add GRDB.swift via Swift Package Manager (v7+; fixed pbxproj to link product to app target)
 - [x] Copy quiz DB schema from `init-quiz-db.mjs`; create on first launch — `Models/QuizDB.swift`
@@ -393,10 +394,19 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
   back to top-N by recall if LLM returns < 3 valid IDs or errors
 - [x] Session persistence — `quiz_session` table (migration "v2"); resumes on relaunch; cleared
   item-by-item as each answer is graded; `refreshSession()` + "New Session" toolbar button
-- [ ] Setup deep link handler (Keychain + UserDefaults) — `App/SetupHandler.swift`
+- [x] Setup deep link handler (Keychain + UserDefaults) — `App/SetupHandler.swift`
+  - URL scheme `japanquiz://` registered via manual `AsteroidalDust/Info.plist`
+    - `GENERATE_INFOPLIST_FILE = NO`; `INFOPLIST_FILE = AsteroidalDust/Info.plist` in build settings
+    - Info.plist contains all required bundle keys (`CFBundleIdentifier` etc. via `$(VAR)` references)
+      plus `CFBundleURLTypes` for the `japanquiz` scheme
+    - Info.plist must NOT be in Copy Bundle Resources build phase (Xcode processes it via INFOPLIST_FILE)
+  - `AppRootView` handles `.onOpenURL`, calls `SetupHandler.handle(url:)`, then re-initialises via `setupID` state flip (`.task(id: setupID)`)
+  - API key stored in Keychain (`kSecClassGenericPassword`, service `me.aldebrn.AsteroidalDust`); `SetupHandler.resolvedApiKey()` falls back to `ANTHROPIC_API_KEY` env var for dev
   - For dev: set `ANTHROPIC_API_KEY` and `VOCAB_URL` in Xcode scheme's Run → Environment Variables
   - `VOCAB_URL` = full raw Gist URL printed by `publish.mjs` on success
     (e.g. `https://gist.githubusercontent.com/<user>/<gist_id>/raw/vocab.json`)
+  - `make-setup-link.mjs` — reads `.env` and prints the encoded `japanquiz://setup?...` URL
+  - Test in simulator: `node make-setup-link.mjs | xargs xcrun simctl openurl booted`
 - [x] Vocab sync + corpus — `Models/VocabSync.swift` + `Models/VocabCorpus.swift`
       (moved to Phase 0; listed here because it was originally a Phase 1 TODO)
 

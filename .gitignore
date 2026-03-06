@@ -7,6 +7,7 @@ node_modules/
 .DS_Store
 quiz-session.txt
 quiz-context.txt
+.env
 
 # Large JMDict source files — download separately, delete after processing
 jmdict-eng-*.json

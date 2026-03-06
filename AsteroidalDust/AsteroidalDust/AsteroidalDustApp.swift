@@ -22,11 +22,23 @@ struct AppRootView: View {
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
     @State private var errorMessage: String? = nil
+    @State private var setupID = UUID()          // increment to re-run setup()
+    @State private var showSetupAlert = false
 
     var body: some View {
         Group {
             if let session, let db, let jmdict {
-                HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict)
+                let isConfigured = !SetupHandler.resolvedApiKey().isEmpty
+                                && VocabSync.resolvedURL() != nil
+                if isConfigured {
+                    HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict)
+                } else {
+                    ContentUnavailableView(
+                        "Setup Required",
+                        systemImage: "link",
+                        description: Text("Ask the app author for a setup link, then tap it to get started.")
+                    )
+                }
             } else if let error = errorMessage {
                 VStack(spacing: 16) {
                     Image(systemName: "exclamationmark.triangle")
@@ -44,7 +56,18 @@ struct AppRootView: View {
                 ProgressView("Starting up…")
             }
         }
-        .task { await setup() }
+        .task(id: setupID) { await setup() }
+        .onOpenURL { url in
+            if SetupHandler.handle(url: url) {
+                showSetupAlert = true
+                setupID = UUID()   // re-initialise with the new key/URL
+            }
+        }
+        .alert("Setup Complete", isPresented: $showSetupAlert) {
+            Button("OK") { }
+        } message: {
+            Text("API key and vocab URL saved. Re-initialising…")
+        }
     }
 
     private func setup() async {
@@ -52,9 +75,8 @@ struct AppRootView: View {
             try QuizDB.copyJMdictIfNeeded()
             let quizDB      = try QuizDB.makeDefault()
             let toolHandler = try ToolHandler.makeDefault()
-            // API key: set ANTHROPIC_API_KEY in Xcode scheme for dev.
-            // Production: key stored in Keychain via japanquiz://setup deep link (Phase 1 TODO).
-            let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
+            // API key: Keychain (set via japanquiz://setup deep link) or ANTHROPIC_API_KEY env var.
+            let apiKey = SetupHandler.resolvedApiKey()
             let model  = ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
             print("[Setup] Using model: \(model)")
             let client = AnthropicClient(apiKey: apiKey, model: model)
