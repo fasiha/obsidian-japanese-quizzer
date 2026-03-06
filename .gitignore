@@ -2,6 +2,8 @@
 node_modules/
 *.js
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 .DS_Store
 quiz-session.txt
 quiz-context.txt
