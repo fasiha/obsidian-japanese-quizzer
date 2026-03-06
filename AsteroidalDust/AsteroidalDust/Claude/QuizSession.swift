@@ -53,8 +53,8 @@ final class QuizSession {
 
     // MARK: - Dependencies
 
-    private let client: AnthropicClient
-    private let toolHandler: ToolHandler
+    let client: AnthropicClient
+    let toolHandler: ToolHandler
     private let db: QuizDB
     private var conversation: [AnthropicMessage] = []
     var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
@@ -489,15 +489,6 @@ final class QuizSession {
             // meaning-reading-to-kanji is always multiple choice even when isFree — the kanji
             // form must only ever appear as an answer option, never in a free-answer prompt.
             mode = (isFree && item.facet != "meaning-reading-to-kanji") ? "free answer" : "multiple choice (A–D)"
-        case .newFacet:
-            mode = "multiple choice (A–D)"
-        case .newWord:
-            return """
-            This is a new word for me: \(item.wordText) (id: \(item.wordId)).
-            Please introduce it: give the reading, meaning, any memorable connections,
-            and then ask me to confirm whether it's completely new or faintly familiar,
-            so you know what halflife to use. Don't quiz yet — just introduce.
-            """
         }
         return "Generate ONE \(mode) question for the \(item.facet) facet. Show only the question — no preamble."
     }

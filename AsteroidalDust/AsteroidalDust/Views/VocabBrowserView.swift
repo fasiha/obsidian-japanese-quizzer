@@ -1,13 +1,15 @@
 // VocabBrowserView.swift
 // Filterable list of vocab words with per-word triage actions.
 //
-// Swipe actions:
-//   Leading (right-to-left): "Learn" → enrolled (green)
-//   Trailing (left-to-right): "Know it" → known (blue) | "Undo" → pending (orange)
+// Row tap: opens WordDetailSheet for full detail + actions.
+// Swipe actions (shortcuts for common actions without opening the sheet):
+//   Not yet learned: "Learn" (green) | "Know it" (blue)
+//   Learning:        "Know it" (blue) | "Undo" (orange)
+//   Known:           "Undo" (orange)
 //
 // Toolbar:
 //   Leading: filter picker (Not yet learned / Learning / Learned / All)
-//   Trailing: menu with "Re-download vocab" (debug)
+//   Trailing: ··· menu (Re-download vocab, Debug info)
 
 import SwiftUI
 import GRDB
@@ -18,7 +20,8 @@ struct VocabBrowserView: View {
     let jmdict: any DatabaseReader
     let session: QuizSession
 
-    @State private var filter: EnrollmentStatus? = .pending  // nil = all
+    @State private var filter: EnrollmentStatus? = .notYetLearned  // nil = all
+    @State private var selectedItem: VocabItem? = nil
     @State private var showDebug = false
 
     private var filteredItems: [VocabItem] {
@@ -55,6 +58,9 @@ struct VocabBrowserView: View {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
                 ToolbarItem(placement: .navigationBarTrailing) { debugMenu }
             }
+            .sheet(item: $selectedItem) { item in
+                WordDetailSheet(item: item, corpus: corpus, db: db, session: session)
+            }
             .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
         }
     }
@@ -63,35 +69,56 @@ struct VocabBrowserView: View {
 
     private var wordList: some View {
         List(filteredItems) { item in
-            VocabRowView(item: item)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    if item.status != .enrolled {
-                        Button {
-                            Task { await corpus.setStatus(.enrolled, for: item.id, db: db) }
-                        } label: {
-                            Label("Learn", systemImage: "plus.circle.fill")
-                        }
-                        .tint(.green)
-                    }
-                    if item.status != .known {
-                        Button {
-                            Task { await corpus.setStatus(.known, for: item.id, db: db) }
-                        } label: {
-                            Label("Know it", systemImage: "checkmark.circle")
-                        }
-                        .tint(.blue)
-                    }
-                    if item.status != .pending {
-                        Button {
-                            Task { await corpus.setStatus(.pending, for: item.id, db: db) }
-                        } label: {
-                            Label("Undo", systemImage: "arrow.uturn.backward")
-                        }
-                        .tint(.orange)
-                    }
-                }
+            Button { selectedItem = item } label: {
+                VocabRowView(item: item)
+            }
+            .buttonStyle(.plain)
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                swipeButtons(for: item)
+            }
         }
         .listStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func swipeButtons(for item: VocabItem) -> some View {
+        switch item.status {
+        case .notYetLearned:
+            Button {
+                selectedItem = item   // open sheet so user can make kanji choice
+            } label: {
+                Label("Learn", systemImage: "plus.circle.fill")
+            }
+            .tint(.green)
+            Button {
+                Task { await corpus.markKnown(wordId: item.id, db: db) }
+            } label: {
+                Label("Know it", systemImage: "checkmark.circle")
+            }
+            .tint(.blue)
+
+        case .learning:
+            Button {
+                Task { await corpus.markKnown(wordId: item.id, db: db) }
+            } label: {
+                Label("Know it", systemImage: "checkmark.circle")
+            }
+            .tint(.blue)
+            Button(role: .destructive) {
+                Task { await corpus.stopLearning(wordId: item.id, db: db) }
+            } label: {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+            }
+            .tint(.orange)
+
+        case .known:
+            Button {
+                Task { await corpus.undoKnown(wordId: item.id, db: db) }
+            } label: {
+                Label("Undo", systemImage: "arrow.uturn.backward")
+            }
+            .tint(.orange)
+        }
     }
 
     // MARK: - Toolbar items
@@ -99,14 +126,16 @@ struct VocabBrowserView: View {
     private var filterPicker: some View {
         Menu {
             Button {
-                filter = .pending
+                filter = .notYetLearned
             } label: {
-                Label(filter == .pending ? "Not yet learned ✓" : "Not yet learned", systemImage: "tray.and.arrow.down")
+                Label(filter == .notYetLearned ? "Not yet learned ✓" : "Not yet learned",
+                      systemImage: "tray.and.arrow.down")
             }
             Button {
-                filter = .enrolled
+                filter = .learning
             } label: {
-                Label(filter == .enrolled ? "Learning ✓" : "Learning", systemImage: "checkmark.circle.fill")
+                Label(filter == .learning ? "Learning ✓" : "Learning",
+                      systemImage: "checkmark.circle.fill")
             }
             Button {
                 filter = .known
@@ -148,28 +177,28 @@ struct VocabBrowserView: View {
 
     private var filterLabel: String {
         switch filter {
-        case .pending:  return "Not yet learned"
-        case .enrolled: return "Learning"
-        case .known:    return "Learned"
-        case nil:       return "All"
+        case .notYetLearned: return "Not yet learned"
+        case .learning:      return "Learning"
+        case .known:         return "Learned"
+        case nil:            return "All"
         }
     }
 
     private var emptyTitle: String {
         switch filter {
-        case .pending:  return "All words triaged!"
-        case .enrolled: return "No words in progress"
-        case .known:    return "No learned words yet"
-        case nil:       return "No vocab loaded"
+        case .notYetLearned: return "All words triaged!"
+        case .learning:      return "No words in progress"
+        case .known:         return "No learned words yet"
+        case nil:            return "No vocab loaded"
         }
     }
 
     private var emptyIcon: String {
         switch filter {
-        case .pending:  return "checkmark.seal"
-        case .enrolled: return "tray"
-        case .known:    return "eye.slash"
-        case nil:       return "books.vertical"
+        case .notYetLearned: return "checkmark.seal"
+        case .learning:      return "tray"
+        case .known:         return "eye.slash"
+        case nil:            return "books.vertical"
         }
     }
 }
@@ -205,13 +234,13 @@ struct VocabRowView: View {
             }
         }
         .padding(.vertical, 2)
-        .textSelection(.enabled)
+        .contentShape(Rectangle())  // make entire row tappable
     }
 
     @ViewBuilder
     private var statusBadge: some View {
         switch item.status {
-        case .enrolled:
+        case .learning:
             Text("Learning")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)
@@ -225,7 +254,7 @@ struct VocabRowView: View {
                 .background(.blue.opacity(0.15))
                 .foregroundStyle(.blue)
                 .clipShape(Capsule())
-        case .pending:
+        case .notYetLearned:
             EmptyView()
         }
     }

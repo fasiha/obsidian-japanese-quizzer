@@ -17,6 +17,7 @@ struct VocabItem: Identifiable {
     let kanaTexts: [String]     // non-irregular kana-only forms
     let meanings: [String]      // English glosses from all senses
     var status: EnrollmentStatus
+    var kanjiOk: Bool           // true → user committed to kanji facets (only meaningful when .learning)
 }
 
 // MARK: - VocabCorpus
@@ -69,24 +70,14 @@ final class VocabCorpus {
         let allIds = manifest.words.map(\.id)
         let jmdictData = (try? await QuizContext.jmdictWordData(ids: allIds, jmdict: jmdict)) ?? [:]
 
-        // Load enrollment status.
-        // Words with explicit vocab_enrollment rows use those.
-        // Words with ebisu_models rows but no enrollment row are treated as enrolled —
-        // this covers words introduced via the Node.js quiz before the iOS app existed.
-        let enrollmentMap   = (try? await db.allEnrollments()) ?? [:]
-        let ebisuWordIds    = (try? await db.wordIdsWithEbisuModels()) ?? []
+        // Load enrollment records. reconcileEnrollment() runs at startup so every
+        // word backed by ebisu_models already has a vocab_enrollment row.
+        let enrollmentMap = (try? await db.allEnrollments()) ?? [:]
 
         // Build items (skip words not found in JMdict).
         items = manifest.words.compactMap { entry in
             guard let jd = jmdictData[entry.id] else { return nil }
-            let status: EnrollmentStatus
-            if let explicit = enrollmentMap[entry.id] {
-                status = explicit
-            } else if ebisuWordIds.contains(entry.id) {
-                status = .enrolled
-            } else {
-                status = .pending
-            }
+            let enrollment = enrollmentMap[entry.id]
             return VocabItem(
                 id: entry.id,
                 sources: entry.sources,
@@ -94,35 +85,79 @@ final class VocabCorpus {
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 meanings: jd.meanings,
-                status: status
+                status: enrollment?.status ?? .notYetLearned,
+                kanjiOk: enrollment?.kanjiOk ?? false
             )
         }
         print("[VocabCorpus] loaded \(items.count)/\(manifest.words.count) word(s) " +
               "(\(manifest.words.count - items.count) skipped — not in JMdict)")
     }
 
-    // MARK: - Enrollment
+    // MARK: - Learning actions
 
-    /// Update one word's enrollment status, creating Ebisu models if enrolling.
-    func setStatus(_ status: EnrollmentStatus, for wordId: String, db: QuizDB) async {
+    /// Start learning a word. Creates Ebisu models and sets status = .learning.
+    func startLearning(wordId: String, kanjiOk: Bool, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.setEnrollment(wordType: "jmdict", wordId: wordId, status: status)
-            if status == .enrolled {
-                // Start with reading/meaning facets only (hasKanji = false).
-                // QuizContext infers hasKanji from which facets exist in ebisu_models,
-                // so {kanji-ok} facets can be added later via a settings option.
-                try await db.introduceWord(
-                    wordType: "jmdict",
-                    wordId: wordId,
-                    wordText: items[idx].wordText,
-                    hasKanji: false,
-                    halflife: 24
-                )
-            }
-            items[idx].status = status
+            try await db.setLearning(
+                wordType: "jmdict",
+                wordId: wordId,
+                wordText: items[idx].wordText,
+                kanjiOk: kanjiOk
+            )
+            items[idx].status = .learning
+            items[idx].kanjiOk = kanjiOk
         } catch {
-            print("[VocabCorpus] setStatus error for \(wordId): \(error)")
+            print("[VocabCorpus] startLearning error for \(wordId): \(error)")
+        }
+    }
+
+    /// Stop learning a word — archives Ebisu models and removes from vocab_enrollment.
+    func stopLearning(wordId: String, db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
+        do {
+            try await db.archiveAndRemove(wordType: "jmdict", wordId: wordId, reason: "unlearned")
+            items[idx].status = .notYetLearned
+            items[idx].kanjiOk = false
+        } catch {
+            print("[VocabCorpus] stopLearning error for \(wordId): \(error)")
+        }
+    }
+
+    /// Mark a word as known — archives Ebisu models and sets status = .known.
+    func markKnown(wordId: String, db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
+        do {
+            try await db.archiveAndRemove(wordType: "jmdict", wordId: wordId, reason: "known")
+            items[idx].status = .known
+            items[idx].kanjiOk = false
+        } catch {
+            print("[VocabCorpus] markKnown error for \(wordId): \(error)")
+        }
+    }
+
+    /// Toggle kanji commitment for a learning word.
+    func toggleKanji(wordId: String, db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }),
+              items[idx].status == .learning else { return }
+        do {
+            try await db.toggleKanji(wordType: "jmdict", wordId: wordId,
+                                     wordText: items[idx].wordText)
+            items[idx].kanjiOk.toggle()
+        } catch {
+            print("[VocabCorpus] toggleKanji error for \(wordId): \(error)")
+        }
+    }
+
+    /// Move a known word back to "not yet learned" — deletes the vocab_enrollment row.
+    func undoKnown(wordId: String, db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
+        do {
+            try await db.removeEnrollment(wordType: "jmdict", wordId: wordId)
+            items[idx].status = .notYetLearned
+            items[idx].kanjiOk = false
+        } catch {
+            print("[VocabCorpus] undoKnown error for \(wordId): \(error)")
         }
     }
 

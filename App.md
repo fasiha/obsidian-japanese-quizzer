@@ -100,20 +100,28 @@ experience aims to feel like a knowledgeable tutor rather than a flashcard deck.
 CREATE TABLE vocab_enrollment (
   word_type TEXT NOT NULL,          -- 'jmdict'
   word_id   TEXT NOT NULL,          -- JMDict entry ID
-  status    TEXT NOT NULL           -- 'pending' | 'enrolled' | 'known'
-    CHECK(status IN ('pending','enrolled','known')),
+  status    TEXT NOT NULL           -- 'learning' | 'known'
+    CHECK(status IN ('learning','known')),
+  kanji_ok  INTEGER NOT NULL DEFAULT 0,  -- 1 = user committed to kanji facets
   updated_at TEXT NOT NULL,         -- ISO 8601 UTC
   PRIMARY KEY (word_type, word_id)
 );
 ```
 
-- `pending` — word exists in corpus but user hasn't decided yet (default; row may not exist)
-- `enrolled` — user chose "teach me this"; Ebisu models are created and quizzes run
-- `known` — user chose "I know this"; never quizzed, never shown in vocab browser again
-  (unless user explicitly reviews their "known" list)
+- **No row** — word exists in corpus but user hasn't decided yet ("not yet learned"). This is the
+  default; absence from the table is the representation, not a stored value.
+- `learning` — user committed to learning this word; Ebisu models exist and quizzes run.
+  `kanji_ok=1` means all 4 facets (including kanji-to-reading and meaning-reading-to-kanji);
+  `kanji_ok=0` means 2 facets only (reading-to-meaning, meaning-to-reading).
+- `known` — user chose "I know this"; never quizzed. Ebisu models are archived to `model_events`
+  and deleted from `ebisu_models` when this status is set.
 
-The existing `ebisu_models` table is only populated for `enrolled` words. The quiz context
-query filters to `enrolled` only.
+`ebisu_models` is only populated for `learning` words. The quiz context query filters to `learning`
+only. "Unlearning" a word deletes its enrollment row and archives its Ebisu models.
+
+**Migration note (v3)**: recreated table to add `kanji_ok`, rename `enrolled`→`learning`, and drop
+`pending` rows. Partial Ebisu facets were backfilled with α=β=1.25, t=24h using the oldest existing
+facet's timestamp.
 
 #### Kanji knowledge (future, separate table)
 
@@ -418,7 +426,9 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 
 ### Phase 2 — Polish
 - [ ] Two-call question validation (generate → validate before showing)
-- [ ] Teaching / introduction flow for new words
+- [x] Teaching / introduction flow for new words — `WordDetailSheet` (swipe Learn or tap row
+      in VocabBrowserView; kanji commitment question; all facets initialized atomically).
+      `QuizStatus.newWord`/`.newFacet` removed; quiz only sees fully-initialized learning words.
 - [ ] Halflife rescaling UI ("too easy" / "too hard" buttons)
 - [ ] Session summary screen
 - [ ] Mnemonic and etymology sidebars during quiz

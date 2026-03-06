@@ -48,7 +48,7 @@ nonisolated func updateRecall(
 
 /// Default initial model for a new word.
 /// `a` is the Beta shape parameter (symmetric α = β). Halflife `t` is in hours.
-nonisolated func defaultModel(halflife t: Double, a: Double = 4.0) -> EbisuModel {
+nonisolated func defaultModel(halflife t: Double, a: Double = 1.25) -> EbisuModel {
     EbisuModel(alpha: a, beta: a, t: t)
 }
 
