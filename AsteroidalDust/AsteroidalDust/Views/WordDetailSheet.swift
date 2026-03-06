@@ -52,7 +52,8 @@ struct WordDetailSheet: View {
                 explore = WordExploreSession(
                     client: session.client,
                     toolHandler: session.toolHandler,
-                    item: item
+                    item: item,
+                    corpus: corpus
                 )
             }
         }
