@@ -12,7 +12,7 @@ struct HomeView: View {
 
     var body: some View {
         TabView {
-            VocabBrowserView(corpus: corpus, db: db, jmdict: jmdict)
+            VocabBrowserView(corpus: corpus, db: db, jmdict: jmdict, session: session)
                 .tabItem { Label("Vocab", systemImage: "books.vertical") }
             QuizView(session: session)
                 .tabItem { Label("Quiz", systemImage: "brain.head.profile") }

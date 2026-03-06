@@ -16,8 +16,10 @@ struct VocabBrowserView: View {
     let corpus: VocabCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
+    let session: QuizSession
 
     @State private var filter: EnrollmentStatus? = .pending  // nil = all
+    @State private var showDebug = false
 
     private var filteredItems: [VocabItem] {
         let f = filter
@@ -53,6 +55,7 @@ struct VocabBrowserView: View {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
                 ToolbarItem(placement: .navigationBarTrailing) { debugMenu }
             }
+            .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
         }
     }
 
@@ -135,6 +138,7 @@ struct VocabBrowserView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Button("Debug info") { showDebug = true }
         } label: {
             Image(systemName: "ellipsis.circle")
         }
@@ -201,6 +205,7 @@ struct VocabRowView: View {
             }
         }
         .padding(.vertical, 2)
+        .textSelection(.enabled)
     }
 
     @ViewBuilder

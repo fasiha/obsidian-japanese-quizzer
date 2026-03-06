@@ -65,6 +65,13 @@ final class QuizSession {
         return allCandidates.map { QuizContext.contextLine(for: $0) }.joined(separator: "\n")
     }
 
+    /// Populate allCandidates without starting a quiz (e.g. for the debug sheet).
+    func loadCandidatesIfNeeded() async {
+        guard allCandidates.isEmpty else { return }
+        guard let candidates = try? await QuizContext.build(db: db, jmdict: toolHandler.jmdict) else { return }
+        allCandidates = candidates
+    }
+
     /// Checkpoint the WAL and return the quiz DB file URL for sharing.
     func checkpointAndDBURL() async -> URL? {
         try? await db.checkpointWAL()

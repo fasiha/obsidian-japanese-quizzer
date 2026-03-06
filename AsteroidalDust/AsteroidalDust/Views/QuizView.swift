@@ -29,14 +29,14 @@ struct QuizView: View {
             .navigationTitle("Quiz")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if session.isQuizActive {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("New Session") { session.refreshSession() }
-                    }
-                }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: { showDebug = true }) {
-                        Image(systemName: "ladybug")
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        if session.isQuizActive {
+                            Button("New Session") { session.refreshSession() }
+                        }
+                        Button("Debug info") { showDebug = true }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -233,10 +233,9 @@ struct QuizView: View {
 
 // MARK: - Debug sheet
 
-private struct DebugSheet: View {
+struct DebugSheet: View {
     let session: QuizSession
     @State private var shareURL: URL? = nil
-    @State private var showShareSheet = false
 
     var body: some View {
         NavigationStack {
@@ -247,31 +246,24 @@ private struct DebugSheet: View {
                         .textSelection(.enabled)
                 }
                 Section("Export") {
-                    Button("Share quiz.sqlite via AirDrop / Files") { prepareShare() }
+                    if let url = shareURL {
+                        ShareLink(item: url) {
+                            Label("Share quiz.sqlite via AirDrop / Files", systemImage: "square.and.arrow.up")
+                        }
+                    } else {
+                        Label("Preparing database…", systemImage: "hourglass")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("Debug")
             .navigationBarTitleDisplayMode(.inline)
         }
-        .sheet(isPresented: $showShareSheet) {
-            if let url = shareURL { ShareSheet(items: [url]) }
-        }
-    }
-
-    private func prepareShare() {
-        Task {
+        .task {
+            await session.loadCandidatesIfNeeded()
             shareURL = await session.checkpointAndDBURL()
-            showShareSheet = shareURL != nil
         }
     }
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - SelectableText
