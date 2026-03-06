@@ -237,7 +237,7 @@ final class QuizSession {
             let (question, msgs) = try await client.send(
                 messages: [initMsg],
                 system: system,
-                tools: [.lookupJmdict],
+                tools: [.lookupJmdict, .lookupKanjidic],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
             )
@@ -262,7 +262,7 @@ final class QuizSession {
             let (response, updatedMsgs) = try await client.send(
                 messages: conversation,
                 system: systemPrompt(for: item),
-                tools: [.lookupJmdict, .getVocabContext],
+                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
             )

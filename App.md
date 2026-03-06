@@ -183,6 +183,10 @@ the conversation warrants it.
   - `lookup_jmdict` — query local `jmdict.sqlite` for dictionary-accurate readings and
     meanings. Claude calls this during question generation or when the student asks about
     a word's readings/meanings.
+  - `lookup_kanjidic` — query local `kanjidic2.sqlite` for per-kanji breakdown: stroke
+    count, JLPT level, school grade, on/kun readings, English meanings. Input is any
+    string — non-kanji characters are skipped. Claude calls this when the student asks
+    about a kanji's composition, readings, or mnemonics.
   - `get_vocab_context` — returns the student's full enrolled word list with recall
     probabilities (same format as the pre-selection context lines). Claude calls this when
     the student's message is about a different word they're studying, or when knowing
@@ -328,10 +332,36 @@ to something meaningful (device name? user-entered name?). Currently defaults to
 - **Lean**: port manually. The math is self-contained.
 
 ### Kanji info
-`get-kanji-info.mjs` queries kanjidic2. Options for the app:
-- Bundle kanjidic2 SQLite alongside JMdict (adds size, enables accurate radical/stroke info)
-- Rely on Claude's background knowledge (good enough for N3–N4 content, no extra bundle)
-- **Lean**: rely on Claude for MVP; add kanjidic2 bundle later if needed.
+`get-kanji-info.mjs` queries kanjidic2. The iOS app bundles `kanjidic2.sqlite` and exposes a
+`lookup_kanjidic` tool to Claude (available in both quiz chat and word-explore chat):
+- Input: any string — non-kanji characters are ignored; e.g. `怒鳴る` → info for 怒 and 鳴
+- Output: JSON array, one entry per kanji: `literal`, `radicals`, `strokes`, `jlpt` (N-string), `grade`, `on`, `kun`, `meanings`
+- Radical data (kradfile) is baked into `kanjidic2.sqlite` at build time as a `radicals TEXT` column (JSON array)
+  - `get-kanji-info.mjs` populates it during the initial build; existing DBs are migrated on next run
+  - iOS tool reads it directly — no separate kradfile bundle needed
+- Bundled in `Resources/kanjidic2.sqlite` (DELETE journal mode, same requirement as jmdict.sqlite)
+- Copied to Documents on first launch by `QuizDB.copyKanjidicIfNeeded()` (called in `setup()`)
+- ToolHandler opens it read-only as a `DatabaseQueue`; stored as optional so a missing file degrades gracefully
+
+#### Preparing kanjidic2.sqlite for a build
+
+Before building the iOS app (or after updating the source data), run once from the project root:
+
+```sh
+# 1. Download source files from https://github.com/scriptin/jmdict-simplified/releases
+#    and place in the project root:
+#      kanjidic2-en-*.json   (KANJIDIC2 data)
+#      kradfile-*.json       (radical decomposition)
+
+# 2. Build/update kanjidic2.sqlite (creates it on first run; migrates radicals on subsequent runs)
+#    The script sets DELETE journal mode automatically — no extra sqlite3 step needed.
+node .claude/scripts/get-kanji-info.mjs 日  # any kanji — triggers build/migration, then exits
+
+# 3. Copy into the Xcode Resources folder
+cp kanjidic2.sqlite AsteroidalDust/AsteroidalDust/Resources/kanjidic2.sqlite
+```
+
+Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build procedure).
 
 ### Session state persistence
 **Decided**: persist to `quiz_session` table in `quiz.sqlite` (added in migration "v2").
@@ -395,7 +425,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [x] Record review (write to quiz.sqlite after each answer) — in `Claude/QuizSession.swift`
   - Claude grades organically within open chat; `SCORE: X.X` anywhere in response triggers record
   - `QuizSession` is `@Observable @MainActor`; conversation grows within a single item, resets per item
-  - Two tools available during chat: `lookup_jmdict` + `get_vocab_context`
+  - Three tools available during chat: `lookup_jmdict` + `lookup_kanjidic` + `get_vocab_context`
   - `get_vocab_context` result pre-computed at handler creation time (snapshot of enrolled list)
 - [x] LLM pre-selection call — `QuizSession.selectItems(candidates:)` sends all enrolled words as
   context lines (one per word, JS-skill format) and asks Claude to pick 3–5 varied items; falls
@@ -425,6 +455,9 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
   the full list. Avoids token bloat while keeping the most important candidates visible.
 
 ### Phase 2 — Polish
+- [ ] Handle `stop_reason: "max_tokens"` in `AnthropicClient` — detect truncated responses and
+  either show a user-facing warning or automatically re-prompt to continue. Affects
+  `WordExploreSession` (kanji/word explanations) and quiz grading turns.
 - [ ] Two-call question validation (generate → validate before showing)
 - [x] Teaching / introduction flow for new words — `WordDetailSheet` (swipe Learn or tap row
       in VocabBrowserView; kanji commitment question; all facets initialized atomically).
@@ -437,7 +470,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types
-- [ ] Kanjidic2 bundle for accurate radical/stroke info
+- [x] Kanjidic2 bundle (`kanjidic2.sqlite`) + `lookup_kanjidic` tool — stroke/JLPT/grade/on/kun/meanings
 - [ ] Source sentence display on first encounter (Emily's preference)
 - [ ] Per-user preferences stored properly (not in a memory file)
 - [ ] `kanji_knowledge` table: let users assert kanji they know during enrollment triage;
@@ -464,7 +497,7 @@ AsteroidalDust/                          ← Xcode project root (already created
       VocabSync.swift                    ✓ URL resolution (UserDefaults / VOCAB_URL env) + cache
     Claude/
       AnthropicClient.swift              ✓ URLSession wrapper, tool-use loop
-      ToolHandler.swift                  ✓ lookup_jmdict tool use (DatabaseQueue, readonly)
+      ToolHandler.swift                  ✓ lookup_jmdict + lookup_kanjidic tool use (DatabaseQueue, readonly)
       QuizSession.swift                  ✓ session orchestration, grading, Ebisu update
     Views/
       HomeView.swift                     ✓ TabView root: Vocab + Quiz tabs
@@ -475,6 +508,7 @@ AsteroidalDust/                          ← Xcode project root (already created
       SettingsView.swift                 ← (TODO)
     Resources/
       jmdict.sqlite                      ✓ bundled (DELETE journal mode — see ToolHandler note)
+      kanjidic2.sqlite                   ✓ bundled (DELETE journal mode same requirement)
   AsteroidalDustTests/                   ← Swift Testing unit tests (generated)
     AsteroidalDustTests.swift
   AsteroidalDustUITests/                 ← XCTest UI tests (generated)

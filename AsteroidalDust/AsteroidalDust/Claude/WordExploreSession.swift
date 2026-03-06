@@ -51,7 +51,7 @@ final class WordExploreSession {
             let (response, updatedConversation) = try await client.send(
                 messages: conversation,
                 system: systemPrompt,
-                tools: [.lookupJmdict, .getVocabContext],
+                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext],
                 maxTokens: 1024,
                 toolHandler: { [self] name, input in
                     if name == "get_vocab_context" { return await self.vocabContextJSON() }

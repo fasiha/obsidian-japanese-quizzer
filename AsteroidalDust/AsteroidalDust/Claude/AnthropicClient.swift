@@ -218,6 +218,7 @@ struct AnthropicClient: Sendable {
                     return nil
                 }.joined(separator: "\n")
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
+                print("[Anthropic] final text: \(text)")
                 return (text, msgs)
             }
 

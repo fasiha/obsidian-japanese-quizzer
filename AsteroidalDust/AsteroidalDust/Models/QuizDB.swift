@@ -141,6 +141,21 @@ final class QuizDB: Sendable {
         return dest
     }
 
+    /// Copy kanjidic2.sqlite from the app bundle to Documents on first launch.
+    /// Returns the destination URL, or nil if the bundle resource is absent.
+    @discardableResult
+    static func copyKanjidicIfNeeded() throws -> URL? {
+        let docsURL = try FileManager.default
+            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        let dest = docsURL.appendingPathComponent("kanjidic2.sqlite")
+        guard !FileManager.default.fileExists(atPath: dest.path) else { return dest }
+        guard let src = Bundle.main.url(forResource: "kanjidic2", withExtension: "sqlite") else {
+            return nil  // optional resource — tool will gracefully report unavailable
+        }
+        try FileManager.default.copyItem(at: src, to: dest)
+        return dest
+    }
+
     private func runMigrations() throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1") { db in

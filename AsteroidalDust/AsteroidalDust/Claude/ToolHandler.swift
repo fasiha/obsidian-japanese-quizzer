@@ -1,11 +1,10 @@
 // ToolHandler.swift
-// Implements the lookup_jmdict tool: queries jmdict.sqlite by kanji or kana form
-// and returns the entry's kanji forms, kana forms, and English meanings as JSON.
+// Implements tool calls for Claude: lookup_jmdict and lookup_kanjidic.
 
 import GRDB
 import Foundation
 
-// MARK: - Tool definition (passed to AnthropicClient)
+// MARK: - Tool definitions (passed to AnthropicClient)
 
 extension AnthropicTool {
     static let lookupJmdict = AnthropicTool(
@@ -32,26 +31,51 @@ extension AnthropicTool {
             "required": .array([])
         ]
     )
+
+    static let lookupKanjidic = AnthropicTool(
+        name: "lookup_kanjidic",
+        description: "Look up one or more kanji characters in KANJIDIC2. Returns radical components, stroke count, JLPT level, school grade, on-readings, kun-readings, and English meanings for each kanji found in the input string. Non-kanji characters are ignored.",
+        inputSchema: [
+            "type": .string("object"),
+            "properties": .object([
+                "text": .object([
+                    "type": .string("string"),
+                    "description": .string("A string containing one or more kanji to look up. Non-kanji characters are ignored. Example: '怒鳴る' returns info for 怒 and 鳴.")
+                ])
+            ]),
+            "required": .array([.string("text")])
+        ]
+    )
 }
 
 // MARK: - Handler
 
-/// Handles tool calls from AnthropicClient, currently just lookup_jmdict.
+/// Handles tool calls from AnthropicClient: lookup_jmdict and lookup_kanjidic.
 struct ToolHandler: Sendable {
     /// DatabaseReader opened on jmdict.sqlite (the copy in Documents).
     /// Stored as DatabaseQueue to avoid WAL-mode sidecar files on a read-only DB.
     let jmdict: any DatabaseReader
 
-    /// Open jmdict.sqlite from the Documents directory (where QuizDB copies it).
-    /// Uses DatabaseQueue (not Pool) so GRDB doesn't force WAL mode on a read-only DB.
+    /// DatabaseReader opened on kanjidic2.sqlite (the copy in Documents). Nil if not available.
+    let kanjidic: (any DatabaseReader)?
+
+    /// Open jmdict.sqlite and kanjidic2.sqlite from the Documents directory.
+    /// Uses DatabaseQueue (not Pool) so GRDB doesn't force WAL mode on read-only DBs.
     static func makeDefault() throws -> ToolHandler {
         let docsURL = try FileManager.default
             .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let dbURL = docsURL.appendingPathComponent("jmdict.sqlite")
         var config = Configuration()
         config.readonly = true
-        let queue = try DatabaseQueue(path: dbURL.path, configuration: config)
-        return ToolHandler(jmdict: queue)
+
+        let jmdictURL = docsURL.appendingPathComponent("jmdict.sqlite")
+        let jmdictQueue = try DatabaseQueue(path: jmdictURL.path, configuration: config)
+
+        let kanjidicURL = docsURL.appendingPathComponent("kanjidic2.sqlite")
+        let kanjidicQueue = FileManager.default.fileExists(atPath: kanjidicURL.path)
+            ? try? DatabaseQueue(path: kanjidicURL.path, configuration: config)
+            : nil
+
+        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue)
     }
 
     /// Route a tool call. Returns the result string (JSON on success, error JSON on failure).
@@ -62,12 +86,86 @@ struct ToolHandler: Sendable {
                 return #"{"error":"missing or empty 'word' parameter"}"#
             }
             return (try? await lookupJmdict(word: word)) ?? #"{"error":"lookup failed"}"#
+        case "lookup_kanjidic":
+            guard let text = input["text"]?.stringValue, !text.isEmpty else {
+                return #"{"error":"missing or empty 'text' parameter"}"#
+            }
+            return await lookupKanjidic(text: text)
         default:
             return "{\"error\":\"unknown tool: \(toolName)\"}"
         }
     }
 
     // MARK: - Private
+
+    private func lookupKanjidic(text: String) async -> String {
+        guard let db = kanjidic else {
+            return #"{"error":"kanjidic2 not available"}"#
+        }
+        // Extract CJK Unified Ideograph code points, deduplicated in order.
+        let kanjis = text.unicodeScalars
+            .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
+                      $0.value >= 0x3400 && $0.value <= 0x4DBF ||
+                      $0.value >= 0xF900 && $0.value <= 0xFAFF }
+            .map { String($0) }
+            .reduce(into: (list: [String](), seen: Set<String>())) { acc, k in
+                if acc.seen.insert(k).inserted { acc.list.append(k) }
+            }.list
+
+        guard !kanjis.isEmpty else {
+            return #"{"error":"no kanji characters found in input"}"#
+        }
+
+        var results: [[String: Any]] = []
+        for k in kanjis {
+            let result = try? await db.read { db -> (Row?, [String]) in
+                let row = try Row.fetchOne(db, sql: "SELECT * FROM kanji WHERE literal = ?", arguments: [k])
+                var radicalLabels: [String] = []
+                if let rJSON = row?["radicals"] as? String,
+                   let rads = try? JSONSerialization.jsonObject(with: Data(rJSON.utf8)) as? [String] {
+                    for r in rads {
+                        let rRow = try Row.fetchOne(db, sql: "SELECT meanings FROM kanji WHERE literal = ?", arguments: [r])
+                        if let mJSON = rRow?["meanings"] as? String,
+                           let ms = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String],
+                           let first = ms.first {
+                            radicalLabels.append("\(r) (\(first))")
+                        } else {
+                            radicalLabels.append(r)
+                        }
+                    }
+                }
+                return (row, radicalLabels)
+            }
+            let row = result?.0
+            let radicalLabels = result?.1 ?? []
+            var entry: [String: Any] = ["literal": k]
+            if let row = row {
+                if let strokes = row["strokes"] as? Int64 { entry["strokes"] = strokes }
+                if let grade   = row["grade"]   as? Int64 { entry["grade"]   = "G\(grade)" }
+                if let jlpt    = row["jlpt"]    as? Int64 { entry["jlpt"]    = "N\(jlpt + 1)" }
+                if let onJSON  = row["on_readings"]  as? String,
+                   let on      = try? JSONSerialization.jsonObject(with: Data(onJSON.utf8)) as? [String] {
+                    entry["on"] = on
+                }
+                if let kunJSON = row["kun_readings"] as? String,
+                   let kun     = try? JSONSerialization.jsonObject(with: Data(kunJSON.utf8)) as? [String] {
+                    entry["kun"] = kun
+                }
+                if let mJSON   = row["meanings"] as? String,
+                   let meanings = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String] {
+                    entry["meanings"] = meanings
+                }
+                if !radicalLabels.isEmpty {
+                    entry["radicals"] = radicalLabels
+                }
+            } else {
+                entry["error"] = "not in kanjidic2"
+            }
+            results.append(entry)
+        }
+        let data = (try? JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])) ?? Data()
+        return String(data: data, encoding: .utf8) ?? "[]"
+    }
 
     private func lookupJmdict(word: String) async throws -> String {
         let entryJSON: String? = try await jmdict.read { db in

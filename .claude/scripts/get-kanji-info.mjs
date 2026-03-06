@@ -3,11 +3,9 @@
  * Given one or more kanji, outputs compact info: radicals, on/kun readings, meanings.
  * Intended to be called by Claude when a user asks for kanji mnemonics or breakdown.
  *
- * Data sources:
- *   - kradfile-*.json     : loaded fresh every run (~500 KB, fast)
- *   - kanjidic2.sqlite    : slim DB generated on first run from kanjidic2-en-*.json (15 MB → ~2 MB)
- *
- * Both source files are expected in the project root. kanjidic2.sqlite is cached there too.
+ * Data source:
+ *   - kanjidic2.sqlite : built on first run from kanjidic2-en-*.json + kradfile-*.json
+ *                        All data (including radicals) lives in the DB after first build.
  *
  * Usage: node .claude/scripts/get-kanji-info.mjs 怒 鳴
  *        node .claude/scripts/get-kanji-info.mjs 怒鳴る   (non-kanji characters are skipped)
@@ -20,19 +18,16 @@ import { projectRoot } from "./shared.mjs";
 
 const KANJIDIC_SQLITE = path.join(projectRoot, "kanjidic2.sqlite");
 
-// --- kradfile: load fresh (small enough) ---
-function loadKradfile() {
+function findKradfile() {
   const files = readdirSync(projectRoot).filter(
     (f) => f.startsWith("kradfile") && f.endsWith(".json"),
   );
-  if (files.length === 0)
-    throw new Error(
-      "No kradfile-*.json found in project root. Download from jmdict-simplified releases.",
-    );
-  const data = JSON.parse(
-    readFileSync(path.join(projectRoot, files[0]), "utf8"),
-  );
-  return data.kanji; // { [kanji: string]: string[] }
+  return files.length ? path.join(projectRoot, files[0]) : null;
+}
+
+function loadKradMap(kradfilePath) {
+  if (!kradfilePath) return {};
+  return JSON.parse(readFileSync(kradfilePath, "utf8")).kanji; // { [kanji]: string[] }
 }
 
 // --- kanjidic2 SQLite: build from source JSON on first run ---
@@ -55,6 +50,12 @@ function ensureKanjidicSqlite() {
   const source = JSON.parse(
     readFileSync(path.join(projectRoot, files[0]), "utf8"),
   );
+  const kradfilePath = findKradfile();
+  if (!kradfilePath)
+    throw new Error(
+      "No kradfile-*.json found in project root. Download from jmdict-simplified releases.",
+    );
+  const kradMap = loadKradMap(kradfilePath);
 
   const db = new Database(KANJIDIC_SQLITE);
   db.exec(`
@@ -65,16 +66,15 @@ function ensureKanjidicSqlite() {
       jlpt         INTEGER,  -- old JLPT scale: 4=N5, 3=N4, 2=N3, 1=N2
       on_readings  TEXT,     -- JSON array
       kun_readings TEXT,     -- JSON array
-      meanings     TEXT      -- JSON array (English only)
+      meanings     TEXT,     -- JSON array (English only)
+      radicals     TEXT      -- JSON array of radical characters (from kradfile)
     )
   `);
 
-  const insert = db.prepare("INSERT INTO kanji VALUES (?,?,?,?,?,?,?)");
+  const insert = db.prepare("INSERT INTO kanji VALUES (?,?,?,?,?,?,?,?)");
   const insertAll = db.transaction((chars) => {
     for (const c of chars) {
-      const on = [],
-        kun = [],
-        meanings = [];
+      const on = [], kun = [], meanings = [];
       for (const g of c.readingMeaning?.groups ?? []) {
         for (const r of g.readings) {
           if (r.type === "ja_on") on.push(r.value);
@@ -92,15 +92,45 @@ function ensureKanjidicSqlite() {
         JSON.stringify(on),
         JSON.stringify(kun),
         JSON.stringify(meanings),
+        JSON.stringify(kradMap[c.literal] ?? []),
       );
     }
   });
 
   insertAll(source.characters);
+  db.pragma("journal_mode = DELETE");
   db.close();
   process.stderr.write(
     `Done. kanjidic2.sqlite created (${source.characters.length} entries). You may delete ${files[0]}.\n`,
   );
+}
+
+// --- Migration: add radicals column to existing DB if missing ---
+function ensureRadicalsColumn(db) {
+  const cols = db.pragma("table_info(kanji)").map((r) => r.name);
+  if (cols.includes("radicals")) return;
+
+  process.stderr.write(
+    "Migrating kanjidic2.sqlite: adding radicals column...\n",
+  );
+  db.exec("ALTER TABLE kanji ADD COLUMN radicals TEXT");
+
+  const kradfilePath = findKradfile();
+  if (!kradfilePath) {
+    process.stderr.write(
+      "Warning: No kradfile-*.json found; radicals column left empty.\n",
+    );
+    return;
+  }
+  const kradMap = loadKradMap(kradfilePath);
+  const update = db.prepare("UPDATE kanji SET radicals = ? WHERE literal = ?");
+  db.transaction((map) => {
+    for (const [literal, rads] of Object.entries(map)) {
+      update.run(JSON.stringify(rads), literal);
+    }
+  })(kradMap);
+  db.pragma("journal_mode = DELETE");
+  process.stderr.write("Done. Radicals backfilled from kradfile.\n");
 }
 
 // --- Main ---
@@ -119,8 +149,13 @@ if (kanjis.length === 0) {
   process.exit(1);
 }
 
-const kradMap = loadKradfile();
 ensureKanjidicSqlite();
+// Open read-write only for the migration check, then switch to readonly.
+{
+  const dbRw = new Database(KANJIDIC_SQLITE);
+  ensureRadicalsColumn(dbRw);
+  dbRw.close();
+}
 const db = new Database(KANJIDIC_SQLITE, { readonly: true });
 const query = db.prepare("SELECT * FROM kanji WHERE literal = ?");
 const radicalMeaningQuery = db.prepare(
@@ -142,7 +177,7 @@ function jlptStr(level) {
 
 for (const k of kanjis) {
   const row = query.get(k);
-  const radicals = kradMap[k] ?? [];
+  const radicals = row ? JSON.parse(row.radicals ?? "[]") : [];
 
   if (!row) {
     console.log(`${k}: not in kanjidic2`);
