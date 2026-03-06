@@ -111,6 +111,7 @@ final class QuizDB: Sendable {
         let pool = try DatabasePool(path: dbURL.path)
         let db = QuizDB(pool: pool)
         try db.runMigrations()
+        try db.reconcileEnrollment()
         return db
     }
 
@@ -187,6 +188,20 @@ final class QuizDB: Sendable {
         try migrator.migrate(pool)
     }
 
+    /// Ensure every word with ebisu_models rows has a vocab_enrollment row.
+    /// Runs on every launch so that words added via the Node.js quiz skill
+    /// (desktop sync) are automatically treated as enrolled in the iOS app.
+    /// INSERT OR IGNORE preserves any existing 'known' or 'enrolled' status.
+    private func reconcileEnrollment() throws {
+        try pool.write { db in
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO vocab_enrollment (word_type, word_id, status, updated_at)
+                SELECT DISTINCT word_type, word_id, 'enrolled', datetime('now')
+                FROM ebisu_models
+                """)
+        }
+    }
+
     // MARK: - Reviews
 
     func insert(review: Review) async throws {
@@ -210,18 +225,12 @@ final class QuizDB: Sendable {
     }
 
     /// All enrolled words' Ebisu models, for quiz context ranking.
-    /// Falls back to ALL words in ebisu_models when vocab_enrollment is empty
-    /// (dev mode: existing Node.js quiz.sqlite with no enrollment rows yet).
     func enrolledEbisuRecords() async throws -> [EbisuRecord] {
         try await pool.read { db in
             let enrolledIds = try VocabEnrollment
                 .filter(Column("status") == "enrolled")
                 .select(Column("word_id"), as: String.self)
                 .fetchAll(db)
-            if enrolledIds.isEmpty {
-                // Fallback: treat every word in ebisu_models as enrolled.
-                return try EbisuRecord.fetchAll(db)
-            }
             return try EbisuRecord
                 .filter(enrolledIds.contains(Column("word_id")))
                 .fetchAll(db)
@@ -330,17 +339,6 @@ final class QuizDB: Sendable {
         try await pool.read { db in
             let rows = try VocabEnrollment.fetchAll(db)
             return Dictionary(rows.map { ($0.wordId, $0.status) }, uniquingKeysWith: { first, _ in first })
-        }
-    }
-
-    /// Word IDs that have at least one Ebisu model row (jmdict words only).
-    /// Used to infer enrolled status for words introduced via the Node.js quiz
-    /// that predate the iOS vocab_enrollment table.
-    func wordIdsWithEbisuModels() async throws -> Set<String> {
-        try await pool.read { db in
-            let rows = try Row.fetchAll(db,
-                sql: "SELECT DISTINCT word_id FROM ebisu_models WHERE word_type = 'jmdict'")
-            return Set(rows.compactMap { $0["word_id"] as? String })
         }
     }
 
