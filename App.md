@@ -470,6 +470,12 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [ ] Mnemonic and etymology sidebars during quiz
 - [x] Publish pipeline scripts (`prepare-publish.mjs` + `publish.mjs`) — vocab.json to Gist via SSH git push
 - [ ] Settings screen (API key, vocab URL, reviewer name, model picker)
+- [ ] Context-based questions for ambiguous kana: bare kana like め is ambiguous (目/芽/め-suffix).
+  For suffixes, particles, or kana that match multiple common words, allow Claude to use a short
+  example sentence as the question stem instead of bare kana (e.g. "In 馬鹿め！, what does め
+  express?" rather than "What does め mean?"). Requires softening the rigid "Show ONLY kana"
+  rule for reading-to-meaning and letting Claude call lookup_jmdict to detect ambiguity/POS.
+  Accumulate real examples before tuning the prompt.
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types
