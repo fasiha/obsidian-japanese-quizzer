@@ -16,8 +16,8 @@ The two things this app is trying to be:
   reader might not know, added by the `/enrich-vocab` skill (see `TODO.md`). Users are
   then readers who independently decide what to do with each word.
 - **Per-user enrollment**: each word in the corpus is in one of three states for each
-  learner: `pending` (not yet decided), `enrolled` (actively learning via Ebisu),
-  `known` (skipped — "I already know this"). Only `enrolled` words appear in quizzes.
+  learner: no row (not yet triaged), `learning` (actively learning via Ebisu),
+  `known` (skipped — "I already know this"). Only `learning` words appear in quizzes.
 
 ### 2. Conversational learning with a frontier model
 
@@ -92,7 +92,7 @@ experience aims to feel like a knowledgeable tutor rather than a flashcard deck.
 - **JMdict**: bundle `jmdict.sqlite` directly in the app (already built by existing Node.js tooling). Large but fine for TestFlight. Update manually when scriptin releases a new version.
   - **WAL mode caveat**: `better-sqlite3` may leave `jmdict.sqlite` in WAL mode. The app opens it read-only via `DatabaseQueue`; SQLite always looks for a `.wal` file if the header says WAL mode, even on readonly connections. Before bundling, run: `sqlite3 jmdict.sqlite "PRAGMA journal_mode=DELETE;"`. Stored in `Resources/`; copied to Documents on first launch by `QuizDB.copyJMdictIfNeeded()`.
 - **Quiz DB**: `quiz.sqlite` created on first launch, local to each device. GRDB.swift for access. Extends the Node.js schema with a `vocab_enrollment` table (see below).
-- **Vocab content**: Markdown files synced from a hosted opaque URL. App fetches on startup (or periodically). Format TBD — see open questions below.
+- **Vocab content**: `vocab.json` synced from a hosted GitHub Gist URL. App fetches on startup; cached to `Documents/vocab.json`. See Publishing pipeline below.
 
 #### `vocab_enrollment` table (app-only extension to quiz.sqlite)
 
@@ -203,12 +203,7 @@ the conversation warrants it.
      enough that it shouldn't need a tool call.
   3. *Add recall + halflife to the current item's system prompt* — targeted, zero extra tokens in
      the vocab list, always available for the one word that's actually being discussed.
-  **Decision: option 3.** `systemPrompt(for:item)` should include a line like
-  `Current memory state: recall=0.73, halflife=96h` for the word currently being quizzed.
-  Requires `halflife` on `QuizItem` (add to `QuizStatus.reviewed`; it's already computed in
-  `QuizContext.build()` at `recallMap[quizType] = (recall, record.t)` but not propagated).
-  Implemented: `QuizStatus.reviewed` now carries `halflife`; `systemPrompt(for:item)` emits
-  `Current memory state: recall=X.XX, halflife=Xh` for reviewed words.
+  **Decision: option 3** ✓ — `systemPrompt(for:item)` emits `Current memory state: recall=X.XX, halflife=Xh` for the word currently being quizzed.
 
 - **Quiz conversation model** (`Claude/QuizSession.swift`):
   - Phase: `generating` → `chatting` (single open phase, no forced two-step).
@@ -297,13 +292,6 @@ not just the author's personal unknowns — this is the authoring job of the
 
 ## Open questions
 
-### Content format
-**Decided**: two outputs per story — `vocab.json` (SwiftUI) + `story.html` (WKWebView).
-See Publishing pipeline above. iOS Markdown rendering is not viable: built-in
-`AttributedString` doesn't handle `<ruby>` or `<details>`, and third-party parsers don't
-either. WKWebView renders both natively. Story reader is Phase 2; vocab browser uses only
-the JSON in Phase 0–1.
-
 ### Hosting
 **GitHub secret Gist is viable**: Gist supports binary files pushed via git (clone
 the Gist repo, commit the PNG, push). The Gist web renderer uses an incorrect URL so
@@ -327,13 +315,6 @@ to something meaningful (device name? user-entered name?). Currently defaults to
 
 - Does each family member get independent Ebisu models? (Yes, local DB per device.)
 - Do we want to sync progress across devices for the same person? (Probably not for MVP.)
-
-### Ebisu math in Swift
-`predictRecall` and `updateRecall` are ~30 lines of Beta distribution math. Options:
-- Port manually (straightforward, no dependency)
-- Find a Swift stats library with Beta distribution (e.g. `swift-numerics` doesn't have it;
-  would need something like `Surge` or a custom implementation)
-- **Lean**: port manually. The math is self-contained.
 
 ### Kanji info
 `get-kanji-info.mjs` queries kanjidic2. The iOS app bundles `kanjidic2.sqlite` and exposes a
@@ -366,20 +347,6 @@ cp kanjidic2.sqlite Pug/Pug/Resources/kanjidic2.sqlite
 ```
 
 Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build procedure).
-
-### Session state persistence
-**Decided**: persist to `quiz_session` table in `quiz.sqlite` (added in migration "v2").
-Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC`.
-
-- `start()` checks `sessionWordIds()`. If non-empty, restores item order (recall probabilities
-  recalculated fresh from DB). If empty, runs LLM pre-selection then calls `saveSession(wordIds:)`.
-- `recordReview()` calls `removeFromSession(wordId:)` when grading is detected (`SCORE: X.X`).
-  Grading happens organically within the open chat — not at a forced submit step.
-- `nextQuestion()` calls `clearSession()` when the last item is done.
-- `refreshSession()`: clears session, resets state, calls `start()` — wired to "New Session"
-  toolbar button in QuizView.
-- The in-memory conversation (`conversation: [AnthropicMessage]`) is reset per item; it is not
-  persisted. On resume, the session word order is restored but each item starts a fresh chat.
 
 ---
 
@@ -498,7 +465,7 @@ Pug/                          ← Xcode project root (already created)
     ContentView.swift                    ← replace with real nav structure
     Assets.xcassets/
     App/
-      SetupHandler.swift                 ← deep link + Keychain (TODO)
+      SetupHandler.swift                 ✓ deep link + Keychain
     Models/
       QuizDB.swift                       ✓ GRDB setup, migrations (incl. vocab_enrollment)
       EbisuModel.swift                   ✓ predictRecall / updateRecall (635 tests)
