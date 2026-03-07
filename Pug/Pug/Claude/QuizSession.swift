@@ -603,7 +603,7 @@ final class QuizSession {
         Generate ONE \(mode) question for the \(item.facet) facet.
         Output format: write the sentinel `---QUIZ---` on its own line, then immediately the question. \
         Nothing before the sentinel — no reasoning, no preamble. \
-        Any notes or working may go after the question if needed.
+        Nothing after the question — stop as soon as the question is complete.
         """
     }
 

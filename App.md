@@ -223,8 +223,9 @@ the conversation warrants it.
   with a fresh context window checks whether the question stem leaks the answer form.
   Both happen before the student sees the question. Up to 2 generation attempts total.
   Additionally, a `---QUIZ---` sentinel is required in the response: everything before
-  the sentinel (model preamble / reasoning) is stripped, defending against the common
-  Haiku failure mode of thinking out loud before writing the question. Implemented in
+  the sentinel (model preamble / reasoning) is stripped, and the prompt prohibits any
+  content after the question, defending against both preamble leakage and trailing notes
+  that expose the correct answer. Implemented in
   `generateQuestion()` / `extractQuestion(from:)` / `validateQuestion(_:for:)`.
 - **`{kanji-ok}` / `{no-kanji}` label clarity** (TODO): these tags currently reflect
   whether the user has added a `[kanji]` marker to the vocab bullet, meaning they've
