@@ -24,7 +24,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>me.aldebrn.AsteroidalDust.setup</string>
+			<string>me.aldebrn.Pug.setup</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>japanquiz</string>

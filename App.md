@@ -361,7 +361,7 @@ Before building the iOS app (or after updating the source data), run once from t
 node .claude/scripts/get-kanji-info.mjs 日  # any kanji — triggers build/migration, then exits
 
 # 3. Copy into the Xcode Resources folder
-cp kanjidic2.sqlite AsteroidalDust/AsteroidalDust/Resources/kanjidic2.sqlite
+cp kanjidic2.sqlite Pug/Pug/Resources/kanjidic2.sqlite
 ```
 
 Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build procedure).
@@ -408,7 +408,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [ ] "Not yet learned" list shows all corpus words even after all are triaged — no "done" state
 
 ### Phase 1 — MVP (quiz works end to end) ✓ complete
-- [x] Xcode project setup (SwiftUI, iOS 17+, bundle ID) — project is `AsteroidalDust/`
+- [x] Xcode project setup (SwiftUI, iOS 17+, bundle ID) — project is `Pug/`
 - [x] Add GRDB.swift via Swift Package Manager (v7+; fixed pbxproj to link product to app target)
 - [x] Copy quiz DB schema from `init-quiz-db.mjs`; create on first launch — `Models/QuizDB.swift`
 - [x] Bundle `jmdict.sqlite` as app resource; copy to Documents on first launch — `QuizDB.copyJMdictIfNeeded()` (still need to drag file into Xcode Resources)
@@ -436,13 +436,13 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [x] Session persistence — `quiz_session` table (migration "v2"); resumes on relaunch; cleared
   item-by-item as each answer is graded; `refreshSession()` + "New Session" toolbar button
 - [x] Setup deep link handler (Keychain + UserDefaults) — `App/SetupHandler.swift`
-  - URL scheme `japanquiz://` registered via manual `AsteroidalDust/Info.plist`
-    - `GENERATE_INFOPLIST_FILE = NO`; `INFOPLIST_FILE = AsteroidalDust/Info.plist` in build settings
+  - URL scheme `japanquiz://` registered via manual `Pug/Info.plist`
+    - `GENERATE_INFOPLIST_FILE = NO`; `INFOPLIST_FILE = Pug/Info.plist` in build settings
     - Info.plist contains all required bundle keys (`CFBundleIdentifier` etc. via `$(VAR)` references)
       plus `CFBundleURLTypes` for the `japanquiz` scheme
     - Info.plist must NOT be in Copy Bundle Resources build phase (Xcode processes it via INFOPLIST_FILE)
   - `AppRootView` handles `.onOpenURL`, calls `SetupHandler.handle(url:)`, then re-initialises via `setupID` state flip (`.task(id: setupID)`)
-  - API key stored in Keychain (`kSecClassGenericPassword`, service `me.aldebrn.AsteroidalDust`); `SetupHandler.resolvedApiKey()` falls back to `ANTHROPIC_API_KEY` env var for dev
+  - API key stored in Keychain (`kSecClassGenericPassword`, service `me.aldebrn.Pug`); `SetupHandler.resolvedApiKey()` falls back to `ANTHROPIC_API_KEY` env var for dev
   - For dev: set `ANTHROPIC_API_KEY` and `VOCAB_URL` in Xcode scheme's Run → Environment Variables
   - `VOCAB_URL` = full raw Gist URL printed by `publish.mjs` on success
     (e.g. `https://gist.githubusercontent.com/<user>/<gist_id>/raw/vocab.json`)
@@ -490,10 +490,10 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 ## File layout
 
 ```
-AsteroidalDust/                          ← Xcode project root (already created)
-  AsteroidalDust.xcodeproj/
-  AsteroidalDust/                        ← app source
-    AsteroidalDustApp.swift              ← @main entry point (generated)
+Pug/                          ← Xcode project root (already created)
+  Pug.xcodeproj/
+  Pug/                        ← app source
+    PugApp.swift              ← @main entry point (generated)
     ContentView.swift                    ← replace with real nav structure
     Assets.xcassets/
     App/
@@ -518,10 +518,10 @@ AsteroidalDust/                          ← Xcode project root (already created
     Resources/
       jmdict.sqlite                      ✓ bundled (DELETE journal mode — see ToolHandler note)
       kanjidic2.sqlite                   ✓ bundled (DELETE journal mode same requirement)
-  AsteroidalDustTests/                   ← Swift Testing unit tests (generated)
-    AsteroidalDustTests.swift
-  AsteroidalDustUITests/                 ← XCTest UI tests (generated)
-    AsteroidalDustUITests.swift
+  PugTests/                   ← Swift Testing unit tests (generated)
+    PugTests.swift
+  PugUITests/                 ← XCTest UI tests (generated)
+    PugUITests.swift
 ```
 
 ---

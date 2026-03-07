@@ -1,13 +1,13 @@
 //
-//  AsteroidalDustUITestsLaunchTests.swift
-//  AsteroidalDustUITests
+//  PugUITestsLaunchTests.swift
+//  PugUITests
 //
 //  Created by af on 2026/3/3.
 //
 
 import XCTest
 
-final class AsteroidalDustUITestsLaunchTests: XCTestCase {
+final class PugUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

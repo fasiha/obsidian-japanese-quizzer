@@ -6,7 +6,7 @@
 
 import Testing
 import Foundation
-@testable import AsteroidalDust
+@testable import Pug
 
 // MARK: - Test data types
 

@@ -15,9 +15,9 @@ kanjidic2-*.json
 kradfile-*.json
 
 # Xcode
-AsteroidalDust/DerivedData/
-AsteroidalDust/*.xcodeproj/xcuserdata/
-AsteroidalDust/*.xcworkspace/xcuserdata/
-AsteroidalDust/AsteroidalDust.xcodeproj/xcuserdata/
-AsteroidalDust/AsteroidalDust.xcodeproj/project.xcworkspace/xcuserdata/
-AsteroidalDust/AsteroidalDust.xcodeproj/xcshareddata/xcschemes/
+Pug/DerivedData/
+Pug/*.xcodeproj/xcuserdata/
+Pug/*.xcworkspace/xcuserdata/
+Pug/Pug.xcodeproj/xcuserdata/
+Pug/Pug.xcodeproj/project.xcworkspace/xcuserdata/
+Pug/Pug.xcodeproj/xcshareddata/xcschemes/

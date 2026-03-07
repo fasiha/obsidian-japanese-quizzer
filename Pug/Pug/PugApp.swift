@@ -1,12 +1,12 @@
 //
-//  AsteroidalDustApp.swift
-//  AsteroidalDust
+//  PugApp.swift
+//  Pug
 
 import SwiftUI
 import GRDB
 
 @main
-struct AsteroidalDustApp: App {
+struct PugApp: App {
     var body: some Scene {
         WindowGroup {
             AppRootView()

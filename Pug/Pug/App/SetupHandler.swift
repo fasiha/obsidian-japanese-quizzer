@@ -6,7 +6,7 @@ import Foundation
 import Security
 
 enum SetupHandler {
-    private static let keychainService = "me.aldebrn.AsteroidalDust"
+    private static let keychainService = "me.aldebrn.Pug"
     private static let keychainAccount = "anthropic-api-key"
 
     /// Handle a `japanquiz://setup` deep link.

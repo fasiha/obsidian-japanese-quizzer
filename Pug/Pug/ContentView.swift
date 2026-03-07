@@ -1,4 +1,4 @@
-// ContentView.swift — placeholder, replaced by AppRootView in AsteroidalDustApp.swift
+// ContentView.swift — placeholder, replaced by AppRootView in PugApp.swift
 
 import SwiftUI
 
