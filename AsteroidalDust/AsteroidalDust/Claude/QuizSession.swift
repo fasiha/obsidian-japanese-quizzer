@@ -234,21 +234,106 @@ final class QuizSession {
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
-            let (question, msgs) = try await client.send(
-                messages: [initMsg],
-                system: system,
-                tools: [.lookupJmdict, .lookupKanjidic],
-                maxTokens: 1024,
-                toolHandler: makeToolHandler()
-            )
-            conversation = msgs
-            currentQuestion = question
-            chatMessages = [(isUser: false, text: question)]
-            print("[QuizSession] question generated (\(question.count) chars):\n\(question)")
+            var finalQuestion = ""
+            var finalMsgs: [AnthropicMessage] = []
+
+            for attempt in 1...2 {
+                let (raw, msgs) = try await client.send(
+                    messages: [initMsg],
+                    system: system,
+                    tools: [.lookupJmdict, .lookupKanjidic],
+                    maxTokens: 1024,
+                    toolHandler: makeToolHandler()
+                )
+                finalMsgs = msgs
+
+                // Step 1: strip everything before ---QUIZ--- (preamble leak defence).
+                if let extracted = extractQuestion(from: raw) {
+                    finalQuestion = extracted
+                } else {
+                    print("[QuizSession] attempt \(attempt): ---QUIZ--- marker missing, using raw response")
+                    finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+
+                // Step 2: independent validation pass — fresh context, checks for answer leakage.
+                let passed = await validateQuestion(finalQuestion, for: item)
+                if passed {
+                    print("[QuizSession] attempt \(attempt): validation PASS")
+                    break
+                }
+                if attempt < 2 {
+                    print("[QuizSession] attempt \(attempt): validation FAIL, retrying generation")
+                } else {
+                    print("[QuizSession] attempt \(attempt): validation FAIL on final attempt, showing anyway")
+                }
+            }
+
+            conversation = finalMsgs
+            currentQuestion = finalQuestion
+            chatMessages = [(isUser: false, text: finalQuestion)]
+            print("[QuizSession] question ready (\(finalQuestion.count) chars):\n\(finalQuestion)")
             phase = .chatting
         } catch {
             print("[QuizSession] generateQuestion error: \(error)")
             phase = .error(error.localizedDescription)
+        }
+    }
+
+    /// Returns the text after the first `---QUIZ---` sentinel, trimmed.
+    /// Returns nil if the sentinel is absent.
+    private func extractQuestion(from response: String) -> String? {
+        guard let range = response.range(of: "---QUIZ---") else { return nil }
+        let after = response[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return after.isEmpty ? nil : after
+    }
+
+    /// Second-pass validation: a fresh Claude call (no quiz context) checks whether
+    /// the generated question leaks the answer form into the question stem.
+    /// Returns true (PASS) if the question is clean or if the check itself errors.
+    private func validateQuestion(_ question: String, for item: QuizItem) async -> Bool {
+        let answerFormDesc: String
+        let answerValues: String
+        switch item.facet {
+        case "reading-to-meaning":
+            answerFormDesc = "English meaning"
+            answerValues = item.meanings.prefix(5).joined(separator: "; ")
+        case "meaning-to-reading":
+            answerFormDesc = "kana reading"
+            answerValues = item.kanaTexts.joined(separator: ", ")
+        case "kanji-to-reading":
+            answerFormDesc = "kana reading"
+            answerValues = item.kanaTexts.joined(separator: ", ")
+        case "meaning-reading-to-kanji":
+            answerFormDesc = "written/kanji form"
+            answerValues = item.writtenTexts.joined(separator: ", ")
+        default:
+            return true  // Unknown facet — skip validation.
+        }
+        guard !answerValues.isEmpty else { return true }
+
+        let prompt = """
+        You are a quiz quality checker. A Japanese vocabulary quiz question was generated.
+        The answer form that must NOT appear in the question stem: \(answerFormDesc)
+        Correct answer value(s): \(answerValues)
+
+        Note: for multiple-choice questions the answer MAY appear in the A/B/C/D options — \
+        only the question STEM (the sentence or phrase before the options) must be clean.
+
+        Question to check:
+        \(question)
+
+        Reply with exactly one word: PASS if the stem is clean, FAIL if the stem leaks the answer.
+        """
+        do {
+            let (response, _) = try await client.send(
+                messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
+                maxTokens: 10
+            )
+            let verdict = response.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+            return verdict.hasPrefix("PASS")
+        } catch {
+            print("[QuizSession] validateQuestion error: \(error) — assuming PASS")
+            return true  // Don't block the quiz on a network error.
         }
     }
 
@@ -436,8 +521,6 @@ final class QuizSession {
         Pre-question check: before outputting your question, silently verify — is the answer form \
         (kanji / kana / meaning, depending on facet) visible anywhere in the question stem? \
         If yes, rewrite the stem before showing it.
-        // TODO: spin this pre-question check into a separate Claude call with a fresh context window,
-        // so it can't be "poisoned" by seeing the answer form in the conversation history above.
         \(item.hasKanji ? "{kanji-ok} — all four facets apply" : "{no-kanji} — only reading-to-meaning and meaning-to-reading")
 
         \(universe)
@@ -490,7 +573,12 @@ final class QuizSession {
             // form must only ever appear as an answer option, never in a free-answer prompt.
             mode = (isFree && item.facet != "meaning-reading-to-kanji") ? "free answer" : "multiple choice (A–D)"
         }
-        return "Generate ONE \(mode) question for the \(item.facet) facet. Show only the question — no preamble."
+        return """
+        Generate ONE \(mode) question for the \(item.facet) facet.
+        Output format: write the sentinel `---QUIZ---` on its own line, then immediately the question. \
+        Nothing before the sentinel — no reasoning, no preamble. \
+        Any notes or working may go after the question if needed.
+        """
     }
 
     // MARK: - Private: parsing

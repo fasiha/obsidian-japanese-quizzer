@@ -219,10 +219,13 @@ the conversation warrants it.
   - Conversation continues freely after grading. "Next Question →" appears; "Skip →" is
     always available.
   - Each item starts with a clean context (`conversation = []`). No cross-item memory.
-- **Two-call question validation** (Phase 2 TODO): generate question (call 1), then a
-  second call with fresh context checks whether the question leaks the answer form. Both
-  happen before the student sees the question. Currently skipped — the system prompt's
-  "CRITICAL: Never leak the answer form" instruction works well enough for MVP.
+- **Two-call question validation** ✓: generate question (call 1), then a second call
+  with a fresh context window checks whether the question stem leaks the answer form.
+  Both happen before the student sees the question. Up to 2 generation attempts total.
+  Additionally, a `---QUIZ---` sentinel is required in the response: everything before
+  the sentinel (model preamble / reasoning) is stripped, defending against the common
+  Haiku failure mode of thinking out loud before writing the question. Implemented in
+  `generateQuestion()` / `extractQuestion(from:)` / `validateQuestion(_:for:)`.
 - **`{kanji-ok}` / `{no-kanji}` label clarity** (TODO): these tags currently reflect
   whether the user has added a `[kanji]` marker to the vocab bullet, meaning they've
   committed to learning to read/write that word's kanji. The quiz context line and system
@@ -458,7 +461,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [ ] Handle `stop_reason: "max_tokens"` in `AnthropicClient` — detect truncated responses and
   either show a user-facing warning or automatically re-prompt to continue. Affects
   `WordExploreSession` (kanji/word explanations) and quiz grading turns.
-- [ ] Two-call question validation (generate → validate before showing)
+- [x] Two-call question validation (generate → validate before showing; + `---QUIZ---` sentinel to strip preamble)
 - [x] Teaching / introduction flow for new words — `WordDetailSheet` (swipe Learn or tap row
       in VocabBrowserView; kanji commitment question; all facets initialized atomically).
       `QuizStatus.newWord`/`.newFacet` removed; quiz only sees fully-initialized learning words.
