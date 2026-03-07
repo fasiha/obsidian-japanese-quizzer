@@ -537,7 +537,7 @@ final class QuizSession {
         } else {
             ebisuLine = "Memory state: new word (no review history yet)"
         }
-        let universe = vocabUniverse(excluding: item.wordId)
+        let universe = vocabUniverse(excluding: item.wordId, facet: item.facet)
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
@@ -581,14 +581,25 @@ final class QuizSession {
 
     /// Compact vocab universe for distractor selection: display text + first meaning,
     /// excluding the word currently being quizzed to avoid confusion.
-    private func vocabUniverse(excluding wordId: String) -> String {
+    private func vocabUniverse(excluding wordId: String, facet: String) -> String {
         let others = allCandidates.filter { $0.wordId != wordId }
         guard !others.isEmpty else { return "" }
         let entries = others.map { item -> String in
             let meaning = item.meanings.first ?? ""
             return meaning.isEmpty ? item.wordText : "\(item.wordText) — \(meaning)"
         }.joined(separator: "; ")
-        return "Vocabulary universe (prefer these as distractors — call lookup_jmdict for readings/details): \(entries)"
+        // For reading/meaning-answer facets, free Haiku to pick the best distractors from its
+        // general knowledge rather than forcing corpus words. Only kanji-distractor facets benefit
+        // from corpus-first (shared kanji components make naturally plausible wrong options).
+        let useCorpusFirst = facet == "meaning-reading-to-kanji"
+        if useCorpusFirst {
+            return "Vocabulary universe (prefer these as distractors — call lookup_jmdict for readings/details): \(entries)"
+        } else {
+            return """
+            Learner's vocabulary corpus (for context only — feel free to use your own knowledge to \
+            pick the best distractors rather than pulling from this list): \(entries)
+            """
+        }
     }
 
     private func questionRequest(for item: QuizItem) -> String {
@@ -601,9 +612,8 @@ final class QuizSession {
         }
         return """
         Generate ONE \(mode) question for the \(item.facet) facet.
-        Output format: write the sentinel `---QUIZ---` on its own line, then immediately the question. \
-        Nothing before the sentinel — no reasoning, no preamble. \
-        Nothing after the question — stop as soon as the question is complete.
+        Output format: optionally reason first, then write the sentinel `---QUIZ---` on its own line, \
+        then immediately the question. Nothing after the question — stop as soon as it is complete.
         """
     }
 
