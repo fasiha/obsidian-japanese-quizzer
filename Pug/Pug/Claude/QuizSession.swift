@@ -686,6 +686,13 @@ final class QuizSession {
         - Do NOT include SCORE: when answering tangent questions or if no answer was given yet.
         - Once SCORE is given, keep chatting if the student has follow-up questions.
 
+        NOTES rules (include on the same message as SCORE):
+        - Write NOTES: followed by one self-contained sentence about what the learner did.
+        - Never reference answer letters (A/B/C/D) — spell out the actual word or reading chosen.
+        - Good: NOTES: Gave correct reading どなる
+        - Good: NOTES: Chose 怒鳴る (correct); noted confusion with 怒る
+        - Good: NOTES: Could not recall kanji form; guessed 怒鳴 (wrong); correct is 怒鳴る
+
         Tools available:
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
         - get_vocab_context: the student's full enrolled word list with recall probabilities
@@ -693,27 +700,22 @@ final class QuizSession {
         }
     }
 
-    /// Compact vocab universe for distractor selection: display text + first meaning,
-    /// excluding the word currently being quizzed to avoid confusion.
+    /// Distractor guidance for multiple-choice questions, tuned per facet.
     private func vocabUniverse(excluding wordId: String, facet: String) -> String {
-        let others = allCandidates.filter { $0.wordId != wordId }
-        guard !others.isEmpty else { return "" }
-        let entries = others.map { item -> String in
-            let meaning = item.meanings.first ?? ""
-            return meaning.isEmpty ? item.wordText : "\(item.wordText) — \(meaning)"
-        }.joined(separator: "; ")
-        // For reading/meaning-answer facets, free Haiku to pick the best distractors from its
-        // general knowledge rather than forcing corpus words. Only kanji-distractor facets benefit
-        // from corpus-first (shared kanji components make naturally plausible wrong options).
-        let useCorpusFirst = facet == "meaning-reading-to-kanji"
-        if useCorpusFirst {
-            return "Vocabulary universe (prefer these as distractors — call lookup_jmdict for readings/details): \(entries)"
-        } else {
-            return """
-            Learner's vocabulary corpus (for context only — feel free to use your own knowledge to \
-            pick the best distractors rather than pulling from this list): \(entries)
-            """
+        let criteria: String
+        switch facet {
+        case "reading-to-meaning":
+            criteria = "near-synonyms or words in the same semantic/situational field"
+        case "meaning-to-reading":
+            criteria = "words with phonologically similar readings (similar mora count or sound)"
+        case "kanji-to-reading":
+            criteria = "words that share kanji components and have confusable readings"
+        case "meaning-reading-to-kanji":
+            criteria = "kanji forms that are visually similar or share components with the target"
+        default:
+            criteria = "words that are semantically adjacent, share kanji, or have similar sounds"
         }
+        return "For distractors, prefer \(criteria). Use lookup_jmdict to verify any distractor."
     }
 
     private func questionRequest(for item: QuizItem) -> String {
@@ -743,11 +745,16 @@ final class QuizSession {
     }
 
     private func extractNotes(from text: String) -> String {
-        let lines = text.components(separatedBy: .newlines)
-            .filter { !$0.hasPrefix("SCORE:") }
+        let pattern = #/NOTES:[*_\s]*(.+?)(?:\n|$)/#
+        if let match = text.firstMatch(of: pattern) {
+            return String(match.1).trimmingCharacters(in: .whitespaces)
+        }
+        // Fallback: strip SCORE/NOTES lines and join remaining non-empty lines.
+        return text.components(separatedBy: .newlines)
+            .filter { !$0.hasPrefix("SCORE:") && !$0.hasPrefix("NOTES:") }
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        return lines.joined(separator: " ")
+            .joined(separator: " ")
     }
 
     // MARK: - Private: device name
