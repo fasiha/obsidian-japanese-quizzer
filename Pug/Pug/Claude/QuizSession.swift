@@ -113,6 +113,32 @@ final class QuizSession {
         }
     }
 
+    func rescaleCurrentFacet(hours: Double) async {
+        guard let item = currentItem, hours > 0 else { return }
+        do {
+            guard let rec = try await db.ebisuRecord(
+                wordType: item.wordType, wordId: item.wordId, quizType: item.facet) else { return }
+            let scale = hours / rec.t
+            let newModel = try rescaleHalflife(rec.model, scale: scale)
+            gradedHalflife = newModel.t
+            let updated = EbisuRecord(
+                wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
+                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
+                lastReview: rec.lastReview
+            )
+            try await db.upsert(record: updated)
+            let event = ModelEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
+                event: "rescaled,\(rec.t),\(newModel.t)"
+            )
+            try await db.log(event: event)
+            print("[QuizSession] rescaled \(item.wordId)/\(item.facet) \(rec.t)h → \(newModel.t)h")
+        } catch {
+            print("[QuizSession] rescaleCurrentFacet error: \(error)")
+        }
+    }
+
     func refreshSession() {
         // Reset UI state synchronously so the view updates immediately.
         items = []

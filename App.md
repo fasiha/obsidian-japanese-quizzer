@@ -465,7 +465,7 @@ Schema: `position INTEGER PK, word_id TEXT UNIQUE`. Ordering is by `position ASC
 - [x] Teaching / introduction flow for new words — `WordDetailSheet` (swipe Learn or tap row
       in VocabBrowserView; kanji commitment question; all facets initialized atomically).
       `QuizStatus.newWord`/`.newFacet` removed; quiz only sees fully-initialized learning words.
-- [ ] Halflife rescaling UI ("too easy" / "too hard" buttons)
+- [x] Halflife rescaling UI ("too easy" / "too hard" buttons)
 - [ ] Session summary screen
 - [ ] Mnemonic and etymology sidebars during quiz
 - [x] Publish pipeline scripts (`prepare-publish.mjs` + `publish.mjs`) — vocab.json to Gist via SSH git push

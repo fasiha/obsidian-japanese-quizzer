@@ -118,7 +118,7 @@ struct ToolHandler: Sendable {
 
         var results: [[String: Any]] = []
         for k in kanjis {
-            let result = try? await db.read { db -> (Row?, [String]) in
+            let result = try? db.read { db -> (Row?, [String]) in
                 let row = try Row.fetchOne(db, sql: "SELECT * FROM kanji WHERE literal = ?", arguments: [k])
                 var radicalLabels: [String] = []
                 if let rJSON = row?["radicals"] as? String,

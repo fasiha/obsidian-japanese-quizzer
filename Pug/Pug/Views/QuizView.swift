@@ -7,6 +7,7 @@ import UIKit
 struct QuizView: View {
     @State var session: QuizSession
     @State private var showDebug = false
+    @State private var showRescaleSheet = false
 
     var body: some View {
         NavigationStack {
@@ -43,6 +44,11 @@ struct QuizView: View {
             }
             .sheet(isPresented: $showDebug) {
                 DebugSheet(session: session)
+            }
+            .sheet(isPresented: $showRescaleSheet) {
+                RescaleSheet(currentHalflife: session.gradedHalflife ?? 24) { hours in
+                    Task { await session.rescaleCurrentFacet(hours: hours) }
+                }
             }
         }
     }
@@ -127,13 +133,17 @@ struct QuizView: View {
                     }
                 }
 
-                // Advance button: Skip (no grade yet) or Next Question (graded)
+                // Advance button: Skip (no grade yet) or Rescale + Next Question (graded)
                 let isLast = session.currentIndex + 1 >= session.items.count
                 let isGraded = session.gradedScore != nil
                 if isGraded {
-                    Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity)
+                    HStack {
+                        Button("Adjust…") { showRescaleSheet = true }
+                            .buttonStyle(.bordered)
+                        Spacer()
+                        Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }
+                            .buttonStyle(.borderedProminent)
+                    }
                 } else {
                     Button("Skip →") { session.nextQuestion() }
                         .buttonStyle(.bordered)
@@ -253,6 +263,78 @@ struct DebugSheet: View {
             await session.loadCandidatesIfNeeded()
             shareURL = await session.checkpointAndDBURL()
         }
+    }
+}
+
+// MARK: - Rescale sheet
+
+private let durationFormatter: DateComponentsFormatter = {
+    let f = DateComponentsFormatter()
+    f.unitsStyle = .full
+    f.allowedUnits = [.year, .month, .weekOfMonth, .day, .hour]
+    f.maximumUnitCount = 2
+    return f
+}()
+
+private func formatDuration(_ hours: Double) -> String {
+    durationFormatter.string(from: hours * 3600) ?? "—"
+}
+
+private struct RescaleSheet: View {
+    let currentHalflife: Double
+    let onSet: (Double) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var targetHours: Double
+
+    init(currentHalflife: Double, onSet: @escaping (Double) -> Void) {
+        self.currentHalflife = currentHalflife
+        self.onSet = onSet
+        self._targetHours = State(initialValue: currentHalflife)
+    }
+
+    private var scaleBinding: Binding<Double> {
+        Binding(
+            get: { targetHours / currentHalflife },
+            set: { targetHours = $0 * currentHalflife }
+        )
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("Current halflife", value: formatDuration(currentHalflife))
+                }
+                Section("New halflife") {
+                    LabeledContent("Hours") {
+                        TextField("Hours", value: $targetHours, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Scale ×") {
+                        TextField("Scale", value: scaleBinding, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+                Section {
+                    LabeledContent("Final halflife", value: formatDuration(targetHours))
+                        .font(.headline)
+                }
+            }
+            .navigationTitle("Adjust halflife")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Set") { onSet(targetHours); dismiss() }
+                        .disabled(targetHours <= 0)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 
