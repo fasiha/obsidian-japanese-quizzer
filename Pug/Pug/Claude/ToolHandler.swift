@@ -52,28 +52,28 @@ extension AnthropicTool {
 
 /// Handles tool calls from AnthropicClient: lookup_jmdict and lookup_kanjidic.
 struct ToolHandler: Sendable {
-    /// DatabaseReader opened on jmdict.sqlite (the copy in Documents).
+    /// DatabaseReader opened on jmdict.sqlite (from the app bundle).
     /// Stored as DatabaseQueue to avoid WAL-mode sidecar files on a read-only DB.
     let jmdict: any DatabaseReader
 
-    /// DatabaseReader opened on kanjidic2.sqlite (the copy in Documents). Nil if not available.
+    /// DatabaseReader opened on kanjidic2.sqlite (from the app bundle). Nil if not available.
     let kanjidic: (any DatabaseReader)?
 
-    /// Open jmdict.sqlite and kanjidic2.sqlite from the Documents directory.
+    /// Open jmdict.sqlite and kanjidic2.sqlite directly from the app bundle.
+    /// Both are read-only and in DELETE journal mode, so no WAL sidecars are created.
     /// Uses DatabaseQueue (not Pool) so GRDB doesn't force WAL mode on read-only DBs.
     static func makeDefault() throws -> ToolHandler {
-        let docsURL = try FileManager.default
-            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         var config = Configuration()
         config.readonly = true
 
-        let jmdictURL = docsURL.appendingPathComponent("jmdict.sqlite")
+        guard let jmdictURL = Bundle.main.url(forResource: "jmdict", withExtension: "sqlite") else {
+            throw QuizDBError.jmdictBundleNotFound
+        }
         let jmdictQueue = try DatabaseQueue(path: jmdictURL.path, configuration: config)
 
-        let kanjidicURL = docsURL.appendingPathComponent("kanjidic2.sqlite")
-        let kanjidicQueue = FileManager.default.fileExists(atPath: kanjidicURL.path)
-            ? try? DatabaseQueue(path: kanjidicURL.path, configuration: config)
-            : nil
+        let kanjidicQueue: DatabaseQueue? = Bundle.main
+            .url(forResource: "kanjidic2", withExtension: "sqlite")
+            .flatMap { try? DatabaseQueue(path: $0.path, configuration: config) }
 
         return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue)
     }

@@ -122,40 +122,6 @@ final class QuizDB: Sendable {
         return db
     }
 
-    /// Copy jmdict.sqlite from the app bundle to Documents on first launch.
-    /// Returns the destination URL. Safe to call on every launch.
-    ///
-    /// IMPORTANT: jmdict.sqlite must be in DELETE journal mode (not WAL) before bundling.
-    /// Run `sqlite3 jmdict.sqlite "PRAGMA journal_mode=DELETE;"` after regenerating it,
-    /// otherwise ToolHandler's read-only DatabaseQueue will crash looking for a missing .wal file.
-    @discardableResult
-    static func copyJMdictIfNeeded() throws -> URL {
-        let docsURL = try FileManager.default
-            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let dest = docsURL.appendingPathComponent("jmdict.sqlite")
-        guard !FileManager.default.fileExists(atPath: dest.path) else { return dest }
-        guard let src = Bundle.main.url(forResource: "jmdict", withExtension: "sqlite") else {
-            throw QuizDBError.jmdictBundleNotFound
-        }
-        try FileManager.default.copyItem(at: src, to: dest)
-        return dest
-    }
-
-    /// Copy kanjidic2.sqlite from the app bundle to Documents on first launch.
-    /// Returns the destination URL, or nil if the bundle resource is absent.
-    @discardableResult
-    static func copyKanjidicIfNeeded() throws -> URL? {
-        let docsURL = try FileManager.default
-            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let dest = docsURL.appendingPathComponent("kanjidic2.sqlite")
-        guard !FileManager.default.fileExists(atPath: dest.path) else { return dest }
-        guard let src = Bundle.main.url(forResource: "kanjidic2", withExtension: "sqlite") else {
-            return nil  // optional resource — tool will gracefully report unavailable
-        }
-        try FileManager.default.copyItem(at: src, to: dest)
-        return dest
-    }
-
     private func runMigrations() throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("v1") { db in

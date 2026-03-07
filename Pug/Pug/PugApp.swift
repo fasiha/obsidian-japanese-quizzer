@@ -72,8 +72,6 @@ struct AppRootView: View {
 
     private func setup() async {
         do {
-            try QuizDB.copyJMdictIfNeeded()
-            try QuizDB.copyKanjidicIfNeeded()
             let quizDB      = try QuizDB.makeDefault()
             let toolHandler = try ToolHandler.makeDefault()
             // API key: Keychain (set via japanquiz://setup deep link) or ANTHROPIC_API_KEY env var.
