@@ -59,6 +59,10 @@ final class QuizSession {
     private var conversation: [AnthropicMessage] = []
     var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
 
+    // Prefetched next question: kicked off as soon as the current item is graded.
+    private var prefetched: (index: Int, question: String, conversation: [AnthropicMessage],
+                              preRecall: Double?, preHalflife: Double?)? = nil
+
     /// Human-readable ranked context (same format sent to LLM), for debug display.
     var contextText: String {
         guard !allCandidates.isEmpty else { return "No candidates loaded." }
@@ -91,6 +95,7 @@ final class QuizSession {
     func start() {
         items = []
         currentIndex = 0
+        prefetched = nil
         phase = .loadingItems
         Task { await loadItems() }
     }
@@ -143,6 +148,7 @@ final class QuizSession {
         // Reset UI state synchronously so the view updates immediately.
         items = []
         currentIndex = 0
+        prefetched = nil
         conversation = []
         currentQuestion = ""
         chatMessages = []
@@ -239,6 +245,24 @@ final class QuizSession {
 
     private func generateQuestion() async {
         guard let item = currentItem else { phase = .finished; return }
+
+        // Consume prefetch if one is ready for this index.
+        if let pf = prefetched, pf.index == currentIndex {
+            prefetched = nil
+            conversation   = pf.conversation
+            currentQuestion = pf.question
+            chatMessages   = [(isUser: false, text: pf.question)]
+            chatInput      = ""
+            isSendingChat  = false
+            gradedScore    = nil
+            gradedHalflife = nil
+            preQuizRecall   = pf.preRecall
+            preQuizHalflife = pf.preHalflife
+            print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
+            phase = .chatting
+            return
+        }
+
         phase = .generating
         conversation = []
         chatMessages = []
@@ -256,44 +280,13 @@ final class QuizSession {
 
         print("[QuizSession] generating question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
-        let system = systemPrompt(for: item, isGenerating: true)
+        let system = systemPrompt(for: item, isGenerating: true,
+                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
-            var finalQuestion = ""
-            var finalMsgs: [AnthropicMessage] = []
-
-            for attempt in 1...2 {
-                let (raw, msgs) = try await client.send(
-                    messages: [initMsg],
-                    system: system,
-                    tools: [.lookupJmdict, .lookupKanjidic],
-                    maxTokens: 1024,
-                    toolHandler: makeToolHandler()
-                )
-                finalMsgs = msgs
-
-                // Step 1: strip everything before ---QUIZ--- (preamble leak defence).
-                if let extracted = extractQuestion(from: raw) {
-                    finalQuestion = extracted
-                } else {
-                    print("[QuizSession] attempt \(attempt): ---QUIZ--- marker missing, using raw response")
-                    finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-
-                // Step 2: independent validation pass — fresh context, checks for answer leakage.
-                let passed = await validateQuestion(finalQuestion, for: item)
-                if passed {
-                    print("[QuizSession] attempt \(attempt): validation PASS")
-                    break
-                }
-                if attempt < 2 {
-                    print("[QuizSession] attempt \(attempt): validation FAIL, retrying generation")
-                } else {
-                    print("[QuizSession] attempt \(attempt): validation FAIL on final attempt, showing anyway")
-                }
-            }
-
+            let (finalQuestion, finalMsgs) = try await runGenerationLoop(
+                for: item, system: system, initMsg: initMsg, label: "generate")
             conversation = finalMsgs
             currentQuestion = finalQuestion
             chatMessages = [(isUser: false, text: finalQuestion)]
@@ -372,7 +365,8 @@ final class QuizSession {
         do {
             let (response, updatedMsgs) = try await client.send(
                 messages: conversation,
-                system: systemPrompt(for: item),
+                system: systemPrompt(for: item, preRecall: preQuizRecall, preHalflife: preQuizHalflife,
+                                     postHalflife: gradedHalflife),
                 tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
@@ -385,6 +379,12 @@ final class QuizSession {
                 gradedScore = score
                 print("[QuizSession] graded: score=\(score)")
                 try? await recordReview(item: item, score: score, notes: extractNotes(from: response))
+                // Start prefetching the next question while the user reads feedback.
+                let nextIndex = currentIndex + 1
+                if nextIndex < items.count {
+                    let nextItem = items[nextIndex]
+                    Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+                }
             }
         } catch {
             chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
@@ -445,6 +445,79 @@ final class QuizSession {
         try await db.removeFromSession(wordId: item.wordId)
     }
 
+    // MARK: - Private: prefetch next question
+
+    private func prefetchQuestion(for index: Int, item: QuizItem) async {
+        let preRecall: Double?
+        let preHalflife: Double?
+        if case .reviewed(let recall, _, let halflife) = item.status {
+            preRecall   = recall
+            preHalflife = halflife
+        } else {
+            preRecall   = nil
+            preHalflife = nil
+        }
+
+        let system  = systemPrompt(for: item, isGenerating: true,
+                                   preRecall: preRecall, preHalflife: preHalflife)
+        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
+
+        print("[QuizSession] prefetch: starting for index \(index): \(item.wordText) facet:\(item.facet)")
+        do {
+            let (finalQuestion, finalMsgs) = try await runGenerationLoop(
+                for: item, system: system, initMsg: initMsg, label: "prefetch")
+            // Discard if the session has already moved past this index.
+            guard currentIndex <= index else {
+                print("[QuizSession] prefetch for index \(index) is stale, discarding")
+                return
+            }
+            prefetched = (index: index, question: finalQuestion, conversation: finalMsgs,
+                          preRecall: preRecall, preHalflife: preHalflife)
+            print("[QuizSession] prefetch stored for index \(index): \(item.wordText)")
+        } catch {
+            print("[QuizSession] prefetchQuestion error for index \(index): \(error)")
+            // Silent failure — generateQuestion() will regenerate on demand.
+        }
+    }
+
+    // MARK: - Private: generation loop
+
+    /// Two-attempt generate+validate loop shared by generateQuestion and prefetchQuestion.
+    private func runGenerationLoop(for item: QuizItem, system: String,
+                                   initMsg: AnthropicMessage, label: String)
+        async throws -> (question: String, conversation: [AnthropicMessage])
+    {
+        var finalQuestion = ""
+        var finalMsgs: [AnthropicMessage] = []
+        for attempt in 1...2 {
+            let (raw, msgs) = try await client.send(
+                messages: [initMsg],
+                system: system,
+                tools: [.lookupJmdict, .lookupKanjidic],
+                maxTokens: 1024,
+                toolHandler: makeToolHandler()
+            )
+            finalMsgs = msgs
+            if let extracted = extractQuestion(from: raw) {
+                finalQuestion = extracted
+            } else {
+                print("[QuizSession] \(label) attempt \(attempt): ---QUIZ--- marker missing, using raw response")
+                finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            let passed = await validateQuestion(finalQuestion, for: item)
+            if passed {
+                print("[QuizSession] \(label) attempt \(attempt): validation PASS")
+                break
+            }
+            if attempt < 2 {
+                print("[QuizSession] \(label) attempt \(attempt): validation FAIL, retrying")
+            } else {
+                print("[QuizSession] \(label) attempt \(attempt): validation FAIL on final attempt, using anyway")
+            }
+        }
+        return (finalQuestion, finalMsgs)
+    }
+
     // MARK: - Private: tool handler
 
     private func makeToolHandler() -> AnthropicClient.ToolHandler {
@@ -465,7 +538,9 @@ final class QuizSession {
 
     // MARK: - Private: prompt helpers
 
-    private func systemPrompt(for item: QuizItem, isGenerating: Bool = false) -> String {
+    private func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
+                              preRecall: Double? = nil, preHalflife: Double? = nil,
+                              postHalflife: Double? = nil) -> String {
         let facetRule: String
         let wordLine: String
         let englishHint = item.meanings.prefix(3).isEmpty
@@ -528,11 +603,11 @@ final class QuizSession {
             wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
         }
         let ebisuLine: String
-        if let preRecall = preQuizRecall, let preHl = preQuizHalflife {
-            if let postHl = gradedHalflife {
-                ebisuLine = "Memory state: recall=\(String(format: "%.2f", preRecall)), halflife=\(String(format: "%.0f", preHl))h → halflife updated to \(String(format: "%.0f", postHl))h after this review"
+        if let r = preRecall, let h = preHalflife {
+            if let ph = postHalflife {
+                ebisuLine = "Memory state: recall=\(String(format: "%.2f", r)), halflife=\(String(format: "%.0f", h))h → halflife updated to \(String(format: "%.0f", ph))h after this review"
             } else {
-                ebisuLine = "Memory state before this review: recall=\(String(format: "%.2f", preRecall)), halflife=\(String(format: "%.0f", preHl))h"
+                ebisuLine = "Memory state before this review: recall=\(String(format: "%.2f", r)), halflife=\(String(format: "%.0f", h))h"
             }
         } else {
             ebisuLine = "Memory state: new word (no review history yet)"
