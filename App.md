@@ -447,11 +447,12 @@ Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build p
   express?" rather than "What does め mean?"). Requires softening the rigid "Show ONLY kana"
   rule for reading-to-meaning and letting Claude call lookup_jmdict to detect ambiguity/POS.
   Accumulate real examples before tuning the prompt.
+- [ ] Search the vocab list (kanji, kana, English, try converting English to roumaji, etc.)
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types
 - [x] Kanjidic2 bundle (`kanjidic2.sqlite`) + `lookup_kanjidic` tool — stroke/JLPT/grade/on/kun/meanings
-- [ ] Source sentence display on first encounter (Emily's preference)
+- [ ] Source sentence display on first encounter
 - [ ] Per-user preferences stored properly (not in a memory file)
 - [ ] `kanji_knowledge` table: let users assert kanji they know during enrollment triage;
       use to suppress furigana for known kanji in reading display across all words
