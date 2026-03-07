@@ -375,7 +375,7 @@ final class QuizSession {
                 toolHandler: makeToolHandler()
             )
             conversation = updatedMsgs
-            chatMessages.append((isUser: false, text: response))
+            chatMessages.append((isUser: false, text: strippingMetadata(from: response)))
             print("[QuizSession] chat response (\(response.count) chars):\n\(response)")
             // Auto-detect grading: first SCORE: in this item records the review.
             if gradedScore == nil, let score = parseScore(from: response) {
@@ -742,6 +742,18 @@ final class QuizSession {
             return min(max(score, 0), 1)
         }
         return nil
+    }
+
+    /// Strip SCORE/NOTES sentinel lines from text shown in the chat UI.
+    /// The full response is kept in `conversation` for Claude's context.
+    private func strippingMetadata(from text: String) -> String {
+        let sentinel = #/\*{0,2}(?:SCORE|NOTES):[^\n]*/#
+        return text.replacing(sentinel, with: "")
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func extractNotes(from text: String) -> String {
