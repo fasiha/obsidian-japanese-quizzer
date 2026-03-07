@@ -32,7 +32,7 @@ Currently per-user preferences live ad-hoc in `MEMORY.md` (Claude Code only) or
 hardcoded in `quiz.md`. A real multi-user system needs a proper preferences store
 (DB table or per-user config). Known preferences that vary critically across users:
 
-- `quiz_style`: varied vs intensive — already in `quiz.md` Step 0, but only via `MEMORY.md`
+- `quiz_style`: varied vs intensive — in iOS app: `UserPreferences` (UserDefaults) + `SettingsView`; passive facet update logic in `QuizSession.recordReview`. Still only via `MEMORY.md` in the Claude Code skill.
 - `recall_asymmetry`: how much to weight production (`meaning-to-reading`) vs
   recognition (`reading-to-meaning`). Currently noted in `MEMORY.md` but not
   referenced in `quiz.md` Step 2 word-selection logic.

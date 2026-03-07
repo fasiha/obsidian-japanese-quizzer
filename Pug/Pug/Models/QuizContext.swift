@@ -194,7 +194,7 @@ struct QuizContext {
     }
 
     private static func iso8601Date(_ s: String) -> Date {
-        parseISO8601(s) ?? .distantPast
+        parseISO8601(s) ?? Date(timeIntervalSinceNow: -60)
     }
 }
 

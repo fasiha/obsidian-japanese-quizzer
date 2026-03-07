@@ -55,6 +55,7 @@ final class QuizSession {
 
     let client: AnthropicClient
     let toolHandler: ToolHandler
+    let preferences: UserPreferences
     private let db: QuizDB
     private var conversation: [AnthropicMessage] = []
     var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
@@ -84,10 +85,12 @@ final class QuizSession {
             .appendingPathComponent("quiz.sqlite")
     }
 
-    init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB) {
+    init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB,
+         preferences: UserPreferences) {
         self.client      = client
         self.toolHandler = toolHandler
         self.db          = db
+        self.preferences = preferences
     }
 
     // MARK: - Public API
@@ -442,6 +445,42 @@ final class QuizSession {
             quizType: item.facet, event: "reviewed,\(String(format: "%.2f", score))"
         )
         try await db.log(event: event)
+
+        // Passive facet updates (varied mode only).
+        // Rule: quizzing a non-kanji facet passively updates the other non-kanji facet;
+        // quizzing a kanji facet passively updates all other facets.
+        if preferences.quizStyle == .varied {
+            let isKanjiFacet = item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji"
+            let passiveCandidates: [String]
+            if isKanjiFacet {
+                passiveCandidates = ["reading-to-meaning", "meaning-to-reading",
+                                     "kanji-to-reading", "meaning-reading-to-kanji"]
+                    .filter { $0 != item.facet }
+            } else {
+                passiveCandidates = item.facet == "reading-to-meaning"
+                    ? ["meaning-to-reading"] : ["reading-to-meaning"]
+            }
+            for facet in passiveCandidates {
+                guard let rec = try await db.ebisuRecord(
+                    wordType: item.wordType, wordId: item.wordId, quizType: facet) else { continue }
+                let refDate = parseISO8601(rec.lastReview) ?? Date(timeIntervalSinceNow: -60)
+                let elapsed = max(Date().timeIntervalSince(refDate) / 3600, 1e-6)
+                let updated = try updateRecall(rec.model, successes: 0.5, total: 1, tnow: elapsed)
+                let updatedRec = EbisuRecord(
+                    wordType: item.wordType, wordId: item.wordId, quizType: facet,
+                    alpha: updated.alpha, beta: updated.beta, t: updated.t,
+                    lastReview: now
+                )
+                try await db.upsert(record: updatedRec)
+                let passiveEvent = ModelEvent(
+                    timestamp: ISO8601DateFormatter().string(from: Date()),
+                    wordType: item.wordType, wordId: item.wordId, quizType: facet,
+                    event: "passive,0.5"
+                )
+                try await db.log(event: passiveEvent)
+            }
+        }
+
         try await db.removeFromSession(wordId: item.wordId)
     }
 

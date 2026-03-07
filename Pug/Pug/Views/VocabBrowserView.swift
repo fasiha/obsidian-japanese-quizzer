@@ -23,6 +23,7 @@ struct VocabBrowserView: View {
     @State private var filter: EnrollmentStatus? = .notYetLearned  // nil = all
     @State private var selectedItem: VocabItem? = nil
     @State private var showDebug = false
+    @State private var showSettings = false
 
     private var filteredItems: [VocabItem] {
         let f = filter
@@ -62,6 +63,7 @@ struct VocabBrowserView: View {
                 WordDetailSheet(item: item, corpus: corpus, db: db, session: session)
             }
             .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
+            .sheet(isPresented: $showSettings) { SettingsView() }
         }
     }
 
@@ -158,6 +160,8 @@ struct VocabBrowserView: View {
 
     private var debugMenu: some View {
         Menu {
+            Button("Settings") { showSettings = true }
+            Divider()
             Button("Re-download vocab") {
                 Task { await corpus.redownload(db: db, jmdict: jmdict) }
             }

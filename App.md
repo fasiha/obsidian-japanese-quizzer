@@ -178,7 +178,7 @@ the conversation warrants it.
 
 - **Direct API calls** from the app — no edge worker proxy. Simpler; no server to maintain.
 - **API key**: stored in iOS Keychain. Distributed to family via setup deep link (see below).
-- **Model**: defaults to `claude-haiku-4-5-20251001` for dev (fast, cheap). Override via `ANTHROPIC_MODEL` env var in the Xcode scheme, or the future Settings screen. Switch to `claude-sonnet-4-6` for production TestFlight builds. Add a model picker to the Phase 2 Settings screen so it's runtime-configurable without a rebuild.
+- **Model**: defaults to `claude-haiku-4-5-20251001` for dev (fast, cheap). Override via `ANTHROPIC_MODEL` env var in the Xcode scheme, or the Settings screen. Switch to `claude-sonnet-4-6` for production TestFlight builds. Add a model picker to the Settings screen so it's runtime-configurable without a rebuild.
 - **Tools available during a quiz item** (`Claude/ToolHandler.swift`):
   - `lookup_jmdict` — query local `jmdict.sqlite` for dictionary-accurate readings and
     meanings. Claude calls this during question generation or when the student asks about
@@ -437,7 +437,10 @@ Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build p
 - [ ] Session summary screen
 - [ ] Mnemonic and etymology sidebars during quiz
 - [x] Publish pipeline scripts (`prepare-publish.mjs` + `publish.mjs`) — vocab.json to Gist via SSH git push
-- [ ] Settings screen (API key, vocab URL, reviewer name, model picker)
+- [x] Settings screen (quiz style: varied/intensive) — `Views/SettingsView.swift`; `Models/UserPreferences.swift` (UserDefaults-backed `@Observable`); accessible via ··· menu in Vocab tab
+  - Varied: after grading, passively update sibling facets the student was naturally exposed to (non-kanji facet → other non-kanji facet; kanji facet → all other facets). Score 0.5, advances `last_review` timestamp to suppress repetition.
+  - Intensive: only the quizzed facet is updated.
+- [ ] Settings screen: API key, vocab URL, reviewer name, model picker (Phase 2 remaining items)
 - [ ] Context-based questions for ambiguous kana: bare kana like め is ambiguous (目/芽/め-suffix).
   For suffixes, particles, or kana that match multiple common words, allow Claude to use a short
   example sentence as the question stem instead of bare kana (e.g. "In 馬鹿め！, what does め

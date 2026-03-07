@@ -8,6 +8,7 @@ struct QuizView: View {
     @State var session: QuizSession
     @State private var showDebug = false
     @State private var showRescaleSheet = false
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
@@ -30,6 +31,7 @@ struct QuizView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
+                        Button("Settings") { showSettings = true }
                         if session.isQuizActive {
                             Button("New Session") { session.refreshSession() }
                         }
@@ -45,6 +47,7 @@ struct QuizView: View {
             .sheet(isPresented: $showDebug) {
                 DebugSheet(session: session)
             }
+            .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showRescaleSheet) {
                 RescaleSheet(currentHalflife: session.gradedHalflife ?? 24) { hours in
                     Task { await session.rescaleCurrentFacet(hours: hours) }

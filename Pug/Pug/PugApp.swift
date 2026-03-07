@@ -17,6 +17,7 @@ struct PugApp: App {
 /// Initialises the DB, quiz session, and vocab corpus, then hands off to HomeView.
 /// Falls back to an error screen if the DB can't be opened.
 struct AppRootView: View {
+    @State private var preferences = UserPreferences()
     @State private var session: QuizSession? = nil
     @State private var corpus = VocabCorpus()
     @State private var db: QuizDB? = nil
@@ -32,6 +33,7 @@ struct AppRootView: View {
                                 && VocabSync.resolvedURL() != nil
                 if isConfigured {
                     HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict)
+                        .environment(preferences)
                 } else {
                     ContentUnavailableView(
                         "Setup Required",
@@ -84,7 +86,8 @@ struct AppRootView: View {
             // while corpus.load() continues in the background.
             db      = quizDB
             jmdict  = toolHandler.jmdict
-            session = QuizSession(client: client, toolHandler: toolHandler, db: quizDB)
+            session = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
+                                  preferences: preferences)
 
             // Load vocab corpus (uses cache; downloads silently if no cache and VOCAB_URL is set).
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
