@@ -75,7 +75,7 @@ struct AppRootView: View {
     private func setup() async {
         do {
             let quizDB      = try QuizDB.makeDefault()
-            let toolHandler = try ToolHandler.makeDefault()
+            let toolHandler = try ToolHandler.makeDefault(quizDB: quizDB)
             // API key: Keychain (set via japanquiz://setup deep link) or ANTHROPIC_API_KEY env var.
             let apiKey = SetupHandler.resolvedApiKey()
             let model  = ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"

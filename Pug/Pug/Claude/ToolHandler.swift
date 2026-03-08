@@ -32,6 +32,48 @@ extension AnthropicTool {
         ]
     )
 
+    static let getMnemonic = AnthropicTool(
+        name: "get_mnemonic",
+        description: "Get the mnemonic note for a vocabulary word or a single kanji character. Returns the mnemonic text, or null if none exists.",
+        inputSchema: [
+            "type": .string("object"),
+            "properties": .object([
+                "word_type": .object([
+                    "type": .string("string"),
+                    "description": .string("Either 'jmdict' (vocabulary word) or 'kanji' (single kanji character).")
+                ]),
+                "word_id": .object([
+                    "type": .string("string"),
+                    "description": .string("The JMDict entry ID (for jmdict) or the kanji character itself (for kanji).")
+                ])
+            ]),
+            "required": .array([.string("word_type"), .string("word_id")])
+        ]
+    )
+
+    static let setMnemonic = AnthropicTool(
+        name: "set_mnemonic",
+        description: "Save or update a mnemonic note for a vocabulary word or single kanji character. Overwrites any existing mnemonic for the same word_type + word_id.",
+        inputSchema: [
+            "type": .string("object"),
+            "properties": .object([
+                "word_type": .object([
+                    "type": .string("string"),
+                    "description": .string("Either 'jmdict' (vocabulary word) or 'kanji' (single kanji character).")
+                ]),
+                "word_id": .object([
+                    "type": .string("string"),
+                    "description": .string("The JMDict entry ID (for jmdict) or the kanji character itself (for kanji).")
+                ]),
+                "mnemonic": .object([
+                    "type": .string("string"),
+                    "description": .string("The mnemonic text to save.")
+                ])
+            ]),
+            "required": .array([.string("word_type"), .string("word_id"), .string("mnemonic")])
+        ]
+    )
+
     static let lookupKanjidic = AnthropicTool(
         name: "lookup_kanjidic",
         description: "Look up one or more kanji characters in KANJIDIC2, augmented with WaniKani component breakdowns. Returns radical components (kradfile), stroke count, JLPT level, school grade, on-readings, kun-readings, English meanings, and — when available — a `wanikani_components` array listing informal kanji components (each with `char` and either `meaning` from KANJIDIC2 or `description` from WaniKani's informal component glossary). Non-kanji characters in the input are ignored.",
@@ -81,7 +123,8 @@ struct WanikaniData: Sendable {
 
 // MARK: - Handler
 
-/// Handles tool calls from AnthropicClient: lookup_jmdict and lookup_kanjidic.
+/// Handles tool calls from AnthropicClient: lookup_jmdict, lookup_kanjidic,
+/// get_mnemonic, and set_mnemonic.
 struct ToolHandler: Sendable {
     /// DatabaseReader opened on jmdict.sqlite (from the app bundle).
     /// Stored as DatabaseQueue to avoid WAL-mode sidecar files on a read-only DB.
@@ -93,10 +136,13 @@ struct ToolHandler: Sendable {
     /// WaniKani component data, loaded from bundle JSON files. Empty if files absent.
     let wanikani: WanikaniData
 
+    /// Quiz database for mnemonic read/write. Nil if not yet initialized.
+    let quizDB: QuizDB?
+
     /// Open jmdict.sqlite and kanjidic2.sqlite directly from the app bundle.
     /// Both are read-only and in DELETE journal mode, so no WAL sidecars are created.
     /// Uses DatabaseQueue (not Pool) so GRDB doesn't force WAL mode on read-only DBs.
-    static func makeDefault() throws -> ToolHandler {
+    static func makeDefault(quizDB: QuizDB? = nil) throws -> ToolHandler {
         var config = Configuration()
         config.readonly = true
 
@@ -111,7 +157,7 @@ struct ToolHandler: Sendable {
 
         let wanikani = WanikaniData.load()
 
-        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue, wanikani: wanikani)
+        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue, wanikani: wanikani, quizDB: quizDB)
     }
 
     /// Route a tool call. Returns the result string (JSON on success, error JSON on failure).
@@ -127,6 +173,19 @@ struct ToolHandler: Sendable {
                 return #"{"error":"missing or empty 'text' parameter"}"#
             }
             return await lookupKanjidic(text: text)
+        case "get_mnemonic":
+            guard let wt = input["word_type"]?.stringValue, !wt.isEmpty,
+                  let wid = input["word_id"]?.stringValue, !wid.isEmpty else {
+                return #"{"error":"missing word_type or word_id"}"#
+            }
+            return await getMnemonic(wordType: wt, wordId: wid)
+        case "set_mnemonic":
+            guard let wt = input["word_type"]?.stringValue, !wt.isEmpty,
+                  let wid = input["word_id"]?.stringValue, !wid.isEmpty,
+                  let text = input["mnemonic"]?.stringValue, !text.isEmpty else {
+                return #"{"error":"missing word_type, word_id, or mnemonic"}"#
+            }
+            return await setMnemonic(wordType: wt, wordId: wid, text: text)
         default:
             return "{\"error\":\"unknown tool: \(toolName)\"}"
         }
@@ -253,6 +312,31 @@ struct ToolHandler: Sendable {
         }
         let data = (try? JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])) ?? Data()
         return String(data: data, encoding: .utf8) ?? "[]"
+    }
+
+    private func getMnemonic(wordType: String, wordId: String) async -> String {
+        guard let db = quizDB else { return #"{"error":"quiz database not available"}"# }
+        do {
+            if let m = try await db.mnemonic(wordType: wordType, wordId: wordId) {
+                let obj: [String: Any] = ["word_type": m.wordType, "word_id": m.wordId,
+                                           "mnemonic": m.mnemonic, "updated_at": m.updatedAt]
+                let data = try JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys])
+                return String(data: data, encoding: .utf8) ?? "{}"
+            }
+            return #"{"mnemonic":null}"#
+        } catch {
+            return "{\"error\":\"\(error.localizedDescription)\"}"
+        }
+    }
+
+    private func setMnemonic(wordType: String, wordId: String, text: String) async -> String {
+        guard let db = quizDB else { return #"{"error":"quiz database not available"}"# }
+        do {
+            try await db.setMnemonic(wordType: wordType, wordId: wordId, text: text)
+            return #"{"ok":true}"#
+        } catch {
+            return "{\"error\":\"\(error.localizedDescription)\"}"
+        }
     }
 
     private func lookupJmdict(word: String) async throws -> String {

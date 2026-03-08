@@ -48,10 +48,11 @@ final class WordExploreSession {
         conversation.append(AnthropicMessage(role: "user", content: [.text(text)]))
         do {
             let th = toolHandler
+            let prompt = await systemPromptWithMnemonics()
             let (response, updatedConversation) = try await client.send(
                 messages: conversation,
-                system: systemPrompt,
-                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext],
+                system: prompt,
+                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
                 toolHandler: { [self] name, input in
                     if name == "get_vocab_context" { return await self.vocabContextJSON() }
@@ -84,23 +85,55 @@ final class WordExploreSession {
         return String(data: data, encoding: .utf8) ?? "{}"
     }
 
-    private var systemPrompt: String {
+    /// Build system prompt with any existing mnemonics fetched from the DB.
+    private func systemPromptWithMnemonics() async -> String {
         let writtenPart = item.writtenTexts.isEmpty
             ? "" : "Written forms: \(item.writtenTexts.joined(separator: ", ")). "
         let kanaStr    = item.kanaTexts.joined(separator: ", ")
         let meaningStr = item.meanings.prefix(5).joined(separator: "; ")
+
+        // Fetch existing mnemonics
+        var mnemonicParts: [String] = []
+        if let db = toolHandler.quizDB {
+            if let m = try? await db.mnemonic(wordType: "jmdict", wordId: item.id) {
+                mnemonicParts.append("Vocab mnemonic: \(m.mnemonic)")
+            }
+            let kanjiChars = item.writtenTexts.joined()
+                .unicodeScalars
+                .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
+                          $0.value >= 0x3400 && $0.value <= 0x4DBF ||
+                          $0.value >= 0xF900 && $0.value <= 0xFAFF }
+                .map { String($0) }
+            let uniqueKanji = Array(Set(kanjiChars))
+            if !uniqueKanji.isEmpty,
+               let kanjiMnemonics = try? await db.mnemonics(wordType: "kanji", wordIds: uniqueKanji),
+               !kanjiMnemonics.isEmpty {
+                for km in kanjiMnemonics {
+                    mnemonicParts.append("Kanji mnemonic for \(km.wordId): \(km.mnemonic)")
+                }
+            }
+        }
+        let mnemonicBlock = mnemonicParts.isEmpty ? "" : """
+
+        Mnemonics on file:
+        \(mnemonicParts.joined(separator: "\n"))
+        """
+
         return """
         You are a friendly Japanese tutor helping a learner explore one word in detail.
 
-        Word: \(item.wordText)
+        Word: \(item.wordText) (JMDict id: \(item.id))
         \(writtenPart)Readings: \(kanaStr)
         Meanings: \(meaningStr)
-
+        \(mnemonicBlock)
         Answer questions about this word's readings, meanings, kanji breakdown, etymology,
         mnemonics, and connections to other Japanese words. Be concise and conversational.
         Call lookup_jmdict for dictionary-accurate details when needed.
         Call get_vocab_context when knowing the learner's other studied words would help
         (e.g. "how does this compare to words I know?", or to point out related words they're already studying).
+        When the learner crafts or accepts a mnemonic, save it via set_mnemonic (word_type "jmdict" for
+        vocab words, "kanji" for individual kanji characters). Call get_mnemonic to check for existing
+        mnemonics about other words or kanji.
         Do NOT quiz the learner or assign scores — this is a free exploration session.
         """
     }

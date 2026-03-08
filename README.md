@@ -201,6 +201,18 @@ CREATE TABLE ebisu_models (
 );
 ```
 
+```sql
+CREATE TABLE mnemonics (
+  word_type  TEXT NOT NULL,   -- 'jmdict' or 'kanji'
+  word_id    TEXT NOT NULL,   -- JMDict entry ID or kanji character
+  mnemonic   TEXT NOT NULL,
+  updated_at TEXT NOT NULL,   -- ISO 8601 UTC
+  PRIMARY KEY (word_type, word_id)
+);
+```
+
+`mnemonics` stores free-form mnemonic notes for vocab words (`word_type='jmdict'`) or individual kanji characters (`word_type='kanji'`). No `quiz_type` — one mnemonic covers all facets. Claude can read and write these via `get_mnemonic`/`set_mnemonic` tools during quiz and word exploration sessions. iOS-only (not in the Node.js schema).
+
 `ebisu_models` stores one Bayesian memory model (via [ebisu-js](https://github.com/fasiha/ebisu.js)) per (word, facet) pair. `get-quiz-context.mjs` calls `predictRecall` to rank items by urgency; `record-review.mjs` calls `updateRecall` after each quiz. To manually correct a halflife (e.g. "this is clearly too easy, bump it to 200 h"), use `rescale-halflife.mjs --word-id ID --quiz-type FACET --halflife HOURS` — it calls `rescaleHalflife` without inserting a review row. Schema version is tracked via `PRAGMA user_version` (currently 1), set in `init-quiz-db.mjs`.
 
 `model_events` is a lightweight audit log for model-level operations that don't correspond to a quiz attempt. One row per (word, facet) per operation — so introducing a `{no-kanji}` word creates two rows (one per facet), and a `{kanji-ok}` word creates four:

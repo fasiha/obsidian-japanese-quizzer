@@ -366,11 +366,13 @@ final class QuizSession {
         chatMessages.append((isUser: true, text: text))
         conversation.append(AnthropicMessage(role: "user", content: [.text(text)]))
         do {
+            // After the user's first reply, fetch and inject mnemonics into the system prompt.
+            let mnemonicBlock = await fetchMnemonicBlock(for: item)
             let (response, updatedMsgs) = try await client.send(
                 messages: conversation,
                 system: systemPrompt(for: item, preRecall: preQuizRecall, preHalflife: preQuizHalflife,
-                                     postHalflife: gradedHalflife),
-                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext],
+                                     postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock),
+                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
             )
@@ -557,6 +559,37 @@ final class QuizSession {
         return (finalQuestion, finalMsgs)
     }
 
+    // MARK: - Private: mnemonic helpers
+
+    /// Fetch the vocab mnemonic + any relevant kanji mnemonics for the current item.
+    /// Returns a formatted block for inclusion in the system prompt, or empty string if none.
+    private func fetchMnemonicBlock(for item: QuizItem) async -> String {
+        guard let db = toolHandler.quizDB else { return "" }
+        var parts: [String] = []
+        // Vocab mnemonic
+        if let m = try? await db.mnemonic(wordType: "jmdict", wordId: item.wordId) {
+            parts.append("Vocab mnemonic: \(m.mnemonic)")
+        }
+        // Kanji mnemonics — extract kanji characters from written forms
+        let kanjiChars = item.writtenTexts.joined()
+            .unicodeScalars
+            .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
+                      $0.value >= 0x3400 && $0.value <= 0x4DBF ||
+                      $0.value >= 0xF900 && $0.value <= 0xFAFF }
+            .map { String($0) }
+        let uniqueKanji = Array(Set(kanjiChars))
+        if !uniqueKanji.isEmpty,
+           let kanjiMnemonics = try? await db.mnemonics(wordType: "kanji", wordIds: uniqueKanji),
+           !kanjiMnemonics.isEmpty {
+            for km in kanjiMnemonics {
+                parts.append("Kanji mnemonic for \(km.wordId): \(km.mnemonic)")
+            }
+        }
+        guard !parts.isEmpty else { return "" }
+        return "\nMnemonics on file (use these to help the student; suggest saving new ones via set_mnemonic):\n"
+            + parts.joined(separator: "\n")
+    }
+
     // MARK: - Private: tool handler
 
     private func makeToolHandler() -> AnthropicClient.ToolHandler {
@@ -579,7 +612,7 @@ final class QuizSession {
 
     private func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
-                              postHalflife: Double? = nil) -> String {
+                              postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
         let facetRule: String
         let wordLine: String
         let englishHint = item.meanings.prefix(3).isEmpty
@@ -700,6 +733,9 @@ final class QuizSession {
         - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
         radicals, and WaniKani informal components with meanings or descriptions)
         - get_vocab_context: the student's full enrolled word list with recall probabilities
+        - get_mnemonic: retrieve a saved mnemonic for any word (jmdict) or kanji character
+        - set_mnemonic: save a new mnemonic when the student crafts or accepts one
+        \(mnemonicBlock)
         """
         }
     }

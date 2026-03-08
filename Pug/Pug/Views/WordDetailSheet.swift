@@ -24,6 +24,8 @@ struct WordDetailSheet: View {
     @State private var kanjiOkChoice: Bool = false
     @State private var isWorking = false
     @State private var explore: WordExploreSession? = nil
+    @State private var vocabMnemonic: String? = nil
+    @State private var kanjiMnemonics: [(kanji: String, text: String)] = []
 
     var body: some View {
         NavigationStack {
@@ -55,6 +57,7 @@ struct WordDetailSheet: View {
                     item: item,
                     corpus: corpus
                 )
+                Task { await loadMnemonics() }
             }
         }
     }
@@ -87,6 +90,18 @@ struct WordDetailSheet: View {
                 infoGroup(heading: "Appears in") {
                     Text(item.sources.joined(separator: ", "))
                         .foregroundStyle(.secondary)
+                }
+            }
+
+            if vocabMnemonic != nil || !kanjiMnemonics.isEmpty {
+                infoGroup(heading: "Mnemonics") {
+                    if let vm = vocabMnemonic {
+                        Text(vm)
+                    }
+                    ForEach(kanjiMnemonics, id: \.kanji) { km in
+                        Text("\(km.kanji): \(km.text)")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -300,6 +315,26 @@ struct WordDetailSheet: View {
         Task {
             await corpus.toggleKanji(wordId: item.id, db: db)
             isWorking = false
+        }
+    }
+
+    private func loadMnemonics() async {
+        guard let quizDB = session.toolHandler.quizDB else { return }
+        // Vocab mnemonic
+        if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: item.id) {
+            vocabMnemonic = m.mnemonic
+        }
+        // Kanji mnemonics for characters in written forms
+        let kanjiChars = item.writtenTexts.joined()
+            .unicodeScalars
+            .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
+                      $0.value >= 0x3400 && $0.value <= 0x4DBF ||
+                      $0.value >= 0xF900 && $0.value <= 0xFAFF }
+            .map { String($0) }
+        let uniqueKanji = Array(Set(kanjiChars))
+        if !uniqueKanji.isEmpty,
+           let kms = try? await quizDB.mnemonics(wordType: "kanji", wordIds: uniqueKanji) {
+            kanjiMnemonics = kms.map { (kanji: $0.wordId, text: $0.mnemonic) }
         }
     }
 

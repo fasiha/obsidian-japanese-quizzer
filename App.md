@@ -123,6 +123,33 @@ only. "Unlearning" a word deletes its enrollment row and archives its Ebisu mode
 `pending` rows. Partial Ebisu facets were backfilled with α=β=1.25, t=24h using the oldest existing
 facet's timestamp.
 
+#### `mnemonics` table (v4 migration)
+
+Free-form mnemonic notes for vocab words or individual kanji characters. Keyed by
+`(word_type, word_id)` — intentionally excludes `quiz_type` because one mnemonic typically
+covers all facets.
+
+```sql
+CREATE TABLE mnemonics (
+  word_type  TEXT NOT NULL,   -- 'jmdict' or 'kanji'
+  word_id    TEXT NOT NULL,   -- JMDict entry ID or kanji character
+  mnemonic   TEXT NOT NULL,
+  updated_at TEXT NOT NULL,   -- ISO 8601 UTC
+  PRIMARY KEY (word_type, word_id)
+);
+```
+
+- `word_type='jmdict'` — mnemonic for a vocabulary word (same ID as `vocab_enrollment`)
+- `word_type='kanji'` — mnemonic for a single kanji character (the character itself is the `word_id`)
+- Kanji mnemonics don't require enrollment or Ebisu models — they're pure reference data
+
+**Claude integration:**
+- `get_mnemonic` / `set_mnemonic` tools available in both quiz chat and word explore sessions
+- During quiz: mnemonic is **not** shown during question generation (avoid priming); injected
+  into the system prompt **after the user's first reply** so Claude can reference it in feedback
+- During word exploration: mnemonics shown from the start; Claude can save new ones
+- `WordDetailSheet` displays existing vocab + relevant kanji mnemonics in the info section
+
 #### Kanji knowledge (future, separate table)
 
 "I know this kanji" is a *cross-word* assertion — knowing 怒 from 怒る should affect
@@ -194,6 +221,12 @@ the conversation warrants it.
     the student's message is about a different word they're studying, or when knowing
     their broader learning context would help — e.g. "yes, that kanji also appears in
     怒鳴る, which you'll see soon at recall 0.18."
+  - `get_mnemonic` — retrieve a saved mnemonic note for a vocab word (`word_type="jmdict"`)
+    or single kanji character (`word_type="kanji"`). Available during quiz chat and word
+    exploration.
+  - `set_mnemonic` — save or update a mnemonic note. Claude calls this when the student
+    crafts or accepts a mnemonic during conversation. Available during quiz chat and word
+    exploration.
 - **Ebisu state for the current quiz item**: Claude should be able to answer "how well do I
   know this word?" or "is this word well-established?" without an extra tool call. Three
   options were considered:
@@ -473,7 +506,7 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
   rule for reading-to-meaning and letting Claude call lookup_jmdict to detect ambiguity/POS.
   Accumulate real examples before tuning the prompt.
 - [ ] Search the vocab list (kanji, kana, English, try converting English to roumaji, etc.)
-- [ ] Add Wanikani kanji↔radicals map to augment KRADFILE/Kanjidic2. https://github.com/fasiha/ebieki/blob/master/wanikani-kanji-graph.json
+- [x] Add Wanikani kanji↔radicals map to augment KRADFILE/Kanjidic2. https://github.com/fasiha/ebieki/blob/master/wanikani-kanji-graph.json
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types

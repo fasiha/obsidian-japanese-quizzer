@@ -73,6 +73,23 @@ struct ModelEvent: Codable, FetchableRecord, MutablePersistableRecord {
     }
 }
 
+/// A mnemonic note for a word (jmdict entry) or a single kanji character.
+/// Keyed by (word_type, word_id) — no quiz_type, since one mnemonic covers all facets.
+struct Mnemonic: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "mnemonics"
+    var wordType: String    // "jmdict" or "kanji"
+    var wordId: String      // JMDict entry ID or single kanji character
+    var mnemonic: String
+    var updatedAt: String   // ISO 8601 UTC
+
+    enum CodingKeys: String, CodingKey {
+        case wordType = "word_type"
+        case wordId = "word_id"
+        case mnemonic
+        case updatedAt = "updated_at"
+    }
+}
+
 /// Word learning status. Only `.learning` and `.known` are stored in the DB.
 /// `.notYetLearned` is a Swift-only fallback for words absent from vocab_enrollment.
 /// NEVER persist a VocabEnrollment with status = .notYetLearned.
@@ -254,6 +271,15 @@ final class QuizDB: Sendable {
                         """, arguments: [info.wordType, info.wordId, facet,
                                          model.alpha, model.beta, model.t, info.oldest])
                 }
+            }
+        }
+        migrator.registerMigration("v4") { db in
+            try db.create(table: "mnemonics", ifNotExists: true) { t in
+                t.column("word_type", .text).notNull()  // "jmdict" or "kanji"
+                t.column("word_id", .text).notNull()    // JMDict ID or kanji character
+                t.column("mnemonic", .text).notNull()
+                t.column("updated_at", .text).notNull()
+                t.primaryKey(["word_type", "word_id"])
             }
         }
         try migrator.migrate(pool)
@@ -518,6 +544,35 @@ final class QuizDB: Sendable {
             try db.execute(sql: "DELETE FROM quiz_session")
         }
         print("[QuizDB] session cleared")
+    }
+
+    // MARK: - Mnemonics
+
+    /// Fetch a single mnemonic by (wordType, wordId), or nil if none exists.
+    func mnemonic(wordType: String, wordId: String) async throws -> Mnemonic? {
+        try await pool.read { db in
+            try Mnemonic
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId)
+                .fetchOne(db)
+        }
+    }
+
+    /// Fetch all mnemonics whose word_id is in the given set (for batch lookups, e.g. kanji in a word).
+    func mnemonics(wordType: String, wordIds: [String]) async throws -> [Mnemonic] {
+        guard !wordIds.isEmpty else { return [] }
+        return try await pool.read { db in
+            try Mnemonic
+                .filter(Column("word_type") == wordType && wordIds.contains(Column("word_id")))
+                .fetchAll(db)
+        }
+    }
+
+    /// Upsert a mnemonic. Overwrites any existing row for the same (wordType, wordId).
+    func setMnemonic(wordType: String, wordId: String, text: String) async throws {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let record = Mnemonic(wordType: wordType, wordId: wordId, mnemonic: text, updatedAt: now)
+        try await pool.write { db in try record.save(db) }
+        print("[QuizDB] setMnemonic \(wordType)/\(wordId) (\(text.prefix(40))…)")
     }
 
     // MARK: - Enrollment queries (legacy — still used by VocabCorpus and QuizContext)
