@@ -448,6 +448,7 @@ Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build p
   rule for reading-to-meaning and letting Claude call lookup_jmdict to detect ambiguity/POS.
   Accumulate real examples before tuning the prompt.
 - [ ] Search the vocab list (kanji, kana, English, try converting English to roumaji, etc.)
+- [ ] Add Wanikani kanji↔radicals map to augment KRADFILE/Kanjidic2. https://github.com/fasiha/ebieki/blob/master/wanikani-kanji-graph.json
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types
