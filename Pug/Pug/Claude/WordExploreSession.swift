@@ -14,6 +14,9 @@ final class WordExploreSession {
     var input: String = ""
     var isSending: Bool = false
 
+    /// Called after a `set_mnemonic` tool call succeeds, so the parent view can refresh.
+    var onMnemonicSaved: (() -> Void)?
+
     // MARK: - Dependencies
 
     private let client: AnthropicClient
@@ -56,7 +59,9 @@ final class WordExploreSession {
                 maxTokens: 1024,
                 toolHandler: { [self] name, input in
                     if name == "get_vocab_context" { return await self.vocabContextJSON() }
-                    return try await th.handle(toolName: name, input: input)
+                    let result = try await th.handle(toolName: name, input: input)
+                    if name == "set_mnemonic" { self.onMnemonicSaved?() }
+                    return result
                 }
             )
             conversation = updatedConversation
@@ -134,6 +139,9 @@ final class WordExploreSession {
         When the learner crafts or accepts a mnemonic, save it via set_mnemonic (word_type "jmdict" for
         vocab words, "kanji" for individual kanji characters). Call get_mnemonic to check for existing
         mnemonics about other words or kanji.
+        IMPORTANT: set_mnemonic overwrites the entire mnemonic. Before saving, review the existing mnemonic
+        (shown above under "Mnemonics on file" or via get_mnemonic) and merge new content into it —
+        never silently discard prior mnemonic text. The mnemonic you pass should be the complete final version.
         Do NOT quiz the learner or assign scores — this is a free exploration session.
         """
     }

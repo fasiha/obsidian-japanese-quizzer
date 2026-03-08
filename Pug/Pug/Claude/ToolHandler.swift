@@ -53,7 +53,7 @@ extension AnthropicTool {
 
     static let setMnemonic = AnthropicTool(
         name: "set_mnemonic",
-        description: "Save or update a mnemonic note for a vocabulary word or single kanji character. Overwrites any existing mnemonic for the same word_type + word_id.",
+        description: "Save or update a mnemonic note for a vocabulary word or single kanji character. IMPORTANT: This overwrites any existing mnemonic for the same word_type + word_id. Before calling, always check the existing mnemonic (from the system prompt or via get_mnemonic) and merge new content into it rather than replacing it wholesale. The mnemonic field should contain the complete final text you want stored.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([

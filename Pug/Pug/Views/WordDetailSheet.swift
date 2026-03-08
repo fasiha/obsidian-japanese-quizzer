@@ -51,12 +51,14 @@ struct WordDetailSheet: View {
                 if isWorking { ProgressView() }
             }
             .onAppear {
-                explore = WordExploreSession(
+                let exploreSession = WordExploreSession(
                     client: session.client,
                     toolHandler: session.toolHandler,
                     item: item,
                     corpus: corpus
                 )
+                exploreSession.onMnemonicSaved = { Task { await loadMnemonics() } }
+                explore = exploreSession
                 Task { await loadMnemonics() }
             }
         }

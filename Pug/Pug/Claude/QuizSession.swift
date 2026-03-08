@@ -734,7 +734,10 @@ final class QuizSession {
         radicals, and WaniKani informal components with meanings or descriptions)
         - get_vocab_context: the student's full enrolled word list with recall probabilities
         - get_mnemonic: retrieve a saved mnemonic for any word (jmdict) or kanji character
-        - set_mnemonic: save a new mnemonic when the student crafts or accepts one
+        - set_mnemonic: save a new mnemonic when the student crafts or accepts one. \
+        IMPORTANT: this overwrites the entire mnemonic. Always review the existing mnemonic \
+        (shown below under "Mnemonics on file" or via get_mnemonic) and merge new content into it — \
+        never silently discard prior text. Pass the complete final version.
         \(mnemonicBlock)
         """
         }
