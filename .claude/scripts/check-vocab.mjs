@@ -11,7 +11,7 @@
  * Usage: node .claude/scripts/check-vocab.mjs
  */
 
-import { setup, findExactIds } from "jmdict-simplified-node";
+import { findExactIds } from "jmdict-simplified-node";
 import { readFileSync } from "fs";
 import path from "path";
 import {
@@ -20,7 +20,7 @@ import {
   intersectSets,
   parseFrontmatter,
   projectRoot,
-  JMDICT_DB,
+  openJmdictDb,
 } from "./shared.mjs";
 
 // Extract bullets (with 1-indexed line numbers) from all Vocab details blocks.
@@ -56,7 +56,7 @@ function extractVocabBullets(content) {
   return bullets;
 }
 
-const { db } = await setup(JMDICT_DB);
+const db = await openJmdictDb();
 const mdFiles = findMdFiles(projectRoot);
 const problems = [];
 let totalChecked = 0;

@@ -670,6 +670,8 @@ final class QuizSession {
 
         Tools available:
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
+        - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
+        radicals, and WaniKani informal components with meanings or descriptions)
         """
         } else {
             return sharedCore + """
@@ -695,6 +697,8 @@ final class QuizSession {
 
         Tools available:
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
+        - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
+        radicals, and WaniKani informal components with meanings or descriptions)
         - get_vocab_context: the student's full enrolled word list with recall probabilities
         """
         }

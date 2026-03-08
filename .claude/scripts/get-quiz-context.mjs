@@ -43,7 +43,7 @@
  */
 
 import { predictRecall } from "ebisu-js";
-import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
+import { findExactIds, idsToWords } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync } from "fs";
 import {
   findMdFiles,
@@ -54,8 +54,8 @@ import {
   wordFormsPart,
   wordMeanings,
   openQuizDb,
+  openJmdictDb,
   projectRoot,
-  JMDICT_DB,
   QUIZ_CONTEXT,
 } from "./shared.mjs";
 
@@ -101,7 +101,7 @@ function hasKanjiTag(bullet) {
 }
 
 // Scan opted-in Markdown files for vocab bullets
-const { db } = await setup(JMDICT_DB);
+const db = await openJmdictDb();
 const reviewed = [];   // { line, recall } — has at least one Ebisu model (recall=0 for @new facets)
 const newWords  = [];  // { line } — no Ebisu models at all
 let newFacetCount = 0; // reviewed words that have at least one unmodeled facet

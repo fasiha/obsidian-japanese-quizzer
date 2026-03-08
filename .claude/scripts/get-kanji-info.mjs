@@ -167,9 +167,13 @@ if (kanjis.length === 0) {
 
 ensureKanjidicSqlite();
 // Open read-write only for the migration check, then switch to readonly.
+// Also ensures DELETE journal mode so the file is ready to copy into the iOS bundle.
 {
   const dbRw = new Database(KANJIDIC_SQLITE);
   ensureRadicalsColumn(dbRw);
+  if (dbRw.pragma("journal_mode", { simple: true }) === "wal") {
+    dbRw.pragma("journal_mode = DELETE");
+  }
   dbRw.close();
 }
 const db = new Database(KANJIDIC_SQLITE, { readonly: true });

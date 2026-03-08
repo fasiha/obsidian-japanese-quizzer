@@ -122,14 +122,13 @@ Then run:
 # 1. Install dependencies
 npm install
 
-# 2. Build jmdict.sqlite from the source JSON (skip if it already exists)
-node -e "import('jmdict-simplified-node').then(m => m.setup('jmdict.sqlite', 'jmdict-eng-3.6.2.json'))"
+# 2. Build jmdict.sqlite
+node .claude/scripts/check-vocab.mjs
 
 # 3. Create the quiz database (safe to re-run)
 node .claude/scripts/init-quiz-db.mjs
 
-# 4. Build kanjidic2.sqlite (happens automatically on first /quiz or get-kanji-info call,
-#    but you can trigger it early):
+# 4. Build kanjidic2.sqlite
 node .claude/scripts/get-kanji-info.mjs 日
 ```
 

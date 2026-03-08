@@ -3,10 +3,11 @@
  * Utilities shared across scripts.
  */
 
-import { readdirSync } from "fs";
+import { existsSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
+import { setup } from "jmdict-simplified-node";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(__dirname, "../..");
@@ -27,6 +28,35 @@ export const SCHEMA_VERSION = 1;
 // Beta distribution shape parameter for the Ebisu prior (α = β → symmetric).
 // A value slightly above 1 gives a mildly informative prior around 0.5 recall.
 export const EBISU_ALPHA = 1.25;
+
+/**
+ * Open (or create) jmdict.sqlite and return the better-sqlite3 Database instance.
+ * If the DB already exists, opens it directly (switching from WAL to DELETE journal
+ * mode only if needed, to avoid needless disk writes).
+ * If it doesn't exist, looks for a jmdict-eng-*.json source file in the project root
+ * and builds from it (one-time setup); throws if no source JSON is found.
+ */
+export async function openJmdictDb() {
+  if (existsSync(JMDICT_DB)) {
+    const db = new Database(JMDICT_DB);
+    if (db.pragma("journal_mode", { simple: true }) === "wal") {
+      db.pragma("journal_mode = DELETE");
+    }
+    return db;
+  }
+  const sourceFiles = readdirSync(projectRoot).filter(
+    (f) => f.startsWith("jmdict-eng") && f.endsWith(".json"),
+  );
+  if (!sourceFiles.length) {
+    throw new Error(
+      "jmdict.sqlite not found and no jmdict-eng-*.json source found.\n" +
+        "Download from https://github.com/scriptin/jmdict-simplified/releases and place in project root.",
+    );
+  }
+  const { db } = await setup(JMDICT_DB, sourceFiles[0]);
+  db.pragma("journal_mode = DELETE");
+  return db;
+}
 
 /**
  * Open quiz.sqlite, verify the schema version, and return the Database instance.

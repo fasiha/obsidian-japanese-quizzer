@@ -34,7 +34,7 @@ extension AnthropicTool {
 
     static let lookupKanjidic = AnthropicTool(
         name: "lookup_kanjidic",
-        description: "Look up one or more kanji characters in KANJIDIC2. Returns radical components, stroke count, JLPT level, school grade, on-readings, kun-readings, and English meanings for each kanji found in the input string. Non-kanji characters are ignored.",
+        description: "Look up one or more kanji characters in KANJIDIC2, augmented with WaniKani component breakdowns. Returns radical components (kradfile), stroke count, JLPT level, school grade, on-readings, kun-readings, English meanings, and — when available — a `wanikani_components` array listing informal kanji components (each with `char` and either `meaning` from KANJIDIC2 or `description` from WaniKani's informal component glossary). Non-kanji characters in the input are ignored.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([
@@ -48,6 +48,37 @@ extension AnthropicTool {
     )
 }
 
+// MARK: - WaniKani data
+
+/// Loaded from `wanikani-kanji-graph.json` and `wanikani-extra-radicals.json` in the app bundle.
+struct WanikaniData: Sendable {
+    /// Maps a kanji character to its informal WaniKani component characters.
+    let kanjiToComponents: [String: [String]]
+    /// Descriptions for component characters not found in KANJIDIC2 (e.g. katakana shapes,
+    /// multi-codepoint IDS sequences).
+    let extraDescriptions: [String: String]
+
+    static func load(from bundle: Bundle = .main) -> WanikaniData {
+        var kanjiToComponents: [String: [String]] = [:]
+        var extraDescriptions: [String: String] = [:]
+
+        if let url = bundle.url(forResource: "wanikani-kanji-graph", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let mapping = json["kanjiToRadicals"] as? [String: [String]] {
+            kanjiToComponents = mapping
+        }
+
+        if let url = bundle.url(forResource: "wanikani-extra-radicals", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+            extraDescriptions = dict
+        }
+
+        return WanikaniData(kanjiToComponents: kanjiToComponents, extraDescriptions: extraDescriptions)
+    }
+}
+
 // MARK: - Handler
 
 /// Handles tool calls from AnthropicClient: lookup_jmdict and lookup_kanjidic.
@@ -58,6 +89,9 @@ struct ToolHandler: Sendable {
 
     /// DatabaseReader opened on kanjidic2.sqlite (from the app bundle). Nil if not available.
     let kanjidic: (any DatabaseReader)?
+
+    /// WaniKani component data, loaded from bundle JSON files. Empty if files absent.
+    let wanikani: WanikaniData
 
     /// Open jmdict.sqlite and kanjidic2.sqlite directly from the app bundle.
     /// Both are read-only and in DELETE journal mode, so no WAL sidecars are created.
@@ -75,7 +109,9 @@ struct ToolHandler: Sendable {
             .url(forResource: "kanjidic2", withExtension: "sqlite")
             .flatMap { try? DatabaseQueue(path: $0.path, configuration: config) }
 
-        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue)
+        let wanikani = WanikaniData.load()
+
+        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue, wanikani: wanikani)
     }
 
     /// Route a tool call. Returns the result string (JSON on success, error JSON on failure).
@@ -116,28 +152,77 @@ struct ToolHandler: Sendable {
             return #"{"error":"no kanji characters found in input"}"#
         }
 
-        var results: [[String: Any]] = []
+        // Collect all characters we'll need meanings for (radicals + WK components)
+        // so we can batch-query them in a single db.read.
+        var allLookupChars = Set<String>()
         for k in kanjis {
-            let result = try? db.read { db -> (Row?, [String]) in
+            if let components = wanikani.kanjiToComponents[k] {
+                for c in components { allLookupChars.insert(c) }
+            }
+        }
+        // We also need radical meanings, but those depend on each kanji's row data,
+        // so we fetch all kanji rows + all component meanings in one read.
+        let wkExtra = wanikani.extraDescriptions
+
+        let queryResults: [(String, Row?, [String], [[String: String]])] = (try? db.read { db in
+            // Pre-fetch meanings for all WK component characters in one pass.
+            var meaningCache: [String: String] = [:]
+            for c in allLookupChars {
+                let cRow = try Row.fetchOne(db, sql: "SELECT meanings FROM kanji WHERE literal = ?", arguments: [c])
+                if let mJSON = cRow?["meanings"] as? String,
+                   let ms = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String],
+                   let first = ms.first {
+                    meaningCache[c] = first
+                }
+            }
+
+            var rows: [(String, Row?, [String], [[String: String]])] = []
+            for k in kanjis {
                 let row = try Row.fetchOne(db, sql: "SELECT * FROM kanji WHERE literal = ?", arguments: [k])
+
+                // Kanjidic radical labels (kradfile-sourced).
                 var radicalLabels: [String] = []
                 if let rJSON = row?["radicals"] as? String,
                    let rads = try? JSONSerialization.jsonObject(with: Data(rJSON.utf8)) as? [String] {
                     for r in rads {
-                        let rRow = try Row.fetchOne(db, sql: "SELECT meanings FROM kanji WHERE literal = ?", arguments: [r])
-                        if let mJSON = rRow?["meanings"] as? String,
-                           let ms = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String],
-                           let first = ms.first {
-                            radicalLabels.append("\(r) (\(first))")
+                        // Radical meanings might not be in meaningCache (if the radical
+                        // wasn't also a WK component), so query on cache miss.
+                        if let m = meaningCache[r] {
+                            radicalLabels.append("\(r) (\(m))")
                         } else {
-                            radicalLabels.append(r)
+                            let rRow = try Row.fetchOne(db, sql: "SELECT meanings FROM kanji WHERE literal = ?", arguments: [r])
+                            if let mJSON = rRow?["meanings"] as? String,
+                               let ms = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String],
+                               let first = ms.first {
+                                radicalLabels.append("\(r) (\(first))")
+                            } else {
+                                radicalLabels.append(r)
+                            }
                         }
                     }
                 }
-                return (row, radicalLabels)
+
+                // WaniKani informal component breakdown.
+                var wkEntries: [[String: String]] = []
+                if let components = wanikani.kanjiToComponents[k] {
+                    for c in components {
+                        var comp: [String: String] = ["char": c]
+                        if let m = meaningCache[c] {
+                            comp["meaning"] = m
+                        } else if let desc = wkExtra[c] {
+                            comp["description"] = desc
+                        }
+                        wkEntries.append(comp)
+                    }
+                }
+
+                rows.append((k, row, radicalLabels, wkEntries))
             }
-            let row = result?.0
-            let radicalLabels = result?.1 ?? []
+            return rows
+        }) ?? []
+
+        var results: [[String: Any]] = []
+        for (k, row, radicalLabels, wkEntries) in queryResults {
             var entry: [String: Any] = ["literal": k]
             if let row = row {
                 if let strokes = row["strokes"] as? Int64 { entry["strokes"] = strokes }
@@ -160,6 +245,9 @@ struct ToolHandler: Sendable {
                 }
             } else {
                 entry["error"] = "not in kanjidic2"
+            }
+            if !wkEntries.isEmpty {
+                entry["wanikani_components"] = wkEntries
             }
             results.append(entry)
         }

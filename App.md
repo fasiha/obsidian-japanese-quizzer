@@ -183,10 +183,12 @@ the conversation warrants it.
   - `lookup_jmdict` — query local `jmdict.sqlite` for dictionary-accurate readings and
     meanings. Claude calls this during question generation or when the student asks about
     a word's readings/meanings.
-  - `lookup_kanjidic` — query local `kanjidic2.sqlite` for per-kanji breakdown: stroke
-    count, JLPT level, school grade, on/kun readings, English meanings. Input is any
-    string — non-kanji characters are skipped. Claude calls this when the student asks
-    about a kanji's composition, readings, or mnemonics.
+  - `lookup_kanjidic` — query local `kanjidic2.sqlite` augmented with WaniKani component
+    data for per-kanji breakdown: stroke count, JLPT level, school grade, on/kun readings,
+    English meanings, kradfile radical labels, and a `wanikani_components` array (each entry
+    has `char` + either `meaning` from KANJIDIC2 or `description` from WaniKani's informal
+    component glossary). Input is any string — non-kanji characters are skipped. Claude calls
+    this when the student asks about a kanji's composition, readings, or mnemonics.
   - `get_vocab_context` — returns the student's full enrolled word list with recall
     probabilities (same format as the pre-selection context lines). Claude calls this when
     the student's message is about a different word they're studying, or when knowing
@@ -317,16 +319,24 @@ to something meaningful (device name? user-entered name?). Currently defaults to
 - Do we want to sync progress across devices for the same person? (Probably not for MVP.)
 
 ### Kanji info
-`get-kanji-info.mjs` queries kanjidic2. The iOS app bundles `kanjidic2.sqlite` and exposes a
-`lookup_kanjidic` tool to Claude (available in both quiz chat and word-explore chat):
+`get-kanji-info.mjs` queries kanjidic2 and WaniKani data. The iOS app bundles `kanjidic2.sqlite`
+plus two WaniKani JSON files and exposes a `lookup_kanjidic` tool to Claude (available in both
+quiz chat and word-explore chat):
 - Input: any string — non-kanji characters are ignored; e.g. `怒鳴る` → info for 怒 and 鳴
-- Output: JSON array, one entry per kanji: `literal`, `radicals`, `strokes`, `jlpt` (N-string), `grade`, `on`, `kun`, `meanings`
+- Output: JSON array, one entry per kanji:
+  - `literal`, `radicals` (kradfile labels), `strokes`, `jlpt` (N-string), `grade`, `on`, `kun`, `meanings`
+  - `wanikani_components` (if available): array of `{char, meaning}` or `{char, description}` objects —
+    `meaning` comes from KANJIDIC2 if the component is a standard kanji; `description` from
+    `wanikani-extra-radicals.json` for informal components (katakana shapes, IDS sequences, etc.)
 - Radical data (kradfile) is baked into `kanjidic2.sqlite` at build time as a `radicals TEXT` column (JSON array)
   - `get-kanji-info.mjs` populates it during the initial build; existing DBs are migrated on next run
   - iOS tool reads it directly — no separate kradfile bundle needed
 - Bundled in `Resources/kanjidic2.sqlite` (DELETE journal mode, same requirement as jmdict.sqlite)
+- WaniKani JSON files bundled as `Resources/wanikani-kanji-graph.json` and `Resources/wanikani-extra-radicals.json`
+  - Source files live in `wanikani/` in the project root; copy to `Pug/Pug/Resources/` when updated
+  - Loaded at `ToolHandler` init via `WanikaniData.load()`; gracefully empty if files absent
 - Copied to Documents on first launch by `QuizDB.copyKanjidicIfNeeded()` (called in `setup()`)
-- ToolHandler opens it read-only as a `DatabaseQueue`; stored as optional so a missing file degrades gracefully
+- ToolHandler opens kanjidic2 read-only as a `DatabaseQueue`; stored as optional so a missing file degrades gracefully
 
 #### Preparing kanjidic2.sqlite for a build
 
@@ -344,9 +354,24 @@ node .claude/scripts/get-kanji-info.mjs 日  # any kanji — triggers build/migr
 
 # 3. Copy into the Xcode Resources folder
 cp kanjidic2.sqlite Pug/Pug/Resources/kanjidic2.sqlite
+
+# 4. Copy WaniKani JSON files (re-run whenever wanikani/ source files are updated)
+cp wanikani/wanikani-kanji-graph.json Pug/Pug/Resources/
+cp wanikani/wanikani-extra-radicals.json Pug/Pug/Resources/
 ```
 
-Same steps apply to `jmdict.sqlite` (see `README.md` for the full jmdict build procedure).
+#### Preparing jmdict.sqlite for a build
+
+```sh
+# 1. Download jmdict-eng-*.json from https://github.com/scriptin/jmdict-simplified/releases
+#    and place in the project root.
+
+# 2. Build jmdict.sqlite (DELETE journal mode set automatically by openJmdictDb())
+node .claude/scripts/check-vocab.mjs   # any script using openJmdictDb() works
+
+# 3. Copy into the Xcode Resources folder
+cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
+```
 
 ---
 
@@ -491,6 +516,8 @@ Pug/                          ← Xcode project root (already created)
     Resources/
       jmdict.sqlite                      ✓ bundled (DELETE journal mode — see ToolHandler note)
       kanjidic2.sqlite                   ✓ bundled (DELETE journal mode same requirement)
+      wanikani-kanji-graph.json          ✓ bundled (kanji → WaniKani component chars)
+      wanikani-extra-radicals.json       ✓ bundled (descriptions for non-kanjidic2 components)
   PugTests/                   ← Swift Testing unit tests (generated)
     PugTests.swift
   PugUITests/                 ← XCTest UI tests (generated)
