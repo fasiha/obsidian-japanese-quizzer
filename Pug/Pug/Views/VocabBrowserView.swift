@@ -24,10 +24,20 @@ struct VocabBrowserView: View {
     @State private var selectedItem: VocabItem? = nil
     @State private var showDebug = false
     @State private var showSettings = false
+    @State private var searchText = ""
+    @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
 
     private var filteredItems: [VocabItem] {
         let f = filter
-        return corpus.items.filter { f == nil || $0.status == f! }
+        let statusFiltered = corpus.items.filter { f == nil || $0.status == f! }
+        let q = searchText.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return statusFiltered }
+        return statusFiltered.filter { item in
+            item.writtenTexts.contains { $0.localizedCaseInsensitiveContains(q) }
+            || item.kanaTexts.contains { $0.localizedCaseInsensitiveContains(q) }
+            || item.meanings.contains { $0.localizedCaseInsensitiveContains(q) }
+            || mnemonicMap[item.id]?.localizedCaseInsensitiveContains(q) == true
+        }
     }
 
     var body: some View {
@@ -49,7 +59,11 @@ struct VocabBrowserView: View {
                         description: Text("Download vocab via the ··· menu or set up the app URL.")
                     )
                 } else if filteredItems.isEmpty {
-                    ContentUnavailableView(emptyTitle, systemImage: emptyIcon)
+                    if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                        ContentUnavailableView.search(text: searchText)
+                    } else {
+                        ContentUnavailableView(emptyTitle, systemImage: emptyIcon)
+                    }
                 } else {
                     wordList
                 }
@@ -59,11 +73,18 @@ struct VocabBrowserView: View {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
                 ToolbarItem(placement: .navigationBarTrailing) { debugMenu }
             }
+            .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
                 WordDetailSheet(item: item, corpus: corpus, db: db, session: session)
             }
             .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .task {
+                if let rows = try? await db.mnemonics(wordType: "jmdict",
+                                                      wordIds: corpus.items.map(\.id)) {
+                    mnemonicMap = Dictionary(uniqueKeysWithValues: rows.map { ($0.wordId, $0.mnemonic) })
+                }
+            }
         }
     }
 
