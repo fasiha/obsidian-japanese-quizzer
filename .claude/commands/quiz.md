@@ -150,6 +150,10 @@ This calls Ebisu's `rescaleHalflife` without inserting a review row. Use the cur
 node .claude/scripts/get-kanji-info.mjs <kanji1> <kanji2> ...
 ```
 
+Output is a nested Markdown list per kanji with two sections:
+- **Kanjidic**: radicals (from kradfile), on/kun readings, meanings, strokes/JLPT/grade.
+- **Wanikani components** (if available): informal component breakdown — each component on its own bullet with a description (from kanjidic2 meanings, or from `wanikani-extra-radicals.json` for components not in kanjidic2).
+
 After any discussion, **re-ask the exact same question** before advancing.
 
 ---

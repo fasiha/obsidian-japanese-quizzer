@@ -3,9 +3,11 @@
  * Given one or more kanji, outputs compact info: radicals, on/kun readings, meanings.
  * Intended to be called by Claude when a user asks for kanji mnemonics or breakdown.
  *
- * Data source:
+ * Data sources:
  *   - kanjidic2.sqlite : built on first run from kanjidic2-en-*.json + kradfile-*.json
  *                        All data (including radicals) lives in the DB after first build.
+ *   - wanikani/wanikani-kanji-graph.json : kanji → informal component breakdown
+ *   - wanikani/wanikani-extra-radicals.json : descriptions for components not in kanjidic2
  *
  * Usage: node .claude/scripts/get-kanji-info.mjs 怒 鳴
  *        node .claude/scripts/get-kanji-info.mjs 怒鳴る   (non-kanji characters are skipped)
@@ -17,6 +19,20 @@ import path from "path";
 import { projectRoot } from "./shared.mjs";
 
 const KANJIDIC_SQLITE = path.join(projectRoot, "kanjidic2.sqlite");
+const WANIKANI_GRAPH = path.join(projectRoot, "wanikani", "wanikani-kanji-graph.json");
+const WANIKANI_EXTRA = path.join(projectRoot, "wanikani", "wanikani-extra-radicals.json");
+
+function loadWanikaniData() {
+  let kanjiToRadicals = {};
+  let extraRadicals = {};
+  if (existsSync(WANIKANI_GRAPH)) {
+    kanjiToRadicals = JSON.parse(readFileSync(WANIKANI_GRAPH, "utf8")).kanjiToRadicals;
+  }
+  if (existsSync(WANIKANI_EXTRA)) {
+    extraRadicals = JSON.parse(readFileSync(WANIKANI_EXTRA, "utf8"));
+  }
+  return { kanjiToRadicals, extraRadicals };
+}
 
 function findKradfile() {
   const files = readdirSync(projectRoot).filter(
@@ -175,32 +191,50 @@ function jlptStr(level) {
   return `N${level + 1}`;
 }
 
+const { kanjiToRadicals: wkGraph, extraRadicals: wkExtra } = loadWanikaniData();
+
+function wkRadicalLabel(r) {
+  // Try kanjidic2 first for meaning
+  const row = radicalMeaningQuery.get(r);
+  if (row) {
+    const meanings = JSON.parse(row.meanings);
+    return meanings.length ? `${r} (${meanings[0]})` : r;
+  }
+  // Fall back to wanikani extra radicals
+  if (r in wkExtra) return `${r} — ${wkExtra[r]}`;
+  return r;
+}
+
 for (const k of kanjis) {
   const row = query.get(k);
   const radicals = row ? JSON.parse(row.radicals ?? "[]") : [];
+  const wkComponents = wkGraph[k];
 
+  console.log(`- ${k}`);
+
+  // --- Kanjidic section ---
+  console.log("  - Kanjidic");
   if (!row) {
-    console.log(`${k}: not in kanjidic2`);
-    console.log(
-      `  Radicals: ${radicals.map(radicalLabel).join("、") || "(none)"}`,
-    );
-    continue;
+    console.log("    - (not in kanjidic2)");
+  } else {
+    const on = JSON.parse(row.on_readings);
+    const kun = JSON.parse(row.kun_readings);
+    const meanings = JSON.parse(row.meanings);
+
+    console.log(`    - Radicals: ${radicals.map(radicalLabel).join("、") || "(none)"}`);
+    if (on.length) console.log(`    - On: ${on.join("、")}`);
+    if (kun.length) console.log(`    - Kun: ${kun.join("、")}`);
+    if (meanings.length) console.log(`    - Meanings: ${meanings.join(", ")}`);
+    console.log(`    - Strokes: ${row.strokes ?? "?"}  JLPT: ${jlptStr(row.jlpt)}  Grade: ${row.grade ? `G${row.grade}` : "—"}`);
   }
 
-  const on = JSON.parse(row.on_readings);
-  const kun = JSON.parse(row.kun_readings);
-  const meanings = JSON.parse(row.meanings);
-
-  console.log(`${k}:`);
-  console.log(
-    `  Radicals: ${radicals.map(radicalLabel).join("、") || "(none)"}`,
-  );
-  if (on.length) console.log(`  On:       ${on.join("、")}`);
-  if (kun.length) console.log(`  Kun:      ${kun.join("、")}`);
-  if (meanings.length) console.log(`  Meanings: ${meanings.join(", ")}`);
-  console.log(
-    `  Strokes: ${row.strokes ?? "?"}  JLPT: ${jlptStr(row.jlpt)}  Grade: ${row.grade ? `G${row.grade}` : "—"}`,
-  );
+  // --- Wanikani section ---
+  if (wkComponents) {
+    console.log("  - Wanikani components");
+    for (const c of wkComponents) {
+      console.log(`    - ${wkRadicalLabel(c)}`);
+    }
+  }
 }
 
 db.close();
