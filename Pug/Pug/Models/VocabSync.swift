@@ -24,6 +24,25 @@ struct VocabStory: Codable {
 struct VocabWordEntry: Codable {
     let id: String
     let sources: [String]
+    let writtenForms: [WrittenFormGroup]?  // nil for old vocab.json without furigana data
+}
+
+/// One reading and its associated kanji forms (from JmdictFurigana).
+struct WrittenFormGroup: Codable {
+    let reading: String
+    let forms: [WrittenForm]
+}
+
+/// A single kanji form with its furigana breakdown.
+struct WrittenForm: Codable {
+    let furigana: [FuriganaSegment]
+    let text: String
+}
+
+/// One segment of a furigana breakdown: ruby text with optional reading annotation.
+struct FuriganaSegment: Codable {
+    let ruby: String
+    let rt: String?
 }
 
 // MARK: - Sync helpers

@@ -90,30 +90,50 @@ struct Mnemonic: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
-/// Word learning status. Only `.learning` and `.known` are stored in the DB.
-/// `.notYetLearned` is a Swift-only fallback for words absent from vocab_enrollment.
-/// NEVER persist a VocabEnrollment with status = .notYetLearned.
-enum EnrollmentStatus: String, Codable, Sendable {
-    case notYetLearned  // UI only; absence from DB; rawValue never written to DB
-    case learning = "learning"
-    case known = "known"
-}
-
-struct VocabEnrollment: Codable, FetchableRecord, PersistableRecord {
-    static let databaseTableName = "vocab_enrollment"
+/// User's commitment to study a specific furigana form of a word.
+/// One row per (word_type, word_id). The furigana field stores the JmdictFurigana
+/// JSON array for the chosen written form; kanjiChars is a JSON array of kanji
+/// characters the user is committing to learn (e.g. ["入","込"]).
+struct WordCommitment: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "word_commitment"
     var wordType: String
     var wordId: String
-    var status: EnrollmentStatus    // only .learning or .known are valid to persist
-    var kanjiOk: Bool               // true → user committed to kanji facets
-    var updatedAt: String           // ISO 8601 UTC
+    var furigana: String            // JmdictFurigana JSON array for the chosen form
+    var kanjiChars: String?         // JSON array of kanji chars, e.g. ["入","込"]
 
     enum CodingKeys: String, CodingKey {
         case wordType = "word_type"
         case wordId = "word_id"
-        case status
-        case kanjiOk = "kanji_ok"
-        case updatedAt = "updated_at"
+        case furigana
+        case kanjiChars = "kanji_chars"
     }
+}
+
+/// A facet the user has marked as "known" (no longer quizzed).
+/// Stores a JSON backup of the ebisu model at the time of marking known,
+/// so it can be restored if the user changes their mind.
+struct LearnedFacet: Codable, FetchableRecord, PersistableRecord {
+    static let databaseTableName = "learned"
+    var wordType: String
+    var wordId: String
+    var quizType: String
+    var learnedAt: String           // ISO 8601 UTC
+    var ebisuBackup: String?        // JSON snapshot of EbisuRecord at time of marking known
+
+    enum CodingKeys: String, CodingKey {
+        case wordType = "word_type"
+        case wordId = "word_id"
+        case quizType = "quiz_type"
+        case learnedAt = "learned_at"
+        case ebisuBackup = "ebisu_backup"
+    }
+}
+
+/// Derived state for a single facet — not stored in DB.
+enum FacetState: String, Sendable {
+    case unknown    // not in ebisu_models or learned
+    case learning   // has ebisu_models row
+    case known      // has learned row
 }
 
 // MARK: - Database manager
@@ -282,25 +302,86 @@ final class QuizDB: Sendable {
                 t.primaryKey(["word_type", "word_id"])
             }
         }
+        migrator.registerMigration("v5") { db in
+            // New table: word_commitment — user's chosen furigana form per word.
+            try db.create(table: "word_commitment") { t in
+                t.column("word_type", .text).notNull()
+                t.column("word_id", .text).notNull()
+                t.column("furigana", .text).notNull()       // JmdictFurigana JSON array
+                t.column("kanji_chars", .text)               // JSON array e.g. ["入","込"]
+                t.primaryKey(["word_type", "word_id"])
+            }
+
+            // New table: learned — per-facet "I already know this" with ebisu backup.
+            try db.create(table: "learned") { t in
+                t.column("word_type", .text).notNull()
+                t.column("word_id", .text).notNull()
+                t.column("quiz_type", .text).notNull()
+                t.column("learned_at", .text).notNull()      // ISO 8601 UTC
+                t.column("ebisu_backup", .text)               // JSON snapshot of ebisu model
+                t.primaryKey(["word_type", "word_id", "quiz_type"])
+            }
+
+            // Migrate vocab_enrollment → word_commitment + learned.
+            // 'learning' rows: create word_commitment (furigana placeholder until vocab sync).
+            //   Ebisu models are already in ebisu_models — no change needed.
+            // 'known' rows: create word_commitment + learned rows for all facets.
+            let now = ISO8601DateFormatter().string(from: Date())
+
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT word_type, word_id, status, kanji_ok FROM vocab_enrollment
+                """)
+
+            for row in rows {
+                guard let wt = row["word_type"] as? String,
+                      let wid = row["word_id"] as? String,
+                      let status = row["status"] as? String else { continue }
+                let kanjiOk = (row["kanji_ok"] as? Int64 ?? 0) != 0
+
+                // Create word_commitment with placeholder furigana (will be resolved on
+                // next vocab sync when the app loads vocab.json with writtenForms data).
+                try db.execute(sql: """
+                    INSERT OR IGNORE INTO word_commitment (word_type, word_id, furigana, kanji_chars)
+                    VALUES (?, ?, '[]', NULL)
+                    """, arguments: [wt, wid])
+
+                if status == "known" {
+                    // Create learned rows for all facets this word had.
+                    let readingFacets = ["reading-to-meaning", "meaning-to-reading"]
+                    let kanjiFacets = ["kanji-to-reading", "meaning-reading-to-kanji"]
+                    let facets = kanjiOk ? readingFacets + kanjiFacets : readingFacets
+
+                    for facet in facets {
+                        // Check if there's an archived model in model_events we can use as backup
+                        let archived = try Row.fetchOne(db, sql: """
+                            SELECT event FROM model_events
+                            WHERE word_type=? AND word_id=? AND quiz_type=? AND event LIKE 'archived,%'
+                            ORDER BY timestamp DESC LIMIT 1
+                            """, arguments: [wt, wid, facet])
+                        let backup = archived?["event"] as? String
+
+                        try db.execute(sql: """
+                            INSERT OR IGNORE INTO learned (word_type, word_id, quiz_type, learned_at, ebisu_backup)
+                            VALUES (?, ?, ?, ?, ?)
+                            """, arguments: [wt, wid, facet, now, backup])
+                    }
+                }
+            }
+
+            try db.drop(table: "vocab_enrollment")
+        }
         try migrator.migrate(pool)
     }
 
-    /// Ensure every word with ebisu_models rows has a vocab_enrollment row (status = 'learning').
+    /// Ensure every word with ebisu_models rows has a word_commitment row.
     /// Runs on every launch so that words added via the Node.js quiz skill are automatically
-    /// treated as learning in the iOS app. INSERT OR IGNORE preserves existing rows.
+    /// tracked in the iOS app. INSERT OR IGNORE preserves existing rows.
     private func reconcileEnrollment() throws {
         try pool.write { db in
-            // Infer kanji_ok from existing facets for any auto-reconciled rows.
             try db.execute(sql: """
-                INSERT OR IGNORE INTO vocab_enrollment (word_type, word_id, status, kanji_ok, updated_at)
-                SELECT DISTINCT e.word_type, e.word_id, 'learning',
-                    CASE WHEN EXISTS (
-                        SELECT 1 FROM ebisu_models k
-                        WHERE k.word_type = e.word_type AND k.word_id = e.word_id
-                          AND k.quiz_type IN ('kanji-to-reading', 'meaning-reading-to-kanji')
-                    ) THEN 1 ELSE 0 END,
-                    datetime('now')
-                FROM ebisu_models e
+                INSERT OR IGNORE INTO word_commitment (word_type, word_id, furigana, kanji_chars)
+                SELECT DISTINCT word_type, word_id, '[]', NULL
+                FROM ebisu_models
                 """)
         }
     }
@@ -330,177 +411,208 @@ final class QuizDB: Sendable {
     /// All learning words' Ebisu models, for quiz context ranking.
     func enrolledEbisuRecords() async throws -> [EbisuRecord] {
         try await pool.read { db in
-            let learningIds = try VocabEnrollment
-                .filter(Column("status") == "learning")
-                .select(Column("word_id"), as: String.self)
-                .fetchAll(db)
-            return try EbisuRecord
-                .filter(learningIds.contains(Column("word_id")))
-                .fetchAll(db)
+            // "Learning" = has ebisu_models rows (actively being quizzed)
+            try EbisuRecord.fetchAll(db)
         }
     }
 
-    // MARK: - Vocabulary enrollment
+    // MARK: - Word commitment
 
-    func enrollment(wordType: String, wordId: String) async throws -> EnrollmentStatus {
-        let row = try await pool.read { db in
-            try VocabEnrollment
+    func commitment(wordType: String, wordId: String) async throws -> WordCommitment? {
+        try await pool.read { db in
+            try WordCommitment
                 .filter(Column("word_type") == wordType && Column("word_id") == wordId)
                 .fetchOne(db)
         }
-        return row?.status ?? .notYetLearned
     }
 
-    /// All enrollment rows as a [wordId: VocabEnrollment] dict.
-    /// Words absent from the table have status .notYetLearned (not in this dict).
-    func allEnrollments() async throws -> [String: VocabEnrollment] {
+    /// All word_commitment rows as a [wordId: WordCommitment] dict.
+    func allCommitments() async throws -> [String: WordCommitment] {
         try await pool.read { db in
-            let rows = try VocabEnrollment.fetchAll(db)
+            let rows = try WordCommitment.fetchAll(db)
             return Dictionary(rows.map { ($0.wordId, $0) }, uniquingKeysWith: { first, _ in first })
         }
     }
 
-    // MARK: - Learning flow (new word → commit to learn)
-
-    /// Atomically mark a word as learning and create any missing Ebisu facets.
-    /// Safe to call on already-learning words (updates kanjiOk and adds missing facets).
-    func setLearning(
-        wordType: String,
-        wordId: String,
-        wordText: String,
-        kanjiOk: Bool,
-        halflife: Double = 24
-    ) async throws {
-        let facets: [String] = kanjiOk
-            ? ["kanji-to-reading", "reading-to-meaning", "meaning-to-reading", "meaning-reading-to-kanji"]
-            : ["reading-to-meaning", "meaning-to-reading"]
-        let now = ISO8601DateFormatter().string(from: Date())
-        let model = defaultModel(halflife: halflife)
-        try await pool.write { db in
-            try db.execute(sql: """
-                INSERT INTO vocab_enrollment (word_type, word_id, status, kanji_ok, updated_at)
-                VALUES (?, ?, 'learning', ?, ?)
-                ON CONFLICT(word_type, word_id) DO UPDATE
-                    SET status = 'learning', kanji_ok = excluded.kanji_ok, updated_at = excluded.updated_at
-                """, arguments: [wordType, wordId, kanjiOk ? 1 : 0, now])
-            for facet in facets {
-                let exists = try EbisuRecord
-                    .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
-                            Column("quiz_type") == facet)
-                    .fetchOne(db) != nil
-                guard !exists else { continue }
-                let record = EbisuRecord(wordType: wordType, wordId: wordId, quizType: facet,
-                                         alpha: model.alpha, beta: model.beta, t: model.t,
-                                         lastReview: now)
-                try record.save(db)
-                var event = ModelEvent(timestamp: now, wordType: wordType, wordId: wordId,
-                                       quizType: facet, event: "learned,\(halflife)")
-                try event.insert(db)
-            }
-        }
-        print("[QuizDB] setLearning \(wordText) (\(wordId)) kanjiOk=\(kanjiOk)")
+    /// Upsert a word commitment (user chose a furigana form to study).
+    func setCommitment(wordType: String, wordId: String, furigana: String, kanjiChars: String? = nil) async throws {
+        let record = WordCommitment(wordType: wordType, wordId: wordId, furigana: furigana, kanjiChars: kanjiChars)
+        try await pool.write { db in try record.save(db) }
+        print("[QuizDB] setCommitment \(wordId) kanji=\(kanjiChars ?? "nil")")
     }
 
-    /// Archive all Ebisu models for a word to model_events, then delete them and
-    /// update (or remove) the vocab_enrollment row.
-    ///
-    /// - reason: "unlearned" → deletes the enrollment row entirely (word goes back to
-    ///   "not yet learned"). "known" → sets status = 'known'.
-    func archiveAndRemove(wordType: String, wordId: String, reason: String) async throws {
-        let now = ISO8601DateFormatter().string(from: Date())
+    /// Remove a word's commitment and all associated ebisu_models and learned rows.
+    func clearCommitment(wordType: String, wordId: String) async throws {
         try await pool.write { db in
-            let records = try EbisuRecord
-                .filter(Column("word_type") == wordType && Column("word_id") == wordId)
-                .fetchAll(db)
-            for record in records {
-                var event = ModelEvent(
-                    timestamp: now, wordType: record.wordType, wordId: record.wordId,
-                    quizType: record.quizType,
-                    event: "archived,\(record.alpha),\(record.beta),\(record.t),\(reason)")
-                try event.insert(db)
-            }
+            try db.execute(sql: "DELETE FROM word_commitment WHERE word_type=? AND word_id=?",
+                           arguments: [wordType, wordId])
             try db.execute(sql: "DELETE FROM ebisu_models WHERE word_type=? AND word_id=?",
                            arguments: [wordType, wordId])
-            if reason == "unlearned" {
-                try db.execute(sql: "DELETE FROM vocab_enrollment WHERE word_type=? AND word_id=?",
-                               arguments: [wordType, wordId])
-            } else {
-                try db.execute(sql: """
-                    UPDATE vocab_enrollment SET status='known', updated_at=?
-                    WHERE word_type=? AND word_id=?
-                    """, arguments: [now, wordType, wordId])
-            }
-        }
-        print("[QuizDB] archiveAndRemove \(wordId) reason=\(reason)")
-    }
-
-    /// Remove a word's enrollment row (e.g. undo-known → back to "not yet learned").
-    /// No Ebisu models exist at this point — they were archived to model_events when the word
-    /// was marked known, so that event already serves as the audit trail.
-    func removeEnrollment(wordType: String, wordId: String) async throws {
-        try await pool.write { db in
-            try db.execute(sql: "DELETE FROM vocab_enrollment WHERE word_type=? AND word_id=?",
+            try db.execute(sql: "DELETE FROM learned WHERE word_type=? AND word_id=?",
                            arguments: [wordType, wordId])
         }
-        print("[QuizDB] removeEnrollment \(wordId)")
+        print("[QuizDB] clearCommitment \(wordId)")
     }
 
-    /// Toggle kanji commitment for a learning word.
-    ///
-    /// - kanjiOk = false → true: creates the 2 missing kanji facets with a fresh default model.
-    /// - kanjiOk = true → false: archives and deletes the 2 kanji facets; updates kanji_ok = 0.
-    func toggleKanji(wordType: String, wordId: String, wordText: String, halflife: Double = 24) async throws {
-        let now = ISO8601DateFormatter().string(from: Date())
-        let kanjiFacets = ["kanji-to-reading", "meaning-reading-to-kanji"]
-        try await pool.write { db in
-            let row = try Row.fetchOne(db,
-                sql: "SELECT kanji_ok FROM vocab_enrollment WHERE word_type=? AND word_id=?",
-                arguments: [wordType, wordId])
-            let currentKanjiOk = (row?["kanji_ok"] as? Int64 ?? 0) != 0
+    // MARK: - Facet state transitions
 
-            if currentKanjiOk {
-                // Remove kanji facets: archive to model_events then delete.
-                for facet in kanjiFacets {
-                    if let record = try EbisuRecord
-                        .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
-                                Column("quiz_type") == facet)
-                        .fetchOne(db) {
-                        var event = ModelEvent(
-                            timestamp: now, wordType: record.wordType, wordId: record.wordId,
-                            quizType: record.quizType,
-                            event: "archived,\(record.alpha),\(record.beta),\(record.t),kanji-removed")
-                        try event.insert(db)
-                        try db.execute(sql: """
-                            DELETE FROM ebisu_models WHERE word_type=? AND word_id=? AND quiz_type=?
-                            """, arguments: [wordType, wordId, facet])
-                    }
-                }
-                try db.execute(sql: """
-                    UPDATE vocab_enrollment SET kanji_ok=0, updated_at=? WHERE word_type=? AND word_id=?
-                    """, arguments: [now, wordType, wordId])
+    /// Derive the state of each facet for a word.
+    func facetStates(wordType: String, wordId: String) async throws -> [String: FacetState] {
+        try await pool.read { db in
+            var states: [String: FacetState] = [:]
+            let ebisuRows = try EbisuRecord
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId)
+                .fetchAll(db)
+            for row in ebisuRows { states[row.quizType] = .learning }
+            let learnedRows = try LearnedFacet
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId)
+                .fetchAll(db)
+            for row in learnedRows { states[row.quizType] = .known }
+            return states
+        }
+    }
+
+    /// Transition a facet to "learning": create ebisu model (or restore from learned backup).
+    func setFacetLearning(wordType: String, wordId: String, quizType: String, halflife: Double = 24) async throws {
+        let now = ISO8601DateFormatter().string(from: Date())
+        try await pool.write { db in
+            // Check if already learning
+            let existing = try EbisuRecord
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
+                        Column("quiz_type") == quizType)
+                .fetchOne(db)
+            if existing != nil { return }
+
+            // Check if in learned — restore backup
+            let learnedRow = try LearnedFacet
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
+                        Column("quiz_type") == quizType)
+                .fetchOne(db)
+
+            let model: EbisuModel
+            let lastReview: String
+            if let backup = learnedRow?.ebisuBackup,
+               let data = backup.data(using: .utf8),
+               let restored = try? JSONDecoder().decode(EbisuRecord.self, from: data) {
+                model = restored.model
+                lastReview = restored.lastReview
             } else {
-                // Add kanji facets with a fresh default model.
-                let model = defaultModel(halflife: halflife)
-                for facet in kanjiFacets {
-                    let exists = try EbisuRecord
-                        .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
-                                Column("quiz_type") == facet)
-                        .fetchOne(db) != nil
-                    guard !exists else { continue }
-                    let record = EbisuRecord(wordType: wordType, wordId: wordId, quizType: facet,
-                                             alpha: model.alpha, beta: model.beta, t: model.t,
-                                             lastReview: now)
-                    try record.save(db)
-                    var event = ModelEvent(timestamp: now, wordType: wordType, wordId: wordId,
-                                           quizType: facet, event: "learned,\(halflife)")
-                    try event.insert(db)
-                }
-                try db.execute(sql: """
-                    UPDATE vocab_enrollment SET kanji_ok=1, updated_at=? WHERE word_type=? AND word_id=?
-                    """, arguments: [now, wordType, wordId])
+                model = defaultModel(halflife: halflife)
+                lastReview = now
+            }
+
+            let record = EbisuRecord(wordType: wordType, wordId: wordId, quizType: quizType,
+                                     alpha: model.alpha, beta: model.beta, t: model.t,
+                                     lastReview: lastReview)
+            try record.save(db)
+            var event = ModelEvent(timestamp: now, wordType: wordType, wordId: wordId,
+                                   quizType: quizType, event: "learned,\(halflife)")
+            try event.insert(db)
+
+            // Remove from learned if it was there
+            if learnedRow != nil {
+                try db.execute(sql: "DELETE FROM learned WHERE word_type=? AND word_id=? AND quiz_type=?",
+                               arguments: [wordType, wordId, quizType])
             }
         }
-        print("[QuizDB] toggleKanji \(wordText) (\(wordId))")
+        print("[QuizDB] setFacetLearning \(wordId) \(quizType)")
+    }
+
+    /// Transition a facet to "known": backup ebisu model to learned, delete from ebisu_models.
+    func setFacetKnown(wordType: String, wordId: String, quizType: String) async throws {
+        let now = ISO8601DateFormatter().string(from: Date())
+        try await pool.write { db in
+            // Snapshot the ebisu model as JSON backup
+            let ebisuRow = try EbisuRecord
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
+                        Column("quiz_type") == quizType)
+                .fetchOne(db)
+            var backup: String? = nil
+            if let ebisuRow {
+                let data = try JSONEncoder().encode(ebisuRow)
+                backup = String(data: data, encoding: .utf8)
+            }
+
+            // Insert into learned
+            let learned = LearnedFacet(wordType: wordType, wordId: wordId, quizType: quizType,
+                                       learnedAt: now, ebisuBackup: backup)
+            try learned.save(db)
+
+            // Delete from ebisu_models
+            try db.execute(sql: "DELETE FROM ebisu_models WHERE word_type=? AND word_id=? AND quiz_type=?",
+                           arguments: [wordType, wordId, quizType])
+
+            // Archive to model_events
+            if let ebisuRow {
+                var event = ModelEvent(
+                    timestamp: now, wordType: wordType, wordId: wordId,
+                    quizType: quizType,
+                    event: "archived,\(ebisuRow.alpha),\(ebisuRow.beta),\(ebisuRow.t),known")
+                try event.insert(db)
+            }
+        }
+        print("[QuizDB] setFacetKnown \(wordId) \(quizType)")
+    }
+
+    /// Transition a facet to "unknown": delete from both ebisu_models and learned.
+    func setFacetUnknown(wordType: String, wordId: String, quizType: String) async throws {
+        let now = ISO8601DateFormatter().string(from: Date())
+        try await pool.write { db in
+            // Archive ebisu model if it exists
+            if let ebisuRow = try EbisuRecord
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
+                        Column("quiz_type") == quizType)
+                .fetchOne(db) {
+                var event = ModelEvent(
+                    timestamp: now, wordType: wordType, wordId: wordId,
+                    quizType: quizType,
+                    event: "archived,\(ebisuRow.alpha),\(ebisuRow.beta),\(ebisuRow.t),unlearned")
+                try event.insert(db)
+            }
+            try db.execute(sql: "DELETE FROM ebisu_models WHERE word_type=? AND word_id=? AND quiz_type=?",
+                           arguments: [wordType, wordId, quizType])
+            try db.execute(sql: "DELETE FROM learned WHERE word_type=? AND word_id=? AND quiz_type=?",
+                           arguments: [wordType, wordId, quizType])
+        }
+        print("[QuizDB] setFacetUnknown \(wordId) \(quizType)")
+    }
+
+    // MARK: - Batch learning helpers
+
+    /// Set reading facets to learning (reading-to-meaning + meaning-to-reading).
+    func setReadingLearning(wordType: String, wordId: String, halflife: Double = 24) async throws {
+        try await setFacetLearning(wordType: wordType, wordId: wordId, quizType: "reading-to-meaning", halflife: halflife)
+        try await setFacetLearning(wordType: wordType, wordId: wordId, quizType: "meaning-to-reading", halflife: halflife)
+    }
+
+    /// Set kanji facets to learning (kanji-to-reading + meaning-reading-to-kanji).
+    func setKanjiLearning(wordType: String, wordId: String, halflife: Double = 24) async throws {
+        try await setFacetLearning(wordType: wordType, wordId: wordId, quizType: "kanji-to-reading", halflife: halflife)
+        try await setFacetLearning(wordType: wordType, wordId: wordId, quizType: "meaning-reading-to-kanji", halflife: halflife)
+    }
+
+    /// Set reading facets to known.
+    func setReadingKnown(wordType: String, wordId: String) async throws {
+        try await setFacetKnown(wordType: wordType, wordId: wordId, quizType: "reading-to-meaning")
+        try await setFacetKnown(wordType: wordType, wordId: wordId, quizType: "meaning-to-reading")
+    }
+
+    /// Set kanji facets to known.
+    func setKanjiKnown(wordType: String, wordId: String) async throws {
+        try await setFacetKnown(wordType: wordType, wordId: wordId, quizType: "kanji-to-reading")
+        try await setFacetKnown(wordType: wordType, wordId: wordId, quizType: "meaning-reading-to-kanji")
+    }
+
+    /// Set reading facets to unknown.
+    func setReadingUnknown(wordType: String, wordId: String) async throws {
+        try await setFacetUnknown(wordType: wordType, wordId: wordId, quizType: "reading-to-meaning")
+        try await setFacetUnknown(wordType: wordType, wordId: wordId, quizType: "meaning-to-reading")
+    }
+
+    /// Set kanji facets to unknown.
+    func setKanjiUnknown(wordType: String, wordId: String) async throws {
+        try await setFacetUnknown(wordType: wordType, wordId: wordId, quizType: "kanji-to-reading")
+        try await setFacetUnknown(wordType: wordType, wordId: wordId, quizType: "meaning-reading-to-kanji")
     }
 
     // MARK: - Model events
@@ -575,40 +687,15 @@ final class QuizDB: Sendable {
         print("[QuizDB] setMnemonic \(wordType)/\(wordId) (\(text.prefix(40))…)")
     }
 
-    // MARK: - Enrollment queries (legacy — still used by VocabCorpus and QuizContext)
+    // MARK: - Learned facets
 
-    /// Introduce a word's Ebisu facets. Prefer setLearning() for new call sites.
-    /// Skips any facet that already has a model (idempotent).
-    func introduceWord(
-        wordType: String,
-        wordId: String,
-        wordText: String,
-        hasKanji: Bool,
-        halflife: Double = 24
-    ) async throws {
-        let facets: [String] = hasKanji
-            ? ["kanji-to-reading", "reading-to-meaning", "meaning-to-reading", "meaning-reading-to-kanji"]
-            : ["reading-to-meaning", "meaning-to-reading"]
-        let now = ISO8601DateFormatter().string(from: Date())
-        let model = defaultModel(halflife: halflife)
-        try await pool.write { db in
-            for facet in facets {
-                let existing = try EbisuRecord
-                    .filter(Column("word_type") == wordType && Column("word_id") == wordId &&
-                            Column("quiz_type") == facet)
-                    .fetchOne(db)
-                guard existing == nil else { continue }
-                let record = EbisuRecord(
-                    wordType: wordType, wordId: wordId, quizType: facet,
-                    alpha: model.alpha, beta: model.beta, t: model.t, lastReview: now)
-                try record.save(db)
-                var event = ModelEvent(
-                    timestamp: now, wordType: wordType, wordId: wordId,
-                    quizType: facet, event: "learned,\(halflife)")
-                try event.insert(db)
-            }
+    /// All learned facet rows as a ["\(wordId):\(quizType)": LearnedFacet] dict.
+    func allLearnedFacets() async throws -> [String: LearnedFacet] {
+        try await pool.read { db in
+            let rows = try LearnedFacet.fetchAll(db)
+            return Dictionary(rows.map { ("\($0.wordId):\($0.quizType)", $0) },
+                              uniquingKeysWith: { first, _ in first })
         }
-        print("[QuizDB] introduced \(wordText) (\(wordId)) with \(facets.count) facet(s)")
     }
 
     // MARK: - WAL management

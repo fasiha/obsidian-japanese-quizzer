@@ -1,14 +1,23 @@
 // VocabCorpus.swift
 // Observable state for the published vocab corpus.
 // Loads vocab.json (from cache or download), enriches each word with JMdict data,
-// and tracks per-word enrollment status from quiz.sqlite.
+// and tracks per-word commitment/facet state from quiz.sqlite.
 
 import GRDB
 import Foundation
 
+// MARK: - Filter
+
+/// Vocab browser filter. A word can match multiple filters (OR semantics on facets).
+enum VocabFilter: String, CaseIterable, Sendable {
+    case notYetLearning = "Not yet learning"
+    case learning = "Learning"
+    case known = "Learned"
+}
+
 // MARK: - VocabItem
 
-/// One word in the corpus, enriched with JMdict data and the user's enrollment status.
+/// One word in the corpus, enriched with JMdict data and the user's facet states.
 struct VocabItem: Identifiable {
     let id: String              // JMDict entry ID
     let sources: [String]       // story titles this word appears in
@@ -16,8 +25,27 @@ struct VocabItem: Identifiable {
     let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
     let kanaTexts: [String]     // non-irregular kana-only forms
     let meanings: [String]      // English glosses from all senses
-    var status: EnrollmentStatus
-    var kanjiOk: Bool           // true → user committed to kanji facets (only meaningful when .learning)
+    let writtenForms: [WrittenFormGroup]  // furigana data from vocab.json
+
+    // Derived from DB state (ebisu_models + learned + word_commitment)
+    var commitment: WordCommitment?
+    var readingState: FacetState = .unknown  // derived from reading facets
+    var kanjiState: FacetState = .unknown    // derived from kanji facets
+
+    /// Does this word match the given filter? (OR semantics)
+    func matches(filter: VocabFilter) -> Bool {
+        switch filter {
+        case .notYetLearning:
+            return readingState == .unknown || kanjiState == .unknown
+        case .learning:
+            return readingState == .learning || kanjiState == .learning
+        case .known:
+            return readingState == .known || kanjiState == .known
+        }
+    }
+
+    /// Whether this word has any kanji forms at all (determines if kanji row is shown).
+    var hasKanjiOptions: Bool { !writtenTexts.isEmpty }
 }
 
 // MARK: - VocabCorpus
@@ -70,14 +98,35 @@ final class VocabCorpus {
         let allIds = manifest.words.map(\.id)
         let jmdictData = (try? await QuizContext.jmdictWordData(ids: allIds, jmdict: jmdict)) ?? [:]
 
-        // Load enrollment records. reconcileEnrollment() runs at startup so every
-        // word backed by ebisu_models already has a vocab_enrollment row.
-        let enrollmentMap = (try? await db.allEnrollments()) ?? [:]
+        // Load commitment and facet state data.
+        let commitmentMap = (try? await db.allCommitments()) ?? [:]
+        let learnedMap = (try? await db.allLearnedFacets()) ?? [:]
+        let ebisuRecords = (try? await db.enrolledEbisuRecords()) ?? []
+
+        // Build a set of "wordId:quizType" keys for learning facets.
+        var learningFacets: Set<String> = []
+        for r in ebisuRecords { learningFacets.insert("\(r.wordId):\(r.quizType)") }
 
         // Build items (skip words not found in JMdict).
         items = manifest.words.compactMap { entry in
             guard let jd = jmdictData[entry.id] else { return nil }
-            let enrollment = enrollmentMap[entry.id]
+            let commitment = commitmentMap[entry.id]
+
+            // Derive reading state from reading facets
+            let readingState = Self.deriveFacetState(
+                wordId: entry.id,
+                facets: ["reading-to-meaning", "meaning-to-reading"],
+                learningFacets: learningFacets,
+                learnedMap: learnedMap
+            )
+            // Derive kanji state from kanji facets
+            let kanjiState = Self.deriveFacetState(
+                wordId: entry.id,
+                facets: ["kanji-to-reading", "meaning-reading-to-kanji"],
+                learningFacets: learningFacets,
+                learnedMap: learnedMap
+            )
+
             return VocabItem(
                 id: entry.id,
                 sources: entry.sources,
@@ -85,80 +134,161 @@ final class VocabCorpus {
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 meanings: jd.meanings,
-                status: enrollment?.status ?? .notYetLearned,
-                kanjiOk: enrollment?.kanjiOk ?? false
+                writtenForms: entry.writtenForms ?? [],
+                commitment: commitment,
+                readingState: readingState,
+                kanjiState: kanjiState
             )
         }
         print("[VocabCorpus] loaded \(items.count)/\(manifest.words.count) word(s) " +
               "(\(manifest.words.count - items.count) skipped — not in JMdict)")
     }
 
+    // MARK: - Facet state derivation
+
+    /// Derive the aggregate state for a group of facets (reading or kanji).
+    /// If ANY facet is learning → .learning. Else if ANY is known → .known. Else .unknown.
+    private static func deriveFacetState(
+        wordId: String,
+        facets: [String],
+        learningFacets: Set<String>,
+        learnedMap: [String: LearnedFacet]
+    ) -> FacetState {
+        var hasLearning = false
+        var hasKnown = false
+        for facet in facets {
+            let key = "\(wordId):\(facet)"
+            if learningFacets.contains(key) { hasLearning = true }
+            if learnedMap[key] != nil { hasKnown = true }
+        }
+        if hasLearning { return .learning }
+        if hasKnown { return .known }
+        return .unknown
+    }
+
     // MARK: - Learning actions
 
-    /// Start learning a word. Creates Ebisu models and sets status = .learning.
-    func startLearning(wordId: String, kanjiOk: Bool, db: QuizDB) async {
+    /// Set the reading state for a word. Also ensures word_commitment exists.
+    func setReadingState(_ state: FacetState, wordId: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.setLearning(
-                wordType: "jmdict",
-                wordId: wordId,
-                wordText: items[idx].wordText,
-                kanjiOk: kanjiOk
-            )
-            items[idx].status = .learning
-            items[idx].kanjiOk = kanjiOk
+            // Ensure commitment exists
+            if items[idx].commitment == nil {
+                let furigana = defaultFuriganaJSON(for: items[idx])
+                try await db.setCommitment(wordType: "jmdict", wordId: wordId, furigana: furigana)
+                items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
+                                                        furigana: furigana, kanjiChars: nil)
+            }
+            switch state {
+            case .learning:
+                try await db.setReadingLearning(wordType: "jmdict", wordId: wordId)
+            case .known:
+                try await db.setReadingKnown(wordType: "jmdict", wordId: wordId)
+            case .unknown:
+                try await db.setReadingUnknown(wordType: "jmdict", wordId: wordId)
+                // If kanji is also unknown and we're going to unknown, clear commitment
+                if items[idx].kanjiState == .unknown {
+                    try await db.clearCommitment(wordType: "jmdict", wordId: wordId)
+                    items[idx].commitment = nil
+                }
+            }
+            items[idx].readingState = state
+            // Enforce kanji <= reading constraint
+            if state == .unknown && items[idx].kanjiState != .unknown {
+                try await db.setKanjiUnknown(wordType: "jmdict", wordId: wordId)
+                items[idx].kanjiState = .unknown
+            }
         } catch {
-            print("[VocabCorpus] startLearning error for \(wordId): \(error)")
+            print("[VocabCorpus] setReadingState error for \(wordId): \(error)")
         }
     }
 
-    /// Stop learning a word — archives Ebisu models and removes from vocab_enrollment.
-    func stopLearning(wordId: String, db: QuizDB) async {
+    /// Set the kanji state for a word.
+    func setKanjiState(_ state: FacetState, wordId: String, kanjiChars: [String]? = nil, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.archiveAndRemove(wordType: "jmdict", wordId: wordId, reason: "unlearned")
-            items[idx].status = .notYetLearned
-            items[idx].kanjiOk = false
+            switch state {
+            case .learning:
+                try await db.setKanjiLearning(wordType: "jmdict", wordId: wordId)
+                // Update kanji_chars in commitment
+                if let chars = kanjiChars {
+                    let json = try String(data: JSONEncoder().encode(chars), encoding: .utf8) ?? "[]"
+                    let furigana = items[idx].commitment?.furigana ?? "[]"
+                    try await db.setCommitment(wordType: "jmdict", wordId: wordId,
+                                               furigana: furigana, kanjiChars: json)
+                    items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
+                                                            furigana: furigana, kanjiChars: json)
+                }
+            case .known:
+                try await db.setKanjiKnown(wordType: "jmdict", wordId: wordId)
+            case .unknown:
+                try await db.setKanjiUnknown(wordType: "jmdict", wordId: wordId)
+            }
+            items[idx].kanjiState = state
         } catch {
-            print("[VocabCorpus] stopLearning error for \(wordId): \(error)")
+            print("[VocabCorpus] setKanjiState error for \(wordId): \(error)")
         }
     }
 
-    /// Mark a word as known — archives Ebisu models and sets status = .known.
-    func markKnown(wordId: String, db: QuizDB) async {
+    /// Mark all facets as known (reading + kanji if applicable).
+    func markAllKnown(wordId: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.archiveAndRemove(wordType: "jmdict", wordId: wordId, reason: "known")
-            items[idx].status = .known
-            items[idx].kanjiOk = false
+            // Ensure commitment
+            if items[idx].commitment == nil {
+                let furigana = defaultFuriganaJSON(for: items[idx])
+                try await db.setCommitment(wordType: "jmdict", wordId: wordId, furigana: furigana)
+                items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
+                                                        furigana: furigana, kanjiChars: nil)
+            }
+            try await db.setReadingKnown(wordType: "jmdict", wordId: wordId)
+            items[idx].readingState = .known
+            if items[idx].hasKanjiOptions {
+                try await db.setKanjiKnown(wordType: "jmdict", wordId: wordId)
+                items[idx].kanjiState = .known
+            }
         } catch {
-            print("[VocabCorpus] markKnown error for \(wordId): \(error)")
+            print("[VocabCorpus] markAllKnown error for \(wordId): \(error)")
         }
     }
 
-    /// Toggle kanji commitment for a learning word.
-    func toggleKanji(wordId: String, db: QuizDB) async {
-        guard let idx = items.firstIndex(where: { $0.id == wordId }),
-              items[idx].status == .learning else { return }
+    /// Clear all commitment and facets (back to fully unknown).
+    func clearAll(wordId: String, db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.toggleKanji(wordType: "jmdict", wordId: wordId,
-                                     wordText: items[idx].wordText)
-            items[idx].kanjiOk.toggle()
+            try await db.clearCommitment(wordType: "jmdict", wordId: wordId)
+            items[idx].commitment = nil
+            items[idx].readingState = .unknown
+            items[idx].kanjiState = .unknown
         } catch {
-            print("[VocabCorpus] toggleKanji error for \(wordId): \(error)")
+            print("[VocabCorpus] clearAll error for \(wordId): \(error)")
         }
     }
 
-    /// Move a known word back to "not yet learned" — deletes the vocab_enrollment row.
-    func undoKnown(wordId: String, db: QuizDB) async {
+    /// Update the committed furigana form for a word.
+    func setCommittedFurigana(wordId: String, furiganaJSON: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
-            try await db.removeEnrollment(wordType: "jmdict", wordId: wordId)
-            items[idx].status = .notYetLearned
-            items[idx].kanjiOk = false
+            let kanjiChars = items[idx].commitment?.kanjiChars
+            try await db.setCommitment(wordType: "jmdict", wordId: wordId,
+                                       furigana: furiganaJSON, kanjiChars: kanjiChars)
+            items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
+                                                    furigana: furiganaJSON, kanjiChars: kanjiChars)
         } catch {
-            print("[VocabCorpus] undoKnown error for \(wordId): \(error)")
+            print("[VocabCorpus] setCommittedFurigana error for \(wordId): \(error)")
         }
+    }
+
+    // MARK: - Helpers
+
+    /// Default furigana JSON for a word (first form of first reading group, or "[]").
+    private func defaultFuriganaJSON(for item: VocabItem) -> String {
+        guard let group = item.writtenForms.first,
+              let form = group.forms.first,
+              let data = try? JSONEncoder().encode(form.furigana),
+              let json = String(data: data, encoding: .utf8)
+        else { return "[]" }
+        return json
     }
 
     // MARK: - Re-download

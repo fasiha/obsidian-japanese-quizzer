@@ -3,9 +3,9 @@
 // Mirrors the logic in get-quiz-context.mjs.
 //
 // Word text is sourced from the reviews table (word_text column).
-// hasKanji is read from vocab_enrollment.kanji_ok (set during the learning flow).
+// hasKanji is inferred from whether kanji facets exist in ebisu_models.
 // All learning words are guaranteed to have a complete set of Ebisu facets
-// (enforced by the v3 migration and setLearning()), so no newWord/newFacet cases needed.
+// (enforced by setReadingLearning/setKanjiLearning), so no newWord/newFacet cases needed.
 
 import GRDB
 import Foundation
@@ -50,14 +50,13 @@ struct QuizContext {
 
     /// Build a ranked list of QuizItems from the DB.
     ///
-    /// Only words with status = 'learning' in vocab_enrollment are included.
-    /// hasKanji is read from vocab_enrollment.kanji_ok.
+    /// Only words with active ebisu_models are included (= "learning" facets).
+    /// hasKanji is inferred from whether kanji facets exist in ebisu_models.
     /// - Parameter jmdict: Optional jmdict DB reader used to fill in word texts and forms.
     static func build(db: QuizDB, jmdict: (any DatabaseReader)? = nil) async throws -> [QuizItem] {
         let records        = try await db.enrolledEbisuRecords()
         var wordTexts      = try await db.wordTexts()
         let reviewCounts   = try await db.reviewCounts()
-        let kanjiOkByWord  = try await db.kanjiOkByWordId()
 
         // Fetch word text, structured forms, and meanings from jmdict.
         var wordMeanings: [String: [String]] = [:]
@@ -90,8 +89,8 @@ struct QuizContext {
             let wordType = String(parts[0])
             let wordId   = String(parts[1])
 
-            // hasKanji comes from vocab_enrollment.kanji_ok (set at learning time).
-            let hasKanji = kanjiOkByWord[wordId] ?? false
+            // hasKanji inferred from whether any kanji facets exist in this word's models.
+            let hasKanji = wordModels.contains { kanjiFacetSet.contains($0.quizType) }
             let facets = hasKanji ? kanjiOkFacets : noKanjiFacets
 
             let wordText = wordTexts[wordId] ?? wordId
@@ -255,19 +254,4 @@ extension QuizDB {
         }
     }
 
-    /// kanji_ok flag per word_id from vocab_enrollment (for learning words only).
-    func kanjiOkByWordId() async throws -> [String: Bool] {
-        try await pool.read { db in
-            let rows = try Row.fetchAll(db, sql: """
-                SELECT word_id, kanji_ok FROM vocab_enrollment WHERE status = 'learning'
-                """)
-            var result: [String: Bool] = [:]
-            for row in rows {
-                guard let id = row["word_id"] as? String,
-                      let ok = row["kanji_ok"] as? Int64 else { continue }
-                result[id] = ok != 0
-            }
-            return result
-        }
-    }
 }

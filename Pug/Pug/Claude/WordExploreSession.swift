@@ -57,10 +57,10 @@ final class WordExploreSession {
                 system: prompt,
                 tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
-                toolHandler: { [self] name, input in
-                    if name == "get_vocab_context" { return await self.vocabContextJSON() }
+                toolHandler: { name, input in
+                    if name == "get_vocab_context" { return await MainActor.run { self.vocabContextJSON() } }
                     let result = try await th.handle(toolName: name, input: input)
-                    if name == "set_mnemonic" { self.onMnemonicSaved?() }
+                    if name == "set_mnemonic" { await MainActor.run { self.onMnemonicSaved?() } }
                     return result
                 }
             )
@@ -77,12 +77,12 @@ final class WordExploreSession {
         var learning: [[String: Any]] = []
         var known:    [[String: Any]] = []
         for item in corpus.items {
-            guard item.status != .notYetLearned else { continue }
+            guard item.readingState != .unknown || item.kanjiState != .unknown else { continue }
             var entry: [String: Any] = ["text": item.wordText]
             if !item.kanaTexts.isEmpty    { entry["kana"]     = item.kanaTexts }
             if !item.writtenTexts.isEmpty { entry["written"]  = item.writtenTexts }
             if !item.meanings.isEmpty     { entry["meanings"] = Array(item.meanings.prefix(3)) }
-            if item.status == .learning   { learning.append(entry) }
+            if item.readingState == .learning || item.kanjiState == .learning { learning.append(entry) }
             else                          { known.append(entry) }
         }
         let obj: [String: Any] = ["learning": learning, "known": known]

@@ -79,8 +79,6 @@ This skill is the authoring counterpart to the app's learner-side enrollment mod
 
 
 ## App todo
-- [ ] share (in debug menu) doesn't do anything in simulator?
-- [x] bash script to find the quiz.sqlite in the currently-running simulator (so I don't lose my history!) → `pull-sim-quiz.sh`
-- [ ] i can ask it about recall probability but not halflife, let's include that in the quiz history tool?
-- [ ] mnemonic per word table+tool
 - [ ] extra definitions per word table+tool
+- [ ] practicing kanji-to-reading shouldn't passively updating reading<->meaning and reading-meaning-to-kanji, since meaning might not be exercised. Consider adding a meaning facet after kanji-to-reading?
+- [ ] if user's first chat message after quiz involves a mnemonic, nothing gets shown in the first chat bubble from 

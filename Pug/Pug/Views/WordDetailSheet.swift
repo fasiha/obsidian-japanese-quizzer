@@ -15,13 +15,18 @@ import SwiftUI
 import GRDB
 
 struct WordDetailSheet: View {
-    let item: VocabItem
+    let initialItem: VocabItem
     let corpus: VocabCorpus
     let db: QuizDB
     let session: QuizSession    // for AnthropicClient + ToolHandler access
 
+    /// Live item looked up from corpus — updates reactively when corpus.items changes.
+    /// Falls back to the initial snapshot if the item disappears (e.g. during re-download).
+    private var item: VocabItem {
+        corpus.items.first { $0.id == initialItem.id } ?? initialItem
+    }
+
     @Environment(\.dismiss) private var dismiss
-    @State private var kanjiOkChoice: Bool = false
     @State private var isWorking = false
     @State private var explore: WordExploreSession? = nil
     @State private var vocabMnemonic: String? = nil
@@ -39,8 +44,7 @@ struct WordDetailSheet: View {
                 }
                 .padding()
             }
-            .navigationTitle(item.wordText)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -68,31 +72,17 @@ struct WordDetailSheet: View {
 
     private var wordInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if !item.writtenTexts.isEmpty {
-                infoGroup(heading: "Written forms") {
-                    ForEach(item.writtenTexts, id: \.self) { form in
-                        Text(form).font(.title2)
-                    }
-                }
-            }
+            // Large ruby heading: first written form's furigana, or plain kana
+            wordHeading
 
-            infoGroup(heading: "Readings") {
-                ForEach(item.kanaTexts, id: \.self) { kana in
-                    Text(kana).font(.title3)
-                }
-            }
-
-            infoGroup(heading: "Meanings") {
-                ForEach(Array(item.meanings.enumerated()), id: \.offset) { _, meaning in
-                    Text("• \(meaning)")
-                }
+            ForEach(Array(item.meanings.enumerated()), id: \.offset) { _, meaning in
+                Text("• \(meaning)")
             }
 
             if !item.sources.isEmpty {
-                infoGroup(heading: "Appears in") {
-                    Text(item.sources.joined(separator: ", "))
-                        .foregroundStyle(.secondary)
-                }
+                Text(item.sources.joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
 
             if vocabMnemonic != nil || !kanjiMnemonics.isEmpty {
@@ -107,7 +97,44 @@ struct WordDetailSheet: View {
                 }
             }
         }
-        .textSelection(.enabled)  // propagates to all Text descendants
+        .textSelection(.enabled)
+    }
+
+    /// Large ruby furigana heading from the first written form, or plain kana for kana-only words.
+    @ViewBuilder
+    private var wordHeading: some View {
+        if let group = item.writtenForms.first, let form = group.forms.first {
+            headingFurigana(form.furigana)
+                .textSelection(.disabled)
+        } else {
+            Text(item.kanaTexts.first ?? item.wordText)
+                .font(.largeTitle)
+        }
+    }
+
+    /// Render furigana segments at heading size.
+    private func headingFurigana(_ segments: [FuriganaSegment]) -> some View {
+        let baseText = segments.map(\.ruby).joined()
+        return HStack(spacing: 0) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                if let rt = seg.rt {
+                    VStack(spacing: 0) {
+                        Text(rt).font(.caption).foregroundStyle(.secondary)
+                        Text(seg.ruby).font(.largeTitle)
+                    }
+                } else {
+                    Text(seg.ruby).font(.largeTitle)
+                        .padding(.top, 16) // align with kanji that have rt above
+                }
+            }
+        }
+        .contextMenu {
+            Button {
+                UIPasteboard.general.string = baseText
+            } label: {
+                Label("Copy", systemImage: "doc.on.doc")
+            }
+        }
     }
 
     @ViewBuilder
@@ -123,104 +150,182 @@ struct WordDetailSheet: View {
         }
     }
 
-    // MARK: - Actions (vary by status)
+    // MARK: - Actions (furigana picker + reading/kanji state controls)
 
     @ViewBuilder
     private var actionsSection: some View {
-        switch item.status {
-        case .notYetLearned:
-            notYetLearnedActions
-        case .learning:
-            learningActions
-        case .known:
-            knownActions
-        }
-    }
-
-    // Not yet learned: kanji question + learn button, or just "I know this"
-    private var notYetLearnedActions: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if !item.writtenTexts.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Will you memorize the written form?")
-                        .font(.headline)
-                    Text("Adds kanji-reading and kanji-writing practice to your quiz sessions.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Picker("Kanji commitment", selection: $kanjiOkChoice) {
-                        Text("Reading only").tag(false)
-                        Text("Yes, including kanji").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                }
+            // Furigana form picker
+            if !item.writtenForms.isEmpty {
+                furiganaPickerSection
             }
 
-            Button {
-                commit()
-            } label: {
-                Label("Start learning this word", systemImage: "plus.circle.fill")
-                    .frame(maxWidth: .infinity)
+            // Reading state control (always shown once committed, or for kana-only words)
+            if item.commitment != nil || item.writtenForms.isEmpty {
+                readingStateControl
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
 
+            // Kanji state control (only if word has kanji and reading is not unknown)
+            if item.hasKanjiOptions && item.readingState != .unknown {
+                kanjiStateControl
+            }
+
+            // Kanji character picker (only when kanji = learning)
+            if item.kanjiState == .learning {
+                kanjiCharPicker
+            }
+
+            Divider()
+
+            // Quick actions
             Button {
-                markKnown()
+                markAllKnown()
             } label: {
-                Label("I already know this word", systemImage: "checkmark.circle")
+                Label("I know this word", systemImage: "checkmark.circle")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .tint(.blue)
-        }
-    }
 
-    // Learning: toggle kanji, stop learning, mark known
-    private var learningActions: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if !item.writtenTexts.isEmpty {
-                Button {
-                    toggleKanji()
+            if item.commitment != nil {
+                Button(role: .destructive) {
+                    clearAll()
                 } label: {
-                    Label(
-                        item.kanjiOk ? "Remove kanji practice" : "Add kanji practice",
-                        systemImage: item.kanjiOk ? "minus.circle" : "plus.circle"
-                    )
-                    .frame(maxWidth: .infinity)
+                    Label("Reset (forget all)", systemImage: "arrow.uturn.backward")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(item.kanjiOk ? .orange : .indigo)
             }
-
-            Button(role: .destructive) {
-                stopLearning()
-            } label: {
-                Label("Stop learning this word", systemImage: "xmark.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-
-            Button {
-                markKnown()
-            } label: {
-                Label("I already know this word", systemImage: "checkmark.circle")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .tint(.blue)
         }
     }
 
-    // Known: just undo
-    private var knownActions: some View {
-        Button {
-            undoKnown()
-        } label: {
-            Label("Move back to \"Not yet learned\"", systemImage: "arrow.uturn.backward")
-                .frame(maxWidth: .infinity)
+    // MARK: - Furigana picker
+
+    @ViewBuilder
+    private var furiganaPickerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Choose a form to study")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(item.writtenForms, id: \.reading) { group in
+                ForEach(group.forms, id: \.text) { form in
+                    let isSelected = isCommittedForm(form)
+                    Button {
+                        selectForm(form)
+                    } label: {
+                        HStack {
+                            furiganaText(form.furigana)
+                            Spacer()
+                            if isSelected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(item.commitment != nil && !isSelected ? 0.4 : 1.0)
+                }
+            }
+            // Kana-only readings (no kanji forms)
+            ForEach(item.writtenForms.filter { $0.forms.isEmpty }, id: \.reading) { group in
+                HStack {
+                    Text(group.reading).font(.title3)
+                    Spacer()
+                    if item.commitment != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
         }
-        .buttonStyle(.bordered)
-        .tint(.orange)
+    }
+
+    // MARK: - Reading state control
+
+    private var readingStateControl: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Reading")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Picker("Reading", selection: Binding(
+                get: { item.readingState },
+                set: { newState in setReadingState(newState) }
+            )) {
+                Text("Don't know").tag(FacetState.unknown)
+                Text("Learning").tag(FacetState.learning)
+                Text("Known").tag(FacetState.known)
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: - Kanji state control
+
+    private var kanjiStateControl: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Kanji")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Picker("Kanji", selection: Binding(
+                get: { item.kanjiState },
+                set: { newState in setKanjiState(newState) }
+            )) {
+                Text("Don't know").tag(FacetState.unknown)
+                Text("Learning").tag(FacetState.learning)
+                // Known only available if reading is known
+                if item.readingState == .known {
+                    Text("Known").tag(FacetState.known)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: - Kanji character picker
+
+    private var kanjiCharPicker: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Kanji to learn")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            let allKanji = extractKanjiFromCommitment()
+            FlowLayout(spacing: 8) {
+                ForEach(allKanji, id: \.self) { kanji in
+                    let selected = selectedKanjiChars.contains(kanji)
+                    Button {
+                        toggleKanjiChar(kanji)
+                    } label: {
+                        Text(kanji)
+                            .font(.title2)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selected ? Color.green.opacity(0.2) : Color(.secondarySystemBackground))
+                            .foregroundStyle(selected ? .green : .primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(selected ? Color.green : Color.clear, lineWidth: 1.5)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     // MARK: - Claude explore chat
@@ -284,49 +389,105 @@ struct WordDetailSheet: View {
 
     // MARK: - Action implementations
 
-    private func commit() {
-        let ok = item.writtenTexts.isEmpty ? false : kanjiOkChoice
+    private var selectedKanjiChars: Set<String> {
+        guard let json = item.commitment?.kanjiChars,
+              let data = json.data(using: .utf8),
+              let arr = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return Set(arr)
+    }
+
+    private func isCommittedForm(_ form: WrittenForm) -> Bool {
+        guard let json = item.commitment?.furigana,
+              let data = json.data(using: .utf8),
+              let committed = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+        else { return false }
+        // Compare by matching ruby/rt pairs
+        guard committed.count == form.furigana.count else { return false }
+        return zip(committed, form.furigana).allSatisfy { $0.ruby == $1.ruby && $0.rt == $1.rt }
+    }
+
+    private func selectForm(_ form: WrittenForm) {
         isWorking = true
         Task {
-            await corpus.startLearning(wordId: item.id, kanjiOk: ok, db: db)
+            if let data = try? JSONEncoder().encode(form.furigana),
+               let json = String(data: data, encoding: .utf8) {
+                await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)
+            }
+            isWorking = false
+        }
+    }
+
+    private func setReadingState(_ state: FacetState) {
+        isWorking = true
+        Task {
+            await corpus.setReadingState(state, wordId: item.id, db: db)
+            isWorking = false
+        }
+    }
+
+    private func setKanjiState(_ state: FacetState) {
+        isWorking = true
+        Task {
+            let chars = state == .learning ? Array(selectedKanjiChars) : nil
+            await corpus.setKanjiState(state, wordId: item.id, kanjiChars: chars, db: db)
+            isWorking = false
+        }
+    }
+
+    private func toggleKanjiChar(_ kanji: String) {
+        var current = selectedKanjiChars
+        if current.contains(kanji) { current.remove(kanji) } else { current.insert(kanji) }
+        isWorking = true
+        Task {
+            await corpus.setKanjiState(.learning, wordId: item.id,
+                                        kanjiChars: Array(current), db: db)
+            isWorking = false
+        }
+    }
+
+    private func extractKanjiFromCommitment() -> [String] {
+        guard let json = item.commitment?.furigana,
+              let data = json.data(using: .utf8),
+              let segments = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+        else { return [] }
+        var result: [String] = []
+        for seg in segments where seg.rt != nil {
+            for ch in seg.ruby.unicodeScalars {
+                if ch.value >= 0x4E00 && ch.value <= 0x9FFF ||
+                   ch.value >= 0x3400 && ch.value <= 0x4DBF ||
+                   ch.value >= 0xF900 && ch.value <= 0xFAFF {
+                    let s = String(ch)
+                    if !result.contains(s) { result.append(s) }
+                }
+            }
+        }
+        return result
+    }
+
+    private func markAllKnown() {
+        isWorking = true
+        Task {
+            await corpus.markAllKnown(wordId: item.id, db: db)
             isWorking = false
             dismiss()
         }
     }
 
-    private func stopLearning() {
+    private func clearAll() {
         isWorking = true
         Task {
-            await corpus.stopLearning(wordId: item.id, db: db)
+            await corpus.clearAll(wordId: item.id, db: db)
             isWorking = false
             dismiss()
-        }
-    }
-
-    private func markKnown() {
-        isWorking = true
-        Task {
-            await corpus.markKnown(wordId: item.id, db: db)
-            isWorking = false
-            dismiss()
-        }
-    }
-
-    private func toggleKanji() {
-        isWorking = true
-        Task {
-            await corpus.toggleKanji(wordId: item.id, db: db)
-            isWorking = false
         }
     }
 
     private func loadMnemonics() async {
         guard let quizDB = session.toolHandler.quizDB else { return }
-        // Vocab mnemonic
         if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: item.id) {
             vocabMnemonic = m.mnemonic
         }
-        // Kanji mnemonics for characters in written forms
         let kanjiChars = item.writtenTexts.joined()
             .unicodeScalars
             .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
@@ -340,12 +501,63 @@ struct WordDetailSheet: View {
         }
     }
 
-    private func undoKnown() {
-        isWorking = true
-        Task {
-            await corpus.undoKnown(wordId: item.id, db: db)
-            isWorking = false
-            dismiss()
+    /// Render furigana segments as Text with ruby-style annotation.
+    private func furiganaText(_ segments: [FuriganaSegment]) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                if let rt = seg.rt {
+                    VStack(spacing: 0) {
+                        Text(rt).font(.caption2).foregroundStyle(.secondary)
+                        Text(seg.ruby).font(.title2)
+                    }
+                } else {
+                    Text(seg.ruby).font(.title2)
+                        .padding(.top, 14) // align with kanji that have rt above
+                }
+            }
+        }
+    }
+}
+
+// MARK: - FlowLayout (for kanji character picker)
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > width && x > 0 {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: width, height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var rowHeight: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX && x > bounds.minX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
         }
     }
 }

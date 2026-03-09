@@ -20,7 +20,7 @@
  * Usage: node prepare-publish.mjs
  */
 
-import { setup, findExactIds } from "jmdict-simplified-node";
+import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync } from "fs";
 import path from "path";
 import {
@@ -31,6 +31,151 @@ import {
   projectRoot,
   JMDICT_DB,
 } from "./.claude/scripts/shared.mjs";
+
+// --- JmdictFurigana enrichment ---
+
+/**
+ * Load JmdictFurigana.json and return a Map<text, entry[]> for fast lookup by
+ * written form.
+ */
+function loadJmdictFurigana() {
+  const raw = readFileSync(
+    path.join(projectRoot, "JmdictFurigana.json"),
+    "utf8",
+  ).trim(); // .trim() strips BOM
+  const entries = JSON.parse(raw);
+  const map = new Map();
+  for (const entry of entries) {
+    const arr = map.get(entry.text);
+    if (arr) arr.push(entry);
+    else map.set(entry.text, [entry]);
+  }
+  return map;
+}
+
+/**
+ * Determine if `maybeParent` is a "more kanji" version of `elt` — i.e., the
+ * two furigana arrays represent the same text but `maybeParent` uses kanji
+ * (ruby+rt) where `elt` uses plain kana (string).
+ *
+ * Works by nibbling both arrays from the front in parallel:
+ * - Matching strings: consume character by character
+ * - Matching ruby objects: consume if ruby+rt are identical
+ * - String in elt vs ruby in maybeParent: consume if elt's string starts with
+ *   maybeParent's rt (parent has kanji where child has plain kana)
+ *
+ * Returns true only if the entire arrays are consumed with no mismatches.
+ */
+function isFuriganaParent(elt, maybeParent) {
+  if (maybeParent === elt) return false;
+
+  const xx = elt.furigana.map((o) => (o.rt ? o : o.ruby));
+  const yy = maybeParent.furigana.map((o) => (o.rt ? o : o.ruby));
+
+  while (xx.length || yy.length) {
+    const x = xx[0];
+    const y = yy[0];
+
+    if (!x || !y) return false;
+
+    if (typeof x === typeof y) {
+      if (typeof x === "string") {
+        // Both plain strings — nibble character by character
+        if (y.startsWith(x[0])) {
+          if (y.length > 1) yy[0] = y.slice(1);
+          else yy.shift();
+          if (x.length > 1) xx[0] = x.slice(1);
+          else xx.shift();
+        } else {
+          return false;
+        }
+      } else {
+        // Both ruby — must match exactly
+        if (x.ruby === y.ruby && x.rt === y.rt) {
+          xx.shift();
+          yy.shift();
+        } else {
+          return false;
+        }
+      }
+    } else {
+      // Mixed: elt has plain kana, maybeParent has ruby (kanji) — the parent
+      // relationship we're looking for
+      if (typeof x === "string" && x.startsWith(y.rt)) {
+        if (x.length > y.rt.length) xx[0] = x.slice(y.rt.length);
+        else xx.shift();
+        yy.shift();
+      } else {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Build furigana data for a single JMDict word.
+ *
+ * Returns: array of { reading: string, forms: [{ furigana: [...], text: string }] }
+ * grouped by reading. Within each reading, lesser-kanji variants are collapsed
+ * (e.g. "たき木" is dropped in favor of "焚き木" for reading "たきぎ").
+ * Forms preserve JMDict kanji array order.
+ *
+ * For kana-only words (no kanji entries), returns [{ reading: kanaText, forms: [] }].
+ */
+function buildFuriganaForWord(word, furiganaMap) {
+  if (!word.kanji || word.kanji.length === 0) {
+    // Kana-only word
+    return word.kana
+      .filter((k) => !k.tags || !k.tags.includes("ik"))
+      .map((k) => ({ reading: k.text, forms: [] }));
+  }
+
+  // Determine which readings apply to which kanji forms (preserving JMDict order)
+  const kanjiTexts = word.kanji
+    .filter((k) => !k.tags || !k.tags.includes("iK"))
+    .map((k) => k.text);
+  const kanaEntries = word.kana.filter(
+    (k) => !k.tags || !k.tags.includes("ik"),
+  );
+
+  // Group by reading
+  const byReading = new Map(); // reading -> [{furigana, text}]
+
+  for (const kana of kanaEntries) {
+    const applicableKanji =
+      kana.appliesToKanji && kana.appliesToKanji[0] === "*"
+        ? kanjiTexts
+        : (kana.appliesToKanji || []).filter((k) => kanjiTexts.includes(k));
+
+    // Build forms in JMDict kanji array order
+    const forms = [];
+    for (const kanjiText of applicableKanji) {
+      const furiganaEntries = furiganaMap.get(kanjiText) || [];
+      const match = furiganaEntries.find((e) => e.reading === kana.text);
+      if (match) {
+        forms.push({ furigana: match.furigana, text: kanjiText });
+      }
+    }
+
+    // Collapse: remove forms that have a "parent" (more-kanji version) in the list
+    const collapsed = forms.filter(
+      (f) => !forms.some((other) => isFuriganaParent(f, other)),
+    );
+
+    if (!byReading.has(kana.text)) {
+      byReading.set(kana.text, collapsed);
+    } else {
+      byReading.get(kana.text).push(...collapsed);
+    }
+  }
+
+  return [...byReading.entries()].map(([reading, forms]) => ({
+    reading,
+    forms,
+  }));
+}
 
 // Like shared.extractVocabBullets but also returns 1-indexed line numbers.
 function extractVocabBullets(content) {
@@ -110,10 +255,21 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
-const words = [...wordMap.values()].map(({ id, sources }) => ({
-  id,
-  sources: [...sources],
-}));
+// Enrich with JmdictFurigana data
+const furiganaMap = loadJmdictFurigana();
+const wordIds = [...wordMap.keys()];
+const jmdictWords = idsToWords(db, wordIds);
+const jmdictById = new Map();
+for (const w of jmdictWords) jmdictById.set(w.id, w);
+
+const words = [...wordMap.values()].map(({ id, sources }) => {
+  const entry = { id, sources: [...sources] };
+  const jmWord = jmdictById.get(id);
+  if (jmWord) {
+    entry.writtenForms = buildFuriganaForWord(jmWord, furiganaMap);
+  }
+  return entry;
+});
 
 const output = {
   generatedAt: new Date().toISOString(),

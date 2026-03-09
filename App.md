@@ -15,9 +15,10 @@ The two things this app is trying to be:
 - The app's corpus is *comprehensively annotated* — every word a beginner–intermediate
   reader might not know, added by the `/enrich-vocab` skill (see `TODO.md`). Users are
   then readers who independently decide what to do with each word.
-- **Per-user enrollment**: each word in the corpus is in one of three states for each
-  learner: no row (not yet triaged), `learning` (actively learning via Ebisu),
-  `known` (skipped — "I already know this"). Only `learning` words appear in quizzes.
+- **Per-user enrollment**: each word has independent **reading** and **kanji** facet
+  states (unknown / learning / known). Users commit to a specific furigana form and
+  optionally select which kanji characters to learn. Only `learning` facets appear in
+  quizzes.
 
 ### 2. Conversational learning with a frontier model
 
@@ -94,34 +95,52 @@ experience aims to feel like a knowledgeable tutor rather than a flashcard deck.
 - **Quiz DB**: `quiz.sqlite` created on first launch, local to each device. GRDB.swift for access. Extends the Node.js schema with a `vocab_enrollment` table (see below).
 - **Vocab content**: `vocab.json` synced from a hosted GitHub Gist URL. App fetches on startup; cached to `Documents/vocab.json`. See Publishing pipeline below.
 
-#### `vocab_enrollment` table (app-only extension to quiz.sqlite)
+#### Word commitment & facet state (app-only tables in quiz.sqlite)
+
+The user's learning state for each word is tracked across two tables, with facet state
+**derived** from presence in `ebisu_models` (learning) or `learned` (known) — no
+redundant status columns.
 
 ```sql
-CREATE TABLE vocab_enrollment (
-  word_type TEXT NOT NULL,          -- 'jmdict'
-  word_id   TEXT NOT NULL,          -- JMDict entry ID
-  status    TEXT NOT NULL           -- 'learning' | 'known'
-    CHECK(status IN ('learning','known')),
-  kanji_ok  INTEGER NOT NULL DEFAULT 0,  -- 1 = user committed to kanji facets
-  updated_at TEXT NOT NULL,         -- ISO 8601 UTC
+-- User's commitment to study a specific furigana form of a word.
+CREATE TABLE word_commitment (
+  word_type   TEXT NOT NULL,        -- 'jmdict'
+  word_id     TEXT NOT NULL,        -- JMDict entry ID
+  furigana    TEXT NOT NULL,        -- JmdictFurigana JSON array for the chosen form
+  kanji_chars TEXT,                 -- JSON array of kanji chars to learn, e.g. ["入","込"]
   PRIMARY KEY (word_type, word_id)
+);
+
+-- Per-facet "I already know this" with ebisu backup for restoration.
+CREATE TABLE learned (
+  word_type    TEXT NOT NULL,
+  word_id      TEXT NOT NULL,
+  quiz_type    TEXT NOT NULL,       -- e.g. "reading-to-meaning"
+  learned_at   TEXT NOT NULL,       -- ISO 8601 UTC
+  ebisu_backup TEXT,                -- JSON snapshot of EbisuRecord at time of marking known
+  PRIMARY KEY (word_type, word_id, quiz_type)
 );
 ```
 
-- **No row** — word exists in corpus but user hasn't decided yet ("not yet learned"). This is the
-  default; absence from the table is the representation, not a stored value.
-- `learning` — user committed to learning this word; Ebisu models exist and quizzes run.
-  `kanji_ok=1` means all 4 facets (including kanji-to-reading and meaning-reading-to-kanji);
-  `kanji_ok=0` means 2 facets only (reading-to-meaning, meaning-to-reading).
-- `known` — user chose "I know this"; never quizzed. Ebisu models are archived to `model_events`
-  and deleted from `ebisu_models` when this status is set.
+**Facet state derivation** (not stored — computed from the two tables above):
+- **unknown** — not in `ebisu_models` or `learned`
+- **learning** — has `ebisu_models` row (actively quizzed via Ebisu)
+- **known** — has `learned` row (ebisu model archived as JSON backup; restorable)
 
-`ebisu_models` is only populated for `learning` words. The quiz context query filters to `learning`
-only. "Unlearning" a word deletes its enrollment row and archives its Ebisu models.
+Each word has independent **reading** state (from `reading-to-meaning` + `meaning-to-reading`
+facets) and **kanji** state (from `kanji-to-reading` + `meaning-reading-to-kanji` facets).
+Constraint: kanji state ≤ reading state (no Heisig-style kanji-without-reading).
 
-**Migration note (v3)**: recreated table to add `kanji_ok`, rename `enrolled`→`learning`, and drop
-`pending` rows. Partial Ebisu facets were backfilled with α=β=1.25, t=24h using the oldest existing
-facet's timestamp.
+**`word_commitment`**: created when the user first interacts with a word. The `furigana`
+field stores the JmdictFurigana JSON for the chosen written form (e.g. 入り込む vs 這入り込む).
+The `kanji_chars` field records which specific kanji the user is learning to write.
+
+**Vocab browser filters** use OR semantics: a word appears in "Learning" if ANY facet is
+learning, in "Known" if ANY facet is known, and in "Not yet learning" if ANY facet is unknown.
+
+**Migration history**: v3 added `kanji_ok`; v5 replaced `vocab_enrollment` with
+`word_commitment` + `learned` (migrating existing data, using `'[]'` placeholder for furigana
+until the next vocab sync provides `writtenForms` data).
 
 #### `mnemonics` table (v4 migration)
 
@@ -290,13 +309,21 @@ stories/
 {
   "generatedAt": "2026-03-04T00:00:00Z",
   "stories": [{ "title": "分章読解3" }],
-  "words": [{ "id": "1234567", "sources": ["分章読解3"] }]
+  "words": [{
+    "id": "1234567",
+    "sources": ["分章読解3"],
+    "writtenForms": [{
+      "reading": "はいりこむ",
+      "forms": [{ "furigana": [{"ruby":"入","rt":"はい"},{"ruby":"り"},{"ruby":"込","rt":"こ"},{"ruby":"む"}], "text": "入り込む" }]
+    }]
+  }]
 }
 ```
-`forms`, `meanings`, and `hasKanji` are intentionally omitted — all derivable from the
-bundled `jmdict.sqlite` or left to per-user enrollment triage. The only publish-time
-data that can't be derived is which JMDict IDs are in the corpus and which stories they
-come from. Used by: vocab browser, enrollment. Rendered with pure SwiftUI.
+`meanings` and display forms are derived from the bundled `jmdict.sqlite`. The
+publish-time data that can't be derived is: which JMDict IDs are in the corpus, which
+stories they come from, and the **furigana breakdown** (from JmdictFurigana, with
+`appliesToKanji` filtering and lesser-kanji variant collapsing via `isFuriganaParent`).
+Used by: vocab browser, enrollment, furigana form picker. Rendered with pure SwiftUI.
 
 **`story.html`** — full Markdown converted to HTML (pandoc or Node.js `marked`):
 - Raw HTML tags (`<ruby>`, `<details>`) passed through unchanged
@@ -312,10 +339,9 @@ system prompt context — it's compact and Claude handles it well.
 Pipeline steps:
 1. Find Markdown files with `llm-review: true` **and** `title:` in frontmatter — block if any `title` is missing ✓
 2. Run check-vocab validation (inline in `prepare-publish.mjs`) — block on failures ✓
-3. Extract `vocab.json` from `<details>` blocks → write to project root ✓ (`prepare-publish.mjs`)
+3. Extract `vocab.json` from `<details>` blocks, enrich with JmdictFurigana `writtenForms` → write to project root ✓ (`prepare-publish.mjs`)
 4. Push `vocab.json` to GitHub secret Gist via `git` over SSH ✓ (`publish.mjs`)
-5. Annotate vocab with JmdictFurigana ruby spans (Phase 2+)
-6. Convert Markdown → `story.html` with vocab span injection; copy/upload images (Phase 2+)
+5. Convert Markdown → `story.html` with vocab span injection; copy/upload images (Phase 2+)
 
 **Still needed before first run**: add `title:` to the YAML frontmatter of each enrolled Markdown file.
 
@@ -413,25 +439,23 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
 ### Phase 0 — Vocab browser (enrollment UX) ✓ complete
 *The first thing a new user does. Without this, there's nothing to quiz.*
 
-- [x] Vocab sync: `Models/VocabSync.swift` downloads `vocab.json` from `vocabUrl` (UserDefaults,
-      set by setup deep link) or `VOCAB_URL` (Xcode env var, for dev). Caches to
-      `Documents/vocab.json`; "Re-download vocab" in the ··· debug menu forces a fresh fetch.
-- [x] Vocab browser UI: `Views/VocabBrowserView.swift` — filterable word list with filter picker
-      (Not yet learned / Learning / Learned / All, defaults to Not yet learned). Status badges on
-      each row. Swipe left for contextual actions:
-      - Not yet learned: "Learn" (green) | "Learned" (blue)
-      - Learning: "Learned" (blue) | "Undo" (orange → back to Not yet learned)
-      - Learned: "Learn" (green) | "Undo" (orange)
-- [x] `vocab_enrollment` table + GRDB model — already in v1 migration in `QuizDB.swift`
-- [x] Enrollment: `VocabCorpus.setStatus(.enrolled)` calls `QuizDB.introduceWord()` which writes
-      two Ebisu model rows (`reading-to-meaning`, `meaning-to-reading`) with `defaultModel(24h)`.
-      Idempotent — skips facets that already exist (handles words enrolled via Node.js quiz).
-- [x] Backward compatibility: words with `ebisu_models` rows but no `vocab_enrollment` row
-      (introduced via Node.js quiz) are shown as "Learning" in the browser automatically.
+- [x] Vocab sync: `Models/VocabSync.swift` downloads `vocab.json` (with `writtenForms` furigana
+      data) from `vocabUrl` (UserDefaults, set by setup deep link) or `VOCAB_URL` env var.
+      Caches to `Documents/vocab.json`.
+- [x] Vocab browser UI: `Views/VocabBrowserView.swift` — filterable word list with OR-based
+      filter picker (Not yet learning / Learning / Learned / All). Status badges show aggregate
+      facet state. Swipe actions vary by state. Search across kanji, kana, meanings, and mnemonics.
+- [x] Word detail sheet: `Views/WordDetailSheet.swift` — ruby furigana heading, meanings,
+      furigana form picker (choose which written form to study), independent reading/kanji
+      segmented pickers, kanji character toggle grid (FlowLayout), Claude explore chat.
+      All state changes go through `VocabCorpus` → `QuizDB` and update reactively.
+- [x] `word_commitment` + `learned` tables (v5 migration) — replaces `vocab_enrollment`
+- [x] Facet state derived from `ebisu_models` (learning) and `learned` (known) tables
+- [x] Backward compatibility: words with `ebisu_models` rows but no `word_commitment` row
+      (introduced via Node.js quiz) get a commitment row on launch (`reconcileEnrollment`).
 - [x] Navigation: `Views/HomeView.swift` — `TabView` with Vocab (books icon) and Quiz tabs.
 - [x] Onboarding: `AppRootView` shows `ContentUnavailableView("Setup Required")` if API key or
       vocab URL not yet configured — disappears automatically after setup link is tapped
-- [ ] "Not yet learned" list shows all corpus words even after all are triaged — no "done" state
 
 ### Phase 1 — MVP (quiz works end to end) ✓ complete
 - [x] Xcode project setup (SwiftUI, iOS 17+, bundle ID) — project is `Pug/`
@@ -444,9 +468,8 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
   - Uses `DatabaseQueue` (not Pool) + `readonly: true` to avoid WAL sidecar files on a read-only DB
   - `jmdict.sqlite` **must be in DELETE journal mode** before bundling — run `sqlite3 jmdict.sqlite "PRAGMA journal_mode=DELETE;"` after regenerating; stored in `Resources/`
 - [x] Port `get-quiz-context` logic to Swift — `Models/QuizContext.swift`
-  - Infers `hasKanji` from which facets exist in `ebisu_models` (no `vocab.json` needed for MVP)
-  - Falls back to all words in `ebisu_models` when `vocab_enrollment` is empty (dev/migration mode)
-  - Word text sourced from most recent `reviews.word_text` row per word
+  - Infers `hasKanji` from which facets exist in `ebisu_models`
+  - Word text sourced from most recent `reviews.word_text` row per word, or JMdict
 - [x] Quiz UI — `Views/QuizView.swift`; open chat model per item: `idle → generating → chatting → finished`
   - Single `chattingView`: chat bubble thread, send input, score badge on grade, Skip/Next button
   - All text in chat is selectable via `SelectableText` (UIViewRepresentable wrapping UITextView,
@@ -488,9 +511,9 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
   either show a user-facing warning or automatically re-prompt to continue. Affects
   `WordExploreSession` (kanji/word explanations) and quiz grading turns.
 - [x] Two-call question validation (generate → validate before showing; + `---QUIZ---` sentinel to strip preamble)
-- [x] Teaching / introduction flow for new words — `WordDetailSheet` (swipe Learn or tap row
-      in VocabBrowserView; kanji commitment question; all facets initialized atomically).
-      `QuizStatus.newWord`/`.newFacet` removed; quiz only sees fully-initialized learning words.
+- [x] Teaching / introduction flow for new words — `WordDetailSheet` (tap row or swipe Learn
+      in VocabBrowserView; furigana form picker → reading/kanji segmented pickers → kanji
+      character toggles; all facets initialized atomically via batch helpers).
 - [x] Halflife rescaling UI ("too easy" / "too hard" buttons)
 - [ ] Session summary screen
 - [ ] Mnemonic and etymology sidebars during quiz
@@ -505,14 +528,13 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
   express?" rather than "What does め mean?"). Requires softening the rigid "Show ONLY kana"
   rule for reading-to-meaning and letting Claude call lookup_jmdict to detect ambiguity/POS.
   Accumulate real examples before tuning the prompt.
-- [ ] Search the vocab list (kanji, kana, English, try converting English to roumaji, etc.)
+- [x] Search the vocab list (kanji, kana, English, mnemonics)
 - [x] Add Wanikani kanji↔radicals map to augment KRADFILE/Kanjidic2. https://github.com/fasiha/ebieki/blob/master/wanikani-kanji-graph.json
 
 ### Phase 3 — Future
 - [ ] Grammar points and sentence translation quiz types
 - [x] Kanjidic2 bundle (`kanjidic2.sqlite`) + `lookup_kanjidic` tool — stroke/JLPT/grade/on/kun/meanings
 - [ ] Source sentence display on first encounter
-- [ ] Per-user preferences stored properly (not in a memory file)
 - [ ] `kanji_knowledge` table: let users assert kanji they know during enrollment triage;
       use to suppress furigana for known kanji in reading display across all words
 
@@ -539,13 +561,13 @@ Pug/                          ← Xcode project root (already created)
       AnthropicClient.swift              ✓ URLSession wrapper, tool-use loop
       ToolHandler.swift                  ✓ lookup_jmdict + lookup_kanjidic tool use (DatabaseQueue, readonly)
       QuizSession.swift                  ✓ session orchestration, grading, Ebisu update
+      WordExploreSession.swift           ✓ free-form Claude chat for a single word (in WordDetailSheet)
     Views/
       HomeView.swift                     ✓ TabView root: Vocab + Quiz tabs
-      VocabBrowserView.swift             ✓ filterable word list, swipe triage, debug re-download
-      EnrollmentCardView.swift           ← (future: dedicated per-word card view)
-      QuizView.swift                     ✓ basic quiz UI (phase state machine)
-      AnswerView.swift                   ← (TODO — currently inline in QuizView)
-      SettingsView.swift                 ← (TODO)
+      VocabBrowserView.swift             ✓ filterable word list, swipe triage, search, OR-based filters
+      WordDetailSheet.swift              ✓ ruby heading, furigana form picker, reading/kanji pickers, Claude chat
+      QuizView.swift                     ✓ quiz UI (phase state machine)
+      SettingsView.swift                 ✓ quiz style (varied/intensive), model picker
     Resources/
       jmdict.sqlite                      ✓ bundled (DELETE journal mode — see ToolHandler note)
       kanjidic2.sqlite                   ✓ bundled (DELETE journal mode same requirement)

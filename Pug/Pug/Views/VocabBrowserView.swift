@@ -20,7 +20,7 @@ struct VocabBrowserView: View {
     let jmdict: any DatabaseReader
     let session: QuizSession
 
-    @State private var filter: EnrollmentStatus? = .notYetLearned  // nil = all
+    @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
     @State private var showDebug = false
     @State private var showSettings = false
@@ -29,7 +29,7 @@ struct VocabBrowserView: View {
 
     private var filteredItems: [VocabItem] {
         let f = filter
-        let statusFiltered = corpus.items.filter { f == nil || $0.status == f! }
+        let statusFiltered = corpus.items.filter { f == nil || $0.matches(filter: f!) }
         let q = searchText.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return statusFiltered }
         return statusFiltered.filter { item in
@@ -75,7 +75,7 @@ struct VocabBrowserView: View {
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
-                WordDetailSheet(item: item, corpus: corpus, db: db, session: session)
+                WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
             }
             .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
             .sheet(isPresented: $showSettings) { SettingsView() }
@@ -105,38 +105,39 @@ struct VocabBrowserView: View {
 
     @ViewBuilder
     private func swipeButtons(for item: VocabItem) -> some View {
-        switch item.status {
-        case .notYetLearned:
+        // Quick actions: "Learn" opens detail sheet (furigana picker), "Know it" marks all known
+        if item.readingState == .unknown && item.kanjiState == .unknown {
+            // Fully unknown
             Button {
-                selectedItem = item   // open sheet so user can make kanji choice
+                selectedItem = item   // open sheet for furigana picker
             } label: {
                 Label("Learn", systemImage: "plus.circle.fill")
             }
             .tint(.green)
             Button {
-                Task { await corpus.markKnown(wordId: item.id, db: db) }
+                Task { await corpus.markAllKnown(wordId: item.id, db: db) }
             } label: {
                 Label("Know it", systemImage: "checkmark.circle")
             }
             .tint(.blue)
-
-        case .learning:
+        } else if item.readingState == .learning || item.kanjiState == .learning {
+            // At least one facet learning
             Button {
-                Task { await corpus.markKnown(wordId: item.id, db: db) }
+                Task { await corpus.markAllKnown(wordId: item.id, db: db) }
             } label: {
                 Label("Know it", systemImage: "checkmark.circle")
             }
             .tint(.blue)
             Button(role: .destructive) {
-                Task { await corpus.stopLearning(wordId: item.id, db: db) }
+                Task { await corpus.clearAll(wordId: item.id, db: db) }
             } label: {
                 Label("Undo", systemImage: "arrow.uturn.backward")
             }
             .tint(.orange)
-
-        case .known:
+        } else {
+            // All known (or some mix of known/unknown with none learning)
             Button {
-                Task { await corpus.undoKnown(wordId: item.id, db: db) }
+                Task { await corpus.clearAll(wordId: item.id, db: db) }
             } label: {
                 Label("Undo", systemImage: "arrow.uturn.backward")
             }
@@ -149,9 +150,9 @@ struct VocabBrowserView: View {
     private var filterPicker: some View {
         Menu {
             Button {
-                filter = .notYetLearned
+                filter = .notYetLearning
             } label: {
-                Label(filter == .notYetLearned ? "Not yet learned ✓" : "Not yet learned",
+                Label(filter == .notYetLearning ? "Not yet learning ✓" : "Not yet learning",
                       systemImage: "tray.and.arrow.down")
             }
             Button {
@@ -202,28 +203,28 @@ struct VocabBrowserView: View {
 
     private var filterLabel: String {
         switch filter {
-        case .notYetLearned: return "Not yet learned"
-        case .learning:      return "Learning"
-        case .known:         return "Learned"
-        case nil:            return "All"
+        case .notYetLearning: return "Not yet learning"
+        case .learning:       return "Learning"
+        case .known:          return "Learned"
+        case nil:             return "All"
         }
     }
 
     private var emptyTitle: String {
         switch filter {
-        case .notYetLearned: return "All words triaged!"
-        case .learning:      return "No words in progress"
-        case .known:         return "No learned words yet"
-        case nil:            return "No vocab loaded"
+        case .notYetLearning: return "All words triaged!"
+        case .learning:       return "No words in progress"
+        case .known:          return "No learned words yet"
+        case nil:             return "No vocab loaded"
         }
     }
 
     private var emptyIcon: String {
         switch filter {
-        case .notYetLearned: return "checkmark.seal"
-        case .learning:      return "tray"
-        case .known:         return "eye.slash"
-        case nil:            return "books.vertical"
+        case .notYetLearning: return "checkmark.seal"
+        case .learning:       return "tray"
+        case .known:          return "eye.slash"
+        case nil:             return "books.vertical"
         }
     }
 }
@@ -264,23 +265,20 @@ struct VocabRowView: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        switch item.status {
-        case .learning:
+        if item.readingState == .learning || item.kanjiState == .learning {
             Text("Learning")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)
                 .background(.green.opacity(0.15))
                 .foregroundStyle(.green)
                 .clipShape(Capsule())
-        case .known:
+        } else if item.readingState == .known || item.kanjiState == .known {
             Text("Learned")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)
                 .background(.blue.opacity(0.15))
                 .foregroundStyle(.blue)
                 .clipShape(Capsule())
-        case .notYetLearned:
-            EmptyView()
         }
     }
 }
