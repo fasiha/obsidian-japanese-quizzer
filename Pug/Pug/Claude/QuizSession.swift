@@ -330,7 +330,11 @@ final class QuizSession {
             answerValues = item.kanaTexts.joined(separator: ", ")
         case "meaning-reading-to-kanji":
             answerFormDesc = "written/kanji form"
-            answerValues = item.writtenTexts.joined(separator: ", ")
+            if let template = item.partialKanjiTemplate {
+                answerValues = template
+            } else {
+                answerValues = item.writtenTexts.joined(separator: ", ")
+            }
         default:
             return true  // Unknown facet — skip validation.
         }
@@ -684,29 +688,79 @@ final class QuizSession {
             Call lookup_jmdict if you need full dictionary details for distractors or context.
             """
         case "kanji-to-reading":
-            facetRule = """
-            Show kanji ONLY (never kana). Ask for kana reading.
-            ❌ "What is the reading of 木陰 (こかげ)?"  ✅ "What is the reading of 木陰?"
-            """
-            wordLine = """
-            Word to quiz: written form is \(item.wordText)\(readingsHint). \
-            Show ONLY \(item.wordText) in your question — never show kana. \
-            The correct answer MUST be one of the listed kana reading(s). \
-            Call lookup_jmdict if you need full dictionary details for distractors or context.
-            """
+            if let template = item.partialKanjiTemplate,
+               let committed = item.committedKanji, !committed.isEmpty {
+                // Partial commitment: show template (uncommitted kanji already in kana),
+                // ask for readings of committed kanji only.
+                let committedList = committed.joined(separator: "、")
+                let kana = item.kanaTexts.first ?? "unknown"
+                facetRule = """
+                Show the partial-kanji form \(template) and ask for the full reading.
+                The learner is only studying: \(committedList).
+                The correct full reading is: \(kana).
+                For A/B/C/D distractors, vary ONLY the readings of committed kanji (\(committedList)) \
+                — use alternate on/kun readings via lookup_kanjidic. \
+                Keep the kana scaffold (the parts that are already kana in the template) identical.
+                Example for ふりかえ休日 with committed=[休,日], correct=ふりかえきゅうじつ:
+                  ✅ A) ふりかえきゅうにち  B) ふりかえやすび  C) ふりかえきゅうじつ  D) ふりかえやすじつ
+                  ❌ A) ふりかえきゅうじつ  B) ふりかわりきゅうじつ  C) ふりかえきゅうにち  D) ふるかえきゅうじつ (varies non-committed parts!)
+                """
+                wordLine = """
+                Word to quiz: display form is \(template)\(readingsHint). \
+                Show \(template) in your question — never show the full kana reading. \
+                The correct answer MUST be one of the listed kana reading(s). \
+                Call lookup_kanjidic on committed kanji (\(committedList)) to find alternate readings for distractors.
+                """
+            } else {
+                facetRule = """
+                Show kanji ONLY (never kana). Ask for kana reading.
+                ❌ "What is the reading of 木陰 (こかげ)?"  ✅ "What is the reading of 木陰?"
+                """
+                wordLine = """
+                Word to quiz: written form is \(item.wordText)\(readingsHint). \
+                Show ONLY \(item.wordText) in your question — never show kana. \
+                The correct answer MUST be one of the listed kana reading(s). \
+                Call lookup_jmdict if you need full dictionary details for distractors or context.
+                """
+            }
         case "meaning-reading-to-kanji":
-            facetRule = """
-            Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
-            ❌ "怒鳴る (どなる) — to shout. Which is correct?"
-            ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
-            """
             let kana = item.kanaTexts.first ?? "unknown"
-            wordLine = """
-            Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-            Kana reading to show in question stem: \(kana). \
-            Correct written/kanji form (show ONLY as an answer option, NEVER in the stem)\(writtenHint). \
-            Call lookup_jmdict to generate plausible wrong written-form distractors.
-            """
+            if let template = item.partialKanjiTemplate,
+               let committed = item.committedKanji, !committed.isEmpty {
+                // Partial commitment: only some kanji are being tested.
+                let committedList = committed.joined(separator: "、")
+                facetRule = """
+                Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
+                PARTIAL KANJI COMMITMENT: The learner is only studying these kanji: \(committedList).
+                The correct answer template is: \(template)
+                Build distractors by replacing ONLY the committed kanji (\(committedList)) \
+                with visually similar wrong kanji. Keep everything else in the template identical.
+                Use lookup_kanjidic to find kanji that look similar to each committed kanji.
+                Example for 振替休日 with committed=[休,日], template=ふりかえ休日:
+                  ✅ A) ふりかえ体日  B) ふりかえ休日  C) ふりかえ休目  D) ふりかえ林日
+                  ❌ A) 転換休日  B) 振替休日  C) 変換休日  D) 振動休日  (uses uncommitted kanji!)
+                """
+                wordLine = """
+                Word to quiz: JMDict id \(item.wordId)\(englishHint). \
+                Kana reading to show in question stem: \(kana). \
+                Correct answer option: \(template) — show ONLY as an answer option, NEVER in the stem. \
+                Distractors: swap committed kanji (\(committedList)) with similar-looking kanji \
+                via lookup_kanjidic. Keep the rest of the template unchanged across all options.
+                """
+            } else {
+                // Full commitment or no commitment info: standard behavior.
+                facetRule = """
+                Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
+                ❌ "怒鳴る (どなる) — to shout. Which is correct?"
+                ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
+                """
+                wordLine = """
+                Word to quiz: JMDict id \(item.wordId)\(englishHint). \
+                Kana reading to show in question stem: \(kana). \
+                Correct written/kanji form (show ONLY as an answer option, NEVER in the stem)\(writtenHint). \
+                Call lookup_jmdict to generate plausible wrong written-form distractors.
+                """
+            }
         default:
             facetRule = "Follow standard quiz-purity rules for this facet."
             wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"

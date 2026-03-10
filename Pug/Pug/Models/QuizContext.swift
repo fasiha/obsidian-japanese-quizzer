@@ -29,6 +29,13 @@ struct QuizItem: Identifiable {
     let facet: String           // the most-urgent facet to quiz
     let status: QuizStatus
     let meanings: [String]      // English meanings from jmdict (for pre-selection context lines)
+    /// Kanji chars the user has committed to learning, decoded from word_commitment.kanji_chars.
+    /// nil = no partial commitment (learn all or none). Empty array = committed but no kanji chosen.
+    let committedKanji: [String]?
+    /// Pre-computed template for partial-commitment kanji quizzes.
+    /// Uncommitted kanji are replaced by kana readings; committed kanji stay as-is.
+    /// e.g. "ふりかえ休日" for 振替休日 when only [休, 日] are committed. nil when N/A.
+    let partialKanjiTemplate: String?
 
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
@@ -57,6 +64,7 @@ struct QuizContext {
         let records        = try await db.enrolledEbisuRecords()
         var wordTexts      = try await db.wordTexts()
         let reviewCounts   = try await db.reviewCounts()
+        let commitments    = try await db.allCommitments()
 
         // Fetch word text, structured forms, and meanings from jmdict.
         var wordMeanings: [String: [String]] = [:]
@@ -122,12 +130,53 @@ struct QuizContext {
             let isFree = reviewCount >= freeAnswerMinReviews && halflife >= freeAnswerMinHalflife
             let status = QuizStatus.reviewed(recall: recall, isFree: isFree, halflife: halflife)
 
+            // Decode committed kanji and build partial-kanji template from furigana.
+            let committedKanji: [String]?
+            var partialKanjiTemplate: String? = nil
+            if let commitment = commitments[wordId], let kc = commitment.kanjiChars,
+               let data = kc.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode([String].self, from: data) {
+                committedKanji = decoded
+                // Build template from furigana: committed kanji stay, uncommitted → kana.
+                if let fData = commitment.furigana.data(using: .utf8),
+                   let segments = try? JSONDecoder().decode([[String: String]].self, from: fData) {
+                    let committedSet = Set(decoded)
+                    var template = ""
+                    for seg in segments {
+                        let ruby = seg["ruby"] ?? ""
+                        let rt = seg["rt"]
+                        if let rt, !ruby.isEmpty, !committedSet.contains(ruby) {
+                            // Uncommitted kanji → replace with kana reading
+                            template += rt
+                        } else {
+                            // Committed kanji, kana-only segment, or no rt → keep as-is
+                            template += ruby
+                        }
+                    }
+                    // Only set if there were actual uncommitted kanji replaced.
+                    let allKanjiInWord = Set(
+                        (wordWritten[wordId]?.first ?? "").unicodeScalars
+                            .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+                                      ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+                                      ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
+                            .map { String($0) }
+                    )
+                    if !allKanjiInWord.subtracting(committedSet).isEmpty {
+                        partialKanjiTemplate = template
+                    }
+                }
+            } else {
+                committedKanji = nil
+            }
+
             items.append(QuizItem(
                 wordType: wordType, wordId: wordId, wordText: wordText,
                 writtenTexts: wordWritten[wordId] ?? [],
                 kanaTexts: wordKana[wordId] ?? [],
                 hasKanji: hasKanji, facet: facet, status: status,
-                meanings: wordMeanings[wordId] ?? []))
+                meanings: wordMeanings[wordId] ?? [],
+                committedKanji: committedKanji,
+                partialKanjiTemplate: partialKanjiTemplate))
         }
 
         items.sort { $0.recall < $1.recall }
