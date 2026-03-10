@@ -505,6 +505,7 @@ struct WordDetailSheet: View {
         isWorking = true
         Task {
             await corpus.setReadingState(state, wordId: item.id, db: db)
+            await loadEbisuModels()
             isWorking = false
         }
     }
@@ -516,6 +517,7 @@ struct WordDetailSheet: View {
                 ? (selectedKanjiChars.isEmpty ? extractKanjiFromCommitment() : Array(selectedKanjiChars))
                 : nil
             await corpus.setKanjiState(state, wordId: item.id, kanjiChars: chars, db: db)
+            await loadEbisuModels()
             isWorking = false
         }
     }
@@ -527,6 +529,7 @@ struct WordDetailSheet: View {
         Task {
             await corpus.setKanjiState(.learning, wordId: item.id,
                                         kanjiChars: Array(current), db: db)
+            await loadEbisuModels()
             isWorking = false
         }
     }
