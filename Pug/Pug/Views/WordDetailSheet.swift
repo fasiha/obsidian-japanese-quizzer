@@ -346,6 +346,7 @@ struct WordDetailSheet: View {
             FlowLayout(spacing: 8) {
                 ForEach(allKanji, id: \.self) { kanji in
                     let selected = selectedKanjiChars.contains(kanji)
+                    let isLastSelected = selected && selectedKanjiChars.count == 1
                     Button {
                         toggleKanjiChar(kanji)
                     } label: {
@@ -362,6 +363,7 @@ struct WordDetailSheet: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .disabled(isLastSelected)
                 }
             }
         }
