@@ -36,7 +36,8 @@ final class QuizSession {
     var chatMessages: [(isUser: Bool, text: String)] = []
     var chatInput: String = ""
     var isSendingChat: Bool = false
-    var gradedScore: Double? = nil     // nil until Claude grades in this item
+    var gradedScore: Double? = nil          // nil until Claude grades in this item
+    var meaningBonusApplied: Bool = false  // true once MEANING_DEMONSTRATED passive update has run
     var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
     var gradedHalflife: Double? = nil  // updated halflife after recordReview; nil until graded
@@ -274,6 +275,7 @@ final class QuizSession {
         isSendingChat = false
         gradedScore = nil
         gradedHalflife = nil
+        meaningBonusApplied = false
         if case .reviewed(let recall, _, let halflife) = item.status {
             preQuizRecall   = recall
             preQuizHalflife = halflife
@@ -378,7 +380,10 @@ final class QuizSession {
                 toolHandler: makeToolHandler()
             )
             conversation = updatedMsgs
-            chatMessages.append((isUser: false, text: strippingMetadata(from: response)))
+            let displayText = strippingMetadata(from: response)
+                .replacingOccurrences(of: "MEANING_DEMONSTRATED",
+                                      with: "✅ Meaning knowledge noted — memory updated")
+            chatMessages.append((isUser: false, text: displayText))
             print("[QuizSession] chat response (\(response.count) chars):\n\(response)")
             // Auto-detect grading: first SCORE: in this item records the review.
             if gradedScore == nil, let score = parseScore(from: response) {
@@ -391,6 +396,13 @@ final class QuizSession {
                     let nextItem = items[nextIndex]
                     Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
                 }
+            }
+            // MEANING_DEMONSTRATED: Claude detected the student showed meaning knowledge.
+            // Apply bonus passive updates for meaning facets not already covered by the passive map.
+            if !meaningBonusApplied && response.contains("MEANING_DEMONSTRATED") {
+                meaningBonusApplied = true
+                print("[QuizSession] MEANING_DEMONSTRATED detected — applying bonus passive updates")
+                try? await applyMeaningBonus(item: item)
             }
         } catch {
             chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
@@ -450,41 +462,65 @@ final class QuizSession {
         try await db.log(event: event)
 
         // Passive facet updates (varied mode only).
-        // Rule: quizzing a non-kanji facet passively updates the other non-kanji facet;
-        // quizzing a kanji facet passively updates all other facets.
+        // Rule: passively update facets whose full input set is revealed by the Q+A pair.
+        //   kanji-to-reading         Q=kanji,        A=kana    → nothing (meaning unknown; kanji bonus via MEANING_DEMONSTRATED)
+        //   reading-to-meaning       Q=kana,         A=meaning → meaning-to-reading (have kana+meaning)
+        //   meaning-to-reading       Q=meaning,      A=kana    → reading-to-meaning (have meaning+kana)
+        //   meaning-reading-to-kanji Q=meaning+kana, A=kanji   → all three (everything revealed)
         if preferences.quizStyle == .varied {
-            let isKanjiFacet = item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji"
-            let passiveCandidates: [String]
-            if isKanjiFacet {
-                passiveCandidates = ["reading-to-meaning", "meaning-to-reading",
-                                     "kanji-to-reading", "meaning-reading-to-kanji"]
-                    .filter { $0 != item.facet }
-            } else {
-                passiveCandidates = item.facet == "reading-to-meaning"
-                    ? ["meaning-to-reading"] : ["reading-to-meaning"]
-            }
-            for facet in passiveCandidates {
-                guard let rec = try await db.ebisuRecord(
-                    wordType: item.wordType, wordId: item.wordId, quizType: facet) else { continue }
-                let refDate = parseISO8601(rec.lastReview) ?? Date(timeIntervalSinceNow: -60)
-                let elapsed = max(Date().timeIntervalSince(refDate) / 3600, 1e-6)
-                let updated = try updateRecall(rec.model, successes: 0.5, total: 1, tnow: elapsed)
-                let updatedRec = EbisuRecord(
-                    wordType: item.wordType, wordId: item.wordId, quizType: facet,
-                    alpha: updated.alpha, beta: updated.beta, t: updated.t,
-                    lastReview: now
-                )
-                try await db.upsert(record: updatedRec)
-                let passiveEvent = ModelEvent(
-                    timestamp: ISO8601DateFormatter().string(from: Date()),
-                    wordType: item.wordType, wordId: item.wordId, quizType: facet,
-                    event: "passive,0.5"
-                )
-                try await db.log(event: passiveEvent)
-            }
+            let passiveCandidates = Self.passiveMap[item.facet] ?? []
+            try await applyPassiveUpdates(item: item, facets: passiveCandidates, now: now)
         }
 
         try await db.removeFromSession(wordId: item.wordId)
+    }
+
+    // MARK: - Private: passive update helpers
+
+    /// Which facets get a passive update when a given facet is actively quizzed.
+    /// Logic: passively update facets whose full input set is revealed by the Q+A pair.
+    private static let passiveMap: [String: [String]] = [
+        // kanji-to-reading: Q=kanji, A=kana — only exercises kanji recognition + reading recall.
+        // Nothing else is fully revealed; meaning-reading-to-kanji requires meaning too (see bonus below).
+        "kanji-to-reading":         [],
+        "reading-to-meaning":       ["meaning-to-reading"],
+        "meaning-to-reading":       ["reading-to-meaning"],
+        "meaning-reading-to-kanji": ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading"],
+    ]
+
+    /// Apply passive Ebisu updates (score=0.5) for the given facets of an item.
+    private func applyPassiveUpdates(item: QuizItem, facets: [String], now: String) async throws {
+        for facet in facets {
+            guard let rec = try await db.ebisuRecord(
+                wordType: item.wordType, wordId: item.wordId, quizType: facet) else { continue }
+            let refDate = parseISO8601(rec.lastReview) ?? Date(timeIntervalSinceNow: -60)
+            let elapsed = max(Date().timeIntervalSince(refDate) / 3600, 1e-6)
+            let updated = try updateRecall(rec.model, successes: 0.5, total: 1, tnow: elapsed)
+            let updatedRec = EbisuRecord(
+                wordType: item.wordType, wordId: item.wordId, quizType: facet,
+                alpha: updated.alpha, beta: updated.beta, t: updated.t, lastReview: now
+            )
+            try await db.upsert(record: updatedRec)
+            let passiveEvent = ModelEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                wordType: item.wordType, wordId: item.wordId, quizType: facet,
+                event: "passive,0.5"
+            )
+            try await db.log(event: passiveEvent)
+        }
+    }
+
+    /// Bonus passive update when Claude detects the student demonstrated meaning knowledge.
+    /// Only applies to kanji-to-reading: that's the one facet where meaning is neither
+    /// the input nor already covered by the passive map. For all other facets, meaning
+    /// is either the quiz input (meaning-to-reading) or already passively updated.
+    private func applyMeaningBonus(item: QuizItem) async throws {
+        guard preferences.quizStyle == .varied,
+              item.facet == "kanji-to-reading" else { return }
+        let bonusFacets = ["reading-to-meaning", "meaning-to-reading", "meaning-reading-to-kanji"]
+        let now = ISO8601DateFormatter().string(from: Date())
+        try await applyPassiveUpdates(item: item, facets: bonusFacets, now: now)
+        print("[QuizSession] meaning bonus passive: \(bonusFacets)")
     }
 
     // MARK: - Private: prefetch next question
@@ -729,6 +765,15 @@ final class QuizSession {
         - Good: NOTES: Chose 怒鳴る (correct); noted confusion with 怒る
         - Good: NOTES: Could not recall kanji form; guessed 怒鳴 (wrong); correct is 怒鳴る
 
+        \(item.facet == "kanji-to-reading" ? """
+        MEANING_DEMONSTRATED rule:
+        - If the student clearly shows they know the *meaning* of the current quiz word — by \
+        volunteering a translation, using it correctly in a sentence, or confirming its meaning \
+        unprompted — write MEANING_DEMONSTRATED on its own line.
+        - Emit it at most once per quiz item, in the first message where it becomes clear.
+        - OK to emit it in post-grading chat, not just when grading.
+        - Do NOT emit it for tangent questions about other words.
+        """ : "")
         Tools available:
         - lookup_jmdict: dictionary-accurate readings and meanings for any word
         - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
