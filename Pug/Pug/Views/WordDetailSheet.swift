@@ -103,7 +103,12 @@ struct WordDetailSheet: View {
     /// Large ruby furigana heading from the first written form, or plain kana for kana-only words.
     @ViewBuilder
     private var wordHeading: some View {
-        if let group = item.writtenForms.first, let form = group.forms.first {
+        if item.isKanaOnly {
+            // Pure kana — no ruby needed; use the first kana form as a plain heading
+            Text(item.writtenForms.first?.forms.first?.furigana.map(\.ruby).joined()
+                 ?? item.kanaTexts.first ?? item.wordText)
+                .font(.largeTitle)
+        } else if let group = item.writtenForms.first, let form = group.forms.first {
             headingFurigana(form.furigana)
                 .textSelection(.disabled)
         } else {
@@ -155,14 +160,20 @@ struct WordDetailSheet: View {
     @ViewBuilder
     private var actionsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Furigana form picker
-            if !item.writtenForms.isEmpty {
-                furiganaPickerSection
-            }
-
-            // Reading state control (always shown once committed, or for kana-only words)
-            if item.commitment != nil || item.writtenForms.isEmpty {
+            if item.isKanaOnly {
+                // Kana-only words: show variants informally, then reading control immediately
+                if item.writtenForms.flatMap(\.forms).count > 1 {
+                    kanaVariantsSection
+                }
                 readingStateControl
+            } else {
+                // Words with kanji: furigana form picker gates the reading control
+                if !item.writtenForms.isEmpty {
+                    furiganaPickerSection
+                }
+                if item.commitment != nil || item.writtenForms.isEmpty {
+                    readingStateControl
+                }
             }
 
             // Kanji state control (only if word has kanji and reading is not unknown)
@@ -199,6 +210,26 @@ struct WordDetailSheet: View {
         }
     }
 
+    // MARK: - Kana variants (informational, no selection)
+
+    private var kanaVariantsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Spellings")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            FlowLayout(spacing: 12) {
+                ForEach(item.writtenForms.flatMap(\.forms), id: \.text) { form in
+                    Text(form.furigana.map(\.ruby).joined())
+                        .font(.title3)
+                        .foregroundStyle(.primary)
+                }
+            }
+        }
+    }
+
     // MARK: - Furigana picker
 
     @ViewBuilder
@@ -220,10 +251,8 @@ struct WordDetailSheet: View {
                         HStack {
                             furiganaText(form.furigana)
                             Spacer()
-                            if isSelected {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                            }
+                            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                                .foregroundStyle(isSelected ? .green : .secondary)
                         }
                         .padding(.vertical, 4)
                     }
@@ -236,10 +265,8 @@ struct WordDetailSheet: View {
                 HStack {
                     Text(group.reading).font(.title3)
                     Spacer()
-                    if item.commitment != nil {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
-                    }
+                    Image(systemName: item.commitment != nil ? "largecircle.fill.circle" : "circle")
+                        .foregroundStyle(item.commitment != nil ? .green : .secondary)
                 }
                 .padding(.vertical, 4)
             }
@@ -429,7 +456,9 @@ struct WordDetailSheet: View {
     private func setKanjiState(_ state: FacetState) {
         isWorking = true
         Task {
-            let chars = state == .learning ? Array(selectedKanjiChars) : nil
+            let chars = state == .learning
+                ? (selectedKanjiChars.isEmpty ? extractKanjiFromCommitment() : Array(selectedKanjiChars))
+                : nil
             await corpus.setKanjiState(state, wordId: item.id, kanjiChars: chars, db: db)
             isWorking = false
         }

@@ -135,6 +135,14 @@ Constraint: kanji state ≤ reading state (no Heisig-style kanji-without-reading
 field stores the JmdictFurigana JSON for the chosen written form (e.g. 入り込む vs 這入り込む).
 The `kanji_chars` field records which specific kanji the user is learning to write.
 
+**Kana-only words** (`VocabItem.isKanaOnly`): when every furigana segment across all written
+forms lacks an `rt` field, the word has only orthographic kana variants (e.g. そっと / そうっと
+/ そおっと / そーっと). The furigana picker is skipped — the reading state control is shown
+immediately, and commitment is created automatically (with `furigana="[]"`) on first interaction.
+`WordDetailSheet` shows a "SPELLINGS" section with all variants (when >1), and renders the
+heading as plain text (no ruby layout). Mixed words — where some readings have kanji forms and
+others are kana-only — are treated as kanji words and show the full picker.
+
 **Vocab browser filters** use OR semantics: a word appears in "Learning" if ANY facet is
 learning, in "Known" if ANY facet is known, and in "Not yet learning" if ANY facet is unknown.
 
@@ -446,8 +454,10 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
       filter picker (Not yet learning / Learning / Learned / All). Status badges show aggregate
       facet state. Swipe actions vary by state. Search across kanji, kana, meanings, and mnemonics.
 - [x] Word detail sheet: `Views/WordDetailSheet.swift` — ruby furigana heading, meanings,
-      furigana form picker (choose which written form to study), independent reading/kanji
-      segmented pickers, kanji character toggle grid (FlowLayout), Claude explore chat.
+      furigana form picker (choose which written form to study; skipped for kana-only words),
+      independent reading/kanji segmented pickers, kanji character toggle grid (FlowLayout),
+      Claude explore chat. Kana-only words (`isKanaOnly`) show a plain "SPELLINGS" section
+      instead of a picker and expose the reading control immediately.
       All state changes go through `VocabCorpus` → `QuizDB` and update reactively.
 - [x] `word_commitment` + `learned` tables (v5 migration) — replaces `vocab_enrollment`
 - [x] Facet state derived from `ebisu_models` (learning) and `learned` (known) tables
