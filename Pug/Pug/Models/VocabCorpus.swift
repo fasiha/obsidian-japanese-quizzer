@@ -153,6 +153,39 @@ final class VocabCorpus {
         }
         print("[VocabCorpus] loaded \(items.count)/\(manifest.words.count) word(s) " +
               "(\(manifest.words.count - items.count) skipped — not in JMdict)")
+
+        // Resolve placeholder furigana ('[]') for committed words that now have writtenForms.
+        // This handles the migration path where v5 wrote '[]' pending a vocab sync.
+        for idx in items.indices {
+            guard let c = items[idx].commitment, c.furigana == "[]",
+                  let resolved = defaultFuriganaJSON(for: items[idx]) as String?,
+                  resolved != "[]" else { continue }
+            let wordId = items[idx].id
+            // Also commit all kanji characters in the resolved form.
+            let kanjiJSON: String? = {
+                guard let data = resolved.data(using: .utf8),
+                      let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+                else { return nil }
+                var chars: [String] = []
+                for seg in segs where seg.rt != nil {
+                    for scalar in seg.ruby.unicodeScalars {
+                        let v = scalar.value
+                        if (v >= 0x4E00 && v <= 0x9FFF) || (v >= 0x3400 && v <= 0x4DBF) || (v >= 0xF900 && v <= 0xFAFF) {
+                            let s = String(scalar)
+                            if !chars.contains(s) { chars.append(s) }
+                        }
+                    }
+                }
+                guard !chars.isEmpty,
+                      let encoded = try? JSONEncoder().encode(chars),
+                      let json = String(data: encoded, encoding: .utf8) else { return nil }
+                return json
+            }()
+            try? await db.setCommitment(wordType: "jmdict", wordId: wordId,
+                                        furigana: resolved, kanjiChars: kanjiJSON)
+            items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
+                                                   furigana: resolved, kanjiChars: kanjiJSON)
+        }
     }
 
     // MARK: - Facet state derivation
