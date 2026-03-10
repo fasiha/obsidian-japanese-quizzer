@@ -223,7 +223,7 @@ final class QuizSession {
         """
         print("[QuizSession] selectItems: \(candidates.count) candidates → LLM")
         do {
-            let (response, _) = try await client.send(
+            let (response, _, meta) = try await client.send(
                 messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
                 maxTokens: 100
             )
@@ -235,6 +235,15 @@ final class QuizSession {
                 .filter { validIds.contains($0) }
             let byId = Dictionary(candidates.map { ($0.wordId, $0) }, uniquingKeysWith: { f, _ in f })
             let selected = orderedIds.compactMap { byId[$0] }
+            // Log telemetry: which recall-ranks did the LLM pick?
+            let ranks = orderedIds.compactMap { id in candidates.firstIndex { $0.wordId == id } }
+            let ranksJSON = (try? JSONSerialization.data(withJSONObject: ranks)).flatMap { String(data: $0, encoding: .utf8) }
+            let idsJSON = (try? JSONSerialization.data(withJSONObject: orderedIds)).flatMap { String(data: $0, encoding: .utf8) }
+            try? await db.log(apiEvent: ApiEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                eventType: "item_selection",
+                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
+                model: client.model, selectedIds: idsJSON, selectedRanks: ranksJSON))
             if selected.count >= 3 {
                 print("[QuizSession] selectItems: \(selected.count) item(s) selected by LLM")
                 return selected
@@ -354,12 +363,19 @@ final class QuizSession {
         Reply with exactly one word: PASS if the stem is clean, FAIL if the stem leaks the answer.
         """
         do {
-            let (response, _) = try await client.send(
+            let (response, _, meta) = try await client.send(
                 messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
                 maxTokens: 10
             )
             let verdict = response.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            return verdict.hasPrefix("PASS")
+            let passed = verdict.hasPrefix("PASS")
+            try? await db.log(apiEvent: ApiEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                eventType: "question_validation",
+                wordId: item.wordId, quizType: item.facet,
+                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
+                model: client.model, validationResult: passed ? "pass" : "fail"))
+            return passed
         } catch {
             print("[QuizSession] validateQuestion error: \(error) — assuming PASS")
             return true  // Don't block the quiz on a network error.
@@ -375,7 +391,8 @@ final class QuizSession {
         do {
             // After the user's first reply, fetch and inject mnemonics into the system prompt.
             let mnemonicBlock = await fetchMnemonicBlock(for: item)
-            let (response, updatedMsgs) = try await client.send(
+            let chatTurnNumber = conversation.filter { $0.role == "user" }.count
+            let (response, updatedMsgs, meta) = try await client.send(
                 messages: conversation,
                 system: systemPrompt(for: item, preRecall: preQuizRecall, preHalflife: preQuizHalflife,
                                      postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock),
@@ -384,6 +401,14 @@ final class QuizSession {
                 toolHandler: makeToolHandler()
             )
             conversation = updatedMsgs
+            let toolsJSON = meta.toolsCalled.isEmpty ? nil :
+                (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
+            try? await db.log(apiEvent: ApiEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                eventType: "quiz_chat",
+                wordId: item.wordId, quizType: item.facet,
+                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
+                chatTurn: chatTurnNumber, model: client.model, toolsCalled: toolsJSON))
             let displayText = strippingMetadata(from: response)
                 .replacingOccurrences(of: "MEANING_DEMONSTRATED",
                                       with: "✅ Meaning knowledge noted — memory updated")
@@ -572,7 +597,7 @@ final class QuizSession {
         var finalQuestion = ""
         var finalMsgs: [AnthropicMessage] = []
         for attempt in 1...2 {
-            let (raw, msgs) = try await client.send(
+            let (raw, msgs, meta) = try await client.send(
                 messages: [initMsg],
                 system: system,
                 tools: [.lookupJmdict, .lookupKanjidic],
@@ -580,6 +605,14 @@ final class QuizSession {
                 toolHandler: makeToolHandler()
             )
             finalMsgs = msgs
+            let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
+                (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
+            try? await db.log(apiEvent: ApiEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                eventType: "question_gen",
+                wordId: item.wordId, quizType: item.facet,
+                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
+                model: client.model, generationAttempt: attempt, toolsCalled: genToolsJSON))
             if let extracted = extractQuestion(from: raw) {
                 finalQuestion = extracted
             } else {
@@ -660,205 +693,83 @@ final class QuizSession {
             ? ""
             : " — English: \(item.meanings.prefix(3).joined(separator: "; "))"
         let readingsHint = item.kanaTexts.isEmpty
-            ? "" : " — kana reading(s): \(item.kanaTexts.joined(separator: ", "))"
+            ? "" : " — kana: \(item.kanaTexts.joined(separator: ", "))"
         let writtenHint = item.writtenTexts.isEmpty
-            ? "" : " — written form(s): \(item.writtenTexts.joined(separator: ", "))"
+            ? "" : " — written: \(item.writtenTexts.joined(separator: ", "))"
 
         switch item.facet {
         case "reading-to-meaning":
-            facetRule = """
-            Show kana ONLY (never kanji). Ask for English meaning.
-            ❌ "What does 木陰 (こかげ) mean?"  ✅ "What does こかげ mean?"
-            """
             let kana = item.kanaTexts.first ?? "unknown"
-            wordLine = """
-            Word to quiz: kana reading is \(kana)\(englishHint). \
-            Show ONLY \(kana) in your question — never show any written/kanji form. \
-            Call lookup_jmdict if you need full dictionary details for distractors or context.
-            """
+            facetRule = "Show kana ONLY (never kanji). Ask for English meaning."
+            wordLine = "Word: kana \(kana)\(englishHint). Show ONLY \(kana) — never any kanji."
         case "meaning-to-reading":
-            facetRule = """
-            Show English ONLY (never any Japanese). Ask for kana reading.
-            ❌ "What is the reading of 木陰 (shade of a tree)?"  ✅ "Give the reading: shade of a tree; bower."
-            """
-            wordLine = """
-            Word to quiz: JMDict id \(item.wordId)\(englishHint)\(readingsHint). \
-            The correct answer MUST be one of the listed kana reading(s). \
-            Show ONLY the English meaning in your question stem — never show any Japanese characters. \
-            Call lookup_jmdict if you need full dictionary details for distractors or context.
-            """
+            facetRule = "Show English ONLY (never Japanese). Ask for kana reading."
+            wordLine = "Word: id \(item.wordId)\(englishHint)\(readingsHint). Correct answer must be listed kana. Show ONLY English — never Japanese."
         case "kanji-to-reading":
             if let template = item.partialKanjiTemplate,
                let committed = item.committedKanji, !committed.isEmpty {
-                // Partial commitment: show template (uncommitted kanji already in kana),
-                // ask for readings of committed kanji only.
                 let committedList = committed.joined(separator: "、")
                 let kana = item.kanaTexts.first ?? "unknown"
                 facetRule = """
-                Show the partial-kanji form \(template) and ask for the full reading.
-                The learner is only studying: \(committedList).
-                The correct full reading is: \(kana).
-                For A/B/C/D distractors, vary ONLY the readings of committed kanji (\(committedList)) \
-                — use alternate on/kun readings via lookup_kanjidic. \
-                Keep the kana scaffold (the parts that are already kana in the template) identical.
-                Example for ふりかえ休日 with committed=[休,日], correct=ふりかえきゅうじつ:
-                  ✅ A) ふりかえきゅうにち  B) ふりかえやすび  C) ふりかえきゅうじつ  D) ふりかえやすじつ
-                  ❌ A) ふりかえきゅうじつ  B) ふりかわりきゅうじつ  C) ふりかえきゅうにち  D) ふるかえきゅうじつ (varies non-committed parts!)
+                Show \(template), ask for full reading. Studying: \(committedList). Correct: \(kana).
+                A/B/C/D: vary ONLY committed kanji readings (use lookup_kanjidic for alternates). Keep kana scaffold identical.
                 """
-                wordLine = """
-                Word to quiz: display form is \(template)\(readingsHint). \
-                Show \(template) in your question — never show the full kana reading. \
-                The correct answer MUST be one of the listed kana reading(s). \
-                Call lookup_kanjidic on committed kanji (\(committedList)) to find alternate readings for distractors.
-                """
+                wordLine = "Word: display \(template)\(readingsHint). Never show full kana reading."
             } else {
-                facetRule = """
-                Show kanji ONLY (never kana). Ask for kana reading.
-                ❌ "What is the reading of 木陰 (こかげ)?"  ✅ "What is the reading of 木陰?"
-                """
-                wordLine = """
-                Word to quiz: written form is \(item.wordText)\(readingsHint). \
-                Show ONLY \(item.wordText) in your question — never show kana. \
-                The correct answer MUST be one of the listed kana reading(s). \
-                Call lookup_jmdict if you need full dictionary details for distractors or context.
-                """
+                facetRule = "Show kanji ONLY (never kana). Ask for kana reading."
+                wordLine = "Word: \(item.wordText)\(readingsHint). Show ONLY \(item.wordText) — never kana."
             }
         case "meaning-reading-to-kanji":
             let kana = item.kanaTexts.first ?? "unknown"
             if let template = item.partialKanjiTemplate,
                let committed = item.committedKanji, !committed.isEmpty {
-                // Partial commitment: only some kanji are being tested.
                 let committedList = committed.joined(separator: "、")
                 facetRule = """
-                Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
-                PARTIAL KANJI COMMITMENT: The learner is only studying these kanji: \(committedList).
-                The correct answer template is: \(template)
-                Build distractors by replacing ONLY the committed kanji (\(committedList)) \
-                with visually similar wrong kanji. Keep everything else in the template identical.
-                Use lookup_kanjidic to find kanji that look similar to each committed kanji.
-                Example for 振替休日 with committed=[休,日], template=ふりかえ休日:
-                  ✅ A) ふりかえ体日  B) ふりかえ休日  C) ふりかえ休目  D) ふりかえ林日
-                  ❌ A) 転換休日  B) 振替休日  C) 変換休日  D) 振動休日  (uses uncommitted kanji!)
+                Show English + kana ONLY (never kanji). A/B/C/D kanji options.
+                Partial commitment: studying \(committedList). Correct template: \(template).
+                Distractors: swap ONLY committed kanji with visually similar wrong kanji (use lookup_kanjidic). Keep rest identical.
                 """
-                wordLine = """
-                Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-                Kana reading to show in question stem: \(kana). \
-                Correct answer option: \(template) — show ONLY as an answer option, NEVER in the stem. \
-                Distractors: swap committed kanji (\(committedList)) with similar-looking kanji \
-                via lookup_kanjidic. Keep the rest of the template unchanged across all options.
-                """
+                wordLine = "Word: id \(item.wordId)\(englishHint). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
             } else {
-                // Full commitment or no commitment info: standard behavior.
-                facetRule = """
-                Show English + kana ONLY (never the kanji form). Ask for kanji via A/B/C/D options.
-                ❌ "怒鳴る (どなる) — to shout. Which is correct?"
-                ✅ "To shout in anger; どなる — which written form?" with options A) 怒鳴る  B) 怒り鳴る  C) 叫鳴る  D) 怒叫る
-                """
-                wordLine = """
-                Word to quiz: JMDict id \(item.wordId)\(englishHint). \
-                Kana reading to show in question stem: \(kana). \
-                Correct written/kanji form (show ONLY as an answer option, NEVER in the stem)\(writtenHint). \
-                Call lookup_jmdict to generate plausible wrong written-form distractors.
-                """
+                facetRule = "Show English + kana ONLY (never kanji). A/B/C/D kanji options."
+                wordLine = "Word: id \(item.wordId)\(englishHint). Stem kana: \(kana). Correct form (option only, NEVER in stem)\(writtenHint)."
             }
         default:
-            facetRule = "Follow standard quiz-purity rules for this facet."
-            wordLine = "Current word: \(item.wordText)  [JMDict id: \(item.wordId)]"
+            facetRule = "Standard quiz-purity rules."
+            wordLine = "Word: \(item.wordText) [id \(item.wordId)]"
         }
         let ebisuLine: String
         if let r = preRecall, let h = preHalflife {
             if let ph = postHalflife {
-                ebisuLine = "Memory state: recall=\(String(format: "%.2f", r)), halflife=\(String(format: "%.0f", h))h → halflife updated to \(String(format: "%.0f", ph))h after this review"
+                ebisuLine = "recall=\(String(format: "%.2f", r)) halflife=\(String(format: "%.0f", h))h→\(String(format: "%.0f", ph))h"
             } else {
-                ebisuLine = "Memory state before this review: recall=\(String(format: "%.2f", r)), halflife=\(String(format: "%.0f", h))h"
+                ebisuLine = "recall=\(String(format: "%.2f", r)) halflife=\(String(format: "%.0f", h))h"
             }
         } else {
-            ebisuLine = "Memory state: new word (no review history yet)"
+            ebisuLine = "new word"
         }
-        let universe = vocabUniverse(excluding: item.wordId, facet: item.facet)
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
-        \(ebisuLine)
+        Memory: \(ebisuLine)
         Facet: \(item.facet) — \(facetRule)
-        CRITICAL: Never leak the answer form into the question stem.
-        Pre-question check: before outputting your question, silently verify — is the answer form \
-        (kanji / kana / meaning, depending on facet) visible anywhere in the question stem? \
-        If yes, rewrite the stem before showing it.
-        \(item.hasKanji ? "{kanji-ok} — all four facets apply" : "{no-kanji} — only reading-to-meaning and meaning-to-reading")
-
-        \(universe)
+        CRITICAL: Never leak the answer form into the question stem. Silently verify before outputting.
+        \(item.hasKanji ? "{kanji-ok}" : "{no-kanji}")
+        Distractors: use lookup_jmdict to verify. Prefer confusable items (similar meaning/sound/kanji).
         """
         if isGenerating {
-            return sharedCore + """
-
-        Tools available:
-        - lookup_jmdict: dictionary-accurate readings and meanings for any word
-        - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
-        radicals, and WaniKani informal components with meanings or descriptions)
-        """
+            return sharedCore
         } else {
             return sharedCore + """
 
-        This is an open conversation. The student may:
-        - Answer the quiz question → grade it and end your response with: SCORE: X.X
-        - Ask about the current word → answer, then wait for the quiz answer
-        - Ask about unrelated words or topics → answer freely; call get_vocab_context if knowing
-          their full learning context would help situate your answer
-        - Mix the above → address their question first, then re-ask or wait for the quiz answer
-
-        SCORE rules:
-        - Include SCORE: X.X (0.0–1.0) ONLY when grading a clear answer to the quiz question.
-        - Do NOT include SCORE: when answering tangent questions or if no answer was given yet.
-        - Once SCORE is given, keep chatting if the student has follow-up questions.
-
-        NOTES rules (include on the same message as SCORE):
-        - Write NOTES: followed by one self-contained sentence about what the learner did.
-        - Never reference answer letters (A/B/C/D) — spell out the actual word or reading chosen.
-        - Good: NOTES: Gave correct reading どなる
-        - Good: NOTES: Chose 怒鳴る (correct); noted confusion with 怒る
-        - Good: NOTES: Could not recall kanji form; guessed 怒鳴 (wrong); correct is 怒鳴る
-
-        \(item.facet == "kanji-to-reading" ? """
-        MEANING_DEMONSTRATED rule:
-        - If the student clearly shows they know the *meaning* of the current quiz word — by \
-        volunteering a translation, using it correctly in a sentence, or confirming its meaning \
-        unprompted — write MEANING_DEMONSTRATED on its own line.
-        - Emit it at most once per quiz item, in the first message where it becomes clear.
-        - OK to emit it in post-grading chat, not just when grading.
-        - Do NOT emit it for tangent questions about other words.
-        """ : "")
-        Tools available:
-        - lookup_jmdict: dictionary-accurate readings and meanings for any word
-        - lookup_kanjidic: per-kanji breakdown (strokes, JLPT, on/kun readings, meanings, kradfile \
-        radicals, and WaniKani informal components with meanings or descriptions)
-        - get_vocab_context: the student's full enrolled word list with recall probabilities
-        - get_mnemonic: retrieve a saved mnemonic for any word (jmdict) or kanji character
-        - set_mnemonic: save a new mnemonic when the student crafts or accepts one. \
-        IMPORTANT: this overwrites the entire mnemonic. Always review the existing mnemonic \
-        (shown below under "Mnemonics on file" or via get_mnemonic) and merge new content into it — \
-        never silently discard prior text. Pass the complete final version.
+        Open conversation: student may answer, ask about this/other words, or mix.
+        SCORE: X.X (0.0–1.0) — include ONLY when grading a clear answer. Keep chatting after.
+        NOTES: one sentence on same message as SCORE. Spell out words, never reference A/B/C/D letters.
+        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: emit once if student clearly shows meaning knowledge (translation/usage). Not for tangent words.\n" : "")\
+        set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
         """
         }
-    }
-
-    /// Distractor guidance for multiple-choice questions, tuned per facet.
-    private func vocabUniverse(excluding wordId: String, facet: String) -> String {
-        let criteria: String
-        switch facet {
-        case "reading-to-meaning":
-            criteria = "near-synonyms or words in the same semantic/situational field"
-        case "meaning-to-reading":
-            criteria = "words with phonologically similar readings (similar mora count or sound)"
-        case "kanji-to-reading":
-            criteria = "words that share kanji components and have confusable readings"
-        case "meaning-reading-to-kanji":
-            criteria = "kanji forms that are visually similar or share components with the target"
-        default:
-            criteria = "words that are semantically adjacent, share kanji, or have similar sounds"
-        }
-        return "For distractors, prefer \(criteria). Use lookup_jmdict to verify any distractor."
     }
 
     private func questionRequest(for item: QuizItem) -> String {

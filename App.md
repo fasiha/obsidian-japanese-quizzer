@@ -591,6 +591,107 @@ Pug/                          ← Xcode project root (already created)
 
 ---
 
+## Token cost reduction (brainstorm — not yet implemented)
+
+The app calls the Claude API frequently: item selection, question generation, question
+validation, and every chat turn. Each call resends the full system prompt + tool schemas +
+conversation history. This section collects ideas for reducing input token burn, ranked
+roughly by expected impact. The `api_events` telemetry table (v6 migration) will provide
+data to validate these estimates before committing to implementation.
+
+### 1. Drop the validation call (~30–40% of per-item API cost)
+
+Every quiz item makes **two** generation attempts: generate question → validate question
+(second Claude call that checks whether the answer form leaked into the question stem).
+This doubles the generation cost. Alternatives:
+- **Local string check**: after generation, scan the question text for the answer form
+  (kanji string, kana string, or English meaning depending on facet). Catches most leaks.
+- **Tighten the generation prompt**: few-shot examples of correct output reduce leak rate.
+- **Data first**: the `api_events` table logs `validation_result` (pass/fail). If the
+  failure rate is <5%, the validation call is wasted 95%+ of the time.
+
+### 2. Algorithmic item selection (eliminate selection call entirely)
+
+The LLM selection call sends all candidates (~120 chars each × N words) for Claude to
+pick 3–5. Algorithmic alternative: sort by Ebisu urgency, cap at 2 per facet type, at
+most 1–2 new words, ensure ≥2 different facets. Zero tokens, zero latency.
+- **Data first**: the `api_events` table logs which ranks (by recall probability) the LLM
+  chose. If it mostly picks the top-N urgent items, the LLM adds little value.
+
+### 3. Compress system prompts
+
+The system prompt is ~1500–2000 tokens per call. Main bloat:
+- Facet-specific rules include full ✅/❌ examples (~200 chars each). Haiku follows terse
+  bullet points fine — examples could be removed or shortened to one-liners.
+- The "Tools available" block redescribes tools already defined in the tool schemas.
+  Redundant — Claude sees tool descriptions from the schema. Can be removed entirely.
+- Partial-kanji-commitment rules (~700 chars with worked examples) could be compressed
+  to a template + one example.
+- WordExploreSession's 20-line Ebisu explanation could be 2 sentences.
+- SCORE/NOTES rules could be a compact template.
+
+### 4. Trim tool schemas per call phase
+
+Tool definitions are sent on every API call. Not all tools are needed in every phase:
+- **Generation call**: only `lookup_jmdict` + `lookup_kanjidic` (already correct).
+- **Validation call**: zero tools needed (just PASS/FAIL text).
+- **Chat turns**: all 5 tools. But `set_mnemonic` has a long description (~200 chars)
+  explaining the merge-before-overwrite rule — this could be shortened.
+
+This is a smaller win than the others (~100–200 tokens saved per call).
+
+### 5. Sliding window on conversation history
+
+Chat turns accumulate unbounded within an item. Turn 5 resends turns 1–4. For most items
+this is 2–3 turns, but curious students can go longer.
+- Keep system prompt + first turn (question) + last 2–3 turns.
+- Or summarize earlier turns into a single message.
+- **Data first**: `api_events` logs `chat_turns` per item. If 90% of items are ≤3 turns,
+  this optimization has low practical impact.
+
+---
+
+## Telemetry: `api_events` table (v6 migration)
+
+Lightweight analytics to inform token cost optimization decisions. One row per API call.
+
+```sql
+CREATE TABLE api_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  timestamp   TEXT NOT NULL,        -- ISO 8601 UTC
+  event_type  TEXT NOT NULL,        -- 'item_selection' | 'question_gen' | 'question_validation'
+                                    -- | 'quiz_chat' | 'word_explore'
+  word_id     TEXT,                 -- JMDict ID (null for item_selection)
+  quiz_type   TEXT,                 -- facet (null for item_selection / word_explore)
+  input_tokens  INTEGER,           -- from API response usage
+  output_tokens INTEGER,           -- from API response usage
+  chat_turn     INTEGER,           -- 1-based turn number within item (null for non-chat)
+  model         TEXT,              -- model ID used
+
+  -- item_selection specific
+  selected_ids   TEXT,             -- JSON array of selected word IDs, in order
+  selected_ranks TEXT,             -- JSON array of recall-rank positions (0-based) chosen
+
+  -- question_validation specific
+  validation_result TEXT,          -- 'pass' | 'fail' (null for non-validation)
+
+  -- question_gen specific
+  generation_attempt INTEGER,      -- 1 or 2 (which attempt succeeded)
+
+  -- quiz_chat specific
+  tools_called TEXT                -- JSON array of tool names invoked in this turn
+);
+```
+
+Key queries this enables:
+- **Validation rejection rate**: `SELECT validation_result, COUNT(*) FROM api_events WHERE event_type='question_validation' GROUP BY validation_result`
+- **LLM selection vs urgency**: compare `selected_ranks` to `[0,1,2,3,4]` — how often does LLM just pick the top-N?
+- **Chat depth**: `SELECT MAX(chat_turn) FROM api_events WHERE event_type='quiz_chat' GROUP BY word_id, timestamp` (per-item max turns)
+- **Token cost by event type**: `SELECT event_type, SUM(input_tokens), SUM(output_tokens) FROM api_events GROUP BY event_type`
+- **Tool usage frequency**: which tools does Claude actually call, and how often?
+
+---
+
 ## Reference
 
 - Existing quiz logic: `.claude/commands/quiz.md`

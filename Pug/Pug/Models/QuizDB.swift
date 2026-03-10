@@ -91,6 +91,43 @@ struct Mnemonic: Codable, FetchableRecord, PersistableRecord {
     }
 }
 
+/// One row per API call — lightweight telemetry for token cost analysis.
+struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
+    static let databaseTableName = "api_events"
+    var id: Int64?
+    var timestamp: String
+    var eventType: String           // item_selection | question_gen | question_validation | quiz_chat | word_explore
+    var wordId: String?
+    var quizType: String?
+    var inputTokens: Int?
+    var outputTokens: Int?
+    var chatTurn: Int?
+    var model: String?
+    var selectedIds: String?        // JSON array
+    var selectedRanks: String?      // JSON array
+    var validationResult: String?   // pass | fail
+    var generationAttempt: Int?
+    var toolsCalled: String?        // JSON array of tool names
+
+    mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
+
+    enum CodingKeys: String, CodingKey {
+        case id, timestamp
+        case eventType = "event_type"
+        case wordId = "word_id"
+        case quizType = "quiz_type"
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case chatTurn = "chat_turn"
+        case model
+        case selectedIds = "selected_ids"
+        case selectedRanks = "selected_ranks"
+        case validationResult = "validation_result"
+        case generationAttempt = "generation_attempt"
+        case toolsCalled = "tools_called"
+    }
+}
+
 /// User's commitment to study a specific furigana form of a word.
 /// One row per (word_type, word_id). The furigana field stores the JmdictFurigana
 /// JSON array for the chosen written form; kanjiChars is a JSON array of kanji
@@ -370,6 +407,24 @@ final class QuizDB: Sendable {
             }
 
             try db.drop(table: "vocab_enrollment")
+        }
+        migrator.registerMigration("v6") { db in
+            try db.create(table: "api_events") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("timestamp", .text).notNull()
+                t.column("event_type", .text).notNull()
+                t.column("word_id", .text)
+                t.column("quiz_type", .text)
+                t.column("input_tokens", .integer)
+                t.column("output_tokens", .integer)
+                t.column("chat_turn", .integer)
+                t.column("model", .text)
+                t.column("selected_ids", .text)
+                t.column("selected_ranks", .text)
+                t.column("validation_result", .text)
+                t.column("generation_attempt", .integer)
+                t.column("tools_called", .text)
+            }
         }
         try migrator.migrate(pool)
     }
@@ -694,6 +749,12 @@ final class QuizDB: Sendable {
         let record = Mnemonic(wordType: wordType, wordId: wordId, mnemonic: text, updatedAt: now)
         try await pool.write { db in try record.save(db) }
         print("[QuizDB] setMnemonic \(wordType)/\(wordId) (\(text.prefix(40))…)")
+    }
+
+    // MARK: - API events (telemetry)
+
+    func log(apiEvent: ApiEvent) async throws {
+        try await pool.write { db in var e = apiEvent; try e.insert(db) }
     }
 
     // MARK: - Learned facets

@@ -178,6 +178,13 @@ struct AnthropicClient: Sendable {
     /// Called for each tool_use block: (toolName, toolInput) → result string.
     typealias ToolHandler = @Sendable (String, [String: JSONValue]) async throws -> String
 
+    /// Metadata from a completed send() call, aggregated across all tool-use turns.
+    struct SendMetadata: Sendable {
+        var totalInputTokens: Int = 0
+        var totalOutputTokens: Int = 0
+        var toolsCalled: [String] = []       // tool names invoked (may have duplicates)
+    }
+
     /// Send a conversation and get the final text response.
     ///
     /// - Parameters:
@@ -186,17 +193,18 @@ struct AnthropicClient: Sendable {
     ///   - tools: Tools the model may call.
     ///   - maxTokens: Max tokens per API call.
     ///   - toolHandler: Called for each tool_use block. Required if tools are provided.
-    /// - Returns: (finalText, updatedMessages)
+    /// - Returns: (finalText, updatedMessages, metadata)
     func send(
         messages: [AnthropicMessage],
         system: String? = nil,
         tools: [AnthropicTool] = [],
         maxTokens: Int = 2048,
         toolHandler: ToolHandler? = nil
-    ) async throws -> (text: String, messages: [AnthropicMessage]) {
+    ) async throws -> (text: String, messages: [AnthropicMessage], metadata: SendMetadata) {
         var msgs = messages
         var turn = 0
         var accumulatedText: [String] = []
+        var meta = SendMetadata()
         while true {
             turn += 1
             print("[Anthropic] turn \(turn): sending \(msgs.count) message(s), \(tools.count) tool(s), maxTokens=\(maxTokens)")
@@ -205,6 +213,8 @@ struct AnthropicClient: Sendable {
                 system: system,
                 tools: tools.isEmpty ? nil : tools,
                 maxTokens: maxTokens)
+            meta.totalInputTokens  += response.usage.inputTokens
+            meta.totalOutputTokens += response.usage.outputTokens
             msgs.append(AnthropicMessage(role: "assistant", content: response.content))
 
             // Collect text from this turn
@@ -224,10 +234,11 @@ struct AnthropicClient: Sendable {
                 let text = accumulatedText.joined(separator: "\n")
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")
-                return (text, msgs)
+                return (text, msgs, meta)
             }
 
             print("[Anthropic] tool call(s): \(toolUses.map(\.name).joined(separator: ", "))")
+            meta.toolsCalled += toolUses.map(\.name)
             guard let handler = toolHandler else {
                 throw AnthropicError.toolCallWithoutHandler(toolUses.map(\.name))
             }

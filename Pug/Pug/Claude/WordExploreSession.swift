@@ -52,7 +52,8 @@ final class WordExploreSession {
         do {
             let th = toolHandler
             let prompt = await systemPromptWithMnemonics()
-            let (response, updatedConversation) = try await client.send(
+            let chatTurnNumber = conversation.filter { $0.role == "user" }.count
+            let (response, updatedConversation, meta) = try await client.send(
                 messages: conversation,
                 system: prompt,
                 tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
@@ -65,6 +66,17 @@ final class WordExploreSession {
                 }
             )
             conversation = updatedConversation
+            // Log telemetry
+            if let db = toolHandler.quizDB {
+                let toolsJSON = meta.toolsCalled.isEmpty ? nil :
+                    (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
+                try? await db.log(apiEvent: ApiEvent(
+                    timestamp: ISO8601DateFormatter().string(from: Date()),
+                    eventType: "word_explore",
+                    wordId: item.id, inputTokens: meta.totalInputTokens,
+                    outputTokens: meta.totalOutputTokens, chatTurn: chatTurnNumber,
+                    model: client.model, toolsCalled: toolsJSON))
+            }
             messages.append((isUser: false, text: response))
         } catch {
             messages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
@@ -125,34 +137,12 @@ final class WordExploreSession {
         """
 
         return """
-        You are a friendly Japanese tutor helping a learner explore one word in detail.
-
-        Word: \(item.wordText) (JMDict id: \(item.id))
-        \(writtenPart)Readings: \(kanaStr)
-        Meanings: \(meaningStr)
+        Japanese tutor — free exploration (no quizzing/scoring).
+        Word: \(item.wordText) (id \(item.id)). \(writtenPart)Readings: \(kanaStr). Meanings: \(meaningStr)
         \(mnemonicBlock)
-        Answer questions about this word's readings, meanings, kanji breakdown, etymology,
-        mnemonics, and connections to other Japanese words. Be concise and conversational.
-        Call lookup_jmdict for dictionary-accurate details when needed.
-        Call get_vocab_context when knowing the learner's other studied words would help
-        (e.g. "how does this compare to words I know?", or to point out related words they're already studying).
-        When the learner crafts or accepts a mnemonic, save it via set_mnemonic (word_type "jmdict" for
-        vocab words, "kanji" for individual kanji characters). Call get_mnemonic to check for existing
-        mnemonics about other words or kanji.
-        IMPORTANT: set_mnemonic overwrites the entire mnemonic. Before saving, review the existing mnemonic
-        (shown above under "Mnemonics on file" or via get_mnemonic) and merge new content into it —
-        never silently discard prior mnemonic text. The mnemonic you pass should be the complete final version.
-        Do NOT quiz the learner or assign scores — this is a free exploration session.
-
-        About the spaced-repetition system (for context when the learner asks):
-        Each word has 2–4 flashcards (called "facets"): reading→meaning, meaning→reading,
-        kanji→reading, and meaning+reading→kanji. Each flashcard has an Ebisu memory model
-        with a halflife (how long until ~50% recall). Halflives are updated automatically
-        after every quiz answer. If the learner wants to manually adjust a halflife (e.g.
-        "I already know this really well" or "I keep forgetting this"), they must do it
-        themselves: in this word's detail screen, scroll to the "Halflives" table above the
-        action buttons, tap the flashcard row they want to change, and enter the new halflife.
-        (This UI should be right above where they're chatting with you). You cannot adjust halflives directly.
+        Be concise. Use lookup_jmdict for accurate details. Use get_vocab_context to relate to the learner's other words.
+        set_mnemonic overwrites — always merge with existing content before saving.
+        SRS context: each word has 2–4 facets with Ebisu halflives. Halflives auto-update after quizzes. Manual adjustment: tap the halflife row in the detail screen above this chat.
         """
     }
 }
