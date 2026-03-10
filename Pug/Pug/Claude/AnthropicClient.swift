@@ -196,6 +196,7 @@ struct AnthropicClient: Sendable {
     ) async throws -> (text: String, messages: [AnthropicMessage]) {
         var msgs = messages
         var turn = 0
+        var accumulatedText: [String] = []
         while true {
             turn += 1
             print("[Anthropic] turn \(turn): sending \(msgs.count) message(s), \(tools.count) tool(s), maxTokens=\(maxTokens)")
@@ -206,6 +207,13 @@ struct AnthropicClient: Sendable {
                 maxTokens: maxTokens)
             msgs.append(AnthropicMessage(role: "assistant", content: response.content))
 
+            // Collect text from this turn
+            let turnText = response.content.compactMap {
+                if case .text(let t) = $0 { return t }
+                return nil
+            }.joined(separator: "\n")
+            if !turnText.isEmpty { accumulatedText.append(turnText) }
+
             // Collect any tool_use blocks
             let toolUses: [(id: String, name: String, input: [String: JSONValue])] = response.content.compactMap {
                 if case .toolUse(let id, let name, let input) = $0 { return (id, name, input) }
@@ -213,10 +221,7 @@ struct AnthropicClient: Sendable {
             }
 
             if toolUses.isEmpty || response.stopReason == "end_turn" {
-                let text = response.content.compactMap {
-                    if case .text(let t) = $0 { return t }
-                    return nil
-                }.joined(separator: "\n")
+                let text = accumulatedText.joined(separator: "\n")
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")
                 return (text, msgs)
