@@ -32,7 +32,8 @@ struct Review: Codable, FetchableRecord, MutablePersistableRecord {
     }
 }
 
-struct EbisuRecord: Codable, FetchableRecord, PersistableRecord {
+struct EbisuRecord: Codable, FetchableRecord, PersistableRecord, Identifiable {
+    var id: String { "\(wordType):\(wordId):\(quizType)" }
     static let databaseTableName = "ebisu_models"
     var wordType: String
     var wordId: String
@@ -396,6 +397,14 @@ final class QuizDB: Sendable {
 
     func upsert(record: EbisuRecord) async throws {
         try await pool.write { db in try record.save(db) }
+    }
+
+    func ebisuRecords(wordType: String, wordId: String) async throws -> [EbisuRecord] {
+        try await pool.read { db in
+            try EbisuRecord
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId)
+                .fetchAll(db)
+        }
     }
 
     func ebisuRecord(wordType: String, wordId: String, quizType: String) async throws -> EbisuRecord? {

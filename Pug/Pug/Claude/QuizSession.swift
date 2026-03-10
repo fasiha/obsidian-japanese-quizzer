@@ -121,6 +121,7 @@ final class QuizSession {
         }
     }
 
+    // TODO: near-duplicate of WordDetailSheet.doRescale — consider extracting to QuizDB
     func rescaleCurrentFacet(hours: Double) async {
         guard let item = currentItem, hours > 0 else { return }
         do {

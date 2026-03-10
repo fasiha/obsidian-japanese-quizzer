@@ -143,6 +143,16 @@ final class WordExploreSession {
         (shown above under "Mnemonics on file" or via get_mnemonic) and merge new content into it —
         never silently discard prior mnemonic text. The mnemonic you pass should be the complete final version.
         Do NOT quiz the learner or assign scores — this is a free exploration session.
+
+        About the spaced-repetition system (for context when the learner asks):
+        Each word has 2–4 flashcards (called "facets"): reading→meaning, meaning→reading,
+        kanji→reading, and meaning+reading→kanji. Each flashcard has an Ebisu memory model
+        with a halflife (how long until ~50% recall). Halflives are updated automatically
+        after every quiz answer. If the learner wants to manually adjust a halflife (e.g.
+        "I already know this really well" or "I keep forgetting this"), they must do it
+        themselves: in this word's detail screen, scroll to the "Halflives" table above the
+        action buttons, tap the flashcard row they want to change, and enter the new halflife.
+        (This UI should be right above where they're chatting with you). You cannot adjust halflives directly.
         """
     }
 }

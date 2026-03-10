@@ -271,7 +271,7 @@ struct DebugSheet: View {
 
 // MARK: - Rescale sheet
 
-private let durationFormatter: DateComponentsFormatter = {
+let durationFormatter: DateComponentsFormatter = {
     let f = DateComponentsFormatter()
     f.unitsStyle = .full
     f.allowedUnits = [.year, .month, .weekOfMonth, .day, .hour]
@@ -279,11 +279,11 @@ private let durationFormatter: DateComponentsFormatter = {
     return f
 }()
 
-private func formatDuration(_ hours: Double) -> String {
+func formatDuration(_ hours: Double) -> String {
     durationFormatter.string(from: hours * 3600) ?? "—"
 }
 
-private struct RescaleSheet: View {
+struct RescaleSheet: View {
     let currentHalflife: Double
     let onSet: (Double) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -341,36 +341,4 @@ private struct RescaleSheet: View {
     }
 }
 
-// MARK: - SelectableText
-
-/// Non-editable UITextView wrapper that supports long-press word selection and
-/// drag-handle range expansion inside a ScrollView — more reliable than
-/// SwiftUI Text + .textSelection(.enabled), which loses selection gestures to
-/// the scroll gesture recognizer.
-private struct SelectableText: UIViewRepresentable {
-    let text: String
-
-    init(_ text: String) { self.text = text }
-
-    func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView()
-        tv.isEditable = false
-        tv.isSelectable = true
-        tv.isScrollEnabled = false   // parent ScrollView handles scrolling
-        tv.backgroundColor = .clear
-        tv.textContainerInset = .zero
-        tv.textContainer.lineFragmentPadding = 0
-        tv.font = UIFont.preferredFont(forTextStyle: .body)
-        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return tv
-    }
-
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.text != text { uiView.text = text }
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let width = proposal.width ?? 390  // fallback; proposal.width is almost always set
-        return uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-    }
-}
+// SelectableText lives in SelectableText.swift

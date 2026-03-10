@@ -31,6 +31,8 @@ struct WordDetailSheet: View {
     @State private var explore: WordExploreSession? = nil
     @State private var vocabMnemonic: String? = nil
     @State private var kanjiMnemonics: [(kanji: String, text: String)] = []
+    @State private var ebisuModels: [EbisuRecord] = []
+    @State private var rescaleRecord: EbisuRecord? = nil
 
     var body: some View {
         NavigationStack {
@@ -64,6 +66,12 @@ struct WordDetailSheet: View {
                 exploreSession.onMnemonicSaved = { Task { await loadMnemonics() } }
                 explore = exploreSession
                 Task { await loadMnemonics() }
+                Task { await loadEbisuModels() }
+            }
+            .sheet(item: $rescaleRecord) { record in
+                RescaleSheet(currentHalflife: record.t) { hours in
+                    Task { await doRescale(record: record, hours: hours) }
+                }
             }
         }
     }
@@ -184,6 +192,10 @@ struct WordDetailSheet: View {
             // Kanji character picker (only when kanji = learning)
             if item.kanjiState == .learning {
                 kanjiCharPicker
+            }
+
+            if !ebisuModels.isEmpty {
+                ebisuHalflivesSection
             }
 
             Divider()
@@ -355,6 +367,50 @@ struct WordDetailSheet: View {
         }
     }
 
+    // MARK: - Ebisu halflives table
+
+    private var ebisuHalflivesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Halflives")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(ebisuModels) { record in
+                Button {
+                    rescaleRecord = record
+                } label: {
+                    HStack {
+                        Text(facetDisplayName(record.quizType))
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text(formatDuration(record.t))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func facetDisplayName(_ quizType: String) -> String {
+        switch quizType {
+        case "reading-to-meaning":      return "Reading → Meaning"
+        case "meaning-to-reading":      return "Meaning → Reading"
+        case "kanji-to-reading":        return "Kanji → Reading"
+        case "meaning-reading-to-kanji": return "Meaning+Reading → Kanji"
+        default: return quizType
+        }
+    }
+
     // MARK: - Claude explore chat
 
     private var exploreChatSection: some View {
@@ -512,6 +568,42 @@ struct WordDetailSheet: View {
         }
     }
 
+    private func loadEbisuModels() async {
+        guard let quizDB = session.toolHandler.quizDB else { return }
+        if let records = try? await quizDB.ebisuRecords(wordType: "jmdict", wordId: item.id) {
+            let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji"]
+            ebisuModels = records.sorted {
+                (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
+            }
+        }
+    }
+
+    // TODO: near-duplicate of QuizSession.rescaleCurrentFacet — consider extracting to QuizDB
+    private func doRescale(record: EbisuRecord, hours: Double) async {
+        guard hours > 0, let quizDB = session.toolHandler.quizDB else { return }
+        do {
+            guard let current = try await quizDB.ebisuRecord(
+                wordType: record.wordType, wordId: record.wordId, quizType: record.quizType) else { return }
+            let scale = hours / current.t
+            let newModel = try rescaleHalflife(current.model, scale: scale)
+            let updated = EbisuRecord(
+                wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
+                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
+                lastReview: current.lastReview
+            )
+            try await quizDB.upsert(record: updated)
+            let event = ModelEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
+                event: "rescaled,\(current.t),\(newModel.t)"
+            )
+            try await quizDB.log(event: event)
+            await loadEbisuModels()
+        } catch {
+            print("[WordDetailSheet] doRescale error: \(error)")
+        }
+    }
+
     private func loadMnemonics() async {
         guard let quizDB = session.toolHandler.quizDB else { return }
         if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: item.id) {
@@ -591,32 +683,4 @@ private struct FlowLayout: Layout {
     }
 }
 
-// MARK: - SelectableText (local copy — same as QuizView's)
-
-private struct SelectableText: UIViewRepresentable {
-    let text: String
-
-    init(_ text: String) { self.text = text }
-
-    func makeUIView(context: Context) -> UITextView {
-        let tv = UITextView()
-        tv.isEditable = false
-        tv.isSelectable = true
-        tv.isScrollEnabled = false
-        tv.backgroundColor = .clear
-        tv.textContainerInset = .zero
-        tv.textContainer.lineFragmentPadding = 0
-        tv.font = UIFont.preferredFont(forTextStyle: .body)
-        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        return tv
-    }
-
-    func updateUIView(_ uiView: UITextView, context: Context) {
-        if uiView.text != text { uiView.text = text }
-    }
-
-    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
-        let width = proposal.width ?? 390
-        return uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
-    }
-}
+// SelectableText lives in SelectableText.swift
