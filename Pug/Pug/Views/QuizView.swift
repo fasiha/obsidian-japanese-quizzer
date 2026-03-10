@@ -32,7 +32,7 @@ struct QuizView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("Settings") { showSettings = true }
-                        if session.isQuizActive {
+                        if session.canStartNewSession {
                             Button("New Session") { session.refreshSession() }
                         }
                         Button("Debug info") { showDebug = true }
@@ -42,7 +42,10 @@ struct QuizView: View {
                 }
             }
             .task {
-                if case .idle = session.phase { session.start() }
+                switch session.phase {
+                case .idle, .noItems: session.start()
+                default: break
+                }
             }
             .sheet(isPresented: $showDebug) {
                 DebugSheet(session: session)

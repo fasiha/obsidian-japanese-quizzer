@@ -276,14 +276,15 @@ the conversation warrants it.
   - Conversation continues freely after grading. "Next Question →" appears; "Skip →" is
     always available.
   - Each item starts with a clean context (`conversation = []`). No cross-item memory.
-- **Two-call question validation** ✓: generate question (call 1), then a second call
-  with a fresh context window checks whether the question stem leaks the answer form.
-  Both happen before the student sees the question. Up to 2 generation attempts total.
-  Additionally, a `---QUIZ---` sentinel is required in the response: everything before
-  the sentinel (model preamble / reasoning) is stripped, and the prompt prohibits any
-  content after the question, defending against both preamble leakage and trailing notes
-  that expose the correct answer. Implemented in
-  `generateQuestion()` / `extractQuestion(from:)` / `validateQuestion(_:for:)`.
+- **Two-call question validation** — disabled via `QuizSession.skipValidation = true`.
+  The validator was broken for all facet types (it flagged the word "reading" in the
+  question stem as answer leakage, causing 100% false-fail on meaning-to-reading and
+  kanji-to-reading). Rather than fix the validator, the generation prompt was tightened
+  (especially for `kanji-to-reading`: the correct answer is now explicitly anchored before
+  asking for distractors). See `TODO-validator-bugfix.md` for full bug analysis.
+  The `---QUIZ---` sentinel and `extractQuestion(from:)` stripping remain active.
+  The validation infrastructure (`validateQuestion(_:for:)`, `api_events` logging) is
+  preserved for future re-enablement.
 - **`{kanji-ok}` / `{no-kanji}` label clarity** (TODO): these tags currently reflect
   whether the user has added a `[kanji]` marker to the vocab bullet, meaning they've
   committed to learning to read/write that word's kanji. The quiz context line and system
@@ -599,16 +600,12 @@ conversation history. This section collects ideas for reducing input token burn,
 roughly by expected impact. The `api_events` telemetry table (v6 migration) will provide
 data to validate these estimates before committing to implementation.
 
-### 1. Drop the validation call (~30–40% of per-item API cost)
+### 1. Drop the validation call — **DONE** (`skipValidation = true`)
 
-Every quiz item makes **two** generation attempts: generate question → validate question
-(second Claude call that checks whether the answer form leaked into the question stem).
-This doubles the generation cost. Alternatives:
-- **Local string check**: after generation, scan the question text for the answer form
-  (kanji string, kana string, or English meaning depending on facet). Catches most leaks.
-- **Tighten the generation prompt**: few-shot examples of correct output reduce leak rate.
-- **Data first**: the `api_events` table logs `validation_result` (pass/fail). If the
-  failure rate is <5%, the validation call is wasted 95%+ of the time.
+The validator was broken for all facet types and was causing 100% false-fail retries.
+Disabled 2026-03-10. The generation prompt was tightened instead (correct answer
+explicitly anchored for `kanji-to-reading`). See `TODO-validator-bugfix.md`.
+If a local string-contains check is added later it can gate re-enabling the validator.
 
 ### 2. Algorithmic item selection (eliminate selection call entirely)
 
@@ -651,7 +648,7 @@ this is 2–3 turns, but curious students can go longer.
 
 ---
 
-## Telemetry: `api_events` table (v6 migration)
+## Telemetry: `_api_events_` table (v6 migration)
 
 Lightweight analytics to inform token cost optimization decisions. One row per API call.
 

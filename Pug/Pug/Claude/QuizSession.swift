@@ -50,7 +50,21 @@ final class QuizSession {
         default: return false
         }
     }
+    /// True in any phase where "New Session" makes sense (not while loading).
+    var canStartNewSession: Bool {
+        switch phase {
+        case .idle, .loadingItems: return false
+        default: return true
+        }
+    }
     var statusMessage: String = "Loading items…"
+
+    // MARK: - Feature flags
+
+    /// Set to true to skip the second-pass question validator entirely.
+    /// Validation is currently broken for all facet types (see TODO-validator-bugfix.md)
+    /// and the cost of false-fail retries outweighs any benefit until the validator is reworked.
+    static let skipValidation = true
 
     // MARK: - Dependencies
 
@@ -619,6 +633,9 @@ final class QuizSession {
                 print("[QuizSession] \(label) attempt \(attempt): ---QUIZ--- marker missing, using raw response")
                 finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             }
+            if Self.skipValidation {
+                break
+            }
             let passed = await validateQuestion(finalQuestion, for: item)
             if passed {
                 print("[QuizSession] \(label) attempt \(attempt): validation PASS")
@@ -711,8 +728,12 @@ final class QuizSession {
                 let committedList = committed.joined(separator: "、")
                 let kana = item.kanaTexts.first ?? "unknown"
                 facetRule = """
-                Show \(template), ask for full reading. Studying: \(committedList). Correct: \(kana).
-                A/B/C/D: vary ONLY committed kanji readings (use lookup_kanjidic for alternates). Keep kana scaffold identical.
+                Show \(template), ask for full reading. Studying: \(committedList).
+                CORRECT ANSWER IS EXACTLY: \(kana). This is non-negotiable — do NOT derive the answer \
+                from kanjidic; use it only to build the 3 wrong options.
+                A/B/C/D: exactly one option must be \(kana) (the correct answer). \
+                The 3 distractors substitute ONLY the committed kanji (\(committedList)) with alternate \
+                kanjidic readings; all other kana in the word stay identical.
                 """
                 wordLine = "Word: display \(template)\(readingsHint). Never show full kana reading."
             } else {
