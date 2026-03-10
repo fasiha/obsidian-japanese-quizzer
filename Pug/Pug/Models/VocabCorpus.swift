@@ -36,7 +36,8 @@ struct VocabItem: Identifiable {
     func matches(filter: VocabFilter) -> Bool {
         switch filter {
         case .notYetLearning:
-            return readingState == .unknown || kanjiState == .unknown
+            let kanjiUnknown = !hasKanjiOptions || kanjiState == .unknown
+            return readingState == .unknown && kanjiUnknown
         case .learning:
             return readingState == .learning || kanjiState == .learning
         case .known:
