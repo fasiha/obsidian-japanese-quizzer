@@ -799,7 +799,7 @@ final class QuizSession {
             ebisuLine = "new word"
         }
         let distractorLine = (!isGenerating || item.isFreeAnswer) ? "" :
-            "\nDistractors: use lookup_jmdict to verify. Prefer confusable items (similar meaning/sound/kanji)."
+            "\nDistractors: use lookup_jmdict to verify — batch all candidates into one call. Prefer confusable items (similar meaning/sound/kanji)."
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)

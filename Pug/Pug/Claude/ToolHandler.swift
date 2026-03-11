@@ -9,16 +9,17 @@ import Foundation
 extension AnthropicTool {
     static let lookupJmdict = AnthropicTool(
         name: "lookup_jmdict",
-        description: "Look up a Japanese word (kanji or kana) in JMDict. Returns the entry's id, kanji forms, kana forms, and English meanings.",
+        description: "Look up one or more Japanese words (kanji or kana) in JMDict. Returns each entry's id, kanji forms, kana forms, and English meanings. Batch all words you need into a single call.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([
-                "word": .object([
-                    "type": .string("string"),
-                    "description": .string("The Japanese word to look up, in kanji or kana form.")
+                "words": .object([
+                    "type": .string("array"),
+                    "items": .object(["type": .string("string")]),
+                    "description": .string("The Japanese words to look up, each in kanji or kana form.")
                 ])
             ]),
-            "required": .array([.string("word")])
+            "required": .array([.string("words")])
         ]
     )
 
@@ -164,10 +165,11 @@ struct ToolHandler: Sendable {
     func handle(toolName: String, input: [String: JSONValue]) async throws -> String {
         switch toolName {
         case "lookup_jmdict":
-            guard let word = input["word"]?.stringValue, !word.isEmpty else {
-                return #"{"error":"missing or empty 'word' parameter"}"#
+            guard case .array(let wordValues) = input["words"], !wordValues.isEmpty else {
+                return #"{"error":"missing or empty 'words' parameter"}"#
             }
-            return (try? await lookupJmdict(word: word)) ?? #"{"error":"lookup failed"}"#
+            let words = wordValues.compactMap { $0.stringValue }
+            return (try? await lookupJmdictBatch(words: words)) ?? #"{"error":"lookup failed"}"#
         case "lookup_kanjidic":
             guard let text = input["text"]?.stringValue, !text.isEmpty else {
                 return #"{"error":"missing or empty 'text' parameter"}"#
@@ -339,48 +341,45 @@ struct ToolHandler: Sendable {
         }
     }
 
-    private func lookupJmdict(word: String) async throws -> String {
-        let entryJSON: String? = try await jmdict.read { db in
-            // The `raws` table has (text, entry_id) for exact kanji/kana matches.
-            let row = try Row.fetchOne(db,
-                sql: "SELECT entry_id FROM raws WHERE text = ? LIMIT 1",
-                arguments: [word])
-            guard let entryId = row?["entry_id"] as? String else { return nil }
-            return try String.fetchOne(db,
-                sql: "SELECT entry_json FROM entries WHERE id = ? LIMIT 1",
-                arguments: [entryId])
+    private func lookupJmdictBatch(words: [String]) async throws -> String {
+        // Build a single JOIN query for all requested words.
+        let placeholders = words.map { _ in "?" }.joined(separator: ",")
+        // GROUP BY e.id deduplicates entries; GROUP_CONCAT collects all matching query texts
+        // so every queried form maps to the same (single) result object.
+        let sql = """
+            SELECT GROUP_CONCAT(r.text) AS texts, e.entry_json
+            FROM raws r JOIN entries e ON e.id = r.entry_id
+            WHERE r.text IN (\(placeholders))
+            GROUP BY e.id
+        """
+        let byWord: [String: String] = try await jmdict.read { db in
+            try Row.fetchAll(db, sql: sql, arguments: StatementArguments(words))
+                .reduce(into: [:]) { dict, row in
+                    guard let texts = row["texts"] as? String,
+                          let json  = row["entry_json"] as? String else { return }
+                    for text in texts.split(separator: ",") { dict[String(text)] = json }
+                }
         }
 
-        guard let json = entryJSON,
-              let data = json.data(using: .utf8),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
-            return "{\"error\":\"word not found: \(word)\"}"
-        }
-
-        // Extract just the useful fields for Claude: id, kanji forms, kana forms, meanings.
-        let id = raw["id"] as? String ?? ""
-
-        let kanjiForms = (raw["kanji"] as? [[String: Any]] ?? [])
-            .compactMap { $0["text"] as? String }
-
-        let kanaForms = (raw["kana"] as? [[String: Any]] ?? [])
-            .compactMap { $0["text"] as? String }
-
-        let meanings = (raw["sense"] as? [[String: Any]] ?? [])
-            .flatMap { sense -> [String] in
+        // Build output array in input order.
+        let results: [Any] = words.map { word -> Any in
+            guard let json = byWord[word],
+                  let data = json.data(using: .utf8),
+                  let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else {
+                return ["query": word, "error": "word not found"]
+            }
+            let kanjiForms = (raw["kanji"] as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
+            let kanaForms  = (raw["kana"]  as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
+            let meanings   = (raw["sense"] as? [[String: Any]] ?? []).flatMap { sense -> [String] in
                 (sense["gloss"] as? [[String: Any]] ?? [])
                     .filter { ($0["lang"] as? String) == "eng" }
                     .compactMap { $0["text"] as? String }
             }
-
-        let result: [String: Any] = [
-            "id": id,
-            "kanji": kanjiForms,
-            "kana": kanaForms,
-            "meanings": meanings
-        ]
-        let resultData = try JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
-        return String(data: resultData, encoding: .utf8) ?? "{}"
+            return ["query": word, "id": raw["id"] as? String ?? "",
+                    "kanji": kanjiForms, "kana": kanaForms, "meanings": meanings]
+        }
+        let data = try JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])
+        return String(data: data, encoding: .utf8) ?? "[]"
     }
 }
