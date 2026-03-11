@@ -161,16 +161,18 @@ export function wordFormsPart(word) {
 }
 
 // Return English meanings joined by " / " (one entry per sense).
-export function wordMeanings(word) {
+export function wordMeanings(word, numbered = false) {
   return word.sense
-    .map((s) =>
-      s.gloss
-        .filter((g) => g.lang === "eng")
-        .map((g) => g.text)
-        .join("; "),
+    .map(
+      (s, outerIdx) =>
+        (numbered ? `(${outerIdx + 1}) ` : "") +
+        s.gloss
+          .filter((g) => g.lang === "eng")
+          .map((g) => g.text)
+          .join("; "),
     )
     .filter(Boolean)
-    .join(" / ");
+    .join(numbered ? ". " : " / ");
 }
 
 // Produce a compact one-line summary of a JMDict Word entry.
@@ -180,11 +182,7 @@ export function summarizeWord(word) {
   const forms = word.kanji
     .filter((k) => !k.tags.includes("iK"))
     .map((k) => k.text)
-    .concat(
-      word.kana
-        .filter((k) => !k.tags.includes("ik"))
-        .map((k) => k.text),
-    )
+    .concat(word.kana.filter((k) => !k.tags.includes("ik")).map((k) => k.text))
     .join(", ");
   const meanings = word.sense
     .map((s) =>
