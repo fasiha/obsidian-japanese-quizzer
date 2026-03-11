@@ -78,6 +78,8 @@ final class QuizSession {
     // Prefetched next question: kicked off as soon as the current item is graded.
     private var prefetched: (index: Int, question: String, conversation: [AnthropicMessage],
                               preRecall: Double?, preHalflife: Double?)? = nil
+    // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
+    private var prefetchTask: Task<Void, Never>? = nil
 
     /// Human-readable ranked context (same format sent to LLM), for debug display.
     var contextText: String {
@@ -114,6 +116,7 @@ final class QuizSession {
         items = []
         currentIndex = 0
         prefetched = nil
+        prefetchTask = nil
         phase = .loadingItems
         Task { await loadItems() }
     }
@@ -168,6 +171,7 @@ final class QuizSession {
         items = []
         currentIndex = 0
         prefetched = nil
+        prefetchTask = nil
         conversation = []
         currentQuestion = ""
         chatMessages = []
@@ -276,6 +280,13 @@ final class QuizSession {
 
     private func generateQuestion() async {
         guard let item = currentItem else { phase = .finished; return }
+
+        // If a prefetch task is in-flight for this index, wait for it to finish.
+        if let task = prefetchTask {
+            prefetchTask = nil
+            phase = .generating
+            await task.value
+        }
 
         // Consume prefetch if one is ready for this index.
         if let pf = prefetched, pf.index == currentIndex {
@@ -447,7 +458,7 @@ final class QuizSession {
                 let nextIndex = currentIndex + 1
                 if nextIndex < items.count {
                     let nextItem = items[nextIndex]
-                    Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+                    prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
                 }
             }
             // MEANING_DEMONSTRATED: Claude detected the student showed meaning knowledge.
