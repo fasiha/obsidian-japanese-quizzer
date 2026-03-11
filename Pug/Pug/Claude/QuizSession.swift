@@ -634,12 +634,7 @@ final class QuizSession {
         var finalQuestion = ""
         var finalMsgs: [AnthropicMessage] = []
         let isPrefetch = label == "prefetch" ? 1 : 0
-        let qFormat: String
-        if case .reviewed(_, let isFree, _) = item.status {
-            qFormat = (isFree && item.facet != "meaning-reading-to-kanji") ? "free_answer" : "multiple_choice"
-        } else {
-            qFormat = "multiple_choice"
-        }
+        let qFormat = item.isFreeAnswer ? "free_answer" : "multiple_choice"
         for attempt in 1...2 {
             let (raw, msgs, meta) = try await client.send(
                 messages: [initMsg],
@@ -803,14 +798,15 @@ final class QuizSession {
         } else {
             ebisuLine = "new word"
         }
+        let distractorLine = (!isGenerating || item.isFreeAnswer) ? "" :
+            "\nDistractors: use lookup_jmdict to verify. Prefer confusable items (similar meaning/sound/kanji)."
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
         Memory: \(ebisuLine)
         Facet: \(item.facet) — \(facetRule)
         CRITICAL: Never leak the answer form into the question stem. Silently verify before outputting.
-        \(item.hasKanji ? "{kanji-ok}" : "{no-kanji}")
-        Distractors: use lookup_jmdict to verify. Prefer confusable items (similar meaning/sound/kanji).
+        \(item.hasKanji ? "{kanji-ok}" : "{no-kanji}")\(distractorLine)
         """
         if isGenerating {
             return sharedCore
@@ -829,12 +825,7 @@ final class QuizSession {
 
     private func questionRequest(for item: QuizItem) -> String {
         let mode: String
-        switch item.status {
-        case .reviewed(_, let isFree, _):
-            // meaning-reading-to-kanji is always multiple choice even when isFree — the kanji
-            // form must only ever appear as an answer option, never in a free-answer prompt.
-            mode = (isFree && item.facet != "meaning-reading-to-kanji") ? "free answer" : "multiple choice (A–D)"
-        }
+        mode = item.isFreeAnswer ? "free answer" : "multiple choice (A–D)"
         return """
         Generate ONE \(mode) question for the \(item.facet) facet.
         Output format: optionally reason first, then write the sentinel `---QUIZ---` on its own line, \

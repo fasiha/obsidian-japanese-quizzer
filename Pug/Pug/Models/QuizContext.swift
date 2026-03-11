@@ -40,6 +40,15 @@ struct QuizItem: Identifiable {
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
     }
+
+    /// True when this item should be presented as a free-answer question.
+    /// meaning-reading-to-kanji is always multiple choice (kanji form must never appear in the stem).
+    var isFreeAnswer: Bool {
+        if case .reviewed(_, let free, _) = status {
+            return free && facet != "meaning-reading-to-kanji"
+        }
+        return false
+    }
 }
 
 // MARK: - Context builder
