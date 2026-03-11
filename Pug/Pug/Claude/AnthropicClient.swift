@@ -242,7 +242,12 @@ struct AnthropicClient: Sendable {
             }
 
             print("[Anthropic] tool call(s): \(toolUses.map(\.name).joined(separator: ", "))")
-            meta.toolsCalled += toolUses.map(\.name)
+            meta.toolsCalled += toolUses.map { use in
+                if use.name == "lookup_jmdict", case .array(let w) = use.input["words"] {
+                    return "lookup_jmdict:\(w.count)"
+                }
+                return use.name
+            }
             guard let handler = toolHandler else {
                 throw AnthropicError.toolCallWithoutHandler(toolUses.map(\.name))
             }

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 // telemetry-report.mjs
 // Print a structured telemetry report from api_events for the last N hours.
-// Usage: node telemetry-report.mjs [hours]   (default: 12)
+// Usage: node telemetry-report.mjs [hours, default 12] [quiz, default: ../../quiz.sqlite]
 
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const dbPath = join(__dir, '../../quiz.sqlite');
+const dbPath = process.argv[3] ?? join(__dir, '../../quiz.sqlite');
 const hours = Number(process.argv[2] ?? 12);
 const since = new Date(Date.now() - hours * 3600_000).toISOString();
 

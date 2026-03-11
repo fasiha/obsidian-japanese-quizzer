@@ -592,12 +592,12 @@ Pug/                          ← Xcode project root (already created)
 
 ---
 
-## Token cost reduction (brainstorm — not yet implemented)
+## Token cost reduction
 
 The app calls the Claude API frequently: item selection, question generation, question
 validation, and every chat turn. Each call resends the full system prompt + tool schemas +
 conversation history. This section collects ideas for reducing input token burn, ranked
-roughly by expected impact. The `api_events` telemetry table (v6 migration) will provide
+roughly by expected impact. The `api_events` telemetry table (v6 migration) provided
 data to validate these estimates before committing to implementation.
 
 ### 1. Drop the validation call — **DONE** (`skipValidation = true`)
@@ -607,15 +607,35 @@ Disabled 2026-03-10. The generation prompt was tightened instead (correct answer
 explicitly anchored for `kanji-to-reading`). See `TODO-validator-bugfix.md`.
 If a local string-contains check is added later it can gate re-enabling the validator.
 
-### 2. Algorithmic item selection (eliminate selection call entirely)
+### 2. Batch `lookup_jmdict` calls — **DONE** (2026-03-11)
+
+**Problem**: `question_gen` was averaging 10–11 `lookup_jmdict` calls per `mtr` question,
+each a separate API round-trip, driving `api_turns` to 4–5 and total input tokens to
+5k–7k per question.
+
+**Root causes fixed**:
+- The `distractor` instruction in `sharedCore` was sent for **all** formats including
+  free-answer, causing spurious lookups even when there are no distractors. Fixed by
+  making `distractorLine` conditional on `isGenerating && !item.isFreeAnswer`.
+- `isFreeAnswer` logic was duplicated in 3 places. Centralized into `QuizItem.isFreeAnswer`
+  in `QuizContext.swift`.
+- `lookup_jmdict` accepted a single word. Changed to accept `words: [String]` array;
+  handler does one SQLite round-trip (`JOIN` + `GROUP BY e.id` + `GROUP_CONCAT`) for all
+  words. System prompt updated: "batch all candidates into one call."
+- Telemetry: batch size encoded in `tools_called` as `"lookup_jmdict:N"`.
+
+**Result**: `question_gen` now typically 2 API turns (one reasoning turn + one batched
+lookup), down from 3–5. Overhead dropped from ~3,500 to ~1,600 avg tokens per generation.
+
+### 3. Algorithmic item selection (eliminate selection call entirely)
 
 The LLM selection call sends all candidates (~120 chars each × N words) for Claude to
 pick 3–5. Algorithmic alternative: sort by Ebisu urgency, cap at 2 per facet type, at
 most 1–2 new words, ensure ≥2 different facets. Zero tokens, zero latency.
-- **Data first**: the `api_events` table logs which ranks (by recall probability) the LLM
-  chose. If it mostly picks the top-N urgent items, the LLM adds little value.
+- **Telemetry finding** (2026-03-11): LLM picks beyond top-5 (max rank 16–21 out of 53),
+  applying some diversity logic. Worth replicating algorithmically before removing the call.
 
-### 3. Compress system prompts
+### 4. Compress system prompts
 
 The system prompt is ~1500–2000 tokens per call. Main bloat:
 - Facet-specific rules include full ✅/❌ examples (~200 chars each). Haiku follows terse
@@ -627,7 +647,7 @@ The system prompt is ~1500–2000 tokens per call. Main bloat:
 - WordExploreSession's 20-line Ebisu explanation could be 2 sentences.
 - SCORE/NOTES rules could be a compact template.
 
-### 4. Trim tool schemas per call phase
+### 5. Trim tool schemas per call phase
 
 Tool definitions are sent on every API call. Not all tools are needed in every phase:
 - **Generation call**: only `lookup_jmdict` + `lookup_kanjidic` (already correct).
@@ -637,14 +657,14 @@ Tool definitions are sent on every API call. Not all tools are needed in every p
 
 This is a smaller win than the others (~100–200 tokens saved per call).
 
-### 5. Sliding window on conversation history
+### 6. Sliding window on conversation history
 
 Chat turns accumulate unbounded within an item. Turn 5 resends turns 1–4. For most items
 this is 2–3 turns, but curious students can go longer.
 - Keep system prompt + first turn (question) + last 2–3 turns.
 - Or summarize earlier turns into a single message.
-- **Data first**: `api_events` logs `chat_turns` per item. If 90% of items are ≤3 turns,
-  this optimization has low practical impact.
+- **Telemetry finding** (2026-03-11): median item finishes at turn 4–5; two outlier items
+  hit turn 7 (13k–18k tokens). Sliding window helps the tail, not the median.
 
 ---
 
