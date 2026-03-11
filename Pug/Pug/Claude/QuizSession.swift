@@ -258,7 +258,9 @@ final class QuizSession {
                 eventType: "item_selection",
                 inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
                 model: client.model, selectedIds: idsJSON, selectedRanks: ranksJSON,
-                apiTurns: meta.totalTurns))
+                apiTurns: meta.totalTurns,
+                firstTurnInputTokens: meta.firstTurnInputTokens,
+                candidateCount: candidates.count))
             if selected.count >= 3 {
                 print("[QuizSession] selectItems: \(selected.count) item(s) selected by LLM")
                 return selected
@@ -316,7 +318,8 @@ final class QuizSession {
 
         do {
             let (finalQuestion, finalMsgs) = try await runGenerationLoop(
-                for: item, system: system, initMsg: initMsg, label: "generate")
+                for: item, system: system, initMsg: initMsg, label: "generate",
+                preRecall: preQuizRecall)
             conversation = finalMsgs
             currentQuestion = finalQuestion
             chatMessages = [(isUser: false, text: finalQuestion)]
@@ -418,13 +421,18 @@ final class QuizSession {
             conversation = updatedMsgs
             let toolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
+            let chatScore = parseScore(from: response)
             try? await db.log(apiEvent: ApiEvent(
                 timestamp: ISO8601DateFormatter().string(from: Date()),
                 eventType: "quiz_chat",
                 wordId: item.wordId, quizType: item.facet,
                 inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
                 chatTurn: chatTurnNumber, model: client.model, toolsCalled: toolsJSON,
-                apiTurns: meta.totalTurns))
+                apiTurns: meta.totalTurns,
+                firstTurnInputTokens: meta.firstTurnInputTokens,
+                hasMnemonic: mnemonicBlock.isEmpty ? 0 : 1,
+                score: chatScore,
+                preRecall: preQuizRecall))
             let displayText = strippingMetadata(from: response)
                 .replacingOccurrences(of: "MEANING_DEMONSTRATED",
                                       with: "✅ Meaning knowledge noted — memory updated")
@@ -588,7 +596,8 @@ final class QuizSession {
         print("[QuizSession] prefetch: starting for index \(index): \(item.wordText) facet:\(item.facet)")
         do {
             let (finalQuestion, finalMsgs) = try await runGenerationLoop(
-                for: item, system: system, initMsg: initMsg, label: "prefetch")
+                for: item, system: system, initMsg: initMsg, label: "prefetch",
+                preRecall: preRecall)
             // Discard if the session has already moved past this index.
             guard currentIndex <= index else {
                 print("[QuizSession] prefetch for index \(index) is stale, discarding")
@@ -607,11 +616,19 @@ final class QuizSession {
 
     /// Two-attempt generate+validate loop shared by generateQuestion and prefetchQuestion.
     private func runGenerationLoop(for item: QuizItem, system: String,
-                                   initMsg: AnthropicMessage, label: String)
+                                   initMsg: AnthropicMessage, label: String,
+                                   preRecall: Double? = nil)
         async throws -> (question: String, conversation: [AnthropicMessage])
     {
         var finalQuestion = ""
         var finalMsgs: [AnthropicMessage] = []
+        let isPrefetch = label == "prefetch" ? 1 : 0
+        let qFormat: String
+        if case .reviewed(_, let isFree, _) = item.status {
+            qFormat = (isFree && item.facet != "meaning-reading-to-kanji") ? "free_answer" : "multiple_choice"
+        } else {
+            qFormat = "multiple_choice"
+        }
         for attempt in 1...2 {
             let (raw, msgs, meta) = try await client.send(
                 messages: [initMsg],
@@ -623,19 +640,22 @@ final class QuizSession {
             finalMsgs = msgs
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
-            try? await db.log(apiEvent: ApiEvent(
-                timestamp: ISO8601DateFormatter().string(from: Date()),
-                eventType: "question_gen",
-                wordId: item.wordId, quizType: item.facet,
-                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                model: client.model, generationAttempt: attempt, toolsCalled: genToolsJSON,
-                apiTurns: meta.totalTurns))
             if let extracted = extractQuestion(from: raw) {
                 finalQuestion = extracted
             } else {
                 print("[QuizSession] \(label) attempt \(attempt): ---QUIZ--- marker missing, using raw response")
                 finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             }
+            try? await db.log(apiEvent: ApiEvent(
+                timestamp: ISO8601DateFormatter().string(from: Date()),
+                eventType: "question_gen",
+                wordId: item.wordId, quizType: item.facet,
+                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
+                model: client.model, generationAttempt: attempt, toolsCalled: genToolsJSON,
+                apiTurns: meta.totalTurns,
+                firstTurnInputTokens: meta.firstTurnInputTokens,
+                questionChars: finalQuestion.count,
+                questionFormat: qFormat, prefetch: isPrefetch, preRecall: preRecall))
             if Self.skipValidation {
                 break
             }

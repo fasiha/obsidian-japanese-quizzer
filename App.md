@@ -648,44 +648,88 @@ this is 2–3 turns, but curious students can go longer.
 
 ---
 
-## Telemetry: `_api_events_` table (v6 migration)
+## Telemetry: `_api_events_` table (v6–v8 migrations)
 
 Lightweight analytics to inform token cost optimization decisions. One row per API call.
 
+### Event types and what they contain
+
+**`question_gen`** — one row per question generation attempt (up to 2 per item if validation was enabled). A single call to `client.send()` with:
+- System prompt: `sharedCore` only (word metadata + facet rule + distractor guidance). Shorter than the chat system prompt — no SCORE/NOTES/MEANING_DEMONSTRATED rules.
+- Tools: `lookup_jmdict` + `lookup_kanjidic` (2 tools). Claude almost always calls these to verify distractors, so `api_turns` is typically 2–3, and each tool round-trip resends the full context. This is why `question_gen` input token averages rival `quiz_chat`.
+- Messages: just the single `questionRequest` user message (short: ~30 words).
+
+**`quiz_chat`** — one row per user message turn during the open conversation phase. A single call to `client.send()` with:
+- System prompt: `sharedCore` + open-chat extension (SCORE/NOTES/MEANING_DEMONSTRATED rules, set_mnemonic warning, optional mnemonic block). Longer than the generation prompt.
+- Tools: all 5 (`lookup_jmdict`, `lookup_kanjidic`, `get_vocab_context`, `get_mnemonic`, `set_mnemonic`). 75% of turns call no tools, but all 5 schemas are sent every turn regardless.
+- Messages: full conversation history (question + all prior turns). This accumulates: turn 1 is cheap, turn 8 is expensive. See section 6 of the telemetry report for growth by turn.
+- The **grading turn** is just another `quiz_chat` row — the one where Claude's response contains `SCORE: X.X`. There is no separate grading event type. The `score` column captures which turn was the grading turn.
+
+**`item_selection`** — one LLM call per session start (unless a saved session is resumed). Sends the full candidate list (~120 chars/candidate × N words). `selected_ranks` logs which positions the LLM picked for post-hoc analysis of whether algorithmic selection would match.
+
+**`question_validation`** — currently disabled (`skipValidation = true`). Was a cheap second-pass call (no tools, maxTokens=10) that checked whether the generated question leaked the answer.
+
+**`word_explore`** — open-ended word exploration chat from WordDetailSheet. Not yet fully instrumented.
+
+### Why question_gen ≈ quiz_chat in token cost
+
+Both average ~3,700 input tokens. The reasons are:
+- `question_gen` has fewer tool schemas (2 vs 5) but almost always triggers 2–3 API round-trips for distractor lookups, multiplying the context.
+- `quiz_chat` has more tool schemas and a longer system prompt, but most turns are single-turn (no tool calls) and early turns have short history.
+- `first_turn_input_tokens` (v8) isolates the fixed overhead (system + tools + initial message) from the tool/history payload, making it possible to measure these effects separately.
+
+### Schema has grown via ALTER TABLE migrations; current columns:
+
 ```sql
-CREATE TABLE api_events (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  timestamp   TEXT NOT NULL,        -- ISO 8601 UTC
-  event_type  TEXT NOT NULL,        -- 'item_selection' | 'question_gen' | 'question_validation'
-                                    -- | 'quiz_chat' | 'word_explore'
-  word_id     TEXT,                 -- JMDict ID (null for item_selection)
-  quiz_type   TEXT,                 -- facet (null for item_selection / word_explore)
-  input_tokens  INTEGER,           -- from API response usage
-  output_tokens INTEGER,           -- from API response usage
-  chat_turn     INTEGER,           -- 1-based turn number within item (null for non-chat)
-  model         TEXT,              -- model ID used
+-- v6 core
+id INTEGER PRIMARY KEY AUTOINCREMENT
+timestamp TEXT NOT NULL            -- ISO 8601 UTC
+event_type TEXT NOT NULL           -- 'item_selection'|'question_gen'|'question_validation'|'quiz_chat'|'word_explore'
+word_id TEXT                       -- JMDict ID (null for item_selection)
+quiz_type TEXT                     -- facet (null for item_selection / word_explore)
+input_tokens INTEGER               -- total input tokens across all API turns in send()
+output_tokens INTEGER              -- total output tokens
+chat_turn INTEGER                  -- 1-based turn within item (quiz_chat only)
+model TEXT
+selected_ids TEXT                  -- JSON array (item_selection)
+selected_ranks TEXT                -- JSON array of 0-based recall ranks (item_selection)
+validation_result TEXT             -- 'pass'|'fail' (question_validation)
+generation_attempt INTEGER         -- 1 or 2 (question_gen)
+tools_called TEXT                  -- JSON array of tool names
 
-  -- item_selection specific
-  selected_ids   TEXT,             -- JSON array of selected word IDs, in order
-  selected_ranks TEXT,             -- JSON array of recall-rank positions (0-based) chosen
+-- v7
+api_turns INTEGER                  -- number of API round-trips inside send()
 
-  -- question_validation specific
-  validation_result TEXT,          -- 'pass' | 'fail' (null for non-validation)
-
-  -- question_gen specific
-  generation_attempt INTEGER,      -- 1 or 2 (which attempt succeeded)
-
-  -- quiz_chat specific
-  tools_called TEXT                -- JSON array of tool names invoked in this turn
-);
+-- v8
+first_turn_input_tokens INTEGER    -- input tokens on first round-trip only (system + tool schemas + messages); isolates overhead from conversation payload
+question_chars INTEGER             -- character length of extracted question (question_gen)
+question_format TEXT               -- 'multiple_choice'|'free_answer' (question_gen)
+prefetch INTEGER                   -- 0=foreground generation, 1=background prefetch (question_gen)
+candidate_count INTEGER            -- candidates sent to LLM (item_selection)
+has_mnemonic INTEGER               -- 0/1 mnemonic block injected (quiz_chat)
+score REAL                         -- graded score 0.0–1.0 if turn emitted SCORE: (quiz_chat)
+pre_recall REAL                    -- Ebisu predicted recall at quiz time (question_gen, quiz_chat)
 ```
 
 Key queries this enables:
+- **Overhead vs payload**: `SELECT AVG(first_turn_input_tokens), AVG(input_tokens) FROM api_events GROUP BY event_type`
 - **Validation rejection rate**: `SELECT validation_result, COUNT(*) FROM api_events WHERE event_type='question_validation' GROUP BY validation_result`
 - **LLM selection vs urgency**: compare `selected_ranks` to `[0,1,2,3,4]` — how often does LLM just pick the top-N?
-- **Chat depth**: `SELECT MAX(chat_turn) FROM api_events WHERE event_type='quiz_chat' GROUP BY word_id, timestamp` (per-item max turns)
+- **Chat depth**: `SELECT MAX(chat_turn) FROM api_events WHERE event_type='quiz_chat' GROUP BY word_id, timestamp`
 - **Token cost by event type**: `SELECT event_type, SUM(input_tokens), SUM(output_tokens) FROM api_events GROUP BY event_type`
-- **Tool usage frequency**: which tools does Claude actually call, and how often?
+- **Does difficulty drive chat length?**: join `pre_recall` on `quiz_chat` rows with `MAX(chat_turn)` per item
+- **Prefetch waste rate**: `SELECT prefetch, COUNT(*) FROM api_events WHERE event_type='question_gen' GROUP BY prefetch`
+- **Format vs score correlation**: `SELECT question_format, AVG(score) FROM api_events WHERE event_type='quiz_chat' AND score IS NOT NULL`
+- **Tool call cost in question_gen**: `SELECT api_turns, AVG(input_tokens), COUNT(*) FROM api_events WHERE event_type='question_gen' GROUP BY api_turns` — items with api_turns≥3 are expensive; if most distractor lookups could be pre-computed, big savings
+
+### Telemetry report script
+
+`.claude/scripts/telemetry-report.mjs [hours]` (default 12h) — prints a structured markdown-style report to stdout covering all sections above. Run after a quiz session to audit the above questions without SQL.
+
+```
+node .claude/scripts/telemetry-report.mjs 12
+node .claude/scripts/telemetry-report.mjs 999   # all-time
+```
 
 ---
 

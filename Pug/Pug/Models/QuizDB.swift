@@ -110,6 +110,16 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
     var toolsCalled: String?        // JSON array of tool names
     var apiTurns: Int?              // number of API round-trips inside send()
 
+    // v8 additions
+    var firstTurnInputTokens: Int?  // input tokens on first round-trip (system + tool schemas + messages)
+    var questionChars: Int?         // character length of extracted question (question_gen only)
+    var questionFormat: String?     // 'multiple_choice' | 'free_answer' (question_gen only)
+    var prefetch: Int?              // 0=foreground generation, 1=background prefetch (question_gen only)
+    var candidateCount: Int?        // number of candidates sent to LLM (item_selection only)
+    var hasMnemonic: Int?           // 0/1 whether mnemonic block was injected (quiz_chat only)
+    var score: Double?              // graded score 0.0–1.0 if this turn emitted SCORE: (quiz_chat only)
+    var preRecall: Double?          // Ebisu predicted recall probability at quiz time (question_gen, quiz_chat)
+
     mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 
     enum CodingKeys: String, CodingKey {
@@ -127,6 +137,14 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
         case generationAttempt = "generation_attempt"
         case toolsCalled = "tools_called"
         case apiTurns = "api_turns"
+        case firstTurnInputTokens = "first_turn_input_tokens"
+        case questionChars = "question_chars"
+        case questionFormat = "question_format"
+        case prefetch
+        case candidateCount = "candidate_count"
+        case hasMnemonic = "has_mnemonic"
+        case score
+        case preRecall = "pre_recall"
     }
 }
 
@@ -431,6 +449,18 @@ final class QuizDB: Sendable {
         migrator.registerMigration("v7") { db in
             try db.alter(table: "api_events") { t in
                 t.add(column: "api_turns", .integer)
+            }
+        }
+        migrator.registerMigration("v8") { db in
+            try db.alter(table: "api_events") { t in
+                t.add(column: "first_turn_input_tokens", .integer)
+                t.add(column: "question_chars", .integer)
+                t.add(column: "question_format", .text)
+                t.add(column: "prefetch", .integer)
+                t.add(column: "candidate_count", .integer)
+                t.add(column: "has_mnemonic", .integer)
+                t.add(column: "score", .double)
+                t.add(column: "pre_recall", .double)
             }
         }
         try migrator.migrate(pool)

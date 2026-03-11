@@ -184,6 +184,7 @@ struct AnthropicClient: Sendable {
         var totalOutputTokens: Int = 0
         var toolsCalled: [String] = []       // tool names invoked (may have duplicates)
         var totalTurns: Int = 0              // number of API round-trips inside send()
+        var firstTurnInputTokens: Int = 0   // input tokens on the first round-trip only (system + tool schemas + messages)
     }
 
     /// Send a conversation and get the final text response.
@@ -216,6 +217,7 @@ struct AnthropicClient: Sendable {
                 maxTokens: maxTokens)
             meta.totalInputTokens  += response.usage.inputTokens
             meta.totalOutputTokens += response.usage.outputTokens
+            if turn == 1 { meta.firstTurnInputTokens = response.usage.inputTokens }
             msgs.append(AnthropicMessage(role: "assistant", content: response.content))
 
             // Collect text from this turn
