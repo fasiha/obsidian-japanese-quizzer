@@ -108,6 +108,7 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
     var validationResult: String?   // pass | fail
     var generationAttempt: Int?
     var toolsCalled: String?        // JSON array of tool names
+    var apiTurns: Int?              // number of API round-trips inside send()
 
     mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 
@@ -125,6 +126,7 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
         case validationResult = "validation_result"
         case generationAttempt = "generation_attempt"
         case toolsCalled = "tools_called"
+        case apiTurns = "api_turns"
     }
 }
 
@@ -424,6 +426,11 @@ final class QuizDB: Sendable {
                 t.column("validation_result", .text)
                 t.column("generation_attempt", .integer)
                 t.column("tools_called", .text)
+            }
+        }
+        migrator.registerMigration("v7") { db in
+            try db.alter(table: "api_events") { t in
+                t.add(column: "api_turns", .integer)
             }
         }
         try migrator.migrate(pool)

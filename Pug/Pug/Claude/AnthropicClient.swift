@@ -183,6 +183,7 @@ struct AnthropicClient: Sendable {
         var totalInputTokens: Int = 0
         var totalOutputTokens: Int = 0
         var toolsCalled: [String] = []       // tool names invoked (may have duplicates)
+        var totalTurns: Int = 0              // number of API round-trips inside send()
     }
 
     /// Send a conversation and get the final text response.
@@ -232,6 +233,7 @@ struct AnthropicClient: Sendable {
 
             if toolUses.isEmpty || response.stopReason == "end_turn" {
                 let text = accumulatedText.joined(separator: "\n")
+                meta.totalTurns = turn
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")
                 return (text, msgs, meta)

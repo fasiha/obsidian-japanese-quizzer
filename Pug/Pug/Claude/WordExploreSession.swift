@@ -75,7 +75,7 @@ final class WordExploreSession {
                     eventType: "word_explore",
                     wordId: item.id, inputTokens: meta.totalInputTokens,
                     outputTokens: meta.totalOutputTokens, chatTurn: chatTurnNumber,
-                    model: client.model, toolsCalled: toolsJSON))
+                    model: client.model, toolsCalled: toolsJSON, apiTurns: meta.totalTurns))
             }
             messages.append((isUser: false, text: response))
         } catch {

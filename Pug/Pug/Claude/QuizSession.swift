@@ -257,7 +257,8 @@ final class QuizSession {
                 timestamp: ISO8601DateFormatter().string(from: Date()),
                 eventType: "item_selection",
                 inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                model: client.model, selectedIds: idsJSON, selectedRanks: ranksJSON))
+                model: client.model, selectedIds: idsJSON, selectedRanks: ranksJSON,
+                apiTurns: meta.totalTurns))
             if selected.count >= 3 {
                 print("[QuizSession] selectItems: \(selected.count) item(s) selected by LLM")
                 return selected
@@ -422,7 +423,8 @@ final class QuizSession {
                 eventType: "quiz_chat",
                 wordId: item.wordId, quizType: item.facet,
                 inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                chatTurn: chatTurnNumber, model: client.model, toolsCalled: toolsJSON))
+                chatTurn: chatTurnNumber, model: client.model, toolsCalled: toolsJSON,
+                apiTurns: meta.totalTurns))
             let displayText = strippingMetadata(from: response)
                 .replacingOccurrences(of: "MEANING_DEMONSTRATED",
                                       with: "✅ Meaning knowledge noted — memory updated")
@@ -626,7 +628,8 @@ final class QuizSession {
                 eventType: "question_gen",
                 wordId: item.wordId, quizType: item.facet,
                 inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                model: client.model, generationAttempt: attempt, toolsCalled: genToolsJSON))
+                model: client.model, generationAttempt: attempt, toolsCalled: genToolsJSON,
+                apiTurns: meta.totalTurns))
             if let extracted = extractQuestion(from: raw) {
                 finalQuestion = extracted
             } else {

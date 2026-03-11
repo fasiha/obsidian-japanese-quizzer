@@ -296,7 +296,7 @@ extension QuizDB {
             for row in rows {
                 guard let id = row["word_id"] as? String,
                       let qt = row["quiz_type"] as? String,
-                      let count = row["count"] as? Int else { continue }
+                      let count = (row["count"] as? Int64).map(Int.init) else { continue }
                 result["\(id)\0\(qt)"] = count
             }
             return result
