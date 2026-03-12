@@ -1050,7 +1050,7 @@ final class QuizSession {
         - 0.1–0.3: good evidence they don't remember — wrong but in the right domain
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
         NOTES: one sentence on same message as SCORE.
-        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) if the student clearly shows meaning knowledge via translation or usage in their answer. Not for tangent words. Do not describe the token — just output it.\n" : "")\
+        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's answer contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent', 'prior example'). Correct kana or kanji, even perfect, do NOT qualify. Only emit if the student demonstrates the meaning of the word being tested — ignore other words they mention. Do not describe the token — just output it.\n" : "")\
         After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss further.
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
@@ -1061,7 +1061,7 @@ final class QuizSession {
             return sharedCore + """
 
         \(resultLine)The student has already answered — scoring is handled by the app. Do NOT emit SCORE.
-        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) if the student clearly shows meaning knowledge via translation or usage. Not for tangent words. Do not describe the token — just output it.\n" : "")\
+        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's answer contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent', 'prior example'). Correct kana or kanji, even perfect, do NOT qualify. Only emit if the student demonstrates the meaning of the word being tested — ignore other words they mention. Do not describe the token — just output it.\n" : "")\
         The student may ask follow-up questions or move on without chatting. If they ask, engage naturally.
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)

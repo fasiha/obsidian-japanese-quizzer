@@ -4,20 +4,22 @@ Found via `TestHarness --live 1394190` (前例, 2-kanji word, all 10 paths).
 
 ---
 
-## Bugs found 2026-03-12 (via --live 1394190)
-
-### [x] kanji-to-reading full commitment: stem generated in Japanese
-System prompt for full-commitment kanji-to-reading generation was missing "Question stem must be in English", unlike the partial-commitment path which had it. Model generated a Japanese-language stem ("次の漢字を読んでください。\n\n前例"). **Fixed** in `QuizSession.swift` by adding the English-stem instruction to the full-commitment facet rule.
-
-### [x] meaning-reading-to-kanji partial commitment: stem is bare data, not a question
-Partial-commitment generation prompt told the model what to show and how to constrain distractors, but never said to form a question. Model produced "precedent; ぜんれい" rather than a proper question. Full-commitment path produces "What is the correct kanji form for…?" correctly. **Fixed** in `QuizSession.swift` by adding "Ask which option is the correct kanji form." to the partial facet rule.
+## Open bugs
 
 ### [ ] kanji-to-reading full commitment: distractor ぜんし violates length constraint
 Prompt says "Keep the same length and rhythm as the correct answer." Correct answer ぜんれい is 4 kana; model generated ぜんし (3 kana) as a distractor. The other two distractors were correctly 4 kana. This is model misbehavior — the constraint was stated but not followed. No fix needed in code; the constraint wording is already correct.
 
----
+### [ ] kanji-to-reading partial multiple-choice generation: reasoning error on voiced reading
 
-## Pre-existing bugs (carried forward)
+In PATH 6 (前例, partial commitment, multiple choice), Haiku's chain-of-thought said: *"Current reading of 前: せん (from ぜんれい)"* — wrong; the reading is **ぜん**. It self-corrected two lines later and produced correct output, but the reasoning error is a fragility: for words where the model doesn't self-correct, distractors could substitute the wrong mora.
+
+**No output bug observed.** Possible fix: explicitly state the committed kanji's current reading in the partial prompt (e.g. "前 is read ぜん in this word"). Not yet implemented.
+
+### [ ] reading-to-meaning multiple choice: distractor semantically too close to correct answer
+
+For 前例 (precedent), distractor **"example"** was included. Since 前例 contains 例 (example/instance) and "prior example" is a valid gloss, a student who picks "example" may be showing partial knowledge rather than ignorance. One of the four choices is less discriminating than intended.
+
+**Possible fix:** Add to the distractor instruction: "Avoid distractors that are partial synonyms or sub-concepts of the correct answer." Not yet implemented — assess frequency in practice first.
 
 ### [ ] Meaning boost token not detected in some contexts
 Grader says "✅ Meaning knowledge noted" but `MEANING_DEMONSTRATED` was apparently not
