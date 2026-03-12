@@ -182,3 +182,23 @@ Should we just hide empty bubbles if they're followed by something?
 In the `Data` section, `WAL mode caveat` is no longer relevant right?
 
 Also `Stored in Resources/; copied to Documents on first launch` this is wrong, I think? We don't do a needless copy any more, it just stays in Resources/?
+
+# [ ] Embedded JSON in a fenced code block?
+```
+I need to generate distractors for this question. Let me look up some candidates that would be confusable with 安心 (peace of mind).
+Now let me check the kanji for each option to get the written forms:
+Perfect. Now I'll create a question for the meaning-reading-to-kanji facet. The stem shows the English meaning and kana, and students must identify the correct kanji.
+
+Good distractors:
+- 安全 (safety) — similar meaning, different kanji, same 安
+- 安定 (stability) — similar meaning, different kanji, same 安
+- 心配 (worry) — related concept but opposite sentiment, uses 心
+
+```json
+{
+  "stem": "peace of mind; relief; sense of security\nあんしん",
+  "choices": ["安全", "心配", "安心", "安定"],
+  "correct_index": 2
+}
+```
+```
