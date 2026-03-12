@@ -83,3 +83,4 @@ This skill is the authoring counterpart to the app's learner-side enrollment mod
 - [x] practicing kanji-to-reading shouldn't passively updating reading<->meaning and reading-meaning-to-kanji, since meaning might not be exercised. Consider adding a meaning facet after kanji-to-reading?
 - [x] if user's first chat message after quiz involves a mnemonic, nothing gets shown in the first chat bubble from 
 - [ ] When the spinner is shown (generating question), it might be nice to show what's happening (because I think this happens when Claude is calling tools?)
+- [ ] consider adding mnemonics for KOMU or KAKARU and other prefix/suffix vocab/grammar?

@@ -1,4 +1,4 @@
-import { setup, findExact } from "jmdict-simplified-node";
+import { setup, findExact, idsToWords } from "jmdict-simplified-node";
 import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
 
 var lookup = process.argv[2];
@@ -8,7 +8,12 @@ if (!lookup) {
 }
 
 var { db } = await setup("jmdict.sqlite");
-var words = findExact(db, lookup);
+var words;
+if (lookup.match(/^[0-9]+$/)) {
+  words = idsToWords(db, [lookup]);
+} else {
+  words = findExact(db, lookup);
+}
 
 if (words.length === 0) {
   console.error("No results found for:", lookup);

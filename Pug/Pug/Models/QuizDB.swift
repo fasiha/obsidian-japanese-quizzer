@@ -206,6 +206,14 @@ final class QuizDB: Sendable {
     // MARK: - Setup
 
     /// Open (or create) quiz.sqlite in the app's Documents directory.
+    /// Open (or create) a QuizDB at an explicit file path. Used by the CLI test harness.
+    static func open(path: String) throws -> QuizDB {
+        let pool = try DatabasePool(path: path)
+        let db = QuizDB(pool: pool)
+        try db.runMigrations()
+        return db
+    }
+
     static func makeDefault() throws -> QuizDB {
         let docsURL = try FileManager.default
             .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)

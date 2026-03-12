@@ -91,7 +91,7 @@ experience aims to feel like a knowledgeable tutor rather than a flashcard deck.
 
 ### Data
 - **JMdict**: bundle `jmdict.sqlite` directly in the app (already built by existing Node.js tooling). Large but fine for TestFlight. Update manually when scriptin releases a new version.
-  - **WAL mode caveat**: `better-sqlite3` may leave `jmdict.sqlite` in WAL mode. The app opens it read-only via `DatabaseQueue`; SQLite always looks for a `.wal` file if the header says WAL mode, even on readonly connections. Before bundling, run: `sqlite3 jmdict.sqlite "PRAGMA journal_mode=DELETE;"`. Stored in `Resources/`; copied to Documents on first launch by `QuizDB.copyJMdictIfNeeded()`.
+  - Before bundling, ensure DELETE journal mode: `sqlite3 jmdict.sqlite "PRAGMA journal_mode=DELETE;"`. Stored in `Resources/`; opened directly from the bundle by `ToolHandler` (no Documents copy needed).
 - **Quiz DB**: `quiz.sqlite` created on first launch, local to each device. GRDB.swift for access. Extends the Node.js schema with a `vocab_enrollment` table (see below).
 - **Vocab content**: `vocab.json` synced from a hosted GitHub Gist URL. App fetches on startup; cached to `Documents/vocab.json`. See Publishing pipeline below.
 
@@ -548,6 +548,7 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
 - [ ] Source sentence display on first encounter
 - [ ] `kanji_knowledge` table: let users assert kanji they know during enrollment triage;
       use to suppress furigana for known kanji in reading display across all words
+- [ ] Persist chat about words.
 
 ---
 
@@ -588,7 +589,43 @@ Pug/                          ← Xcode project root (already created)
     PugTests.swift
   PugUITests/                 ← XCTest UI tests (generated)
     PugUITests.swift
+  TestHarness/                ← CLI test harness (Swift Package, separate from Xcode project)
+    Package.swift             ← declares executable target; depends on GRDB via SPM
+    Sources/TestHarness/
+      main.swift              ← entry point: looks up word by ID, builds QuizItem, runs generation
+      AnthropicClient.swift   ← symlink → ../Pug/Claude/AnthropicClient.swift
+      QuizSession.swift       ← symlink → ../Pug/Claude/QuizSession.swift
+      ToolHandler.swift       ← symlink → ../Pug/Claude/ToolHandler.swift
+      QuizDB.swift            ← symlink → ../Pug/Models/QuizDB.swift
+      QuizContext.swift       ← symlink → ../Pug/Models/QuizContext.swift
+      EbisuModel.swift        ← symlink → ../Pug/Models/EbisuModel.swift
+      UserPreferences.swift   ← symlink → ../Pug/Models/UserPreferences.swift
 ```
+
+### Test harness (`TestHarness/`)
+
+A macOS command-line Swift binary that exercises `QuizSession.generateQuestionForTesting()`
+with real API calls, without running the iOS simulator. Useful for iterating on system
+prompts and spotting regressions before shipping.
+
+**Build & run** (from `Pug/TestHarness/`):
+```sh
+swift build
+.build/debug/TestHarness <word_id> [facet]
+# facet defaults to reading-to-meaning
+# e.g.: .build/debug/TestHarness 1314010 meaning-to-reading
+```
+
+Reads `ANTHROPIC_API_KEY` from `.env` (walks up from cwd). Opens `jmdict.sqlite` and
+optionally `quiz.sqlite` (also walked up from cwd) — the quiz DB is used for telemetry
+logging so test runs appear in `telemetry-report.mjs` output.
+
+**Entry point added to `QuizSession`**: `generateQuestionForTesting(item:)` is an
+`internal` method that bypasses the phase state machine and calls directly into
+`runGenerationLoop`. Three helpers (`systemPrompt`, `questionRequest`, `runGenerationLoop`)
+were de-privatised from `private` to `internal` to support this. `QuizDB` gained a
+`static func open(path:)` factory for arbitrary file paths (vs `makeDefault()` which
+uses the iOS Documents directory).
 
 ---
 
@@ -627,7 +664,45 @@ each a separate API round-trip, driving `api_turns` to 4–5 and total input tok
 **Result**: `question_gen` now typically 2 API turns (one reasoning turn + one batched
 lookup), down from 3–5. Overhead dropped from ~3,500 to ~1,600 avg tokens per generation.
 
-### 3. Algorithmic item selection (eliminate selection call entirely)
+### 3. Inject full entry data into generation prompt — **DONE** (2026-03-11)
+
+**Problem**: For `reading-to-meaning`, the system prompt withheld the kanji form to avoid
+leaking the answer. Claude then looked up the *kana* reading (e.g. じじょう) to find the
+entry — but kana readings are non-unique in JMDict. The first hit was often a rare
+homophone (じじょう → 耳茸 "ear polyp"), forcing a second lookup with the kanji form.
+This added 1–2 extra API turns on affected words, causing outliers with 9 api_turns.
+
+**Fix**: All four facets now include a `[Entry ref — never copy verbatim into question
+stem: written=X kana=Y meanings=Z]` block in the wordLine. Claude has the complete entry
+data and zero reason to look up the target word — the tool is then used only for
+distractor verification. The "never copy verbatim" instruction is sufficient to prevent
+the entry ref from leaking into question stems.
+
+**Result**: Affected words dropped from 5–9 api_turns to 2. All four facets now
+consistently complete in 2 turns (one batched distractor lookup). Validated with the
+CLI test harness across `rtm`, `mtr`, `ktr`, and `mrk` facets.
+
+### 5. No-tool generation for `rtm` and `mtr` — **DONE** (2026-03-11)
+
+**Insight**: For `reading-to-meaning`, the A/B/C/D options are plain English phrases.
+For `meaning-to-reading`, they are kana readings. Claude needs no database to generate
+either — it has native knowledge of Japanese vocabulary semantics and phonology.
+The `lookup_jmdict` calls for distractors were pure overhead.
+
+**Fix**: `generationTools(for:)` returns `[]` for `rtm` and `mtr`. The `distractorLine`
+in `systemPrompt` is now facet-specific:
+- `rtm`: "write 3 wrong English meanings directly — no lookup needed. Same semantic field,
+  bare phrases only."
+- `mtr`: "write 3 wrong kana readings directly — no lookup needed. Similar rhythm/mora."
+- `ktr`/`mrk`: unchanged (`lookup_kanjidic` / `lookup_jmdict` respectively).
+
+**Result**: `rtm` and `mtr` drop from 2 api_turns (~1,500 tokens) to **1 api_turn
+(~275 input tokens)**. ~80% token reduction for the two most common facets.
+Distractor quality on Haiku matches or exceeds the JMDict-lookup approach — e.g.
+きりかぶ got "firewood / sawdust / wood chip", which is more instructive than
+JMDict-sourced alternatives. Validated across 4 words × 2 facets on Haiku.
+
+### 7. Algorithmic item selection (eliminate selection call entirely)
 
 The LLM selection call sends all candidates (~120 chars each × N words) for Claude to
 pick 3–5. Algorithmic alternative: sort by Ebisu urgency, cap at 2 per facet type, at
@@ -635,7 +710,7 @@ most 1–2 new words, ensure ≥2 different facets. Zero tokens, zero latency.
 - **Telemetry finding** (2026-03-11): LLM picks beyond top-5 (max rank 16–21 out of 53),
   applying some diversity logic. Worth replicating algorithmically before removing the call.
 
-### 4. Compress system prompts
+### 8. Compress system prompts
 
 The system prompt is ~1500–2000 tokens per call. Main bloat:
 - Facet-specific rules include full ✅/❌ examples (~200 chars each). Haiku follows terse
@@ -647,7 +722,7 @@ The system prompt is ~1500–2000 tokens per call. Main bloat:
 - WordExploreSession's 20-line Ebisu explanation could be 2 sentences.
 - SCORE/NOTES rules could be a compact template.
 
-### 5. Trim tool schemas per call phase
+### 9. Trim tool schemas per call phase
 
 Tool definitions are sent on every API call. Not all tools are needed in every phase:
 - **Generation call**: only `lookup_jmdict` + `lookup_kanjidic` (already correct).
@@ -657,7 +732,7 @@ Tool definitions are sent on every API call. Not all tools are needed in every p
 
 This is a smaller win than the others (~100–200 tokens saved per call).
 
-### 6. Sliding window on conversation history
+### 10. Sliding window on conversation history
 
 Chat turns accumulate unbounded within an item. Turn 5 resends turns 1–4. For most items
 this is 2–3 turns, but curious students can go longer.

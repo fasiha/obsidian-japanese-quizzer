@@ -447,7 +447,9 @@ final class QuizSession {
             let displayText = strippingMetadata(from: response)
                 .replacingOccurrences(of: "MEANING_DEMONSTRATED",
                                       with: "✅ Meaning knowledge noted — memory updated")
-            chatMessages.append((isUser: false, text: displayText))
+            if !displayText.isEmpty {
+                chatMessages.append((isUser: false, text: displayText))
+            }
             print("[QuizSession] chat response (\(response.count) chars):\n\(response)")
             // Auto-detect grading: first SCORE: in this item records the review.
             if gradedScore == nil, let score = parseScore(from: response) {
@@ -626,11 +628,37 @@ final class QuizSession {
     // MARK: - Private: generation loop
 
     /// Two-attempt generate+validate loop shared by generateQuestion and prefetchQuestion.
-    private func runGenerationLoop(for item: QuizItem, system: String,
+    // MARK: - Test harness entry point
+
+    /// Generate a question for a given item and return the question text + raw conversation.
+    /// Intended for CLI test harness use only; bypasses phase state machine entirely.
+    func generateQuestionForTesting(item: QuizItem) async throws -> (question: String, conversation: [AnthropicMessage]) {
+        let system = systemPrompt(for: item, isGenerating: true)
+        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
+        return try await runGenerationLoop(for: item, system: system, initMsg: initMsg, label: "test")
+    }
+
+    /// Tools to use during question generation, based on facet.
+    /// rtm/mtr options are pure English or pure kana — Claude needs no JMDict lookup.
+    /// ktr uses kanjidic for alternate readings. mrk may need both for visually similar kanji.
+    static func generationTools(for facet: String) -> [AnthropicTool] {
+        switch facet {
+        case "reading-to-meaning", "meaning-to-reading":
+            return []   // distractors are English or kana — Claude knows these without lookup
+        case "kanji-to-reading":
+            return [.lookupKanjidic]
+        default:    // meaning-reading-to-kanji and unknown
+            return [.lookupJmdict, .lookupKanjidic]
+        }
+    }
+
+    func runGenerationLoop(for item: QuizItem, system: String,
                                    initMsg: AnthropicMessage, label: String,
+                                   tools: [AnthropicTool]? = nil,
                                    preRecall: Double? = nil)
         async throws -> (question: String, conversation: [AnthropicMessage])
     {
+        let resolvedTools = tools ?? Self.generationTools(for: item.facet)
         var finalQuestion = ""
         var finalMsgs: [AnthropicMessage] = []
         let isPrefetch = label == "prefetch" ? 1 : 0
@@ -639,7 +667,7 @@ final class QuizSession {
             let (raw, msgs, meta) = try await client.send(
                 messages: [initMsg],
                 system: system,
-                tools: [.lookupJmdict, .lookupKanjidic],
+                tools: resolvedTools,
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
             )
@@ -730,7 +758,7 @@ final class QuizSession {
 
     // MARK: - Private: prompt helpers
 
-    private func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
+    func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
                               postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
         let facetRule: String
@@ -743,14 +771,21 @@ final class QuizSession {
         let writtenHint = item.writtenTexts.isEmpty
             ? "" : " — written: \(item.writtenTexts.joined(separator: ", "))"
 
+        // Full entry data injected into every facet so Claude never needs to look up the target word.
+        // Each facet then restricts what may appear in the question *stem* — separate from what Claude knows.
+        let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
+        let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
+        let allMeanings = item.meanings.isEmpty      ? "unknown" : item.meanings.joined(separator: "; ")
+        let entryRef    = "[Entry ref — never copy verbatim into question stem: written=\(allWritten) kana=\(allKana) meanings=\(allMeanings)]"
+
         switch item.facet {
         case "reading-to-meaning":
             let kana = item.kanaTexts.first ?? "unknown"
-            facetRule = "Show kana ONLY (never kanji). Ask for English meaning."
-            wordLine = "Word: kana \(kana)\(englishHint). Show ONLY \(kana) — never any kanji."
+            facetRule = "Show kana ONLY (never kanji). Ask for English meaning. The student is an English speaker learning Japanese — all A/B/C/D options MUST be in English, never Japanese."
+            wordLine = "Word: kana \(kana) \(entryRef). Show ONLY \(kana) — never any kanji."
         case "meaning-to-reading":
             facetRule = "Show English ONLY (never Japanese). Ask for kana reading."
-            wordLine = "Word: id \(item.wordId)\(englishHint)\(readingsHint). Correct answer must be listed kana. Show ONLY English — never Japanese."
+            wordLine = "Word: \(entryRef)\(englishHint). Correct answer must be listed kana. Show ONLY English — never Japanese."
         case "kanji-to-reading":
             if let template = item.partialKanjiTemplate,
                let committed = item.committedKanji, !committed.isEmpty {
@@ -764,10 +799,10 @@ final class QuizSession {
                 The 3 distractors substitute ONLY the committed kanji (\(committedList)) with alternate \
                 kanjidic readings; all other kana in the word stay identical.
                 """
-                wordLine = "Word: display \(template)\(readingsHint). Never show full kana reading."
+                wordLine = "Word: display \(template) \(entryRef). Never show full kana reading."
             } else {
                 facetRule = "Show kanji ONLY (never kana). Ask for kana reading."
-                wordLine = "Word: \(item.wordText)\(readingsHint). Show ONLY \(item.wordText) — never kana."
+                wordLine = "Word: \(item.wordText) \(entryRef). Show ONLY \(item.wordText) — never kana."
             }
         case "meaning-reading-to-kanji":
             let kana = item.kanaTexts.first ?? "unknown"
@@ -779,14 +814,14 @@ final class QuizSession {
                 Partial commitment: studying \(committedList). Correct template: \(template).
                 Distractors: swap ONLY committed kanji with visually similar wrong kanji (use lookup_kanjidic). Keep rest identical.
                 """
-                wordLine = "Word: id \(item.wordId)\(englishHint). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
+                wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
             } else {
                 facetRule = "Show English + kana ONLY (never kanji). A/B/C/D kanji options."
-                wordLine = "Word: id \(item.wordId)\(englishHint). Stem kana: \(kana). Correct form (option only, NEVER in stem)\(writtenHint)."
+                wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct form (option only, NEVER in stem)\(writtenHint)."
             }
         default:
             facetRule = "Standard quiz-purity rules."
-            wordLine = "Word: \(item.wordText) [id \(item.wordId)]"
+            wordLine = "Word: \(item.wordText) \(entryRef)"
         }
         let ebisuLine: String
         if let r = preRecall, let h = preHalflife {
@@ -798,8 +833,19 @@ final class QuizSession {
         } else {
             ebisuLine = "new word"
         }
-        let distractorLine = (!isGenerating || item.isFreeAnswer) ? "" :
-            "\nDistractors: use lookup_jmdict to verify — batch all candidates into one call. Prefer confusable items (similar meaning/sound/kanji)."
+        let distractorLine: String
+        if !isGenerating || item.isFreeAnswer {
+            distractorLine = ""
+        } else {
+            switch item.facet {
+            case "reading-to-meaning":
+                distractorLine = "\nDistractors: write 3 wrong English meanings directly — no lookup needed. Pick meanings from the same semantic field (similar topic but clearly distinguishable). Bare phrases only, no parenthetical notes."
+            case "meaning-to-reading":
+                distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Pick readings that sound plausibly similar (shared mora, similar rhythm)."
+            default:
+                distractorLine = "\nDistractors: use lookup_jmdict to verify — batch all candidates into one call. Prefer confusable items (similar meaning/sound/kanji)."
+            }
+        }
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
@@ -814,16 +860,18 @@ final class QuizSession {
             return sharedCore + """
 
         Open conversation: student may answer, ask about this/other words, or mix.
-        SCORE: X.X (0.0–1.0) — include ONLY when grading a clear answer. Keep chatting after.
+        SCORE: X.X (0.0–1.0) — you MUST emit this on the same turn you grade. Always include a grading sentence alongside it; never emit SCORE on a line by itself with no other prose.
         NOTES: one sentence on same message as SCORE. Spell out words, never reference A/B/C/D letters.
-        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: emit once if student clearly shows meaning knowledge (translation/usage). Not for tangent words.\n" : "")\
+        After grading (SCORE emitted), ask one free-form follow-up question about the word (usage, etymology, related words, or memory trick) to deepen engagement.
+        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) if the student clearly shows meaning knowledge via translation or usage. Not for tangent words. Do not describe the token — just output it.\n" : "")\
+        Multiple-choice hygiene: distractors must never include parenthetical hints or explanatory notes (e.g. never write \"option (as in: something)\" — just the bare word).
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
         """
         }
     }
 
-    private func questionRequest(for item: QuizItem) -> String {
+    func questionRequest(for item: QuizItem) -> String {
         let mode: String
         mode = item.isFreeAnswer ? "free answer" : "multiple choice (A–D)"
         return """
