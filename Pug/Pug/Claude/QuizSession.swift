@@ -957,7 +957,7 @@ final class QuizSession {
             } else {
                 if isGenerating {
                     facetRule = """
-                    Show kanji ONLY (never kana). Ask for kana reading.
+                    Show kanji ONLY (never kana). Ask for kana reading. Question stem must be in English.
                     CORRECT ANSWER IS EXACTLY: \(ktrKana).
                     """
                     wordLine = "Word: \(item.wordText) \(entryRef)."
@@ -973,7 +973,7 @@ final class QuizSession {
                 let committedList = committed.joined(separator: "、")
                 if isGenerating {
                     facetRule = """
-                    Show English + kana ONLY (never kanji). A/B/C/D kanji options.
+                    Show English + kana ONLY (never kanji). Ask which option is the correct kanji form. A/B/C/D kanji options.
                     Partial commitment: studying \(committedList). Correct template: \(template).
                     Distractors: swap ONLY the committed kanji (\(committedList)) with 3 different plausible kanji (semantically related or visually similar) — no lookup needed. Keep all other characters identical.
                     """
