@@ -873,7 +873,7 @@ final class QuizSession {
                     let choicesText = mcq.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
                     finalQuestion = "\(mcq.stem)\n\n\(choicesText)"
                 } else {
-                    print("[QuizSession] \(label) attempt \(attempt): MCQ JSON parse failed, using raw")
+                    print("[QuizSession] \(label) attempt \(attempt): MCQ JSON parse failed")
                     finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             } else {
@@ -895,31 +895,51 @@ final class QuizSession {
                 firstTurnInputTokens: meta.firstTurnInputTokens,
                 questionChars: finalQuestion.count,
                 questionFormat: qFormat, prefetch: isPrefetch, preRecall: preRecall))
-            if Self.skipValidation || !item.isFreeAnswer {
-                break  // MCQ: app-side scoring means no leak validation needed
-            }
-            let passed = await validateQuestion(finalQuestion, for: item)
-            if passed {
-                print("[QuizSession] \(label) attempt \(attempt): validation PASS")
+            if !item.isFreeAnswer {
+                // MCQ: retry if parse failed and we have attempts left
+                if finalMCQ != nil || attempt >= 2 { break }
+                print("[QuizSession] \(label) attempt \(attempt): MCQ parse failed, retrying")
+            } else if Self.skipValidation {
                 break
-            }
-            if attempt < 2 {
-                print("[QuizSession] \(label) attempt \(attempt): validation FAIL, retrying")
             } else {
-                print("[QuizSession] \(label) attempt \(attempt): validation FAIL on final attempt, using anyway")
+                let passed = await validateQuestion(finalQuestion, for: item)
+                if passed {
+                    print("[QuizSession] \(label) attempt \(attempt): validation PASS")
+                    break
+                }
+                if attempt < 2 {
+                    print("[QuizSession] \(label) attempt \(attempt): validation FAIL, retrying")
+                } else {
+                    print("[QuizSession] \(label) attempt \(attempt): validation FAIL on final attempt, using anyway")
+                }
             }
         }
         return (finalQuestion, finalMCQ, finalMsgs)
     }
 
     private func parseMCQJSON(_ raw: String) -> MCQQuestion? {
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Strip optional ```json...``` or ```...``` fence
-        if text.hasPrefix("```") {
-            let lines = text.components(separatedBy: .newlines)
-            text = lines.dropFirst().dropLast().joined(separator: "\n")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Try each fenced code block in order (model may reason in earlier blocks)
+        var search = raw[...]
+        while let fenceStart = search.range(of: "```") {
+            let afterFence = search[fenceStart.upperBound...]
+            let body = afterFence.drop(while: { $0 != "\n" }).dropFirst()
+            if let closeRange = body.range(of: "```") {
+                let candidate = String(body[..<closeRange.lowerBound])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if let mcq = decodeMCQ(from: candidate) { return mcq }
+                search = body[closeRange.upperBound...]
+            } else {
+                break
+            }
         }
+        // No fence — extract outermost {...} in case there's surrounding prose
+        if let open = raw.firstIndex(of: "{"), let close = raw.lastIndex(of: "}") {
+            return decodeMCQ(from: String(raw[open...close]))
+        }
+        return nil
+    }
+
+    private func decodeMCQ(from text: String) -> MCQQuestion? {
         guard let data = text.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
@@ -1148,7 +1168,7 @@ final class QuizSession {
         } else {
             return """
             Generate ONE multiple-choice question for the \(item.facet) facet.
-            Return ONLY a JSON object — no commentary, no markdown fences, no ---QUIZ--- sentinel:
+            Think first if helpful, then end with a ```json code block containing:
             {
               "stem": "the question shown to the student (no A/B/C/D options in the stem)",
               "choices": ["option 0", "option 1", "option 2", "option 3"],
