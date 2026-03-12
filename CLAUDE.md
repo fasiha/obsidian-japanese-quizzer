@@ -17,6 +17,13 @@ updating. Specifically:
 
 Do this as part of the same task, not as a separate follow-up.
 
+## Writing style
+
+Avoid opaque abbreviations in code comments, documentation, and commit messages.
+Write out full names like `reading-to-meaning`, `multiple choice`, and
+`kanji-to-reading` instead of shorthand like `rtm`, `MCQ`, or `ktr`. This project
+aims to be accessible to beginners and non-native English speakers.
+
 ---
 
 ## Quiz DB versioning

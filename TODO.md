@@ -91,8 +91,8 @@ This skill is the authoring counterpart to the app's learner-side enrollment mod
 
 | # | Path | System prompt | Tools | Who scores |
 |---|------|--------------|-------|-----------|
-| 1 | **MCQ generation** | `systemPrompt(isGenerating:true)` | facet-dependent (0–2) | app |
-| 2 | **MCQ post-tap chat** | `systemPrompt(isGenerating:false)` + `multipleChoiceResult` | all 5 | app already did |
+| 1 | **Multiple choice generation** | `systemPrompt(isGenerating:true)` | facet-dependent (0–2) | app |
+| 2 | **Multiple choice post-tap chat** | `systemPrompt(isGenerating:false)` + `multipleChoiceResult` | all 5 | app already did |
 | 3 | **Free-answer grading** (opening turn) | `systemPrompt(isGenerating:false, isFreeAnswer)` | all 5 | Claude via SCORE |
 | 4 | **Follow-up chat** (any subsequent turn) | same system prompt as 2 or 3 | all 5 | already graded |
 | 5 | **Item selection** | none (user prompt only) | none | n/a |
@@ -100,9 +100,9 @@ This skill is the authoring counterpart to the app's learner-side enrollment mod
 
 ### Issues
 
-- [x] **ktr distractor tool mismatch**: split distractor instructions per facet — ktr now references `lookup_kanjidic`, mrk references both tools.
-- [x] **TestHarness stem out of sync**: grade-mode now exits with error for ktr/mrk (always MCQ in app).
-- [x] **Full ktr: added explicit correct answer**: added `CORRECT ANSWER IS EXACTLY` to full ktr generation prompt too (cheap, prevents drift). Removed redundant `!committed.isEmpty` guard (UI prevents it).
+- [x] **kanji-to-reading distractor tool mismatch**: split distractor instructions per facet — kanji-to-reading now references `lookup_kanjidic`, meaning-reading-to-kanji references both tools.
+- [x] **TestHarness stem out of sync**: grade-mode now exits with error for kanji-to-reading/meaning-reading-to-kanji (always multiple choice in app).
+- [x] **Full kanji-to-reading: added explicit correct answer**: added `CORRECT ANSWER IS EXACTLY` to full kanji-to-reading generation prompt too (cheap, prevents drift). Removed redundant `!committed.isEmpty` guard (UI prevents it).
 - [x] **`{kanji-ok}`/`{no-kanji}` tags removed**: leftover from `quiz.md` skill; removed from system prompt (saves tokens, had no meaning in app context).
-- [x] **Dead free-answer generation code**: removed `questionRequest` free-answer branch, `extractQuestion`/`---QUIZ---` sentinel, `validateQuestion`, `skipValidation`, and the free-answer validation path from `runGenerationLoop`. Generation loop is now MCQ-only.
+- [x] **Dead free-answer generation code**: removed `questionRequest` free-answer branch, `extractQuestion`/`---QUIZ---` sentinel, `validateQuestion`, `skipValidation`, and the free-answer validation path from `runGenerationLoop`. Generation loop is now multiple-choice-only.
 - [x] **`freeAnswerMinReviews` was 0**: fixed back to 3 (matching App.md).

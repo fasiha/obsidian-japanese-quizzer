@@ -621,7 +621,8 @@ Pug/                          ← Xcode project root (already created)
   TestHarness/                ← CLI test harness (Swift Package, separate from Xcode project)
     Package.swift             ← declares executable target; depends on GRDB via SPM
     Sources/TestHarness/
-      main.swift              ← entry point: looks up word by ID, builds QuizItem, runs generation
+      main.swift              ← entry point: looks up word by ID, builds QuizItem, runs generation/grading
+      DumpPrompts.swift       ← --dump-prompts mode: triple-loop over facet × mode × commitment
       AnthropicClient.swift   ← symlink → ../Pug/Claude/AnthropicClient.swift
       QuizSession.swift       ← symlink → ../Pug/Claude/QuizSession.swift
       ToolHandler.swift       ← symlink → ../Pug/Claude/ToolHandler.swift
@@ -633,26 +634,65 @@ Pug/                          ← Xcode project root (already created)
 
 ### Test harness (`TestHarness/`)
 
-A macOS command-line Swift binary that exercises `QuizSession.generateQuestionForTesting()`
-with real API calls, without running the iOS simulator. Useful for iterating on system
-prompts and spotting regressions before shipping.
+A macOS command-line Swift binary that exercises `QuizSession` with real API calls,
+without running the iOS simulator. Useful for iterating on system prompts and spotting
+regressions before shipping.
 
 **Build & run** (from `Pug/TestHarness/`):
 ```sh
 swift build
+
+# Generate a multiple-choice question (calls Claude API):
 .build/debug/TestHarness <word_id> [facet]
 # facet defaults to reading-to-meaning
 # e.g.: .build/debug/TestHarness 1314010 meaning-to-reading
+
+# Grade free-text answers (calls Claude API):
+.build/debug/TestHarness <word_id> [facet] --grade "answer1" "answer2"
+# e.g.: .build/debug/TestHarness 1358340 meaning-to-reading --grade "たべもの" "tabemono"
+
+# Dump all system prompts for every quiz path (NO API calls):
+.build/debug/TestHarness <word_id> --dump-prompts
+# Pipe to an LLM for sanity-checking prompt correctness
 ```
+
+**Modes**:
+- **generate** (default): builds a `QuizItem`, calls `generateQuestionForTesting()`, prints the multiple-choice question. Only supports reading-to-meaning and meaning-to-reading facets (kanji-to-reading/meaning-reading-to-kanji require kanji commitment data not available in the harness).
+- **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. Same facet restrictions as generate.
+- **dump-prompts**: iterates a triple loop over **facet × mode × commitment** and prints every system prompt + user message. Covers all 4–10 paths depending on word shape. No API key needed.
+
+**Dump-prompts path coverage** (facet × mode × commitment):
+
+| Word type | Paths | Example |
+|-----------|-------|---------|
+| No kanji | 4 | reading-to-meaning / meaning-to-reading × multiple-choice/free |
+| 1 kanji | 7 | + kanji-to-reading full multiple-choice/free + meaning-reading-to-kanji full multiple-choice |
+| 2+ kanji | 10 | + kanji-to-reading/meaning-reading-to-kanji partial multiple-choice + kanji-to-reading partial free |
+
+Skip rules enforced in the loop:
+- kanji-to-reading / meaning-reading-to-kanji require kanji commitment (skip "none")
+- reading-to-meaning / meaning-to-reading don't use commitment (skip "full"/"partial")
+- meaning-reading-to-kanji is always multiple choice (skip "free-grading")
+
+**Reference word IDs** for testing:
+
+| ID | Word | Kanji | Notes |
+|----|------|-------|-------|
+| 1394190 | 前例 ぜんれい | 前, 例 | 2 kanji → all 10 paths |
+| 1358340 | 食べ物 たべもの | 食, 物 | 2 kanji + okurigana |
+| 1463770 | 日 ひ | 日 | 1 kanji → 7 paths |
+| 1002430 | お茶 おちゃ | 茶 | 1 kanji (prefix kana) |
+| 1006810 | そっと | (none) | kana-only → 4 paths |
+| 2028920 | は | (none) | particle, kana-only → 4 paths |
 
 Reads `ANTHROPIC_API_KEY` from `.env` (walks up from cwd). Opens `jmdict.sqlite` and
 optionally `quiz.sqlite` (also walked up from cwd) — the quiz DB is used for telemetry
 logging so test runs appear in `telemetry-report.mjs` output.
 
-**Entry point added to `QuizSession`**: `generateQuestionForTesting(item:)` is an
-`internal` method that bypasses the phase state machine and calls directly into
-`runGenerationLoop`. Three helpers (`systemPrompt`, `questionRequest`, `runGenerationLoop`)
-were de-privatised from `private` to `internal` to support this. `QuizDB` gained a
+**Entry point added to `QuizSession`**: `generateQuestionForTesting(item:)` and
+`gradeAnswerForTesting(item:stem:answer:)` are `internal` methods that bypass the phase
+state machine. Helpers (`systemPrompt`, `questionRequest`, `freeAnswerStem`,
+`runGenerationLoop`) were de-privatised to `internal` to support this. `QuizDB` gained a
 `static func open(path:)` factory for arbitrary file paths (vs `makeDefault()` which
 uses the iOS Documents directory).
 
@@ -666,16 +706,19 @@ conversation history. This section collects ideas for reducing input token burn,
 roughly by expected impact. The `api_events` telemetry table (v6 migration) provided
 data to validate these estimates before committing to implementation.
 
-### 1. Drop the validation call — **DONE** (`skipValidation = true`)
+### 1. Drop the validation call — **DONE** (validator removed)
 
 The validator was broken for all facet types and was causing 100% false-fail retries.
-Disabled 2026-03-10. The generation prompt was tightened instead (correct answer
-explicitly anchored for `kanji-to-reading`). See `TODO-validator-bugfix.md`.
-If a local string-contains check is added later it can gate re-enabling the validator.
+Originally disabled 2026-03-10 via `skipValidation = true`; the `validateQuestion` method,
+`skipValidation` flag, and all free-answer generation code (`extractQuestion`, `---QUIZ---`
+sentinel) were fully removed 2026-03-11 as dead code (generation loop is now multiple-choice-only;
+free-answer stems are built app-side). The generation prompt was tightened instead (correct
+answer explicitly anchored for `kanji-to-reading`). See `TODO-validator-bugfix.md`.
+If a local string-contains check is added later it can gate re-enabling a validator.
 
 ### 2. Batch `lookup_jmdict` calls — **DONE** (2026-03-11)
 
-**Problem**: `question_gen` was averaging 10–11 `lookup_jmdict` calls per `mtr` question,
+**Problem**: `question_gen` was averaging 10–11 `lookup_jmdict` calls per meaning-to-reading question,
 each a separate API round-trip, driving `api_turns` to 4–5 and total input tokens to
 5k–7k per question.
 
@@ -709,23 +752,23 @@ the entry ref from leaking into question stems.
 
 **Result**: Affected words dropped from 5–9 api_turns to 2. All four facets now
 consistently complete in 2 turns (one batched distractor lookup). Validated with the
-CLI test harness across `rtm`, `mtr`, `ktr`, and `mrk` facets.
+CLI test harness across all four facets.
 
-### 5. No-tool generation for `rtm` and `mtr` — **DONE** (2026-03-11)
+### 5. No-tool generation for reading-to-meaning and meaning-to-reading — **DONE** (2026-03-11)
 
-**Insight**: For `reading-to-meaning`, the A/B/C/D options are plain English phrases.
-For `meaning-to-reading`, they are kana readings. Claude needs no database to generate
+**Insight**: For reading-to-meaning, the A/B/C/D options are plain English phrases.
+For meaning-to-reading, they are kana readings. Claude needs no database to generate
 either — it has native knowledge of Japanese vocabulary semantics and phonology.
 The `lookup_jmdict` calls for distractors were pure overhead.
 
-**Fix**: `generationTools(for:)` returns `[]` for `rtm` and `mtr`. The `distractorLine`
+**Fix**: `generationTools(for:)` returns `[]` for reading-to-meaning and meaning-to-reading. The `distractorLine`
 in `systemPrompt` is now facet-specific:
-- `rtm`: "write 3 wrong English meanings directly — no lookup needed. Same semantic field,
+- reading-to-meaning: "write 3 wrong English meanings directly — no lookup needed. Same semantic field,
   bare phrases only."
-- `mtr`: "write 3 wrong kana readings directly — no lookup needed. Similar rhythm/mora."
-- `ktr`/`mrk`: unchanged (`lookup_kanjidic` / `lookup_jmdict` respectively).
+- meaning-to-reading: "write 3 wrong kana readings directly — no lookup needed. Similar rhythm/mora."
+- kanji-to-reading / meaning-reading-to-kanji: unchanged (`lookup_kanjidic` / `lookup_jmdict` respectively).
 
-**Result**: `rtm` and `mtr` drop from 2 api_turns (~1,500 tokens) to **1 api_turn
+**Result**: reading-to-meaning and meaning-to-reading drop from 2 api_turns (~1,500 tokens) to **1 api_turn
 (~275 input tokens)**. ~80% token reduction for the two most common facets.
 Distractor quality on Haiku matches or exceeds the JMDict-lookup approach — e.g.
 きりかぶ got "firewood / sawdust / wood chip", which is more instructive than

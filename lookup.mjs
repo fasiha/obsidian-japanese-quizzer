@@ -10,6 +10,7 @@ if (!lookup) {
 var { db } = await setup("jmdict.sqlite");
 var words;
 if (lookup.match(/^[0-9]+$/)) {
+  console.log("ID?");
   words = idsToWords(db, [lookup]);
 } else {
   words = findExact(db, lookup);
@@ -23,5 +24,5 @@ if (words.length === 0) {
 const deduped = new Map(words.map((word) => [word.id, word]));
 
 for (const word of deduped.values()) {
-  console.log(wordFormsPart(word), wordMeanings(word, true));
+  console.log(word.id, wordFormsPart(word), wordMeanings(word, true));
 }

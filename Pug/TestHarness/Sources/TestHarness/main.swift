@@ -4,12 +4,15 @@
 // Modes:
 //   generate (default): generates a question via Claude
 //   grade:              grades one or more free-text answers via Claude
+//   dump-prompts:       dumps all system prompts for every quiz path (no API calls)
 //
 // Usage:
 //   TestHarness <word_id> [facet]
 //     → generate mode; facet defaults to "reading-to-meaning"
 //   TestHarness <word_id> [facet] --grade "answer1" "answer2" ...
 //     → grade each answer against the app-side stem for the given facet
+//   TestHarness <word_id> --dump-prompts
+//     → dump all prompt paths for review (pipe to LLM for sanity check)
 //
 // Reads ANTHROPIC_API_KEY from .env in the project root (two levels up from Pug/).
 
@@ -21,8 +24,11 @@ import GRDB
 let args = CommandLine.arguments
 guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
+    fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     exit(1)
 }
+
+let isDumpMode = args.contains("--dump-prompts")
 let wordId = args[1]
 
 // Parse optional facet (second positional arg, before --grade)
@@ -67,10 +73,15 @@ func loadEnv() -> [String: String] {
 }
 
 let env = loadEnv()
-let apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
-guard !apiKey.isEmpty else {
-    fputs("Error: ANTHROPIC_API_KEY not found in .env or environment\n", stderr)
-    exit(1)
+let apiKey: String
+if isDumpMode {
+    apiKey = "not-needed"  // dump-prompts makes no API calls
+} else {
+    apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
+    guard !apiKey.isEmpty else {
+        fputs("Error: ANTHROPIC_API_KEY not found in .env or environment\n", stderr)
+        exit(1)
+    }
 }
 
 // MARK: - Open jmdict.sqlite
@@ -129,6 +140,13 @@ guard let entry = try lookupEntry(id: wordId) else {
 
 let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
 let hasKanji = !entry.kanji.isEmpty
+
+// MARK: - Dump prompts mode (no API calls)
+
+if isDumpMode {
+    await dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB)
+    exit(0)
+}
 
 print("Word:     \(wordText)  (id: \(wordId))")
 print("Kana:     \(entry.kana.joined(separator: ", "))")

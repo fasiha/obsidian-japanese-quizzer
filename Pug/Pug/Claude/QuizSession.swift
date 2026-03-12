@@ -324,7 +324,7 @@ final class QuizSession {
     // MARK: - Private: free-answer stem builder
 
     /// Build the question stem app-side for free-answer facets (no LLM needed).
-    private func freeAnswerStem(for item: QuizItem) -> String {
+    func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.kanaTexts.first ?? "?"
         let meanings = item.meanings.prefix(3).joined(separator: "; ")
         switch item.facet {
@@ -756,8 +756,8 @@ final class QuizSession {
     }
 
     /// Tools to use during question generation, based on facet.
-    /// rtm/mtr options are pure English or pure kana — Claude needs no JMDict lookup.
-    /// ktr uses kanjidic for alternate readings. mrk may need both for visually similar kanji.
+    /// reading-to-meaning/meaning-to-reading options are pure English or pure kana — no lookup needed.
+    /// kanji-to-reading uses kanjidic for alternate readings. meaning-reading-to-kanji may need both for visually similar kanji.
     static func generationTools(for facet: String) -> [AnthropicTool] {
         switch facet {
         case "reading-to-meaning", "meaning-to-reading":
@@ -792,7 +792,7 @@ final class QuizSession {
             finalMsgs = msgs
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
-            // Parse multiple-choice JSON (generation loop is only used for MCQ; free-answer stems are built app-side)
+            // Parse multiple-choice JSON (generation loop is only used for multiple choice; free-answer stems are built app-side)
             if let multipleChoice = parseMultipleChoiceJSON(raw) {
                 finalMultipleChoice = multipleChoice
                 let letters = ["A", "B", "C", "D"]
@@ -1019,9 +1019,13 @@ final class QuizSession {
             case "meaning-to-reading":
                 distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Pick readings that sound plausibly similar (shared mora, similar rhythm)."
             case "kanji-to-reading":
-                distractorLine = "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji. Pick plausible wrong readings."
+                // Partial kanji-to-reading already has specific distractor instructions in facetRule
+                distractorLine = item.partialKanjiTemplate != nil ? "" :
+                    "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji. Pick plausible wrong readings."
             case "meaning-reading-to-kanji":
-                distractorLine = "\nDistractors: use lookup_kanjidic for visually similar kanji. Use lookup_jmdict to verify distractors are real words — batch all into one call."
+                // Partial meaning-reading-to-kanji already has specific distractor instructions in facetRule
+                distractorLine = item.partialKanjiTemplate != nil ? "" :
+                    "\nDistractors: use lookup_kanjidic for visually similar kanji. Use lookup_jmdict to verify distractors are real words — batch all into one call."
             default:
                 distractorLine = ""
             }
@@ -1066,7 +1070,7 @@ final class QuizSession {
     }
 
     func questionRequest(for item: QuizItem) -> String {
-        // Free-answer stems are built app-side (freeAnswerStem); only MCQ generation goes through the LLM.
+        // Free-answer stems are built app-side (freeAnswerStem); only multiple-choice generation goes through the LLM.
         return """
         Generate ONE multiple-choice question for the \(item.facet) facet.
         Think first if helpful, then end with a ```json code block containing:
