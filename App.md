@@ -654,12 +654,16 @@ swift build
 # Dump all system prompts for every quiz path (NO API calls):
 .build/debug/TestHarness <word_id> --dump-prompts
 # Pipe to an LLM for sanity-checking prompt correctness
+
+# Live test: send all paths to Haiku and validate responses:
+.build/debug/TestHarness <word_id> --live
 ```
 
 **Modes**:
 - **generate** (default): builds a `QuizItem`, calls `generateQuestionForTesting()`, prints the multiple-choice question. Only supports reading-to-meaning and meaning-to-reading facets (kanji-to-reading/meaning-reading-to-kanji require kanji commitment data not available in the harness).
 - **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. Same facet restrictions as generate.
-- **dump-prompts**: iterates a triple loop over **facet × mode × commitment** and prints every system prompt + user message. Covers all 4–10 paths depending on word shape. No API key needed.
+- **dump-prompts**: iterates a triple loop over **facet × mode × commitment** and prints every system prompt + user message. Covers all 4–10 paths depending on word shape. No API key needed. Requires `JmdictFurigana.json` (see below).
+- **live**: sends all prompt paths to Haiku (or `ANTHROPIC_MODEL`) and validates responses automatically — checks for answer leakage, correct-answer accuracy, SCORE parsing, and A/B/C/D contamination. Requires API key and `JmdictFurigana.json`.
 
 **Dump-prompts path coverage** (facet × mode × commitment):
 
@@ -685,9 +689,12 @@ Skip rules enforced in the loop:
 | 1006810 | そっと | (none) | kana-only → 4 paths |
 | 2028920 | は | (none) | particle, kana-only → 4 paths |
 
-Reads `ANTHROPIC_API_KEY` from `.env` (walks up from cwd). Opens `jmdict.sqlite` and
-optionally `quiz.sqlite` (also walked up from cwd) — the quiz DB is used for telemetry
-logging so test runs appear in `telemetry-report.mjs` output.
+**Required data files** (searched by walking up from cwd):
+- `jmdict.sqlite` — always required
+- `JmdictFurigana.json` — required for `--dump-prompts` and `--live` modes; provides real furigana segmentation so partial-kanji templates match iOS app behavior (e.g. `前れい` not `前〇`). Download from [JmdictFurigana releases](https://github.com/Doublevil/JmdictFurigana/releases).
+- `kanjidic2.sqlite` — optional; needed for `--live` mode kanji-to-reading/meaning-reading-to-kanji tool calls
+- `quiz.sqlite` — optional; used for telemetry logging so test runs appear in `telemetry-report.mjs` output
+- `ANTHROPIC_API_KEY` in `.env` — required for generate, grade, and live modes (not dump-prompts)
 
 **Entry point added to `QuizSession`**: `generateQuestionForTesting(item:)` and
 `gradeAnswerForTesting(item:stem:answer:)` are `internal` methods that bypass the phase

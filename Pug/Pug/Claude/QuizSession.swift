@@ -909,25 +909,18 @@ final class QuizSession {
                               postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
         let facetRule: String
         let wordLine: String
-        let englishHint = item.meanings.prefix(3).isEmpty
-            ? ""
-            : " — English: \(item.meanings.prefix(3).joined(separator: "; "))"
-        let writtenHint = item.writtenTexts.isEmpty
-            ? "" : " — written: \(item.writtenTexts.joined(separator: ", "))"
-
         // Full entry data injected into every facet so Claude never needs to look up the target word.
         // Each facet then restricts what may appear in the question *stem* — separate from what Claude knows.
         let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
         let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
         let allMeanings = item.meanings.isEmpty      ? "unknown" : item.meanings.joined(separator: "; ")
-        let entryRef    = "[Word data: written=\(allWritten) kana=\(allKana) meanings=\(allMeanings)]"
+        let entryRef    = "[Entry ref — never copy verbatim into question stem: written=\(allWritten) kana=\(allKana) meanings=\(allMeanings)]"
 
         switch item.facet {
         case "reading-to-meaning":
-            let kana = item.kanaTexts.first ?? "unknown"
             if isGenerating {
                 facetRule = "Show kana ONLY (never kanji). Ask for English meaning. All A/B/C/D options MUST be in English."
-                wordLine = "Word: kana \(kana) \(entryRef)."
+                wordLine = "Word: \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning)."
                 wordLine = "Word: \(entryRef)"
@@ -935,7 +928,7 @@ final class QuizSession {
         case "meaning-to-reading":
             if isGenerating {
                 facetRule = "Show English meaning. Ask for kana reading."
-                wordLine = "Word: \(entryRef)\(englishHint). Correct answer must be listed kana."
+                wordLine = "Word: \(entryRef). Correct answer must be listed kana."
             } else {
                 facetRule = "Facet tested: meaning-to-reading (student sees English, answers with kana reading)."
                 wordLine = "Word: \(entryRef)"
@@ -955,7 +948,7 @@ final class QuizSession {
                     """
                     wordLine = "Word: display \(template) \(entryRef). Never show full kana reading in the stem."
                 } else {
-                    facetRule = "Facet tested: kanji-to-reading partial (\(template), studying \(committedList), correct reading: \(ktrKana))."
+                    facetRule = "Facet tested: kanji-to-reading partial (\(template), studying \(committedList), correct reading: \(ktrKana)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
                     wordLine = "Word: \(entryRef)"
                 }
             } else {
@@ -983,13 +976,13 @@ final class QuizSession {
                     """
                     wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
                 } else {
-                    facetRule = "Facet tested: meaning-reading-to-kanji partial (studying \(committedList), correct form: \(template))."
+                    facetRule = "Facet tested: meaning-reading-to-kanji partial (studying \(committedList), correct form: \(template)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
                     wordLine = "Word: \(entryRef)"
                 }
             } else {
                 if isGenerating {
                     facetRule = "Show English + kana ONLY (never kanji). A/B/C/D kanji options."
-                    wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct form (option only, NEVER in stem)\(writtenHint)."
+                    wordLine = "Word: \(entryRef). Correct written form (option only, NEVER in stem)."
                 } else {
                     facetRule = "Facet tested: meaning-reading-to-kanji (student sees English + kana, answers with kanji form)."
                     wordLine = "Word: \(entryRef)"
@@ -1020,8 +1013,12 @@ final class QuizSession {
                 distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Pick readings that sound plausibly similar (shared mora, similar rhythm)."
             case "kanji-to-reading":
                 // Partial kanji-to-reading already has specific distractor instructions in facetRule
-                distractorLine = item.partialKanjiTemplate != nil ? "" :
-                    "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji. Pick plausible wrong readings."
+                if item.partialKanjiTemplate != nil {
+                    distractorLine = ""
+                } else {
+                    let kanjiList = (item.committedKanji ?? []).joined(separator: "、")
+                    distractorLine = "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji (\(kanjiList)). Pick plausible wrong readings."
+                }
             case "meaning-reading-to-kanji":
                 // Partial meaning-reading-to-kanji already has specific distractor instructions in facetRule
                 distractorLine = item.partialKanjiTemplate != nil ? "" :
@@ -1050,8 +1047,9 @@ final class QuizSession {
         - 0.5: no evidence either way — ambiguous, can't tell if they know it (do NOT use 0.5 as "half credit")
         - 0.1–0.3: good evidence they don't remember — wrong but in the right domain
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
-        NOTES: one sentence on same message as SCORE. Spell out words, never reference A/B/C/D letters.
+        NOTES: one sentence on same message as SCORE.
         After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss further.
+        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) if the student clearly shows meaning knowledge via translation or usage in their answer. Not for tangent words. Do not describe the token — just output it.\n" : "")\
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
         """

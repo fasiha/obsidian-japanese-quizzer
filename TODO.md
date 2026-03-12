@@ -85,24 +85,63 @@ This skill is the authoring counterpart to the app's learner-side enrollment mod
 - [ ] When the spinner is shown (generating question), it might be nice to show what's happening (because I think this happens when Claude is calling tools?)
 - [ ] consider adding mnemonics for KOMU or KAKARU and other prefix/suffix vocab/grammar?
 
-## Prompt review findings (2026-03-11)
+## Prompt audit (2026-03-11, word 1394190 前例)
 
-### Path inventory
+Reviewed all 10 dump-prompts paths. No correctness bugs found — all facet rules,
+commitment logic, and stem leak guards are correct. Issues below are token waste
+and minor clarity improvements.
 
-| # | Path | System prompt | Tools | Who scores |
-|---|------|--------------|-------|-----------|
-| 1 | **Multiple choice generation** | `systemPrompt(isGenerating:true)` | facet-dependent (0–2) | app |
-| 2 | **Multiple choice post-tap chat** | `systemPrompt(isGenerating:false)` + `multipleChoiceResult` | all 5 | app already did |
-| 3 | **Free-answer grading** (opening turn) | `systemPrompt(isGenerating:false, isFreeAnswer)` | all 5 | Claude via SCORE |
-| 4 | **Follow-up chat** (any subsequent turn) | same system prompt as 2 or 3 | all 5 | already graded |
-| 5 | **Item selection** | none (user prompt only) | none | n/a |
-| 6 | **WordExploreSession** | separate tutor prompt | all 5 | n/a |
+- [ ] **1. reading-to-meaning generation: duplicate kana in wordLine** (`QuizSession.swift:930`)
+  `Word: kana ぜんれい [Word data: ... kana=ぜんれい ...]` — the bare `kana ぜんれい`
+  prefix predates the entry ref and is now redundant. Drop it; the facet rule already
+  says "Show kana ONLY." ~5 tokens/prompt.
 
-### Issues
+- [ ] **2. meaning-to-reading generation: `englishHint` duplicates entry ref** (`QuizSession.swift:938`)
+  `— English: precedent` repeats `meanings=precedent` from the entry ref.
+  Drop `englishHint` from this wordLine. ~5 tokens/prompt.
 
-- [x] **kanji-to-reading distractor tool mismatch**: split distractor instructions per facet — kanji-to-reading now references `lookup_kanjidic`, meaning-reading-to-kanji references both tools.
-- [x] **TestHarness stem out of sync**: grade-mode now exits with error for kanji-to-reading/meaning-reading-to-kanji (always multiple choice in app).
-- [x] **Full kanji-to-reading: added explicit correct answer**: added `CORRECT ANSWER IS EXACTLY` to full kanji-to-reading generation prompt too (cheap, prevents drift). Removed redundant `!committed.isEmpty` guard (UI prevents it).
-- [x] **`{kanji-ok}`/`{no-kanji}` tags removed**: leftover from `quiz.md` skill; removed from system prompt (saves tokens, had no meaning in app context).
-- [x] **Dead free-answer generation code**: removed `questionRequest` free-answer branch, `extractQuestion`/`---QUIZ---` sentinel, `validateQuestion`, `skipValidation`, and the free-answer validation path from `runGenerationLoop`. Generation loop is now multiple-choice-only.
-- [x] **`freeAnswerMinReviews` was 0**: fixed back to 3 (matching App.md).
+- [ ] **3. kanji-to-reading full generation: distractor line doesn't name the committed kanji** (`QuizSession.swift:1024`)
+  Partial path explicitly says `committed kanji (前)` but full path just says
+  "the committed kanji." Minor — Haiku can infer from wordLine, but explicit is
+  cheaper for a small model.
+
+- [ ] **4. Free-grading: "never reference A/B/C/D letters" is irrelevant** (`QuizSession.swift:1053`)
+  Free-answer mode has no A/B/C/D options. This instruction is leftover from
+  shared multiple choice post-answer chat. Remove from the free-grading block. ~8 tokens/prompt.
+
+- [ ] **5. meaning-reading-to-kanji full generation: `writtenHint` + kana duplicate entry ref** (`QuizSession.swift:992`)
+  `— written: 前例` and `Stem kana: ぜんれい` both repeat data already in the entry
+  ref. Keep the "NEVER in stem" guard but reference the entry ref instead of
+  restating the values. ~15 tokens/prompt.
+
+- [ ] **6. Grading rubric compression** (~180 → ~60 tokens)
+  The 5-tier scoring block is the largest single element. Could compress to a
+  one-line scale. Medium risk — Haiku may need the expanded anchors to score
+  accurately. Test before shipping.
+
+- [ ] **7. `set_mnemonic overwrites` on every chat path** (`QuizSession.swift:1055,1066`)
+  14 tokens on every prompt, but mnemonics are rarely invoked. Low priority but
+  worth noting as a constant tax.
+
+### UX correctness issues
+
+- [ ] **A. Entry ref label lost its guard instruction** (`QuizSession.swift:923`)
+  App.md documents the format as `[Entry ref — never copy verbatim into question
+  stem: written=X kana=Y meanings=Z]` but the code produces `[Word data: ...]`.
+  The documented label embeds a "never copy verbatim" instruction right next to the
+  data — an important second line of defense for Haiku. Without it, the only guard
+  against e.g. kanji leaking into a reading-to-meaning stem is the facet rule ("Show kana ONLY").
+
+- [ ] **B. Partial kanji-to-reading/meaning-reading-to-kanji free-grading doesn't weight studied vs. context kanji**
+  (`QuizSession.swift:958,986`)
+  For partial commitment (e.g. studying 前 in 前例), if the student writes ぜんらい
+  (前 correct, 例 wrong) vs. まえれい (前 wrong, 例 correct), both get the same
+  generic grading. The prompt should tell Claude which mora correspond to the studied
+  kanji so it can weight errors on the studied portion more heavily for the Ebisu
+  update.
+
+- [ ] **C. "A/B/C/D" mention in free-grading primes a false frame** (same as item 4)
+  "Never reference A/B/C/D letters" tells Haiku options exist when they don't.
+  On a small model, "don't do X" can prime X. Remove entirely from the free-grading
+  block.
+

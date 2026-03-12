@@ -5,6 +5,7 @@
 //   generate (default): generates a question via Claude
 //   grade:              grades one or more free-text answers via Claude
 //   dump-prompts:       dumps all system prompts for every quiz path (no API calls)
+//   live:               sends all prompts to Haiku and validates responses
 //
 // Usage:
 //   TestHarness <word_id> [facet]
@@ -13,6 +14,8 @@
 //     → grade each answer against the app-side stem for the given facet
 //   TestHarness <word_id> --dump-prompts
 //     → dump all prompt paths for review (pipe to LLM for sanity check)
+//   TestHarness <word_id> --live
+//     → send all prompt paths to Haiku and validate responses
 //
 // Reads ANTHROPIC_API_KEY from .env in the project root (two levels up from Pug/).
 
@@ -25,10 +28,12 @@ let args = CommandLine.arguments
 guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
+    fputs("       TestHarness <word_id> --live\n", stderr)
     exit(1)
 }
 
 let isDumpMode = args.contains("--dump-prompts")
+let isLiveMode = args.contains("--live")
 let wordId = args[1]
 
 // Parse optional facet (second positional arg, before --grade)
@@ -76,6 +81,12 @@ let env = loadEnv()
 let apiKey: String
 if isDumpMode {
     apiKey = "not-needed"  // dump-prompts makes no API calls
+} else if isLiveMode {
+    apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
+    guard !apiKey.isEmpty else {
+        fputs("Error: ANTHROPIC_API_KEY not found in .env or environment\n", stderr)
+        exit(1)
+    }
 } else {
     apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
     guard !apiKey.isEmpty else {
@@ -141,10 +152,43 @@ guard let entry = try lookupEntry(id: wordId) else {
 let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
 let hasKanji = !entry.kanji.isEmpty
 
+// MARK: - Load JmdictFurigana.json (required for dump-prompts and live modes)
+
+let furiganaMap: [String: [JmdictFuriganaEntry]]
+if isDumpMode || isLiveMode {
+    guard let furiganaPath = findFile("JmdictFurigana.json") else {
+        fputs("Error: JmdictFurigana.json not found (searched up from cwd)\n", stderr)
+        fputs("Download from: https://github.com/Doublevil/JmdictFurigana/releases\n", stderr)
+        exit(1)
+    }
+    print("[info] Loading JmdictFurigana.json…")
+    furiganaMap = loadJmdictFurigana(path: furiganaPath)
+    print("[info] Loaded \(furiganaMap.count) entries from JmdictFurigana.json\n")
+} else {
+    furiganaMap = [:]
+}
+
 // MARK: - Dump prompts mode (no API calls)
 
 if isDumpMode {
-    await dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB)
+    await dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB, furiganaMap: furiganaMap)
+    exit(0)
+}
+
+// MARK: - Live prompts mode (sends all paths to Haiku)
+
+if isLiveMode {
+    let liveModel = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
+    let kanjidicPath = findFile("kanjidic2.sqlite")
+    let liveQuizDB: QuizDB?
+    if let quizPath = findFile("quiz.sqlite") {
+        liveQuizDB = try? QuizDB.open(path: quizPath)
+    } else {
+        liveQuizDB = nil
+    }
+    await livePrompts(entry: entry, wordId: wordId, apiKey: apiKey, model: liveModel,
+                      jmdict: jmdictDB, kanjidicPath: kanjidicPath, quizDB: liveQuizDB,
+                      furiganaMap: furiganaMap)
     exit(0)
 }
 
