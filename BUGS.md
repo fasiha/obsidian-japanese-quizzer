@@ -133,6 +133,20 @@ What's `(as in: preference)` doing there? Did it leak the meaning in the item? A
 
 **Fix:** Chat hygiene prompt already has "distractors must never include parenthetical hints or explanatory notes."
 
+# [x] Correct MCQ option is bolded, leaking the answer
+```
+**peace of mind; relief; (sense of) security**
+*あんしん*
+
+A) 安全
+B) 安定
+C) **安心**
+D) 信心
+```
+C) is bolded — Claude visually distinguished the correct answer.
+
+**Fix:** Added to hygiene prompt: "Never bold, italicize, or otherwise visually distinguish any option — all four choices must be formatted identically."
+
 # [ ] Does saving a mnemonic in the first reply to a quiz _hide_ any discussion of the item itself?
 This might be working fine, just seems abrupt and makes me wonder if Haiku said something about the word that I can't see before it asks me this:
 ```
@@ -164,7 +178,7 @@ SHIAI, B
 ```
 Should we just hide empty bubbles if they're followed by something?
 
-# [ ] Small tweaks to App.md
+# [x] Small tweaks to App.md
 In the `Data` section, `WAL mode caveat` is no longer relevant right?
 
 Also `Stored in Resources/; copied to Documents on first launch` this is wrong, I think? We don't do a needless copy any more, it just stays in Resources/?

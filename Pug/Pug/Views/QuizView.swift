@@ -16,6 +16,10 @@ struct QuizView: View {
                 switch session.phase {
                 case .idle, .loadingItems, .generating:
                     loadingView
+                case .awaitingTap(let mcq):
+                    awaitingTapView(mcq: mcq)
+                case .awaitingText(let stem):
+                    awaitingTextView(stem: stem)
                 case .chatting:
                     chattingView
                 case .noItems:
@@ -70,6 +74,105 @@ struct QuizView: View {
         .padding()
     }
 
+    // MARK: - Awaiting tap (MCQ buttons)
+
+    private func awaitingTapView(mcq: QuizSession.MCQQuestion) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Progress + facet badge
+                if let item = session.currentItem {
+                    HStack {
+                        Text(session.progress)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        facetBadge(item.facet)
+                    }
+                }
+
+                // Question stem
+                SelectableText(mcq.stem)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+
+                // Choice buttons
+                let letters = ["A", "B", "C", "D"]
+                VStack(spacing: 10) {
+                    ForEach(0..<mcq.choices.count, id: \.self) { i in
+                        Button {
+                            session.tapChoice(i)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Text(letters[i])
+                                    .font(.headline)
+                                    .frame(width: 28, height: 28)
+                                    .background(.tint.opacity(0.15), in: Circle())
+                                    .foregroundStyle(.tint)
+                                Text(mcq.choices[i])
+                                    .multilineTextAlignment(.leading)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(12)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Skip
+                Button("Skip →") { session.nextQuestion() }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Awaiting text (free-answer input)
+
+    private func awaitingTextView(stem: String) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Progress + facet badge
+                if let item = session.currentItem {
+                    HStack {
+                        Text(session.progress)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        facetBadge(item.facet)
+                    }
+                }
+
+                // Question stem
+                SelectableText(stem)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+
+                // Answer input
+                HStack(alignment: .bottom, spacing: 8) {
+                    TextField("Your answer…", text: $session.chatInput, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(1...4)
+                    Button {
+                        session.submitFreeAnswer()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                    }
+                    .disabled(session.chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+
+                Button("Skip →") { session.nextQuestion() }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
+
     // MARK: - Chatting (open conversation per quiz item)
 
     private var chattingView: some View {
@@ -102,20 +205,20 @@ struct QuizView: View {
                     }
                 }
 
-                // Score badge (appears after Claude grades)
+                // Score badge
                 if let score = session.gradedScore {
                     HStack(spacing: 8) {
                         scoreIndicator(score)
                         Text(scoreLabel(score))
                             .font(.headline)
                     }
-                    .padding(.top, 4)
+                    .padding(.top, session.chatMessages.isEmpty ? 40 : 4)
                 }
 
                 // Input
                 HStack(alignment: .bottom, spacing: 8) {
                     TextField(
-                        session.gradedScore == nil ? "Answer or ask anything…" : "Ask a follow-up…",
+                        session.gradedScore == nil ? "Answer or ask anything…" : "Ask a follow-up… (optional)",
                         text: $session.chatInput,
                         axis: .vertical
                     )

@@ -1,8 +1,16 @@
 // TestHarness/main.swift
-// CLI tool to exercise question generation for a given JMDict word ID.
-// Usage: TestHarness <word_id> [facet]
-// Facet defaults to "reading-to-meaning". Other options:
-//   meaning-to-reading, kanji-to-reading, meaning-reading-to-kanji
+// CLI tool to exercise question generation and free-answer grading for a given JMDict word ID.
+//
+// Modes:
+//   generate (default): generates a question via Claude
+//   grade:              grades one or more free-text answers via Claude
+//
+// Usage:
+//   TestHarness <word_id> [facet]
+//     → generate mode; facet defaults to "reading-to-meaning"
+//   TestHarness <word_id> [facet] --grade "answer1" "answer2" ...
+//     → grade each answer against the app-side stem for the given facet
+//
 // Reads ANTHROPIC_API_KEY from .env in the project root (two levels up from Pug/).
 
 import Foundation
@@ -12,11 +20,27 @@ import GRDB
 
 let args = CommandLine.arguments
 guard args.count >= 2 else {
-    fputs("Usage: TestHarness <word_id> [facet]\n", stderr)
+    fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     exit(1)
 }
 let wordId = args[1]
-let facet  = args.count >= 3 ? args[2] : "reading-to-meaning"
+
+// Parse optional facet (second positional arg, before --grade)
+let facet: String
+var gradeAnswers: [String] = []
+
+if args.count >= 3 && !args[2].hasPrefix("--") {
+    facet = args[2]
+} else {
+    facet = "reading-to-meaning"
+}
+
+// Collect --grade answers
+if let gradeIdx = args.firstIndex(of: "--grade") {
+    gradeAnswers = Array(args[(gradeIdx + 1)...])
+}
+
+let isGradeMode = !gradeAnswers.isEmpty
 
 // Load API key from .env (project root is four directories up from this file's build location,
 // but we'll resolve relative to the working directory where the user invokes the binary).
@@ -123,7 +147,7 @@ let item = QuizItem(
     kanaTexts: entry.kana,
     hasKanji: hasKanji,
     facet: facet,
-    status: .reviewed(recall: 0.5, isFree: false, halflife: 24.0),
+    status: .reviewed(recall: 0.5, isFree: isGradeMode, halflife: 24.0),
     meanings: Array(entry.meanings.prefix(5)),
     committedKanji: nil,
     partialKanjiTemplate: nil
@@ -151,20 +175,51 @@ let session     = QuizSession(client: client, toolHandler: toolHandler, db: quiz
 
 session.allCandidates = []  // no vocab context needed for generation test
 
-print("Generating question…\n")
-let start = Date()
+if isGradeMode {
+    // Build the app-side stem (same logic as QuizSession.freeAnswerStem, reproduced here)
+    let kana = entry.kana.first ?? "?"
+    let meanings = entry.meanings.prefix(3).joined(separator: "; ")
+    let stem: String
+    switch facet {
+    case "meaning-to-reading":
+        stem = "What is the kana reading for:\n\(meanings.isEmpty ? wordText : meanings)"
+    case "reading-to-meaning":
+        stem = "What does \(kana) mean?"
+    default:
+        stem = "What is \(wordText)?"
+    }
 
-do {
-    let (question, conversation) = try await session.generateQuestionForTesting(item: item)
-    let elapsed = Date().timeIntervalSince(start)
-    let turns = conversation.count
+    print("Stem:     \(stem)\n")
 
-    print("─────────────────────────────────")
-    print(question)
-    print("─────────────────────────────────")
-    print("")
-    print("api_turns: \(turns / 2 + 1)   elapsed: \(String(format: "%.1f", elapsed))s   messages: \(conversation.count)")
-} catch {
-    fputs("Error: \(error)\n", stderr)
-    exit(1)
+    for (i, answer) in gradeAnswers.enumerated() {
+        print("── Answer \(i + 1): \"\(answer)\" ──")
+        let start = Date()
+        do {
+            let response = try await session.gradeAnswerForTesting(item: item, stem: stem, answer: answer)
+            let elapsed = Date().timeIntervalSince(start)
+            print(response)
+            print("elapsed: \(String(format: "%.1f", elapsed))s")
+        } catch {
+            fputs("Error grading answer \(i + 1): \(error)\n", stderr)
+        }
+        print("")
+    }
+} else {
+    print("Generating question…\n")
+    let start = Date()
+
+    do {
+        let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)
+        let elapsed = Date().timeIntervalSince(start)
+        let turns = conversation.count
+
+        print("─────────────────────────────────")
+        print(question)
+        print("─────────────────────────────────")
+        print("")
+        print("api_turns: \(turns / 2 + 1)   elapsed: \(String(format: "%.1f", elapsed))s   messages: \(conversation.count)")
+    } catch {
+        fputs("Error: \(error)\n", stderr)
+        exit(1)
+    }
 }
