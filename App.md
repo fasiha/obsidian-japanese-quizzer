@@ -269,7 +269,7 @@ the conversation warrants it.
 
 - **Quiz conversation model** (`Claude/QuizSession.swift`):
   - Phases: `generating` → `awaitingTap` or `awaitingText` → `chatting` → (next item).
-  - **MCQ items** (`isFreeAnswer == false`): Claude generates a JSON blob
+  - **Multiple choice items** (`isFreeAnswer == false`): Claude generates a JSON blob
     `{stem, choices[4], correct_index}` — no markdown formatting, no A/B/C/D in the
     response. App renders four native `Button`s. Student taps → app scores instantly
     (1.0 correct / 0.0 wrong), calls `recordReview()`, starts prefetch, fires
@@ -289,10 +289,10 @@ the conversation warrants it.
     - `0.5` — no evidence either way; halflife unchanged (also used for passive updates)
     - `0.1–0.3` — good evidence they don't remember (wrong but in the right domain)
     - `0.0` — strong evidence they don't remember (completely wrong)
-    - MCQ uses only `1.0` / `0.0` (binary, app-scored). Free-answer uses the full range
+    - Multiple choice uses only `1.0` / `0.0` (binary, app-scored). Free-answer uses the full range
       (Claude-scored). The grading system prompt explains this semantics to Claude explicitly.
   - `isFreeAnswer` per facet (from `QuizContext.swift`):
-    | Facet | MCQ | Free-answer |
+    | Facet | Multiple choice | Free-answer |
     |---|---|---|
     | `reading-to-meaning` | reviews < 3 or halflife < 48h | reviews ≥ 3 and halflife ≥ 48h |
     | `meaning-to-reading` | same threshold | same threshold |
@@ -305,7 +305,7 @@ the conversation warrants it.
   - Conversation continues freely after the opening turn. "Next Question →" appears once
     graded; "Skip →" is always available.
   - Each item starts with a clean context (`conversation = []`). No cross-item memory.
-- **Two-call question validation** — bypassed for MCQ (app-side scoring makes leak
+- **Two-call question validation** — bypassed for multiple choice (app-side scoring makes leak
   validation moot); still nominally active for free-answer but disabled via
   `QuizSession.skipValidation = true` (was broken for all facet types). The
   `validateQuestion(_:for:)` infrastructure and `api_events` logging are preserved.
@@ -509,12 +509,12 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
   - Word text sourced from most recent `reviews.word_text` row per word, or JMdict
 - [x] Quiz UI — `Views/QuizView.swift`; phase state machine per item:
   - `idle/loadingItems/generating` → loading spinner
-  - `awaitingTap(MCQQuestion)` → stem bubble + 4 native tap buttons (MCQ)
+  - `awaitingTap(MultipleChoiceQuestion)` → stem bubble + 4 native tap buttons (multiple choice)
   - `awaitingText(stem)` → stem bubble + text field + submit (free-answer)
   - `chatting` → chat bubble thread, send input, score badge, Skip/Next button
   - All text is selectable via `SelectableText` (UIViewRepresentable wrapping UITextView)
 - [x] Record review (write to quiz.sqlite after each answer) — in `Claude/QuizSession.swift`
-  - MCQ: app scores immediately on tap (`tapChoice`), no SCORE token from Claude
+  - Multiple choice: app scores immediately on tap (`tapChoice`), no SCORE token from Claude
   - Free-answer: Claude grades with `SCORE: X.X`; `doOpeningChatTurn(shouldParseScore:true)` handles it
   - `QuizSession` is `@Observable @MainActor`; conversation grows within a single item, resets per item
   - Three tools available during chat: `lookup_jmdict` + `lookup_kanjidic` + `get_vocab_context`
@@ -778,16 +778,16 @@ Lightweight analytics to inform token cost optimization decisions. One row per A
 
 ### Event types and what they contain
 
-**`question_gen`** — one row per MCQ generation attempt (free-answer items now build their stem app-side and emit **no** `question_gen` event). A single call to `client.send()` with:
+**`question_gen`** — one row per multiple choice generation attempt (free-answer items now build their stem app-side and emit **no** `question_gen` event). A single call to `client.send()` with:
 - System prompt: `sharedCore` only (word metadata + facet rule + distractor guidance). No SCORE/NOTES rules.
 - Response format: raw JSON `{stem, choices[4], correct_index}` — no markdown, no `---QUIZ---` sentinel.
 - Tools: `lookup_jmdict` + `lookup_kanjidic` for kanji/meaning-reading-to-kanji facets; none for reading-to-meaning or meaning-to-reading (distractors are constructed without lookup). Tool round-trips are still the main cost driver for kanji facets.
 
 **`quiz_chat`** — one row per Claude turn during the post-answer conversation. Turn 1 is always `doOpeningChatTurn` (app-constructed result message); subsequent turns are student follow-ups. A single call to `client.send()` with:
-- System prompt: `sharedCore` + chat extension. For MCQ: no SCORE/NOTES rules ("scoring is app-side"). For free-answer: SCORE/NOTES rules active. Both include MEANING_DEMONSTRATED (kanji-to-reading), set_mnemonic warning, optional mnemonic block.
+- System prompt: `sharedCore` + chat extension. For multiple choice: no SCORE/NOTES rules ("scoring is app-side"). For free-answer: SCORE/NOTES rules active. Both include MEANING_DEMONSTRATED (kanji-to-reading), set_mnemonic warning, optional mnemonic block.
 - Tools: all 5 (`lookup_jmdict`, `lookup_kanjidic`, `get_vocab_context`, `get_mnemonic`, `set_mnemonic`).
 - Messages: full conversation history. Accumulates across turns.
-- The **grading turn** for free-answer is `quiz_chat` row 1 (where Claude emits `SCORE: X.X`). MCQ has no grading turn — `score` in row 1 will be null from Claude's perspective (app scored it).
+- The **grading turn** for free-answer is `quiz_chat` row 1 (where Claude emits `SCORE: X.X`). Multiple choice has no grading turn — `score` in row 1 will be null from Claude's perspective (app scored it).
 
 **`item_selection`** — one LLM call per session start (unless a saved session is resumed). Sends the full candidate list (~120 chars/candidate × N words). `selected_ranks` logs which positions the LLM picked for post-hoc analysis of whether algorithmic selection would match.
 
@@ -797,7 +797,7 @@ Lightweight analytics to inform token cost optimization decisions. One row per A
 
 ### question_gen vs quiz_chat token cost
 
-With app-side question construction for free-answer items, `question_gen` events are now **MCQ-only**. For kanji facets, tool round-trips (kanjidic lookups for distractors) still dominate cost. For `reading-to-meaning` and `meaning-to-reading` MCQ, Claude writes distractors directly with no tool calls, making those `question_gen` events much cheaper. `first_turn_input_tokens` (v8) isolates fixed system/tool overhead from the tool-call payload.
+With app-side question construction for free-answer items, `question_gen` events are now **multiple choice only**. For kanji facets, tool round-trips (kanjidic lookups for distractors) still dominate cost. For `reading-to-meaning` and `meaning-to-reading` multiple choice, Claude writes distractors directly with no tool calls, making those `question_gen` events much cheaper. `first_turn_input_tokens` (v8) isolates fixed system/tool overhead from the tool-call payload.
 
 ### Schema has grown via ALTER TABLE migrations; current columns:
 

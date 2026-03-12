@@ -16,8 +16,8 @@ struct QuizView: View {
                 switch session.phase {
                 case .idle, .loadingItems, .generating:
                     loadingView
-                case .awaitingTap(let mcq):
-                    awaitingTapView(mcq: mcq)
+                case .awaitingTap(let multipleChoice):
+                    awaitingTapView(multipleChoice: multipleChoice)
                 case .awaitingText(let stem):
                     awaitingTextView(stem: stem)
                 case .chatting:
@@ -74,9 +74,9 @@ struct QuizView: View {
         .padding()
     }
 
-    // MARK: - Awaiting tap (MCQ buttons)
+    // MARK: - Awaiting tap (multiple choice buttons)
 
-    private func awaitingTapView(mcq: QuizSession.MCQQuestion) -> some View {
+    private func awaitingTapView(multipleChoice: QuizSession.MultipleChoiceQuestion) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Progress + facet badge
@@ -91,7 +91,7 @@ struct QuizView: View {
                 }
 
                 // Question stem
-                SelectableText(mcq.stem)
+                SelectableText(multipleChoice.stem)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
@@ -99,7 +99,7 @@ struct QuizView: View {
                 // Choice buttons
                 let letters = ["A", "B", "C", "D"]
                 VStack(spacing: 10) {
-                    ForEach(0..<mcq.choices.count, id: \.self) { i in
+                    ForEach(0..<multipleChoice.choices.count, id: \.self) { i in
                         Button {
                             session.tapChoice(i)
                         } label: {
@@ -109,7 +109,7 @@ struct QuizView: View {
                                     .frame(width: 28, height: 28)
                                     .background(.tint.opacity(0.15), in: Circle())
                                     .foregroundStyle(.tint)
-                                Text(mcq.choices[i])
+                                Text(multipleChoice.choices[i])
                                     .multilineTextAlignment(.leading)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }

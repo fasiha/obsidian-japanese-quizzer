@@ -15,7 +15,7 @@ final class QuizSession {
 
     // MARK: - Phase
 
-    struct MCQQuestion: Equatable {
+    struct MultipleChoiceQuestion: Equatable {
         let stem: String          // question text shown to student, no A/B/C/D
         let choices: [String]     // exactly 4 bare strings
         let correctIndex: Int     // 0–3
@@ -24,8 +24,8 @@ final class QuizSession {
     enum Phase: Equatable {
         case idle
         case loadingItems
-        case generating              // Claude generating MCQ (free-answer skips this)
-        case awaitingTap(MCQQuestion) // MCQ rendered as buttons; waiting for student tap
+        case generating              // Claude generating multiple choice question (free-answer skips this)
+        case awaitingTap(MultipleChoiceQuestion) // multiple choice rendered as buttons; waiting for student tap
         case awaitingText(String)    // free-answer: app-built stem, waiting for typed input
         case chatting                // open conversation after answer submitted
         case noItems
@@ -44,8 +44,8 @@ final class QuizSession {
     var chatMessages: [(isUser: Bool, text: String)] = []
     var chatInput: String = ""
     var isSendingChat: Bool = false
-    var gradedScore: Double? = nil          // nil until graded (app-side for MCQ, Claude for free-answer)
-    var mcqResult: String? = nil           // MCQ-only: human-readable result injected into system prompt
+    var gradedScore: Double? = nil          // nil until graded (app-side for multiple choice, Claude for free-answer)
+    var multipleChoiceResult: String? = nil           // multiple choice only: human-readable result injected into system prompt
     var meaningBonusApplied: Bool = false  // true once MEANING_DEMONSTRATED passive update has run
     var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
@@ -85,7 +85,7 @@ final class QuizSession {
     var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
 
     // Prefetched next question: kicked off as soon as the current item is graded.
-    private var prefetched: (index: Int, question: String, mcq: MCQQuestion?,
+    private var prefetched: (index: Int, question: String, multipleChoice: MultipleChoiceQuestion?,
                               conversation: [AnthropicMessage],
                               preRecall: Double?, preHalflife: Double?)? = nil
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
@@ -149,36 +149,36 @@ final class QuizSession {
         }
     }
 
-    /// Called when the student taps one of the MCQ buttons.
+    /// Called when the student taps one of the multiple choice buttons.
     func tapChoice(_ index: Int) {
-        guard case .awaitingTap(let mcq) = phase, let item = currentItem else { return }
-        let isCorrect = index == mcq.correctIndex
+        guard case .awaitingTap(let multipleChoice) = phase, let item = currentItem else { return }
+        let isCorrect = index == multipleChoice.correctIndex
         let score = isCorrect ? 1.0 : 0.0
         let letters = ["A", "B", "C", "D"]
         let chosenLetter = letters[index]
-        let correctLetter = letters[mcq.correctIndex]
+        let correctLetter = letters[multipleChoice.correctIndex]
 
         // Build the chat display: show question then student's selection
-        let choicesText = mcq.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
-        let questionBubble = "\(mcq.stem)\n\n\(choicesText)"
-        let resultBubble = "\(chosenLetter)) \(mcq.choices[index])"
+        let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+        let questionBubble = "\(multipleChoice.stem)\n\n\(choicesText)"
+        let resultBubble = "\(chosenLetter)) \(multipleChoice.choices[index])"
         chatMessages = [
             (isUser: false, text: questionBubble),
             (isUser: true, text: resultBubble)
         ]
 
         gradedScore = score
-        // Store full MCQ context for system prompt (student may ask about any of the choices)
-        var resultSummary = "Question: \(mcq.stem)\nChoices: \(choicesText)\nStudent chose \(chosenLetter)) \(mcq.choices[index]) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
+        // Store full multiple choice context for system prompt (student may ask about any of the choices)
+        var resultSummary = "Question: \(multipleChoice.stem)\nChoices: \(choicesText)\nStudent chose \(chosenLetter)) \(multipleChoice.choices[index]) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
         if !isCorrect {
-            resultSummary += ". Correct answer: \(correctLetter)) \(mcq.choices[mcq.correctIndex])"
+            resultSummary += ". Correct answer: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
         }
-        mcqResult = resultSummary
+        multipleChoiceResult = resultSummary
         phase = .chatting
 
         Task {
             try? await recordReview(item: item, score: score,
-                                    notes: "MCQ: chose \(chosenLetter) (\(isCorrect ? "correct" : "incorrect"))")
+                                    notes: "Multiple choice: chose \(chosenLetter) (\(isCorrect ? "correct" : "incorrect"))")
             // Prefetch next question now that grading is done
             let nextIndex = currentIndex + 1
             if nextIndex < items.count {
@@ -370,8 +370,8 @@ final class QuizSession {
             preQuizRecall   = pf.preRecall
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
-            if let mcq = pf.mcq {
-                phase = .awaitingTap(mcq)
+            if let multipleChoice = pf.multipleChoice {
+                phase = .awaitingTap(multipleChoice)
             } else if item.isFreeAnswer {
                 phase = .awaitingText(pf.question)
             } else {
@@ -389,7 +389,7 @@ final class QuizSession {
         isSendingChat = false
         gradedScore = nil
         gradedHalflife = nil
-        mcqResult = nil
+        multipleChoiceResult = nil
         meaningBonusApplied = false
         if case .reviewed(let recall, _, let halflife) = item.status {
             preQuizRecall   = recall
@@ -409,22 +409,22 @@ final class QuizSession {
         }
 
         phase = .generating
-        print("[QuizSession] generating MCQ for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
+        print("[QuizSession] generating multiple choice question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
         let system = systemPrompt(for: item, isGenerating: true,
                                   preRecall: preQuizRecall, preHalflife: preQuizHalflife)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
-            let (finalQuestion, finalMCQ, finalMsgs) = try await runGenerationLoop(
+            let (finalQuestion, finalMultipleChoice, finalMsgs) = try await runGenerationLoop(
                 for: item, system: system, initMsg: initMsg, label: "generate",
                 preRecall: preQuizRecall)
             currentQuestion = finalQuestion
             print("[QuizSession] question ready (\(finalQuestion.count) chars):\n\(finalQuestion)")
-            if let mcq = finalMCQ {
+            if let multipleChoice = finalMultipleChoice {
                 conversation = []
                 chatMessages = []
-                phase = .awaitingTap(mcq)
+                phase = .awaitingTap(multipleChoice)
             } else {
                 conversation = finalMsgs
                 chatMessages = [(isUser: false, text: finalQuestion)]
@@ -525,8 +525,8 @@ final class QuizSession {
 
     // MARK: - Private: shared opening chat turn (no user bubble — context already shown)
 
-    /// Fires the first Claude turn after the student answers (MCQ tap or free-answer submit).
-    /// `shouldParseScore`: true for free-answer (Claude grades); false for MCQ (app already scored).
+    /// Fires the first Claude turn after the student answers (multiple choice tap or free-answer submit).
+    /// `shouldParseScore`: true for free-answer (Claude grades); false for multiple choice (app already scored).
     private func doOpeningChatTurn(_ message: String, item: QuizItem, shouldParseScore: Bool) async {
         conversation = [AnthropicMessage(role: "user", content: [.text(message)])]
         do {
@@ -770,7 +770,7 @@ final class QuizSession {
         if item.isFreeAnswer {
             guard currentIndex <= index else { return }
             let stem = freeAnswerStem(for: item)
-            prefetched = (index: index, question: stem, mcq: nil,
+            prefetched = (index: index, question: stem, multipleChoice: nil,
                           conversation: [],
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch (free-answer, app-side) stored for index \(index): \(item.wordText)")
@@ -781,16 +781,16 @@ final class QuizSession {
                                    preRecall: preRecall, preHalflife: preHalflife)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
-        print("[QuizSession] prefetch MCQ: starting for index \(index): \(item.wordText) facet:\(item.facet)")
+        print("[QuizSession] prefetch multiple choice: starting for index \(index): \(item.wordText) facet:\(item.facet)")
         do {
-            let (finalQuestion, finalMCQ, finalMsgs) = try await runGenerationLoop(
+            let (finalQuestion, finalMultipleChoice, finalMsgs) = try await runGenerationLoop(
                 for: item, system: system, initMsg: initMsg, label: "prefetch",
                 preRecall: preRecall)
             guard currentIndex <= index else {
                 print("[QuizSession] prefetch for index \(index) is stale, discarding")
                 return
             }
-            prefetched = (index: index, question: finalQuestion, mcq: finalMCQ,
+            prefetched = (index: index, question: finalQuestion, multipleChoice: finalMultipleChoice,
                           conversation: finalMsgs,
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch stored for index \(index): \(item.wordText)")
@@ -806,7 +806,7 @@ final class QuizSession {
 
     /// Generate a question for a given item and return the question text + raw conversation.
     /// Intended for CLI test harness use only; bypasses phase state machine entirely.
-    func generateQuestionForTesting(item: QuizItem) async throws -> (question: String, mcq: MCQQuestion?, conversation: [AnthropicMessage]) {
+    func generateQuestionForTesting(item: QuizItem) async throws -> (question: String, multipleChoice: MultipleChoiceQuestion?, conversation: [AnthropicMessage]) {
         let system = systemPrompt(for: item, isGenerating: true)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
         return try await runGenerationLoop(for: item, system: system, initMsg: initMsg, label: "test")
@@ -846,11 +846,11 @@ final class QuizSession {
                                    initMsg: AnthropicMessage, label: String,
                                    tools: [AnthropicTool]? = nil,
                                    preRecall: Double? = nil)
-        async throws -> (question: String, mcq: MCQQuestion?, conversation: [AnthropicMessage])
+        async throws -> (question: String, multipleChoice: MultipleChoiceQuestion?, conversation: [AnthropicMessage])
     {
         let resolvedTools = tools ?? Self.generationTools(for: item.facet)
         var finalQuestion = ""
-        var finalMCQ: MCQQuestion? = nil
+        var finalMultipleChoice: MultipleChoiceQuestion? = nil
         var finalMsgs: [AnthropicMessage] = []
         let isPrefetch = label == "prefetch" ? 1 : 0
         let qFormat = item.isFreeAnswer ? "free_answer" : "multiple_choice"
@@ -866,14 +866,14 @@ final class QuizSession {
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
             if !item.isFreeAnswer {
-                // MCQ: parse JSON response
-                if let mcq = parseMCQJSON(raw) {
-                    finalMCQ = mcq
+                // Multiple choice: parse JSON response
+                if let multipleChoice = parseMultipleChoiceJSON(raw) {
+                    finalMultipleChoice = multipleChoice
                     let letters = ["A", "B", "C", "D"]
-                    let choicesText = mcq.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
-                    finalQuestion = "\(mcq.stem)\n\n\(choicesText)"
+                    let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+                    finalQuestion = "\(multipleChoice.stem)\n\n\(choicesText)"
                 } else {
-                    print("[QuizSession] \(label) attempt \(attempt): MCQ JSON parse failed")
+                    print("[QuizSession] \(label) attempt \(attempt): multiple choice JSON parse failed")
                     finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
                 }
             } else {
@@ -896,9 +896,9 @@ final class QuizSession {
                 questionChars: finalQuestion.count,
                 questionFormat: qFormat, prefetch: isPrefetch, preRecall: preRecall))
             if !item.isFreeAnswer {
-                // MCQ: retry if parse failed and we have attempts left
-                if finalMCQ != nil || attempt >= 2 { break }
-                print("[QuizSession] \(label) attempt \(attempt): MCQ parse failed, retrying")
+                // Multiple choice: retry if parse failed and we have attempts left
+                if finalMultipleChoice != nil || attempt >= 2 { break }
+                print("[QuizSession] \(label) attempt \(attempt): multiple choice parse failed, retrying")
             } else if Self.skipValidation {
                 break
             } else {
@@ -914,10 +914,10 @@ final class QuizSession {
                 }
             }
         }
-        return (finalQuestion, finalMCQ, finalMsgs)
+        return (finalQuestion, finalMultipleChoice, finalMsgs)
     }
 
-    private func parseMCQJSON(_ raw: String) -> MCQQuestion? {
+    private func parseMultipleChoiceJSON(_ raw: String) -> MultipleChoiceQuestion? {
         // Try each fenced code block in order (model may reason in earlier blocks)
         var search = raw[...]
         while let fenceStart = search.range(of: "```") {
@@ -926,7 +926,7 @@ final class QuizSession {
             if let closeRange = body.range(of: "```") {
                 let candidate = String(body[..<closeRange.lowerBound])
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                if let mcq = decodeMCQ(from: candidate) { return mcq }
+                if let multipleChoice = decodeMultipleChoice(from: candidate) { return multipleChoice }
                 search = body[closeRange.upperBound...]
             } else {
                 break
@@ -934,12 +934,12 @@ final class QuizSession {
         }
         // No fence — extract outermost {...} in case there's surrounding prose
         if let open = raw.firstIndex(of: "{"), let close = raw.lastIndex(of: "}") {
-            return decodeMCQ(from: String(raw[open...close]))
+            return decodeMultipleChoice(from: String(raw[open...close]))
         }
         return nil
     }
 
-    private func decodeMCQ(from text: String) -> MCQQuestion? {
+    private func decodeMultipleChoice(from text: String) -> MultipleChoiceQuestion? {
         guard let data = text.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
@@ -948,7 +948,7 @@ final class QuizSession {
               let correctIndex = obj["correct_index"] as? Int,
               (0..<4).contains(correctIndex)
         else { return nil }
-        return MCQQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+        return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
     }
 
     // MARK: - Private: mnemonic helpers
@@ -1145,8 +1145,8 @@ final class QuizSession {
         \(mnemonicBlock)
         """
         } else {
-            // MCQ: scoring is app-side. Claude only discusses when student initiates.
-            let resultLine = mcqResult.map { "MCQ result: \($0)\n" } ?? ""
+            // Multiple choice: scoring is app-side. Claude only discusses when student initiates.
+            let resultLine = multipleChoiceResult.map { "Multiple choice result: \($0)\n" } ?? ""
             return sharedCore + """
 
         \(resultLine)The student has already answered — scoring is handled by the app. Do NOT emit SCORE.

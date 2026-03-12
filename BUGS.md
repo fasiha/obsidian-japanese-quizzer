@@ -133,7 +133,7 @@ What's `(as in: preference)` doing there? Did it leak the meaning in the item? A
 
 **Fix:** Chat hygiene prompt already has "distractors must never include parenthetical hints or explanatory notes."
 
-# [x] Correct MCQ option is bolded, leaking the answer
+# [x] Correct multiple choice option is bolded, leaking the answer
 ```
 **peace of mind; relief; (sense of) security**
 *あんしん*
