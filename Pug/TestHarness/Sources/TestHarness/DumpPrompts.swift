@@ -297,7 +297,9 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 @MainActor func livePrompts(entry: EntryData, wordId: String, apiKey: String, model: String,
                              jmdict: any DatabaseReader, kanjidicPath: String?,
                              quizDB: QuizDB?,
-                             furiganaMap: [String: [JmdictFuriganaEntry]]) async {
+                             furiganaMap: [String: [JmdictFuriganaEntry]],
+                             repeatCount: Int = 1,
+                             genOnly: Bool = false) async {
     let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
     let (paths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
 
@@ -336,13 +338,20 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
     var results: [(path: PromptPath, passed: Bool, issue: String?)] = []
 
     for (i, path) in paths.enumerated() {
+        // --gen-only: skip all free-grading paths
+        if genOnly && path.mode != "multiple-choice-generation" { continue }
+
         let item = buildQuizItem(entry: entry, wordId: wordId, path: path)
 
         printPathHeader(index: i, total: paths.count, path: path)
 
+        let effectiveRepeats = path.mode == "multiple-choice-generation" ? repeatCount : 1
+
         let start = Date()
         do {
             if path.mode == "multiple-choice-generation" {
+                for rep in 1...effectiveRepeats {
+                if effectiveRepeats > 1 { print("── RUN \(rep)/\(effectiveRepeats) ──") }
                 // Generation: use the same flow as generateQuestionForTesting
                 let (question, mc, conversation) = try await session.generateQuestionForTesting(item: item)
                 let elapsed = Date().timeIntervalSince(start)
@@ -449,6 +458,7 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                     failCount += 1
                 }
                 results.append((path: path, passed: passed, issue: issues.first))
+                } // end for rep
 
             } else {
                 // Free-text grading: send a correct answer and check for SCORE

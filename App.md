@@ -688,6 +688,7 @@ Skip rules enforced in the loop:
 | 1002430 | お茶 おちゃ | 茶 | 1 kanji (prefix kana) |
 | 1006810 | そっと | (none) | kana-only → 4 paths |
 | 2028920 | は | (none) | particle, kana-only → 4 paths |
+| 2272660 | 感慨深い かんがいぶかい | several | unusual word |
 
 **Required data files** (searched by walking up from cwd):
 - `jmdict.sqlite` — always required

@@ -756,16 +756,18 @@ final class QuizSession {
     }
 
     /// Tools to use during question generation, based on facet.
-    /// reading-to-meaning/meaning-to-reading options are pure English or pure kana — no lookup needed.
-    /// kanji-to-reading uses kanjidic for alternate readings. meaning-reading-to-kanji may need both for visually similar kanji.
+    /// reading-to-meaning/meaning-to-reading/kanji-to-reading produce kana or English distractors — no lookup needed.
+    /// meaning-reading-to-kanji: Haiku thinks of candidates itself, then verifies with jmdict — no kanjidic needed.
     static func generationTools(for facet: String) -> [AnthropicTool] {
         switch facet {
         case "reading-to-meaning", "meaning-to-reading":
             return []   // distractors are English or kana — Claude knows these without lookup
         case "kanji-to-reading":
-            return [.lookupKanjidic]
-        default:    // meaning-reading-to-kanji and unknown
-            return [.lookupJmdict, .lookupKanjidic]
+            return []   // distractors are kana — Haiku knows on/kun readings without lookup
+        case "meaning-reading-to-kanji":
+            return []   // distractors are kanji substitutions — Haiku knows Japanese words without lookup
+        default:
+            return [.lookupJmdict]
         }
     }
 
@@ -941,10 +943,11 @@ final class QuizSession {
                 if isGenerating {
                     facetRule = """
                     Show \(template), ask for full reading. Studying: \(committedList).
-                    CORRECT ANSWER IS EXACTLY: \(ktrKana). Do NOT derive the answer \
-                    from kanjidic; use it only to build the 3 wrong options.
-                    The 3 distractors substitute ONLY the committed kanji (\(committedList)) with alternate \
-                    kanjidic readings; all other kana stay identical.
+                    CORRECT ANSWER IS EXACTLY: \(ktrKana).
+                    The 3 distractors substitute ONLY the reading of the committed kanji \
+                    (\(committedList)); all other kana stay identical. \
+                    Use alternate on/kun readings of that kanji or swap one mora — no lookup needed. \
+                    Question stem must be in English.
                     """
                     wordLine = "Word: display \(template) \(entryRef). Never show full kana reading in the stem."
                 } else {
@@ -972,7 +975,7 @@ final class QuizSession {
                     facetRule = """
                     Show English + kana ONLY (never kanji). A/B/C/D kanji options.
                     Partial commitment: studying \(committedList). Correct template: \(template).
-                    Distractors: swap ONLY committed kanji with visually similar wrong kanji (use lookup_kanjidic). Keep rest identical.
+                    Distractors: swap ONLY the committed kanji (\(committedList)) with 3 different plausible kanji (semantically related or visually similar) — no lookup needed. Keep all other characters identical.
                     """
                     wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
                 } else {
@@ -1016,13 +1019,12 @@ final class QuizSession {
                 if item.partialKanjiTemplate != nil {
                     distractorLine = ""
                 } else {
-                    let kanjiList = (item.committedKanji ?? []).joined(separator: "、")
-                    distractorLine = "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji (\(kanjiList)). Pick plausible wrong readings."
+                    distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Use alternate on/kun readings of the kanji or swap one mora. Keep the same length and rhythm as the correct answer."
                 }
             case "meaning-reading-to-kanji":
                 // Partial meaning-reading-to-kanji already has specific distractor instructions in facetRule
                 distractorLine = item.partialKanjiTemplate != nil ? "" :
-                    "\nDistractors: use lookup_kanjidic for visually similar kanji. Use lookup_jmdict to verify distractors are real words — batch all into one call."
+                    "\nDistractors: write 3 wrong kanji forms directly — no lookup needed. Substitute one kanji with a visually similar or same-reading alternative, or use a semantically related word you know."
             default:
                 distractorLine = ""
             }
@@ -1040,7 +1042,7 @@ final class QuizSession {
             return sharedCore + """
 
         Open conversation: student may answer, ask about this/other words, or mix.
-        SCORE: X.X (0.0–1.0) — you MUST emit this on the same turn you grade. Always include a grading sentence alongside it; never emit SCORE on a line by itself with no other prose.
+        SCORE: X.X (0.0–1.0) — emit this on the same turn you grade. Format exactly: SCORE: X.X — <one grading sentence> (use a space or dash after the number, never a sentence-ending period directly after X.X). Never emit SCORE on a line by itself with no other prose.
         Scoring is Bayesian confidence, not percentage-correct. Ask: "how confident am I that this answer reflects whether the student actually remembers the word?"
         - 1.0: strong evidence they remember — correct or trivially equivalent (extra annotation, minor formatting)
         - 0.8–0.9: good evidence they remember — right answer with a minor slip: for kana, a missing/wrong small kana (ゅ/ょ/っ) or long-vowel marker (ー); for meaning, a paraphrase that captures the core concept
@@ -1048,8 +1050,8 @@ final class QuizSession {
         - 0.1–0.3: good evidence they don't remember — wrong but in the right domain
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
         NOTES: one sentence on same message as SCORE.
-        After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss further.
         \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) if the student clearly shows meaning knowledge via translation or usage in their answer. Not for tangent words. Do not describe the token — just output it.\n" : "")\
+        After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss further.
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
         """
@@ -1084,7 +1086,7 @@ final class QuizSession {
     // MARK: - Private: parsing
 
     private func parseScore(from text: String) -> Double? {
-        let pattern = #/SCORE:\s*([\d.]+)/#
+        let pattern = #/SCORE:\s*(\d+(?:\.\d+)?)/#
         if let match = text.firstMatch(of: pattern),
            let score = Double(match.1) {
             return min(max(score, 0), 1)

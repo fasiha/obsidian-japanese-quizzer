@@ -28,13 +28,23 @@ let args = CommandLine.arguments
 guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
-    fputs("       TestHarness <word_id> --live\n", stderr)
+    fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only]\n", stderr)
     exit(1)
 }
 
 let isDumpMode = args.contains("--dump-prompts")
 let isLiveMode = args.contains("--live")
+let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --live mode
 let wordId = args[1]
+
+// --repeat N: how many times to run each generation path (default 1)
+let repeatCount: Int
+if let repeatIdx = args.firstIndex(of: "--repeat"), repeatIdx + 1 < args.count,
+   let n = Int(args[repeatIdx + 1]), n >= 1 {
+    repeatCount = n
+} else {
+    repeatCount = 1
+}
 
 // Parse optional facet (second positional arg, before --grade)
 let facet: String
@@ -188,7 +198,7 @@ if isLiveMode {
     }
     await livePrompts(entry: entry, wordId: wordId, apiKey: apiKey, model: liveModel,
                       jmdict: jmdictDB, kanjidicPath: kanjidicPath, quizDB: liveQuizDB,
-                      furiganaMap: furiganaMap)
+                      furiganaMap: furiganaMap, repeatCount: repeatCount, genOnly: isGenOnly)
     exit(0)
 }
 
