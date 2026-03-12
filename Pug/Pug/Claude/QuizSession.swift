@@ -71,10 +71,6 @@ final class QuizSession {
     // MARK: - Feature flags
 
     /// Set to true to skip the second-pass question validator entirely.
-    /// Validation is currently broken for all facet types (see TODO-validator-bugfix.md)
-    /// and the cost of false-fail retries outweighs any benefit until the validator is reworked.
-    static let skipValidation = true
-
     // MARK: - Dependencies
 
     let client: AnthropicClient
@@ -433,75 +429,6 @@ final class QuizSession {
         } catch {
             print("[QuizSession] generateQuestion error: \(error)")
             phase = .error(error.localizedDescription)
-        }
-    }
-
-    /// Returns the text after the first `---QUIZ---` sentinel, trimmed.
-    /// Returns nil if the sentinel is absent.
-    private func extractQuestion(from response: String) -> String? {
-        guard let range = response.range(of: "---QUIZ---") else { return nil }
-        let after = response[range.upperBound...].trimmingCharacters(in: .whitespacesAndNewlines)
-        return after.isEmpty ? nil : after
-    }
-
-    /// Second-pass validation: a fresh Claude call (no quiz context) checks whether
-    /// the generated question leaks the answer form into the question stem.
-    /// Returns true (PASS) if the question is clean or if the check itself errors.
-    private func validateQuestion(_ question: String, for item: QuizItem) async -> Bool {
-        let answerFormDesc: String
-        let answerValues: String
-        switch item.facet {
-        case "reading-to-meaning":
-            answerFormDesc = "English meaning"
-            answerValues = item.meanings.prefix(5).joined(separator: "; ")
-        case "meaning-to-reading":
-            answerFormDesc = "kana reading"
-            answerValues = item.kanaTexts.joined(separator: ", ")
-        case "kanji-to-reading":
-            answerFormDesc = "kana reading"
-            answerValues = item.kanaTexts.joined(separator: ", ")
-        case "meaning-reading-to-kanji":
-            answerFormDesc = "written/kanji form"
-            if let template = item.partialKanjiTemplate {
-                answerValues = template
-            } else {
-                answerValues = item.writtenTexts.joined(separator: ", ")
-            }
-        default:
-            return true  // Unknown facet — skip validation.
-        }
-        guard !answerValues.isEmpty else { return true }
-
-        let prompt = """
-        You are a quiz quality checker. A Japanese vocabulary quiz question was generated.
-        The answer form that must NOT appear in the question stem: \(answerFormDesc)
-        Correct answer value(s): \(answerValues)
-
-        Note: for multiple-choice questions the answer MAY appear in the A/B/C/D options — \
-        only the question STEM (the sentence or phrase before the options) must be clean.
-
-        Question to check:
-        \(question)
-
-        Reply with exactly one word: PASS if the stem is clean, FAIL if the stem leaks the answer.
-        """
-        do {
-            let (response, _, meta) = try await client.send(
-                messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
-                maxTokens: 10
-            )
-            let verdict = response.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-            let passed = verdict.hasPrefix("PASS")
-            try? await db.log(apiEvent: ApiEvent(
-                timestamp: ISO8601DateFormatter().string(from: Date()),
-                eventType: "question_validation",
-                wordId: item.wordId, quizType: item.facet,
-                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                model: client.model, validationResult: passed ? "pass" : "fail"))
-            return passed
-        } catch {
-            print("[QuizSession] validateQuestion error: \(error) — assuming PASS")
-            return true  // Don't block the quiz on a network error.
         }
     }
 
@@ -865,25 +792,15 @@ final class QuizSession {
             finalMsgs = msgs
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
-            if !item.isFreeAnswer {
-                // Multiple choice: parse JSON response
-                if let multipleChoice = parseMultipleChoiceJSON(raw) {
-                    finalMultipleChoice = multipleChoice
-                    let letters = ["A", "B", "C", "D"]
-                    let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
-                    finalQuestion = "\(multipleChoice.stem)\n\n\(choicesText)"
-                } else {
-                    print("[QuizSession] \(label) attempt \(attempt): multiple choice JSON parse failed")
-                    finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
+            // Parse multiple-choice JSON (generation loop is only used for MCQ; free-answer stems are built app-side)
+            if let multipleChoice = parseMultipleChoiceJSON(raw) {
+                finalMultipleChoice = multipleChoice
+                let letters = ["A", "B", "C", "D"]
+                let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+                finalQuestion = "\(multipleChoice.stem)\n\n\(choicesText)"
             } else {
-                // Free-answer: extract after ---QUIZ--- sentinel
-                if let extracted = extractQuestion(from: raw) {
-                    finalQuestion = extracted
-                } else {
-                    print("[QuizSession] \(label) attempt \(attempt): ---QUIZ--- marker missing, using raw response")
-                    finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                }
+                print("[QuizSession] \(label) attempt \(attempt): multiple choice JSON parse failed")
+                finalQuestion = raw.trimmingCharacters(in: .whitespacesAndNewlines)
             }
             try? await db.log(apiEvent: ApiEvent(
                 timestamp: ISO8601DateFormatter().string(from: Date()),
@@ -895,24 +812,9 @@ final class QuizSession {
                 firstTurnInputTokens: meta.firstTurnInputTokens,
                 questionChars: finalQuestion.count,
                 questionFormat: qFormat, prefetch: isPrefetch, preRecall: preRecall))
-            if !item.isFreeAnswer {
-                // Multiple choice: retry if parse failed and we have attempts left
-                if finalMultipleChoice != nil || attempt >= 2 { break }
-                print("[QuizSession] \(label) attempt \(attempt): multiple choice parse failed, retrying")
-            } else if Self.skipValidation {
-                break
-            } else {
-                let passed = await validateQuestion(finalQuestion, for: item)
-                if passed {
-                    print("[QuizSession] \(label) attempt \(attempt): validation PASS")
-                    break
-                }
-                if attempt < 2 {
-                    print("[QuizSession] \(label) attempt \(attempt): validation FAIL, retrying")
-                } else {
-                    print("[QuizSession] \(label) attempt \(attempt): validation FAIL on final attempt, using anyway")
-                }
-            }
+            // Retry if parse failed and we have attempts left
+            if finalMultipleChoice != nil || attempt >= 2 { break }
+            print("[QuizSession] \(label) attempt \(attempt): multiple choice parse failed, retrying")
         }
         return (finalQuestion, finalMultipleChoice, finalMsgs)
     }
@@ -1024,43 +926,45 @@ final class QuizSession {
         case "reading-to-meaning":
             let kana = item.kanaTexts.first ?? "unknown"
             if isGenerating {
-                facetRule = "Show kana ONLY (never kanji). Ask for English meaning. The student is an English speaker learning Japanese — all A/B/C/D options MUST be in English, never Japanese."
-                wordLine = "Word: kana \(kana) \(entryRef). Show ONLY \(kana) — never any kanji in the stem."
+                facetRule = "Show kana ONLY (never kanji). Ask for English meaning. All A/B/C/D options MUST be in English."
+                wordLine = "Word: kana \(kana) \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning)."
                 wordLine = "Word: \(entryRef)"
             }
         case "meaning-to-reading":
             if isGenerating {
-                facetRule = "Show English ONLY (never Japanese). Ask for kana reading."
-                wordLine = "Word: \(entryRef)\(englishHint). Correct answer must be listed kana. Show ONLY English — never Japanese in the stem."
+                facetRule = "Show English meaning. Ask for kana reading."
+                wordLine = "Word: \(entryRef)\(englishHint). Correct answer must be listed kana."
             } else {
                 facetRule = "Facet tested: meaning-to-reading (student sees English, answers with kana reading)."
                 wordLine = "Word: \(entryRef)"
             }
         case "kanji-to-reading":
+            let ktrKana = item.kanaTexts.first ?? "unknown"
             if let template = item.partialKanjiTemplate,
-               let committed = item.committedKanji, !committed.isEmpty {
+               let committed = item.committedKanji {
                 let committedList = committed.joined(separator: "、")
-                let kana = item.kanaTexts.first ?? "unknown"
                 if isGenerating {
                     facetRule = """
                     Show \(template), ask for full reading. Studying: \(committedList).
-                    CORRECT ANSWER IS EXACTLY: \(kana). This is non-negotiable — do NOT derive the answer \
+                    CORRECT ANSWER IS EXACTLY: \(ktrKana). Do NOT derive the answer \
                     from kanjidic; use it only to build the 3 wrong options.
-                    A/B/C/D: exactly one option must be \(kana) (the correct answer). \
                     The 3 distractors substitute ONLY the committed kanji (\(committedList)) with alternate \
-                    kanjidic readings; all other kana in the word stay identical.
+                    kanjidic readings; all other kana stay identical.
                     """
                     wordLine = "Word: display \(template) \(entryRef). Never show full kana reading in the stem."
                 } else {
-                    facetRule = "Facet tested: kanji-to-reading partial (\(template), studying \(committedList), correct reading: \(kana))."
+                    facetRule = "Facet tested: kanji-to-reading partial (\(template), studying \(committedList), correct reading: \(ktrKana))."
                     wordLine = "Word: \(entryRef)"
                 }
             } else {
                 if isGenerating {
-                    facetRule = "Show kanji ONLY (never kana). Ask for kana reading."
-                    wordLine = "Word: \(item.wordText) \(entryRef). Show ONLY \(item.wordText) — never kana in the stem."
+                    facetRule = """
+                    Show kanji ONLY (never kana). Ask for kana reading.
+                    CORRECT ANSWER IS EXACTLY: \(ktrKana).
+                    """
+                    wordLine = "Word: \(item.wordText) \(entryRef)."
                 } else {
                     facetRule = "Facet tested: kanji-to-reading (student sees kanji, answers with kana reading)."
                     wordLine = "Word: \(entryRef)"
@@ -1114,8 +1018,12 @@ final class QuizSession {
                 distractorLine = "\nDistractors: write 3 wrong English meanings directly — no lookup needed. Pick meanings from the same semantic field (similar topic but clearly distinguishable). Bare phrases only, no parenthetical notes."
             case "meaning-to-reading":
                 distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Pick readings that sound plausibly similar (shared mora, similar rhythm)."
+            case "kanji-to-reading":
+                distractorLine = "\nDistractors: use lookup_kanjidic to find alternate readings for the committed kanji. Pick plausible wrong readings."
+            case "meaning-reading-to-kanji":
+                distractorLine = "\nDistractors: use lookup_kanjidic for visually similar kanji. Use lookup_jmdict to verify distractors are real words — batch all into one call."
             default:
-                distractorLine = "\nDistractors: use lookup_jmdict to verify — batch all candidates into one call. Prefer confusable items (similar meaning/sound/kanji)."
+                distractorLine = ""
             }
         }
         let stemLeakGuard = isGenerating ? "\nCRITICAL: Never leak the answer form into the question stem. Silently verify before outputting." : ""
@@ -1123,8 +1031,7 @@ final class QuizSession {
         You are quizzing a Japanese learner.
         \(wordLine)
         Memory: \(ebisuLine)
-        Facet: \(item.facet) — \(facetRule)\(stemLeakGuard)
-        \(item.hasKanji ? "{kanji-ok}" : "{no-kanji}")\(distractorLine)
+        Facet: \(item.facet) — \(facetRule)\(stemLeakGuard)\(distractorLine)
         """
         if isGenerating {
             return sharedCore
@@ -1159,24 +1066,17 @@ final class QuizSession {
     }
 
     func questionRequest(for item: QuizItem) -> String {
-        if item.isFreeAnswer {
-            return """
-            Generate ONE free-answer question for the \(item.facet) facet.
-            Output format: optionally reason first, then write the sentinel `---QUIZ---` on its own line, \
-            then immediately the question. Nothing after the question — stop as soon as it is complete.
-            """
-        } else {
-            return """
-            Generate ONE multiple-choice question for the \(item.facet) facet.
-            Think first if helpful, then end with a ```json code block containing:
-            {
-              "stem": "the question shown to the student (no A/B/C/D options in the stem)",
-              "choices": ["option 0", "option 1", "option 2", "option 3"],
-              "correct_index": N
-            }
-            The correct answer must be at position N (0-indexed). Shuffle so correct is not always first.
-            """
+        // Free-answer stems are built app-side (freeAnswerStem); only MCQ generation goes through the LLM.
+        return """
+        Generate ONE multiple-choice question for the \(item.facet) facet.
+        Think first if helpful, then end with a ```json code block containing:
+        {
+          "stem": "the question shown to the student (no A/B/C/D options in the stem)",
+          "choices": ["option 0", "option 1", "option 2", "option 3"],
+          "correct_index": N
         }
+        The correct answer must be at position N (0-indexed). Shuffle so correct is not always first.
+        """
     }
 
     // MARK: - Private: parsing

@@ -185,6 +185,9 @@ if isGradeMode {
         stem = "What is the kana reading for:\n\(meanings.isEmpty ? wordText : meanings)"
     case "reading-to-meaning":
         stem = "What does \(kana) mean?"
+    case "kanji-to-reading", "meaning-reading-to-kanji":
+        fputs("Error: \(facet) grading is not supported in TestHarness (always multiple choice in app)\n", stderr)
+        exit(1)
     default:
         stem = "What is \(wordText)?"
     }
@@ -205,6 +208,10 @@ if isGradeMode {
         print("")
     }
 } else {
+    if facet == "kanji-to-reading" || facet == "meaning-reading-to-kanji" {
+        fputs("Error: \(facet) generation requires kanji commitment data (not yet supported in TestHarness)\n", stderr)
+        exit(1)
+    }
     print("Generating question…\n")
     let start = Date()
 

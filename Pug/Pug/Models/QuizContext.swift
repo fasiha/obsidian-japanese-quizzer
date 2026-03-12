@@ -58,7 +58,7 @@ struct QuizContext {
     static let noKanjiFacets  = ["reading-to-meaning", "meaning-to-reading"]
     static let kanjiFacetSet  = Set(["kanji-to-reading", "meaning-reading-to-kanji"])
 
-    static let freeAnswerMinReviews  = 0
+    static let freeAnswerMinReviews  = 3
     static let freeAnswerMinHalflife = 48.0   // hours
 
     /// Maximum items per quiz sitting.
