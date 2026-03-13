@@ -363,6 +363,9 @@ final class QuizSession {
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
             if let multipleChoice = pf.multipleChoice {
+                conversation = []
+                chatMessages = []
+                multipleChoiceResult = nil
                 phase = .awaitingTap(multipleChoice)
             } else if item.isFreeAnswer {
                 phase = .awaitingText(pf.question)
