@@ -480,11 +480,15 @@ cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
 - [x] Vocab browser UI: `Views/VocabBrowserView.swift` — filterable word list with OR-based
       filter picker (Not yet learning / Learning / Learned / All). Status badges show aggregate
       facet state. Swipe actions vary by state. Search across kanji, kana, meanings, and mnemonics.
-- [x] Word detail sheet: `Views/WordDetailSheet.swift` — ruby furigana heading, meanings,
-      furigana form picker (choose which written form to study; skipped for kana-only words),
-      independent reading/kanji segmented pickers, kanji character toggle grid (FlowLayout),
-      Claude explore chat. Kana-only words (`isKanaOnly`) show a plain "SPELLINGS" section
-      instead of a picker and expose the reading control immediately.
+- [x] Word detail sheet: `Views/WordDetailSheet.swift` — ruby furigana heading; per-sense
+      glosses with inline metadata (part of speech once at top; per-sense: misc/field/dialect
+      tags, free-text `info` notes, `related` and `antonym` cross-references); furigana form
+      picker (choose which written form to study; skipped for kana-only words); independent
+      reading/kanji segmented pickers; kanji character toggle grid (FlowLayout); Claude explore
+      chat. Kana-only words (`isKanaOnly`) show a plain "SPELLINGS" section instead of a picker
+      and expose the reading control immediately. Sense data comes from `SenseExtra` (defined in
+      `QuizContext.swift`), which pairs each sense's glosses with its metadata so usage notes
+      and cross-references are never detached from the definition they belong to.
       All state changes go through `VocabCorpus` → `QuizDB` and update reactively.
 - [x] `word_commitment` + `learned` tables (v5 migration) — replaces `vocab_enrollment`
 - [x] Facet state derived from `ebisu_models` (learning) and `learned` (known) tables
@@ -685,10 +689,11 @@ homophone (じじょう → 耳茸 "ear polyp"), forcing a second lookup with th
 This added 1–2 extra API turns on affected words, causing outliers with 9 api_turns.
 
 **Fix**: All four facets now include a `[Entry ref — never copy verbatim into question
-stem: written=X kana=Y meanings=Z]` block in the wordLine. Claude has the complete entry
-data and zero reason to look up the target word — the tool is then used only for
-distractor verification. The "never copy verbatim" instruction is sufficient to prevent
-the entry ref from leaking into question stems.
+stem: written=X kana=Y meanings=Z pos=... misc=... notes=... related=... antonym=...]`
+block in the wordLine. Claude has the complete entry data (including part of speech,
+usage notes, and cross-references aggregated from all senses) and zero reason to look up
+the target word — the tool is then used only for distractor verification. The "never copy
+verbatim" instruction is sufficient to prevent the entry ref from leaking into question stems.
 
 **Result**: Affected words dropped from 5–9 api_turns to 2. All four facets now
 consistently complete in 2 turns (one batched distractor lookup). Validated with the

@@ -25,6 +25,7 @@ struct VocabItem: Identifiable {
     let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
     let kanaTexts: [String]     // non-irregular kana-only forms
     let meanings: [String]      // English glosses from all senses
+    let senseExtras: [SenseExtra]        // per-sense metadata (usage notes, related/antonym xrefs, pos tags)
     let writtenForms: [WrittenFormGroup]  // furigana data from vocab.json
 
     // Derived from DB state (ebisu_models + learned + word_commitment)
@@ -146,6 +147,7 @@ final class VocabCorpus {
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 meanings: jd.meanings,
+                senseExtras: jd.senseExtras,
                 writtenForms: entry.writtenForms ?? [],
                 commitment: commitment,
                 readingState: readingState,

@@ -83,9 +83,7 @@ struct WordDetailSheet: View {
             // Large ruby heading: first written form's furigana, or plain kana
             wordHeading
 
-            ForEach(Array(item.meanings.enumerated()), id: \.offset) { _, meaning in
-                Text("• \(meaning)")
-            }
+            senseExtrasSection
 
             if !item.sources.isEmpty {
                 Text(item.sources.joined(separator: ", "))
@@ -146,6 +144,50 @@ struct WordDetailSheet: View {
                 UIPasteboard.general.string = baseText
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
+            }
+        }
+    }
+
+    /// Per-sense display: each sense's glosses followed immediately by its own metadata.
+    /// This keeps usage notes, cross-references, and tags tied to the definition they apply to.
+    @ViewBuilder
+    private var senseExtrasSection: some View {
+        // Part of speech is shared across senses (JMDict convention: repeated on each sense,
+        // but effectively describes the word). Deduplicate and show once at the top.
+        let allPos = Array(NSOrderedSet(array: item.senseExtras.flatMap(\.partOfSpeech))) as? [String] ?? []
+        if !allPos.isEmpty {
+            Text(allPos.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        ForEach(Array(item.senseExtras.enumerated()), id: \.offset) { _, sense in
+            VStack(alignment: .leading, spacing: 2) {
+                // Glosses for this sense
+                ForEach(sense.glosses, id: \.self) { gloss in
+                    Text("• \(gloss)")
+                }
+
+                // Metadata that applies only to this sense
+                if !sense.metadataIsEmpty {
+                    let tags = (sense.misc + sense.field + sense.dialect).joined(separator: ", ")
+                    Group {
+                        if !tags.isEmpty {
+                            Text(tags).italic()
+                        }
+                        ForEach(sense.info, id: \.self) { note in
+                            Text(note).italic()
+                        }
+                        if !sense.related.isEmpty {
+                            Text("Related: \(SenseExtra.formatXrefs(sense.related))")
+                        }
+                        if !sense.antonym.isEmpty {
+                            Text("Antonym: \(SenseExtra.formatXrefs(sense.antonym))")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
         }
     }

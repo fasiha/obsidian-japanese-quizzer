@@ -916,7 +916,30 @@ final class QuizSession {
         let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
         let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
         let allMeanings = item.meanings.isEmpty      ? "unknown" : item.meanings.joined(separator: "; ")
-        let entryRef    = "[Entry ref — never copy verbatim into question stem: written=\(allWritten) kana=\(allKana) meanings=\(allMeanings)]"
+
+        // Aggregate sense-level metadata across all senses for context (deduplicated).
+        let extras = item.senseExtras
+        let posLine: String = {
+            let all = Array(NSOrderedSet(array: extras.flatMap(\.partOfSpeech))) as? [String] ?? []
+            return all.isEmpty ? "" : " pos=\(all.joined(separator: ","))"
+        }()
+        let miscLine: String = {
+            let all = Array(NSOrderedSet(array: extras.flatMap(\.misc))) as? [String] ?? []
+            return all.isEmpty ? "" : " misc=\(all.joined(separator: ","))"
+        }()
+        let infoLine: String = {
+            let all = Array(NSOrderedSet(array: extras.flatMap(\.info))) as? [String] ?? []
+            return all.isEmpty ? "" : " notes=\(all.joined(separator: "; "))"
+        }()
+        let relatedLine: String = {
+            let all = extras.flatMap(\.related)
+            return all.isEmpty ? "" : " related=\(SenseExtra.formatXrefs(all))"
+        }()
+        let antonymLine: String = {
+            let all = extras.flatMap(\.antonym)
+            return all.isEmpty ? "" : " antonym=\(SenseExtra.formatXrefs(all))"
+        }()
+        let entryRef = "[Entry ref — never copy verbatim into question stem: written=\(allWritten) kana=\(allKana) meanings=\(allMeanings)\(posLine)\(miscLine)\(infoLine)\(relatedLine)\(antonymLine)]"
 
         switch item.facet {
         case "reading-to-meaning":
