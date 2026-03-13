@@ -47,6 +47,7 @@ final class QuizSession {
     var gradedScore: Double? = nil          // nil until graded (app-side for multiple choice, Claude for free-answer)
     var multipleChoiceResult: String? = nil           // multiple choice only: human-readable result injected into system prompt
     var meaningBonusApplied: Bool = false  // true once MEANING_DEMONSTRATED passive update has run
+    var uncertaintyUnlocked: Bool = false  // true once the "I don't know" unlock button is tapped
     var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
     var gradedHalflife: Double? = nil  // updated halflife after recordReview; nil until graded
@@ -173,8 +174,7 @@ final class QuizSession {
         phase = .chatting
 
         Task {
-            try? await recordReview(item: item, score: score,
-                                    notes: "Multiple choice: chose \(chosenLetter) (\(isCorrect ? "correct" : "incorrect"))")
+            try? await recordReview(item: item, score: score, notes: "autograder")
             // Prefetch next question now that grading is done
             let nextIndex = currentIndex + 1
             if nextIndex < items.count {
@@ -182,6 +182,42 @@ final class QuizSession {
                 prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
             }
         }
+    }
+
+    /// Called when the student admits uncertainty rather than picking a multiple choice option.
+    /// score: 0.0 = "No idea", 0.25 = "Inkling"
+    func tapUncertain(score: Double) {
+        guard case .awaitingTap(let multipleChoice) = phase, let item = currentItem else { return }
+        let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
+        let label = score <= 0.05 ? "No idea" : "Inkling"
+
+        // Show question + student's admission, matching tapChoice's display style.
+        let letters = ["A", "B", "C", "D"]
+        let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+        chatMessages = [
+            (isUser: false, text: "\(multipleChoice.stem)\n\n\(choicesText)"),
+            (isUser: true, text: label)
+        ]
+
+        gradedScore = score
+        multipleChoiceResult = nil
+        phase = .chatting
+        isSendingChat = true
+
+        Task {
+            try? await recordReview(item: item, score: score, notes: noteText)
+            let nextIndex = currentIndex + 1
+            if nextIndex < items.count {
+                let nextItem = items[nextIndex]
+                prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+            }
+        }
+
+        // Auto-fire opening turn so Claude explains the word.
+        let openingMsg = score <= 0.05
+            ? "I had no idea what this word means. Please explain it to me."
+            : "I had a vague inkling but wasn't confident. Please explain the word and what I might have been thinking of."
+        Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
     }
 
     // TODO: near-duplicate of WordDetailSheet.doRescale — consider extracting to QuizDB
@@ -363,6 +399,7 @@ final class QuizSession {
             gradedScore    = nil
             gradedHalflife = nil
             meaningBonusApplied = false
+            uncertaintyUnlocked = false
             preQuizRecall   = pf.preRecall
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
@@ -387,6 +424,7 @@ final class QuizSession {
         gradedHalflife = nil
         multipleChoiceResult = nil
         meaningBonusApplied = false
+        uncertaintyUnlocked = false
         if case .reviewed(let recall, _, let halflife) = item.status {
             preQuizRecall   = recall
             preQuizHalflife = halflife
@@ -1111,12 +1149,8 @@ final class QuizSession {
         if let match = text.firstMatch(of: pattern) {
             return String(match.1).trimmingCharacters(in: .whitespaces)
         }
-        // Fallback: strip SCORE/NOTES lines and join remaining non-empty lines.
-        return text.components(separatedBy: .newlines)
-            .filter { !$0.hasPrefix("SCORE:") && !$0.hasPrefix("NOTES:") }
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
+        // No NOTES: tag found — return empty so the review row stores null in the database.
+        return ""
     }
 
     // MARK: - Private: device name
