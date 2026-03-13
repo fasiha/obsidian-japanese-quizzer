@@ -234,9 +234,15 @@ struct QuizContext {
                       let data = json.data(using: .utf8),
                       let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
                 else { continue }
-                // Filter out irregular kanji (iK) and irregular kana (ik), matching summarizeWord() in shared.mjs.
+                // Filter out irregular kanji (iK), rare kanji (rK), and irregular kana (ik),
+                // matching summarizeWord() in shared.mjs. Rare kanji like 馬穴 (バケツ) have no
+                // furigana data in writtenForms, so including them creates mismatches between
+                // the vocab browser (which uses writtenTexts) and the detail sheet (which uses writtenForms).
                 let kanjiTexts = (raw["kanji"] as? [[String: Any]] ?? [])
-                    .filter { !(($0["tags"] as? [String] ?? []).contains("iK")) }
+                    .filter {
+                        let tags = $0["tags"] as? [String] ?? []
+                        return !tags.contains("iK") && !tags.contains("rK")
+                    }
                     .compactMap { $0["text"] as? String }
                 let kanaTexts  = (raw["kana"]  as? [[String: Any]] ?? [])
                     .filter { !(($0["tags"] as? [String] ?? []).contains("ik")) }
