@@ -953,12 +953,19 @@ final class QuizSession {
         case "meaning-to-reading":
             if isGenerating {
                 facetRule = "Show English meaning. Ask for kana reading."
+                // No explicit correct-answer pin here: for kana-only words with multiple readings
+                // (e.g. そっと/そうっと/そおっと/そーっと) the model seems to pick the first
+                // listed kana, which is the primary reading. That's acceptable behaviour.
                 wordLine = "Word: \(entryRef). Correct answer must be listed kana."
             } else {
                 facetRule = "Facet tested: meaning-to-reading (student sees English, answers with kana reading)."
                 wordLine = "Word: \(entryRef)"
             }
         case "kanji-to-reading":
+            // When a student commits to learning the kanji form of a word, they commit to a
+            // specific kanji+kana pairing stored in the word_commitment table. That pairing has
+            // exactly one reading, so kanaTexts.first is always the single correct answer here —
+            // unlike kana-only words, which may carry several equally valid readings.
             let ktrKana = item.kanaTexts.first ?? "unknown"
             if let template = item.partialKanjiTemplate,
                let committed = item.committedKanji {
