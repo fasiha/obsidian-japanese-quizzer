@@ -287,10 +287,9 @@ final class QuizSession {
                 items = savedIds.compactMap { byId[$0] }
             }
 
-            // No valid session found — ask LLM to select a fresh set.
+            // No valid session found — select a fresh set algorithmically.
             if items.isEmpty {
-                statusMessage = "Selecting quiz items…"
-                items = await selectItems(candidates: candidates)
+                items = selectItems(candidates: candidates)
                 try await db.saveSession(wordIds: items.map(\.wordId))
             }
 
@@ -303,58 +302,18 @@ final class QuizSession {
 
     // MARK: - Private: LLM item selection
 
-    private func selectItems(candidates: [QuizItem]) async -> [QuizItem] {
-        let contextBlock = candidates.map { QuizContext.contextLine(for: $0) }.joined(separator: "\n")
-        let prompt = """
-        You are assembling a Japanese vocabulary quiz session. \
-        Select 3–5 items from the candidates below.
-        Guidelines:
-        - Favour items with lower recall scores (more forgotten), but don't pick mechanically — \
-        aim for a varied, motivating session.
-        - Include at most 1–2 new/teaching items ([new] or →facet@new).
-        - Vary the facet types (kanji-to-reading, reading-to-meaning, etc.) across the session.
-        - Avoid placing semantically similar words consecutively.
-
-        Candidates (sorted by urgency — lowest recall first; [new] items at the end):
-        \(contextBlock)
-
-        Reply with ONLY the selected JMDict IDs, one per line, in quiz order. No commentary.
-        """
-        print("[QuizSession] selectItems: \(candidates.count) candidates → LLM")
-        do {
-            let (response, _, meta) = try await client.send(
-                messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
-                maxTokens: 100
-            )
-            print("[QuizSession] selectItems response: '\(response.prefix(200))'")
-            let validIds = Set(candidates.map(\.wordId))
-            let orderedIds = response
-                .components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { validIds.contains($0) }
-            let byId = Dictionary(candidates.map { ($0.wordId, $0) }, uniquingKeysWith: { f, _ in f })
-            let selected = orderedIds.compactMap { byId[$0] }
-            // Log telemetry: which recall-ranks did the LLM pick?
-            let ranks = orderedIds.compactMap { id in candidates.firstIndex { $0.wordId == id } }
-            let ranksJSON = (try? JSONSerialization.data(withJSONObject: ranks)).flatMap { String(data: $0, encoding: .utf8) }
-            let idsJSON = (try? JSONSerialization.data(withJSONObject: orderedIds)).flatMap { String(data: $0, encoding: .utf8) }
-            try? await db.log(apiEvent: ApiEvent(
-                timestamp: ISO8601DateFormatter().string(from: Date()),
-                eventType: "item_selection",
-                inputTokens: meta.totalInputTokens, outputTokens: meta.totalOutputTokens,
-                model: client.model, selectedIds: idsJSON, selectedRanks: ranksJSON,
-                apiTurns: meta.totalTurns,
-                firstTurnInputTokens: meta.firstTurnInputTokens,
-                candidateCount: candidates.count))
-            if selected.count >= 3 {
-                print("[QuizSession] selectItems: \(selected.count) item(s) selected by LLM")
-                return selected
-            }
-            print("[QuizSession] selectItems: only \(selected.count) valid ID(s) from LLM, falling back to top-N")
-        } catch {
-            print("[QuizSession] selectItems error: \(error), falling back to top-N")
-        }
-        return Array(candidates.prefix(QuizContext.itemsPerQuiz))
+    /// Algorithmically select quiz items: take the top-10 most urgent candidates
+    /// (already sorted by ascending recall in QuizContext.build) and randomly pick
+    /// 3–5 of them. This avoids an LLM round-trip while still producing varied sessions.
+    private func selectItems(candidates: [QuizItem]) -> [QuizItem] {
+        let pool = Array(candidates.prefix(QuizContext.selectionPoolSize))
+        guard !pool.isEmpty else { return [] }
+        let lo = min(QuizContext.minItemsPerQuiz, pool.count)
+        let hi = min(QuizContext.maxItemsPerQuiz, pool.count)
+        let count = Int.random(in: lo...hi)
+        let selected = Array(pool.shuffled().prefix(count))
+        print("[QuizSession] selectItems: picked \(selected.count) from top-\(pool.count) of \(candidates.count) candidates")
+        return selected
     }
 
     // MARK: - Private: free-answer stem builder

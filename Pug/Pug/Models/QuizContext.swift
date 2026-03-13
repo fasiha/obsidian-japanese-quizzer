@@ -61,8 +61,11 @@ struct QuizContext {
     static let freeAnswerMinReviews  = 3
     static let freeAnswerMinHalflife = 48.0   // hours
 
-    /// Maximum items per quiz sitting.
-    static let itemsPerQuiz = 5
+    /// Number of top-urgency candidates to sample from when building a session.
+    static let selectionPoolSize = 10
+    /// Minimum and maximum items chosen per quiz session.
+    static let minItemsPerQuiz = 3
+    static let maxItemsPerQuiz = 5
 
     /// Build a ranked list of QuizItems from the DB.
     ///

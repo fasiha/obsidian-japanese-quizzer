@@ -714,13 +714,23 @@ Distractor quality on Haiku matches or exceeds the JMDict-lookup approach — e.
 きりかぶ got "firewood / sawdust / wood chip", which is more instructive than
 JMDict-sourced alternatives. Validated across 4 words × 2 facets on Haiku.
 
-### 7. Algorithmic item selection (eliminate selection call entirely)
+### 7. Algorithmic item selection — **DONE** (2026-03-12)
 
-The LLM selection call sends all candidates (~120 chars each × N words) for Claude to
-pick 3–5. Algorithmic alternative: sort by Ebisu urgency, cap at 2 per facet type, at
-most 1–2 new words, ensure ≥2 different facets. Zero tokens, zero latency.
-- **Telemetry finding** (2026-03-11): LLM picks beyond top-5 (max rank 16–21 out of 53),
-  applying some diversity logic. Worth replicating algorithmically before removing the call.
+**Problem**: The LLM selection call sent all candidates (~120 chars each × N words) for
+Claude to pick 3–5, consuming ~3,400 input tokens per session — the single largest token
+cost (42% of all input tokens as of 2026-03-12 telemetry).
+
+**Telemetry finding**: Despite diversity guidelines in the prompt, Claude always picked
+rank 0 and clustered within the top ~13 ranks. It was effectively just sorting by urgency
+with mild randomness — nothing that needs an LLM.
+
+**Fix**: `selectItems` in `QuizSession.swift` is now a pure synchronous function. It takes
+the top 10 candidates from `QuizContext.build`'s already-sorted list (lowest recall first,
+one facet per word — collapsing already done in `build`) and randomly picks 3–5 via
+`shuffled().prefix(count)`. Zero API calls, zero latency.
+
+**Constants** in `QuizContext.swift`: `selectionPoolSize = 10`, `minItemsPerQuiz = 3`,
+`maxItemsPerQuiz = 5`.
 
 ### 8. Compress system prompts
 
