@@ -57,8 +57,6 @@ struct QuizItem: Identifiable {
     let facet: String           // the most-urgent facet to quiz
     let status: QuizStatus
     let senseExtras: [SenseExtra]   // per-sense data: glosses + metadata (info, xrefs, pos, etc.)
-    /// Flat English meanings derived from senseExtras — convenience for context lines and entryRef.
-    /// Do not use this where per-sense association matters (e.g. WordDetailSheet display).
     /// Kanji chars the user has committed to learning, decoded from word_commitment.kanji_chars.
     /// nil = no partial commitment (learn all or none). Empty array = committed but no kanji chosen.
     let committedKanji: [String]?
