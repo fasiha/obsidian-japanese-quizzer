@@ -1,4 +1,10 @@
-import { setup, findExact, idsToWords } from "jmdict-simplified-node";
+import {
+  setup,
+  findExact,
+  idsToWords,
+  readingBeginning,
+  kanjiBeginning,
+} from "jmdict-simplified-node";
 import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
 
 var lookup = process.argv[2];
@@ -12,6 +18,18 @@ var words;
 if (lookup.match(/^[0-9]+$/)) {
   console.log("ID?");
   words = idsToWords(db, [lookup]);
+} else if (lookup.endsWith("*")) {
+  words = [];
+  const ids = new Set();
+
+  const mapper = (word) => {
+    if (!ids.has(word.id)) {
+      words.push(word);
+      ids.add(word.id);
+    }
+  };
+  readingBeginning(db, lookup.slice(0, -1)).forEach(mapper);
+  kanjiBeginning(db, lookup.slice(0, -1)).forEach(mapper);
 } else {
   words = findExact(db, lookup);
 }
