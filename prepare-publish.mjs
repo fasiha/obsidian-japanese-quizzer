@@ -35,6 +35,17 @@ import {
 // --- JmdictFurigana enrichment ---
 
 /**
+ * Convert katakana characters to their hiragana equivalents.
+ * Used to deduplicate readings that differ only in script (e.g. のど vs ノド).
+ */
+function toHiragana(str) {
+  return str.replace(/[\u30A1-\u30F6]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0x60),
+  );
+}
+
+
+/**
  * Load JmdictFurigana.json and return a Map<text, entry[]> for fast lookup by
  * written form.
  */
@@ -140,8 +151,9 @@ function buildFuriganaForWord(word, furiganaMap) {
     (k) => !k.tags || !k.tags.includes("ik"),
   );
 
-  // Group by reading
-  const byReading = new Map(); // reading -> [{furigana, text}]
+  // Group by reading, normalizing katakana to hiragana so readings that differ
+  // only in script (e.g. のど vs ノド) are merged into one group.
+  const byReading = new Map(); // hiragana-normalized reading -> [{furigana, text}]
 
   for (const kana of kanaEntries) {
     const applicableKanji =
@@ -164,10 +176,20 @@ function buildFuriganaForWord(word, furiganaMap) {
       (f) => !forms.some((other) => isFuriganaParent(f, other)),
     );
 
-    if (!byReading.has(kana.text)) {
-      byReading.set(kana.text, collapsed);
+    const key = toHiragana(kana.text);
+    if (!byReading.has(key)) {
+      byReading.set(key, collapsed);
     } else {
-      byReading.get(kana.text).push(...collapsed);
+      // Merge, skipping forms whose kanji text is already present (katakana/hiragana
+      // variants of the same reading produce identical kanji forms).
+      const existing = byReading.get(key);
+      const existingTexts = new Set(existing.map((f) => f.text));
+      for (const form of collapsed) {
+        if (!existingTexts.has(form.text)) {
+          existing.push(form);
+          existingTexts.add(form.text);
+        }
+      }
     }
   }
 

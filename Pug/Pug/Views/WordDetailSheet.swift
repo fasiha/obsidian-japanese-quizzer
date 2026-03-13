@@ -67,6 +67,7 @@ struct WordDetailSheet: View {
                 explore = exploreSession
                 Task { await loadMnemonics() }
                 Task { await loadEbisuModels() }
+                Task { await autoCommitIfSingleForm() }
             }
             .sheet(item: $rescaleRecord) { record in
                 RescaleSheet(currentHalflife: record.t) { hours in
@@ -217,12 +218,19 @@ struct WordDetailSheet: View {
                 }
                 readingStateControl
             } else {
-                // Words with kanji: furigana form picker gates the reading control
-                if !item.writtenForms.isEmpty {
-                    furiganaPickerSection
-                }
-                if item.commitment != nil || item.writtenForms.isEmpty {
+                // Words with kanji: furigana form picker gates the reading control.
+                // If there is only one form, skip the picker entirely — auto-commit
+                // happens in onAppear — and show the reading control immediately.
+                let allForms = item.writtenForms.flatMap(\.forms)
+                if allForms.count == 1 {
                     readingStateControl
+                } else {
+                    if !item.writtenForms.isEmpty {
+                        furiganaPickerSection
+                    }
+                    if item.commitment != nil || item.writtenForms.isEmpty {
+                        readingStateControl
+                    }
                 }
             }
 
@@ -532,6 +540,18 @@ struct WordDetailSheet: View {
         // Compare by matching ruby/rt pairs
         guard committed.count == form.furigana.count else { return false }
         return zip(committed, form.furigana).allSatisfy { $0.ruby == $1.ruby && $0.rt == $1.rt }
+    }
+
+    /// Silently commits the only available form when there is exactly one,
+    /// so the DB has furigana for quizzes without requiring a user tap.
+    private func autoCommitIfSingleForm() async {
+        guard item.commitment == nil else { return }
+        let allForms = item.writtenForms.flatMap(\.forms)
+        guard allForms.count == 1, let form = allForms.first else { return }
+        if let data = try? JSONEncoder().encode(form.furigana),
+           let json = String(data: data, encoding: .utf8) {
+            await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)
+        }
     }
 
     private func selectForm(_ form: WrittenForm) {
