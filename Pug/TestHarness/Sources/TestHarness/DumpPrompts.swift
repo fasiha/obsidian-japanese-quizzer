@@ -299,9 +299,20 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                              quizDB: QuizDB?,
                              furiganaMap: [String: [JmdictFuriganaEntry]],
                              repeatCount: Int = 1,
-                             genOnly: Bool = false) async {
+                             genOnly: Bool = false,
+                             onlyFacet: String? = nil) async {
     let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
-    let (paths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
+    let (allPaths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
+    let paths: [PromptPath]
+    if let facet = onlyFacet {
+        paths = allPaths.filter { $0.facet == facet }
+        if paths.isEmpty {
+            fputs("Error: no paths found for facet '\(facet)'. Valid facets: reading-to-meaning, meaning-to-reading, kanji-to-reading, meaning-reading-to-kanji\n", stderr)
+            exit(1)
+        }
+    } else {
+        paths = allPaths
+    }
 
     // Open kanjidic if available (needed for kanji-to-reading/meaning-reading-to-kanji tool calls)
     let kanjidicDB: DatabaseQueue?

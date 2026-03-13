@@ -28,13 +28,21 @@ let args = CommandLine.arguments
 guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
-    fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only]\n", stderr)
+    fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
     exit(1)
 }
 
 let isDumpMode = args.contains("--dump-prompts")
 let isLiveMode = args.contains("--live")
 let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --live mode
+
+// --facet <name>: restrict --live mode to a single facet (omit to run all facets)
+let liveOnlyFacet: String?
+if let facetIdx = args.firstIndex(of: "--facet"), facetIdx + 1 < args.count {
+    liveOnlyFacet = args[facetIdx + 1]
+} else {
+    liveOnlyFacet = nil
+}
 let wordId = args[1]
 
 // --repeat N: how many times to run each generation path (default 1)
@@ -198,7 +206,8 @@ if isLiveMode {
     }
     await livePrompts(entry: entry, wordId: wordId, apiKey: apiKey, model: liveModel,
                       jmdict: jmdictDB, kanjidicPath: kanjidicPath, quizDB: liveQuizDB,
-                      furiganaMap: furiganaMap, repeatCount: repeatCount, genOnly: isGenOnly)
+                      furiganaMap: furiganaMap, repeatCount: repeatCount, genOnly: isGenOnly,
+                      onlyFacet: liveOnlyFacet)
     exit(0)
 }
 

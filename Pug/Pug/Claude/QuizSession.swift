@@ -1051,7 +1051,7 @@ final class QuizSession {
             case "reading-to-meaning":
                 distractorLine = "\nDistractors: write 3 wrong English meanings directly — no lookup needed. Pick meanings from the same semantic field (similar topic but clearly distinguishable). Bare phrases only, no parenthetical notes."
             case "meaning-to-reading":
-                distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Pick readings that sound plausibly similar (shared mora, similar rhythm)."
+                distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Use readings of real Japanese words that are semantically related (same general topic or domain) but clearly distinguishable in meaning, or plausible non-words. Avoid synonyms: pick words such that the learner must truly know the target word to choose correctly. Prefer words of approximately the same mora length as the correct answer."
             case "kanji-to-reading":
                 // Partial kanji-to-reading already has specific distractor instructions in facetRule
                 if item.partialKanjiTemplate != nil {
