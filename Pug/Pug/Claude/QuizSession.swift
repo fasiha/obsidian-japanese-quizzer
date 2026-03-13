@@ -1044,8 +1044,8 @@ final class QuizSession {
         Open conversation: student may answer, ask about this/other words, or mix.
         SCORE: X.X (0.0–1.0) — emit this on the same turn you grade. Format exactly: SCORE: X.X — <one grading sentence> (use a space or dash after the number, never a sentence-ending period directly after X.X). Never emit SCORE on a line by itself with no other prose.
         Scoring is Bayesian confidence, not percentage-correct. Ask: "how confident am I that this answer reflects whether the student actually remembers the word?"
-        - 1.0: strong evidence they remember — correct or trivially equivalent (extra annotation, minor formatting)
-        - 0.8–0.9: good evidence they remember — right answer with a minor slip: for kana, a missing/wrong small kana (ゅ/ょ/っ) or long-vowel marker (ー); for meaning, a paraphrase that captures the core concept
+        - 1.0: strong evidence they remember — correct or trivially equivalent (extra annotation, minor formatting, or romaji transcription of the correct kana — romaji and kana are equally valid ways to express the same phonetic answer)
+        - 0.8–0.9: good evidence they remember — right answer with a minor slip: for kana/romaji, a missing/wrong small kana (ゅ/ょ/っ) or long-vowel marker (ー), or a plausible romaji variant (e.g. "ou" vs "ō"); for meaning, a paraphrase that captures the core concept
         - 0.5: no evidence either way — ambiguous, can't tell if they know it (do NOT use 0.5 as "half credit")
         - 0.1–0.3: good evidence they don't remember — wrong but in the right domain
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
