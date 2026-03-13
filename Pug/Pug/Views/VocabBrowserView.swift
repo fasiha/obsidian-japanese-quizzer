@@ -35,7 +35,7 @@ struct VocabBrowserView: View {
         return statusFiltered.filter { item in
             item.writtenTexts.contains { $0.localizedCaseInsensitiveContains(q) }
             || item.kanaTexts.contains { $0.localizedCaseInsensitiveContains(q) }
-            || item.meanings.contains { $0.localizedCaseInsensitiveContains(q) }
+            || item.senseExtras.flatMap(\.glosses).contains { $0.localizedCaseInsensitiveContains(q) }
             || mnemonicMap[item.id]?.localizedCaseInsensitiveContains(q) == true
         }
     }
@@ -247,7 +247,7 @@ struct VocabRowView: View {
                 Spacer()
                 statusBadge
             }
-            if let meaning = item.meanings.first {
+            if let meaning = item.senseExtras.first?.glosses.first {
                 Text(meaning)
                     .font(.caption)
                     .foregroundStyle(.secondary)

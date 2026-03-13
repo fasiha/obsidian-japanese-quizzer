@@ -93,7 +93,8 @@ final class WordExploreSession {
             var entry: [String: Any] = ["text": item.wordText]
             if !item.kanaTexts.isEmpty    { entry["kana"]     = item.kanaTexts }
             if !item.writtenTexts.isEmpty { entry["written"]  = item.writtenTexts }
-            if !item.meanings.isEmpty     { entry["meanings"] = Array(item.meanings.prefix(3)) }
+            let glosses = item.senseExtras.flatMap(\.glosses)
+            if !glosses.isEmpty           { entry["meanings"] = Array(glosses.prefix(3)) }
             if item.readingState == .learning || item.kanjiState == .learning { learning.append(entry) }
             else                          { known.append(entry) }
         }
@@ -107,7 +108,7 @@ final class WordExploreSession {
         let writtenPart = item.writtenTexts.isEmpty
             ? "" : "Written forms: \(item.writtenTexts.joined(separator: ", ")). "
         let kanaStr    = item.kanaTexts.joined(separator: ", ")
-        let meaningStr = item.meanings.prefix(5).joined(separator: "; ")
+        let meaningStr = item.senseExtras.flatMap(\.glosses).prefix(5).joined(separator: "; ")
 
         // Fetch existing mnemonics
         var mnemonicParts: [String] = []

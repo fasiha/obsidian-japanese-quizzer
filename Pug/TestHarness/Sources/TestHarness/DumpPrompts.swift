@@ -101,10 +101,10 @@ struct PromptPath {
 
 /// Build the list of prompt paths for a given word's kanji structure.
 /// Uses real JmdictFurigana data for partial templates (matching iOS app behavior).
-func buildPaths(entry: EntryData, furiganaMap: [String: [JmdictFuriganaEntry]]) -> (paths: [PromptPath], kanjiChars: [String], partialTemplate: String?) {
-    let hasKanji = !entry.kanji.isEmpty
-    let written = entry.kanji.first ?? ""
-    let reading = entry.kana.first ?? ""
+func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFuriganaEntry]]) -> (paths: [PromptPath], kanjiChars: [String], partialTemplate: String?) {
+    let hasKanji = !entry.writtenTexts.isEmpty
+    let written = entry.writtenTexts.first ?? ""
+    let reading = entry.kanaTexts.first ?? ""
 
     // Detect kanji characters in the written form
     let kanjiChars: [String] = written.unicodeScalars
@@ -181,19 +181,19 @@ func buildPaths(entry: EntryData, furiganaMap: [String: [JmdictFuriganaEntry]]) 
 }
 
 /// Build a QuizItem for a given path.
-func buildQuizItem(entry: EntryData, wordId: String, path: PromptPath) -> QuizItem {
-    let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
-    let hasKanji = !entry.kanji.isEmpty
+func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptPath) -> QuizItem {
+    let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
+    let hasKanji = !entry.writtenTexts.isEmpty
     return QuizItem(
         wordType: "jmdict",
         wordId: wordId,
         wordText: wordText,
-        writtenTexts: entry.kanji,
-        kanaTexts: entry.kana,
+        writtenTexts: entry.writtenTexts,
+        kanaTexts: entry.kanaTexts,
         hasKanji: hasKanji,
         facet: path.facet,
         status: .reviewed(recall: 0.5, isFree: path.isFreeAnswer, halflife: path.isFreeAnswer ? 72.0 : 24.0),
-        meanings: Array(entry.meanings.prefix(5)),
+        senseExtras: Array(entry.senseExtras.prefix(5)),
         committedKanji: path.committedKanji,
         partialKanjiTemplate: path.partialKanjiTemplate
     )
@@ -216,9 +216,9 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 
 // MARK: - Dump mode (no API calls)
 
-@MainActor func dumpPrompts(entry: EntryData, wordId: String, jmdict: any DatabaseReader,
+@MainActor func dumpPrompts(entry: QuizContext.JmdictEntry, wordId: String, jmdict: any DatabaseReader,
                              furiganaMap: [String: [JmdictFuriganaEntry]]) {
-    let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
+    let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
     let (paths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
 
     // Create a dummy session (no API calls needed)
@@ -233,9 +233,9 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 
     // Header
     print("# Prompt Dump for word: \(wordText) (id: \(wordId))")
-    print("# Kana:     \(entry.kana.joined(separator: ", "))")
-    print("# Kanji:    \(entry.kanji.isEmpty ? "(none)" : entry.kanji.joined(separator: ", "))")
-    print("# Meanings: \(entry.meanings.prefix(5).joined(separator: "; "))")
+    print("# Kana:     \(entry.kanaTexts.joined(separator: ", "))")
+    print("# Kanji:    \(entry.writtenTexts.isEmpty ? "(none)" : entry.writtenTexts.joined(separator: ", "))")
+    print("# Meanings: \(entry.senseExtras.flatMap(\.glosses).prefix(5).joined(separator: "; "))")
     print("# Kanji chars: \(kanjiChars.isEmpty ? "(none)" : kanjiChars.joined(separator: ", "))")
     print("# Paths to dump: \(paths.count)")
     print("")
@@ -264,11 +264,11 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
             let sampleAnswer: String
             switch path.facet {
             case "reading-to-meaning":
-                sampleAnswer = entry.meanings.first ?? "some meaning"
+                sampleAnswer = entry.senseExtras.first?.glosses.first ?? "some meaning"
             case "meaning-to-reading", "kanji-to-reading":
-                sampleAnswer = entry.kana.first ?? "かな"
+                sampleAnswer = entry.kanaTexts.first ?? "かな"
             default:
-                sampleAnswer = entry.kanji.first ?? (entry.kana.first ?? wordId)
+                sampleAnswer = entry.writtenTexts.first ?? (entry.kanaTexts.first ?? wordId)
             }
             userMsg = """
             [App-generated stem shown to student]: \(stem)
@@ -294,14 +294,14 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 
 // MARK: - Live mode (sends prompts to Haiku)
 
-@MainActor func livePrompts(entry: EntryData, wordId: String, apiKey: String, model: String,
+@MainActor func livePrompts(entry: QuizContext.JmdictEntry, wordId: String, apiKey: String, model: String,
                              jmdict: any DatabaseReader, kanjidicPath: String?,
                              quizDB: QuizDB?,
                              furiganaMap: [String: [JmdictFuriganaEntry]],
                              repeatCount: Int = 1,
                              genOnly: Bool = false,
                              onlyFacet: String? = nil) async {
-    let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
+    let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
     let (allPaths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
     let paths: [PromptPath]
     if let facet = onlyFacet {
@@ -336,9 +336,9 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
     // Header
     print("# Live Prompt Test for word: \(wordText) (id: \(wordId))")
     print("# Model:    \(model)")
-    print("# Kana:     \(entry.kana.joined(separator: ", "))")
-    print("# Kanji:    \(entry.kanji.isEmpty ? "(none)" : entry.kanji.joined(separator: ", "))")
-    print("# Meanings: \(entry.meanings.prefix(5).joined(separator: "; "))")
+    print("# Kana:     \(entry.kanaTexts.joined(separator: ", "))")
+    print("# Kanji:    \(entry.writtenTexts.isEmpty ? "(none)" : entry.writtenTexts.joined(separator: ", "))")
+    print("# Meanings: \(entry.senseExtras.flatMap(\.glosses).prefix(5).joined(separator: "; "))")
     print("# Kanji chars: \(kanjiChars.isEmpty ? "(none)" : kanjiChars.joined(separator: ", "))")
     print("# Kanjidic: \(kanjidicDB != nil ? "loaded" : "NOT FOUND — kanji-to-reading/meaning-reading-to-kanji tool calls will fail")")
     print("# Paths to test: \(paths.count)")
@@ -384,33 +384,33 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                     switch path.facet {
                     case "reading-to-meaning":
                         // Stem should show kana only, not kanji or English meaning
-                        for meaning in entry.meanings.prefix(3) {
+                        for meaning in entry.senseExtras.flatMap(\.glosses).prefix(3) {
                             if stemLower.contains(meaning.lowercased()) {
                                 issues.append("LEAK: stem contains meaning '\(meaning)'")
                             }
                         }
-                        for kanji in entry.kanji {
+                        for kanji in entry.writtenTexts {
                             if mc.stem.contains(kanji) {
                                 issues.append("LEAK: stem contains kanji '\(kanji)'")
                             }
                         }
                     case "meaning-to-reading":
                         // Stem should show English only, not kana reading
-                        for kana in entry.kana {
+                        for kana in entry.kanaTexts {
                             if mc.stem.contains(kana) {
                                 issues.append("LEAK: stem contains kana '\(kana)'")
                             }
                         }
                     case "kanji-to-reading":
                         // Stem should show kanji only, not kana
-                        for kana in entry.kana {
+                        for kana in entry.kanaTexts {
                             if mc.stem.contains(kana) {
                                 issues.append("LEAK: stem contains kana reading '\(kana)'")
                             }
                         }
                     case "meaning-reading-to-kanji":
                         // Stem should show English + kana, never kanji
-                        for kanji in entry.kanji {
+                        for kanji in entry.writtenTexts {
                             if mc.stem.contains(kanji) {
                                 issues.append("LEAK: stem contains kanji '\(kanji)'")
                             }
@@ -425,19 +425,19 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                         // correct should be an English meaning — hard to auto-validate fully
                         break
                     case "meaning-to-reading":
-                        if !entry.kana.contains(correct) {
-                            issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kana)")
+                        if !entry.kanaTexts.contains(correct) {
+                            issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kanaTexts)")
                         }
                     case "kanji-to-reading":
-                        if !entry.kana.contains(correct) {
-                            issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kana)")
+                        if !entry.kanaTexts.contains(correct) {
+                            issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kanaTexts)")
                         }
                     case "meaning-reading-to-kanji":
                         // For full commitment, correct choice is the written form (e.g. 前例).
                         // For partial commitment, Haiku may show the full template (前れい)
                         // OR just the individual kanji that fills the blank (例).
                         // Both are valid UX — accept either.
-                        let written = entry.kanji.first ?? ""
+                        let written = entry.writtenTexts.first ?? ""
                         if let template = path.partialKanjiTemplate {
                             // Extract the uncommitted kanji (those replaced by kana in the template)
                             let committedSet = Set(path.committedKanji ?? [])
@@ -477,11 +477,11 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                 let sampleAnswer: String
                 switch path.facet {
                 case "reading-to-meaning":
-                    sampleAnswer = entry.meanings.first ?? "some meaning"
+                    sampleAnswer = entry.senseExtras.first?.glosses.first ?? "some meaning"
                 case "meaning-to-reading", "kanji-to-reading":
-                    sampleAnswer = entry.kana.first ?? "かな"
+                    sampleAnswer = entry.kanaTexts.first ?? "かな"
                 default:
-                    sampleAnswer = entry.kanji.first ?? (entry.kana.first ?? wordId)
+                    sampleAnswer = entry.writtenTexts.first ?? (entry.kanaTexts.first ?? wordId)
                 }
 
                 let response = try await session.gradeAnswerForTesting(item: item, stem: stem, answer: sampleAnswer)
@@ -568,8 +568,8 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 
                 // Extra test for kanji-to-reading: answer with reading + meaning to elicit MEANING_DEMONSTRATED
                 if path.facet == "kanji-to-reading" {
-                    let meanings = entry.meanings.prefix(3).joined(separator: "; ")
-                    let kana = entry.kana.first ?? "?"
+                    let meanings = entry.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+                    let kana = entry.kanaTexts.first ?? "?"
                     let meaningAnswer = "\(kana) — it means \(meanings)"
 
                     print("")

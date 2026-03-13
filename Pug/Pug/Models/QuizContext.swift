@@ -56,8 +56,9 @@ struct QuizItem: Identifiable {
     let hasKanji: Bool          // true → {kanji-ok}: all 4 facets available
     let facet: String           // the most-urgent facet to quiz
     let status: QuizStatus
-    let meanings: [String]      // English meanings from jmdict (for pre-selection context lines)
-    let senseExtras: [SenseExtra]   // per-sense metadata (info notes, related/antonym xrefs, pos tags)
+    let senseExtras: [SenseExtra]   // per-sense data: glosses + metadata (info, xrefs, pos, etc.)
+    /// Flat English meanings derived from senseExtras — convenience for context lines and entryRef.
+    /// Do not use this where per-sense association matters (e.g. WordDetailSheet display).
     /// Kanji chars the user has committed to learning, decoded from word_commitment.kanji_chars.
     /// nil = no partial commitment (learn all or none). Empty array = committed but no kanji chosen.
     let committedKanji: [String]?
@@ -108,7 +109,6 @@ struct QuizContext {
         let commitments    = try await db.allCommitments()
 
         // Fetch word text, structured forms, and meanings from jmdict.
-        var wordMeanings:    [String: [String]] = [:]
         var wordWritten:     [String: [String]] = [:]
         var wordKana:        [String: [String]] = [:]
         var wordSenseExtras: [String: [SenseExtra]] = [:]
@@ -117,7 +117,6 @@ struct QuizContext {
             let fromJmdict = try await jmdictWordData(ids: allIds, jmdict: jmdict)
             for (id, entry) in fromJmdict {
                 if wordTexts[id] == nil { wordTexts[id] = entry.text }
-                wordMeanings[id]    = entry.meanings
                 wordWritten[id]     = entry.writtenTexts
                 wordKana[id]        = entry.kanaTexts
                 wordSenseExtras[id] = entry.senseExtras
@@ -217,7 +216,6 @@ struct QuizContext {
                 writtenTexts: wordWritten[wordId] ?? [],
                 kanaTexts: wordKana[wordId] ?? [],
                 hasKanji: hasKanji, facet: facet, status: status,
-                meanings: wordMeanings[wordId] ?? [],
                 senseExtras: wordSenseExtras[wordId] ?? [],
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate))
@@ -231,7 +229,6 @@ struct QuizContext {
         let text: String
         let writtenTexts: [String]
         let kanaTexts: [String]
-        let meanings: [String]
         let senseExtras: [SenseExtra]
     }
 
@@ -248,7 +245,7 @@ struct QuizContext {
     static func contextLine(for item: QuizItem) -> String {
         let quizTag     = item.hasKanji ? "{kanji-ok}" : "{no-kanji}"
         let formStr     = formsPart(written: item.writtenTexts, kana: item.kanaTexts)
-        let meaningsStr = item.meanings.prefix(3).joined(separator: "; ")
+        let meaningsStr = item.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
         let facetPart: String
         switch item.status {
         case .reviewed(let recall, let isFree, _):
@@ -299,17 +296,15 @@ struct QuizContext {
                         dialect:      sense["dialect"] as? [String] ?? []
                     )
                 }
-                // Flat meanings list derived from senseExtras for backwards-compatible callers.
-                let meanings = senseExtras.flatMap(\.glosses)
                 result[id] = JmdictEntry(text: text, writtenTexts: kanjiTexts, kanaTexts: kanaTexts,
-                                         meanings: meanings, senseExtras: senseExtras)
+                                         senseExtras: senseExtras)
             }
             return result
         }
     }
 
     /// Parse a JMDict Xref JSON array (each element is [String | Number]) into [[String]].
-    private static func parseXrefs(_ value: Any?) -> [[String]] {
+    private nonisolated static func parseXrefs(_ value: Any?) -> [[String]] {
         guard let arr = value as? [Any] else { return [] }
         return arr.compactMap { elem -> [String]? in
             guard let xref = elem as? [Any] else { return nil }

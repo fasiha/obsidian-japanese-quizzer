@@ -321,7 +321,7 @@ final class QuizSession {
     /// Build the question stem app-side for free-answer facets (no LLM needed).
     func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.kanaTexts.first ?? "?"
-        let meanings = item.meanings.prefix(3).joined(separator: "; ")
+        let meanings = item.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
         switch item.facet {
         case "meaning-to-reading":
             return "What is the kana reading for:\n\(meanings.isEmpty ? item.wordText : meanings)"
@@ -915,7 +915,7 @@ final class QuizSession {
         // Each facet then restricts what may appear in the question *stem* — separate from what Claude knows.
         let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
         let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
-        let allMeanings = item.meanings.isEmpty      ? "unknown" : item.meanings.joined(separator: "; ")
+        let allMeanings = item.senseExtras.isEmpty    ? "unknown" : item.senseExtras.flatMap(\.glosses).joined(separator: "; ")
 
         // Aggregate sense-level metadata across all senses for context (deduplicated).
         let extras = item.senseExtras

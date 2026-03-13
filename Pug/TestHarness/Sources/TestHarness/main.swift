@@ -137,38 +137,17 @@ let jmdictDB = try DatabaseQueue(path: jmdictPath)
 
 // MARK: - Look up word by entry ID
 
-struct EntryData {
-    let kanji: [String]
-    let kana: [String]
-    let meanings: [String]
-}
+// Reuse the canonical iOS implementation — same JSON parsing, xref extraction, and
+// irregular-kanji filtering (iK/rK/ik tags) — rather than maintaining a parallel copy.
+typealias EntryData = QuizContext.JmdictEntry
 
-func lookupEntry(id: String) throws -> EntryData? {
-    try jmdictDB.read { db in
-        guard let row = try Row.fetchOne(db, sql: "SELECT entry_json FROM entries WHERE id = ?", arguments: [id]),
-              let jsonStr = row["entry_json"] as? String,
-              let data = jsonStr.data(using: .utf8),
-              let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-
-        let kanji    = (raw["kanji"] as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
-        let kana     = (raw["kana"]  as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
-        let meanings = (raw["sense"] as? [[String: Any]] ?? []).flatMap { sense -> [String] in
-            (sense["gloss"] as? [[String: Any]] ?? [])
-                .filter { ($0["lang"] as? String) == "eng" }
-                .compactMap { $0["text"] as? String }
-        }
-        return EntryData(kanji: kanji, kana: kana, meanings: meanings)
-    }
-}
-
-guard let entry = try lookupEntry(id: wordId) else {
+guard let entry = try await QuizContext.jmdictWordData(ids: [wordId], jmdict: jmdictDB)[wordId] else {
     fputs("Error: word_id \(wordId) not found in jmdict.sqlite\n", stderr)
     exit(1)
 }
 
-let wordText = entry.kanji.first ?? entry.kana.first ?? wordId
-let hasKanji = !entry.kanji.isEmpty
+let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
+let hasKanji = !entry.writtenTexts.isEmpty
 
 // MARK: - Load JmdictFurigana.json (required for dump-prompts and live modes)
 
@@ -189,7 +168,7 @@ if isDumpMode || isLiveMode {
 // MARK: - Dump prompts mode (no API calls)
 
 if isDumpMode {
-    await dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB, furiganaMap: furiganaMap)
+    dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB, furiganaMap: furiganaMap)
     exit(0)
 }
 
@@ -212,9 +191,9 @@ if isLiveMode {
 }
 
 print("Word:     \(wordText)  (id: \(wordId))")
-print("Kana:     \(entry.kana.joined(separator: ", "))")
-print("Kanji:    \(entry.kanji.isEmpty ? "(none)" : entry.kanji.joined(separator: ", "))")
-print("Meanings: \(entry.meanings.prefix(5).joined(separator: "; "))")
+print("Kana:     \(entry.kanaTexts.joined(separator: ", "))")
+print("Kanji:    \(entry.writtenTexts.isEmpty ? "(none)" : entry.writtenTexts.joined(separator: ", "))")
+print("Meanings: \(entry.senseExtras.flatMap(\.glosses).prefix(5).joined(separator: "; "))")
 print("Facet:    \(facet)")
 print("")
 
@@ -224,12 +203,12 @@ let item = QuizItem(
     wordType: "jmdict",
     wordId: wordId,
     wordText: wordText,
-    writtenTexts: entry.kanji,
-    kanaTexts: entry.kana,
+    writtenTexts: entry.writtenTexts,
+    kanaTexts: entry.kanaTexts,
     hasKanji: hasKanji,
     facet: facet,
     status: .reviewed(recall: 0.5, isFree: isGradeMode, halflife: 24.0),
-    meanings: Array(entry.meanings.prefix(5)),
+    senseExtras: Array(entry.senseExtras.prefix(5)),
     committedKanji: nil,
     partialKanjiTemplate: nil
 )
@@ -258,8 +237,8 @@ session.allCandidates = []  // no vocab context needed for generation test
 
 if isGradeMode {
     // Build the app-side stem (same logic as QuizSession.freeAnswerStem, reproduced here)
-    let kana = entry.kana.first ?? "?"
-    let meanings = entry.meanings.prefix(3).joined(separator: "; ")
+    let kana = entry.kanaTexts.first ?? "?"
+    let meanings = entry.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
     let stem: String
     switch facet {
     case "meaning-to-reading":
