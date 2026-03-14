@@ -493,6 +493,14 @@ final class QuizDB: Sendable {
         try await pool.write { db in var r = review; try r.insert(db) }
     }
 
+    func reviewCount(wordType: String, wordId: String, quizType: String) async throws -> Int {
+        try await pool.read { db in
+            try Review
+                .filter(Column("word_type") == wordType && Column("word_id") == wordId && Column("quiz_type") == quizType)
+                .fetchCount(db)
+        }
+    }
+
     // MARK: - Ebisu models
 
     func upsert(record: EbisuRecord) async throws {

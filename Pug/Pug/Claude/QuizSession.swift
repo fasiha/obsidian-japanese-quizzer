@@ -50,7 +50,8 @@ final class QuizSession {
     var uncertaintyUnlocked: Bool = false  // true once the "I don't know" unlock button is tapped
     var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
-    var gradedHalflife: Double? = nil  // updated halflife after recordReview; nil until graded
+    var gradedHalflife: Double? = nil      // updated halflife after recordReview; nil until graded
+    var gradedReviewCount: Int? = nil      // total reviews for this facet after recordReview; nil until graded
 
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
@@ -355,8 +356,9 @@ final class QuizSession {
             currentQuestion = pf.question
             chatInput      = ""
             isSendingChat  = false
-            gradedScore    = nil
-            gradedHalflife = nil
+            gradedScore       = nil
+            gradedHalflife    = nil
+            gradedReviewCount = nil
             meaningBonusApplied = false
             uncertaintyUnlocked = false
             preQuizRecall   = pf.preRecall
@@ -382,8 +384,9 @@ final class QuizSession {
         chatMessages = []
         chatInput = ""
         isSendingChat = false
-        gradedScore = nil
-        gradedHalflife = nil
+        gradedScore       = nil
+        gradedHalflife    = nil
+        gradedReviewCount = nil
         multipleChoiceResult = nil
         meaningBonusApplied = false
         uncertaintyUnlocked = false
@@ -603,6 +606,7 @@ final class QuizSession {
         let elapsed = max(Date().timeIntervalSince(referenceDate) / 3600, 1e-6)
         let newModel = try updateRecall(oldModel, successes: score, total: 1, tnow: elapsed)
         gradedHalflife = newModel.t
+        gradedReviewCount = try await db.reviewCount(wordType: item.wordType, wordId: item.wordId, quizType: item.facet)
         let record = EbisuRecord(
             wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
             alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,

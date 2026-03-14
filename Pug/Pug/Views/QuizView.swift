@@ -56,7 +56,7 @@ struct QuizView: View {
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showRescaleSheet) {
-                RescaleSheet(currentHalflife: session.gradedHalflife ?? 24) { hours in
+                RescaleSheet(currentHalflife: session.gradedHalflife ?? 24, reviewCount: session.gradedReviewCount) { hours in
                     Task { await session.rescaleCurrentFacet(hours: hours) }
                 }
             }
@@ -408,12 +408,14 @@ func formatDuration(_ hours: Double) -> String {
 
 struct RescaleSheet: View {
     let currentHalflife: Double
+    let reviewCount: Int?
     let onSet: (Double) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var targetHours: Double
 
-    init(currentHalflife: Double, onSet: @escaping (Double) -> Void) {
+    init(currentHalflife: Double, reviewCount: Int? = nil, onSet: @escaping (Double) -> Void) {
         self.currentHalflife = currentHalflife
+        self.reviewCount = reviewCount
         self.onSet = onSet
         self._targetHours = State(initialValue: currentHalflife)
     }
@@ -446,6 +448,11 @@ struct RescaleSheet: View {
                 Section {
                     LabeledContent("Final halflife", value: formatDuration(targetHours))
                         .font(.headline)
+                    if let count = reviewCount {
+                        Text("\(count) review\(count == 1 ? "" : "s") for this facet")
+                            .foregroundStyle(.secondary)
+                            .font(.footnote)
+                    }
                 }
             }
             .navigationTitle("Adjust halflife")
