@@ -366,11 +366,6 @@ struct DebugSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Quiz context (\(session.allCandidates.count) words, lowest recall first)") {
-                    Text(session.contextText)
-                        .font(.system(.caption, design: .monospaced))
-                        .textSelection(.enabled)
-                }
                 Section("Export") {
                     if let url = shareURL {
                         ShareLink(item: url) {
@@ -386,7 +381,6 @@ struct DebugSheet: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .task {
-            await session.loadCandidatesIfNeeded()
             shareURL = await session.checkpointAndDBURL()
         }
     }

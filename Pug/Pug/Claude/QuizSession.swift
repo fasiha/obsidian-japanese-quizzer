@@ -89,18 +89,6 @@ final class QuizSession {
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
     private var prefetchTask: Task<Void, Never>? = nil
 
-    /// Human-readable ranked context (same format sent to LLM), for debug display.
-    var contextText: String {
-        guard !allCandidates.isEmpty else { return "No candidates loaded." }
-        return allCandidates.map { QuizContext.contextLine(for: $0) }.joined(separator: "\n")
-    }
-
-    /// Populate allCandidates without starting a quiz (e.g. for the debug sheet).
-    func loadCandidatesIfNeeded() async {
-        guard allCandidates.isEmpty else { return }
-        guard let candidates = try? await QuizContext.build(db: db, jmdict: toolHandler.jmdict) else { return }
-        allCandidates = candidates
-    }
 
     /// Checkpoint the WAL and return the quiz DB file URL for sharing.
     func checkpointAndDBURL() async -> URL? {
