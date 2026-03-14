@@ -18,6 +18,7 @@ From the MeCab output, collect all **content word lemmas**: nouns, verbs (dictio
 - Punctuation
 - Proper nouns / personal names (固有名詞-人名, 固有名詞-地名, etc.)
 - Pure grammar morphemes (て、に、は、が、etc.)
+- 無い lemma
 
 ## Step 2 — Look up each lemma in JMDict
 
