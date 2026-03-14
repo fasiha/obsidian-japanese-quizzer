@@ -85,6 +85,7 @@ for (const filePath of mdFiles) {
       problems.push({
         file: relPath,
         line,
+        direct: `${relPath}:${line}`,
         bullet,
         tokens,
         tokenResults,
