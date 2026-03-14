@@ -252,9 +252,31 @@ struct QuizContext {
         return "\(item.wordId)  \(formStr)  \(quizTag)  \(meaningsStr)  \(facetPart)"
     }
 
+    /// Cached JMDict tag abbreviation → full description map. Loaded once from the
+    /// metadata table on first use, then reused for the lifetime of the process.
+    private nonisolated(unsafe) static var cachedTags: [String: String]?
+
+    /// Load (or return cached) tag expansions from a jmdict DatabaseReader.
+    private nonisolated static func loadTags(db: Database) -> [String: String] {
+        if let cached = cachedTags { return cached }
+        let tags: [String: String] = {
+            guard let json = try? String.fetchOne(db, sql: "SELECT value_json FROM metadata WHERE key = 'tags'"),
+                  let data = json.data(using: .utf8),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: String]
+            else { return [:] }
+            return obj
+        }()
+        cachedTags = tags
+        return tags
+    }
+
     /// Look up canonical word text and English meanings from jmdict entries.
+    /// Tag abbreviations (e.g. "uk") are expanded to full descriptions using the
+    /// metadata table in the same jmdict database (cached after first load).
     static func jmdictWordData(ids: [String], jmdict: any DatabaseReader) async throws -> [String: JmdictEntry] {
         try await jmdict.read { db in
+            let tags = loadTags(db: db)
+            let expand: ([String]) -> [String] = { codes in codes.map { tags[$0] ?? $0 } }
             var result: [String: JmdictEntry] = [:]
             for id in ids {
                 guard let json = try String.fetchOne(db,
@@ -288,10 +310,10 @@ struct QuizContext {
                         info:         sense["info"] as? [String] ?? [],
                         related:      parseXrefs(sense["related"]),
                         antonym:      parseXrefs(sense["antonym"]),
-                        partOfSpeech: sense["partOfSpeech"] as? [String] ?? [],
-                        misc:         sense["misc"] as? [String] ?? [],
-                        field:        sense["field"] as? [String] ?? [],
-                        dialect:      sense["dialect"] as? [String] ?? []
+                        partOfSpeech: expand(sense["partOfSpeech"] as? [String] ?? []),
+                        misc:         expand(sense["misc"] as? [String] ?? []),
+                        field:        expand(sense["field"] as? [String] ?? []),
+                        dialect:      expand(sense["dialect"] as? [String] ?? [])
                     )
                 }
                 result[id] = JmdictEntry(text: text, writtenTexts: kanjiTexts, kanaTexts: kanaTexts,
