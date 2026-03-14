@@ -68,7 +68,7 @@ struct WordDetailSheet: View {
                 explore = exploreSession
                 Task { await loadMnemonics() }
                 Task { await loadEbisuModels() }
-                Task { await autoCommitIfSingleForm() }
+                Task { await autoCommitFirstForm() }
             }
             .sheet(item: $rescaleRecord) { record in
                 RescaleSheet(currentHalflife: record.t) { hours in
@@ -219,20 +219,15 @@ struct WordDetailSheet: View {
                 }
                 readingStateControl
             } else {
-                // Words with kanji: furigana form picker gates the reading control.
-                // If there is only one form, skip the picker entirely — auto-commit
-                // happens in onAppear — and show the reading control immediately.
+                // Words with kanji: always show the reading control.
+                // If there are multiple forms, show the furigana picker above it so
+                // the user can change their committed form at any time.
+                // Auto-commit to the first form happens in onAppear.
                 let allForms = item.writtenForms.flatMap(\.forms)
-                if allForms.count == 1 {
-                    readingStateControl
-                } else {
-                    if !item.writtenForms.isEmpty {
-                        furiganaPickerSection
-                    }
-                    if item.commitment != nil || item.writtenForms.isEmpty {
-                        readingStateControl
-                    }
+                if allForms.count > 1 && !item.writtenForms.isEmpty {
+                    furiganaPickerSection
                 }
+                readingStateControl
             }
 
             // Kanji state control (only if word has kanji and reading is not unknown)
@@ -261,7 +256,7 @@ struct WordDetailSheet: View {
             .buttonStyle(.bordered)
             .tint(.blue)
 
-            if item.commitment != nil {
+            if item.readingState != .unknown || item.kanjiState != .unknown {
                 Button(role: .destructive) {
                     clearAll()
                 } label: {
@@ -298,7 +293,7 @@ struct WordDetailSheet: View {
     @ViewBuilder
     private var furiganaPickerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Choose a form to study")
+            Text("Written form")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
@@ -543,12 +538,13 @@ struct WordDetailSheet: View {
         return zip(committed, form.furigana).allSatisfy { $0.ruby == $1.ruby && $0.rt == $1.rt }
     }
 
-    /// Silently commits the only available form when there is exactly one,
-    /// so the DB has furigana for quizzes without requiring a user tap.
-    private func autoCommitIfSingleForm() async {
+    /// Silently commits the first available written form on first open,
+    /// so the user can immediately start learning reading and kanji without
+    /// having to pick a form first. The user can change the committed form
+    /// later via the written form picker.
+    private func autoCommitFirstForm() async {
         guard item.commitment == nil else { return }
-        let allForms = item.writtenForms.flatMap(\.forms)
-        guard allForms.count == 1, let form = allForms.first else { return }
+        guard let form = item.writtenForms.flatMap(\.forms).first else { return }
         if let data = try? JSONEncoder().encode(form.furigana),
            let json = String(data: data, encoding: .utf8) {
             await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)
