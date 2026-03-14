@@ -43,6 +43,16 @@ node lookup.mjs '{stem}*'
 
   If a close variant is found by any of these, note it. Either way, mark the word as not in JMDict (see output format below).
 
+## Step 2.5 — Check for multi-morpheme compounds
+
+MeCab often splits compound words into individual morphemes. After processing all lemmas, scan for adjacent morphemes (pairs or triples) that might form a single dictionary entry — compound verbs (e.g. 引っ越す, 見つける), compound nouns (e.g. 手続き), or content words with a trailing particle that JMDict lists as a distinct entry (e.g. ままに, ために, として). These particle compounds often carry meanings different from the bare word. Look up the concatenation:
+
+```bash
+node lookup.mjs {combined}
+```
+
+If found, use the compound entry and drop its individual parts from the output. Use the prefix search strategy from Step 2 if you're unsure of the exact compound form.
+
 ## Step 3 — Output the vocab list
 
 Print a Markdown bullet list, one item per word, in the order the words appear in the sentence.
