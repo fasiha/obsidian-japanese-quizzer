@@ -558,6 +558,13 @@ struct WordDetailSheet: View {
                let json = String(data: data, encoding: .utf8) {
                 await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)
             }
+            // If kanji is being learned, reset kanji_chars to all kanji in the new form
+            // so we don't inherit stale chars from the previously committed form.
+            if item.kanjiState == .learning {
+                let newKanji = extractKanjiFrom(form.furigana)
+                await corpus.setKanjiState(.learning, wordId: item.id, kanjiChars: newKanji, db: db)
+                await loadEbisuModels()
+            }
             isWorking = false
         }
     }
@@ -600,6 +607,10 @@ struct WordDetailSheet: View {
               let data = json.data(using: .utf8),
               let segments = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
         else { return [] }
+        return extractKanjiFrom(segments)
+    }
+
+    private func extractKanjiFrom(_ segments: [FuriganaSegment]) -> [String] {
         var result: [String] = []
         for seg in segments where seg.rt != nil {
             for ch in seg.ruby.unicodeScalars {
