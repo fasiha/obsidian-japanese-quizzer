@@ -301,6 +301,22 @@ export function extractGrammarBullets(content) {
   return bullets;
 }
 
+/**
+ * Migrate grammar-equivalences.json from old array-of-arrays format to
+ * array-of-objects. New format entries are passed through unchanged.
+ * Exported here (not in add-grammar-equivalence.mjs) so other scripts can
+ * import it without triggering add-grammar-equivalence's top-level side effects.
+ *
+ * @param {Array} raw
+ * @returns {Array<{topics: string[], summary?: string, subUses?: string[], cautions?: string[], sourcesSeen?: string[], stub?: boolean}>}
+ */
+export function migrateEquivalences(raw) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) =>
+    Array.isArray(entry) ? { topics: entry } : entry,
+  );
+}
+
 // Parse YAML frontmatter and return key-value pairs, or null if none present.
 // Only handles simple scalar values (strings, booleans, numbers) — no arrays/objects.
 // Tolerates: BOM, Windows (CRLF) line endings, leading blank lines before ---.

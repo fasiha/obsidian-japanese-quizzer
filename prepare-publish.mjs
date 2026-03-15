@@ -372,13 +372,17 @@ const grammarOutput = {
 
 // Validate grammar-equivalences.json covers all grammar topics
 const equivPath = path.join(projectRoot, "grammar-equivalences.json");
-let grammarEquivalences;
+let grammarEquivalencesRaw;
 try {
-  grammarEquivalences = JSON.parse(readFileSync(equivPath, "utf-8"));
+  grammarEquivalencesRaw = JSON.parse(readFileSync(equivPath, "utf-8"));
 } catch {
-  grammarEquivalences = [];
+  grammarEquivalencesRaw = [];
 }
-const coveredTopics = new Set(grammarEquivalences.flat());
+// Support both old array-of-arrays format and new array-of-objects format
+const grammarEquivalences = grammarEquivalencesRaw.map((entry) =>
+  Array.isArray(entry) ? { topics: entry } : entry,
+);
+const coveredTopics = new Set(grammarEquivalences.flatMap((g) => g.topics));
 const missingFromEquiv = Object.keys(grammarTopics).filter(
   (id) => !coveredTopics.has(id),
 );
@@ -395,10 +399,10 @@ if (missingFromEquiv.length > 0) {
   process.exit(1);
 }
 
-// Inject equivalence group index into each topic
+// Inject equivalence group info into each topic
 const topicToGroup = new Map();
 for (let i = 0; i < grammarEquivalences.length; i++) {
-  for (const id of grammarEquivalences[i]) {
+  for (const id of grammarEquivalences[i].topics) {
     topicToGroup.set(id, i);
   }
 }
@@ -407,9 +411,14 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
   if (groupIdx !== undefined) {
     const group = grammarEquivalences[groupIdx];
     // Only include equivalenceGroup if topic shares a group with others
-    if (group.length > 1) {
-      topic.equivalenceGroup = group.filter((other) => other !== id);
+    if (group.topics.length > 1) {
+      topic.equivalenceGroup = group.topics.filter((other) => other !== id);
     }
+    // Inject enriched description fields if present
+    if (group.summary) topic.summary = group.summary;
+    if (group.subUses) topic.subUses = group.subUses;
+    if (group.cautions) topic.cautions = group.cautions;
+    if (group.stub) topic.stub = group.stub;
   }
 }
 

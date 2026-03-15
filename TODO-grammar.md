@@ -265,20 +265,60 @@ All items complete as of 2026-03-15:
 
 Three items that should be resolved before Phase 1B, in this order:
 
-- [ ] **Enriched topic descriptions** — `prepare-publish.mjs` should run an LLM-assisted
-  step that writes a short explanation for each equivalence group and stores it in
-  `grammar.json`. The current prompt only has topic ID, title, level, and a reference URL
-  Haiku cannot fetch; for obscure or ambiguously titled topics this is insufficient.
-  Open questions to resolve:
-  - Per-topic or per-equivalence-group? (Group is more token-efficient; topic allows
-    source-specific nuance)
-  - What to include: a two-sentence conjugation gloss + example of correct vs. wrong
-    form is likely enough; full paradigm tables are overkill
-  - How to handle ら抜き言葉 and similar "colloquially accepted but textbook-wrong" forms —
-    the description must flag these so Haiku doesn't use them as distractors or penalize
-    them in grading
-  - Regeneration strategy when the grammar databases change (hash the source data,
-    skip if unchanged)
+- [ ] **Enriched topic descriptions** — per-equivalence-group descriptions stored in
+  `grammar-equivalences.json` (which evolves from array-of-arrays to array-of-objects).
+  Merged into `grammar.json` at publish time. Generated/reviewed via the
+  `/cluster-grammar-topics` skill.
+
+  Decided:
+  - Per-equivalence-group (not per-topic)
+  - No sub-topic Ebisu modeling — sub-uses are enumerated in the description and Haiku
+    varies across them naturally; quiz `reviews.notes` tracks which sub-use was exercised,
+    and recent notes are fed back into generation for diversity
+  - Descriptions are committed to the repo (public); no copyrighted example sentences —
+    use original examples or sentences from the user's annotated content
+
+  Task breakdown:
+  - [x] **1. Evolve `grammar-equivalences.json` schema** — migrate from array-of-arrays
+    to array-of-objects: `{ topics: [...], summary, subUses, cautions, sourcesSeen, stub? }`.
+    Write a migration in `add-grammar-equivalence.mjs` that reads either format.
+    Update `prepare-publish.mjs` to read the new format and merge descriptions into
+    `grammar.json` topics.
+  - [x] **2. Build description generation logic** — a Node.js script
+    (`.claude/scripts/enrich-grammar-descriptions.mjs`) that, for each equivalence group:
+    - Fetches Bunpro page (if any topic has an href) via web fetch
+    - Fetches St Olaf/Genki page (if any Genki topic has an href)
+    - Gathers annotated sentences + free-text notes from all Markdown files that
+      reference any topic in the group
+    - Calls Claude to produce: `summary` (2-3 sentences), `subUses` (list of distinct
+      uses with one original example each), `cautions` (colloquial forms like ら抜き言葉,
+      common confusables)
+    - Records `sourcesSeen` (which content sentences informed the description)
+    - Sets `stub: true` if no content sentences were found (description based on
+      web pages + Claude knowledge only); omits the field or sets `stub: false`
+      once real content sentences are incorporated
+    - Skips groups whose `sourcesSeen` + fetched page content hasn't changed
+      (hash-based); re-runs if new content sentences are added to any Markdown file
+  - [ ] **3. Extend `/cluster-grammar-topics` skill** — after clustering, run the
+    enrichment step for new groups and for existing groups with new content references.
+    Show the user a diff of description changes for review.
+  - [ ] **4. Wire descriptions into quiz prompts** — update
+    `GrammarQuizSession.systemPrompt()` to inject `summary`, `subUses`, and `cautions`
+    from the topic's equivalence group. Replace the current bare `topicLine` with a
+    richer block. Pass `stub: true` topics through unchanged (Haiku still gets a
+    reasonable description; it just wasn't grounded in user content sentences).
+  - [ ] **5. TestHarness support** — when `--grammar <topic_id>` is run and the topic's
+    equivalence group has no description (or `stub: true`), the harness prints a warning:
+    `"[warn] no enriched description for <topic_id> — run /cluster-grammar-topics to generate one"`
+    and continues. The harness must NOT block on missing descriptions; the quiz works
+    without them (just less informative prompts). Add `--enrich` flag: if passed and the
+    description is missing, the harness calls `enrich-grammar-descriptions.mjs` for that
+    group before running (lightweight, on-demand, generates a stub since no content
+    sentences are available in the harness context).
+  - [ ] **6. Feed review notes back into generation** — update generation prompts to
+    accept a "recently tested sub-uses" list (from `reviews.notes`) and instruct Haiku
+    to prioritize untested sub-uses. Update grading prompts to always note which sub-use
+    was exercised in the `notes` field.
 
 - [ ] **VOCAB_ASSUMED contract** — define which generation paths emit a
   `VOCAB_ASSUMED: word1,word2,...` line, how the app parses and stores it alongside the
@@ -395,18 +435,8 @@ latency acceptable.
 
 ### Prompt quality
 
-- **Enriched topic descriptions**: the current prompt provides only topic ID, title, level,
-  and a reference URL (which Haiku cannot fetch). For well-known topics like potential verbs
-  and causative, Haiku's internal knowledge is sufficient. For more obscure or ambiguous
-  topics this may be insufficient.
-  - **TODO**: Consider adding an LLM-generated summary per equivalence group at
-    `prepare-publish.mjs` time and injecting it into the quiz system prompt. Especially
-    useful for topics where the title alone is ambiguous (e.g. `bunpro:てならない`).
-  - **TODO**: The descriptor for `genki:potential-verbs` must explicitly note that ら抜き言葉
-    forms (e.g. `食べれる`, `見れる`) are colloquially accepted alternatives. Haiku must not
-    use these as distractors (a student who writes `食べれます` may be correct) and must not
-    penalize them in grading. The distractor for "wrong potential form" should be an
-    unambiguously wrong conjugation instead.
+- **Enriched topic descriptions**: see Phase 1A.5 task breakdown. The ら抜き言葉 handling
+  for `genki:potential-verbs` is covered by the `cautions` field in the description.
 
 - **Part-of-speech annotation for coaching accuracy**: Haiku occasionally misidentifies verb
   class in coaching responses (e.g. calling 弾く a "る-verb"). This happens because the

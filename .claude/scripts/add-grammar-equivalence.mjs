@@ -11,11 +11,46 @@
  *     → merges all three into one equivalence group
  *
  * Idempotent: if all given topics are already in the same group, no change.
+ *
+ * Format: grammar-equivalences.json is an array of EquivalenceGroup objects.
+ * Old format (array-of-arrays) is read and auto-migrated on load.
+ *
+ * @typedef {Object} EquivalenceGroup
+ * @property {string[]} topics
+ *   Prefixed topic IDs in this equivalence group, e.g. ["bunpro:causative", "genki:causative-sentences"].
+ *   Always sorted alphabetically. At least one element.
+ *
+ * @property {string} [summary]
+ *   2–3 sentence gloss: what the form looks like (conjugation pattern) and what it means.
+ *   Written in plain English, no copyrighted examples. Injected into Haiku's system prompt.
+ *
+ * @property {string[]} [subUses]
+ *   Distinct grammatical sub-uses of this topic, each with a short original example sentence.
+ *   Example: ["Sequential actions: 歩いて帰った (walked home on foot)",
+ *             "Means/manner: 急いでご飯を食べた (ate in a hurry)"]
+ *   Haiku uses this list to vary which sub-use each quiz question exercises.
+ *   Recent sub-uses from reviews.notes are fed back so the same sub-use isn't repeated.
+ *
+ * @property {string[]} [cautions]
+ *   Edge cases and confusables Haiku must know about.
+ *   Example: ["ら抜き言葉: 食べれる/見れる are colloquially accepted — do not use as distractors or penalize in grading",
+ *             "Do not confuse with potential: ことができる is also correct but is a separate grammar point"]
+ *
+ * @property {string[]} [sourcesSeen]
+ *   Content sentences from the user's Markdown files that informed this description,
+ *   in "filename.md: <Japanese sentence>" format.
+ *   Used to detect when new annotations have been added and the description should be re-reviewed.
+ *
+ * @property {boolean} [stub]
+ *   True if the description was generated without any user content sentences (based on web
+ *   pages and Claude's internal knowledge only). Omitted or false once real content sentences
+ *   have been incorporated. Shown as a warning in the TestHarness.
  */
 
 import { readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { migrateEquivalences } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -42,43 +77,54 @@ for (const id of args) {
   }
 }
 
-// Load existing equivalences (or start fresh)
-let groups;
-try {
-  groups = JSON.parse(readFileSync(EQUIV_PATH, "utf-8"));
-} catch {
-  groups = [];
+// Load existing equivalences (or start fresh), migrating old array-of-arrays format
+function loadEquivalences(filePath) {
+  let raw;
+  try {
+    raw = JSON.parse(readFileSync(filePath, "utf-8"));
+  } catch {
+    return [];
+  }
+  return migrateEquivalences(raw);
 }
+
+const groups = loadEquivalences(EQUIV_PATH);
 
 // Find which groups contain any of the given topics
 const touchedIndices = new Set();
 for (let i = 0; i < groups.length; i++) {
   for (const id of args) {
-    if (groups[i].includes(id)) {
+    if (groups[i].topics.includes(id)) {
       touchedIndices.add(i);
     }
   }
 }
 
-// Merge: collect all members from touched groups + the new args
-const merged = new Set(args);
+// Merge: collect all topic members from touched groups + the new args
+const mergedTopics = new Set(args);
+// Preserve non-topics fields from the first touched group (description data etc.)
+let preservedMeta = {};
 for (const i of touchedIndices) {
-  for (const id of groups[i]) {
-    merged.add(id);
+  for (const id of groups[i].topics) {
+    mergedTopics.add(id);
+  }
+  if (Object.keys(preservedMeta).length === 0) {
+    const { topics: _, ...rest } = groups[i];
+    preservedMeta = rest;
   }
 }
 
 // Rebuild: untouched groups + the merged group
 const newGroups = groups.filter((_, i) => !touchedIndices.has(i));
-newGroups.push([...merged].sort());
+newGroups.push({ topics: [...mergedTopics].sort(), ...preservedMeta });
 
-// Sort groups for stable output (by first element)
-newGroups.sort((a, b) => a[0].localeCompare(b[0]));
+// Sort groups for stable output (by first topic)
+newGroups.sort((a, b) => a.topics[0].localeCompare(b.topics[0]));
 
 writeFileSync(EQUIV_PATH, JSON.stringify(newGroups, null, 2) + "\n");
 
 const action =
   touchedIndices.size === 0
     ? "Added singleton"
-    : `Merged ${touchedIndices.size + (args.some((id) => !groups.flat().includes(id)) ? 0 : 0)} group(s)`;
-console.log(`${action}: [${[...merged].sort().join(", ")}]`);
+    : `Merged ${touchedIndices.size} group(s)`;
+console.log(`${action}: [${[...mergedTopics].sort().join(", ")}]`);
