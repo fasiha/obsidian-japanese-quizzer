@@ -55,77 +55,106 @@ The two facets have different tier progressions:
 **Production** (English → Japanese): three tiers
 | Tier | Format | Generation | Grading |
 |------|--------|------------|---------|
-| 1. Multiple choice | English context + 4 complete Japanese sentence choices; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
-| 2. Fill-in-the-blank | Same English context + same 4 choices; student types the correct sentence | (reuses tier 1 generation) | String match, fallback to coaching LLM |
+| 1. Multiple choice | English stem + 4 full Japanese sentences; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
+| 2. Type the answer | Same English stem + same 4 sentences; student types the correct sentence | (reuses tier 1 generation) | String match, fallback to coaching LLM |
 | 3. Free text | Full translation from English prompt | LLM (Haiku) | LLM (Haiku, multi-turn coaching) |
 
 Tiers 1 and 2 share the same generated question — the only difference is the UI widget
 (four tap buttons vs a text input). This means the LLM generation call happens once; the
 tier 1 question is reused at tier 2 without regenerating.
 
-> **Fill-in-the-blank for production tiers 1 and 2** (implemented and iterated through
-> 2026-03-15): the original full-sentence choice design had recurring problems:
-> (a) distractors that differed only by particle (が vs を) rather than by grammar form,
-> and (b) ことができる appearing as a distractor even though it is valid Japanese.
-> Note: problem (b) was originally framed as "generating four same-meaning sentences is hard"
-> — this was a mis-framing. Full-sentence MC distractors should have *different* meanings (they
-> express the wrong grammar for the English stem), not the same meaning. The real issue was just
-> (a): particle-only variation between distractors is too subtle to discriminate grammar knowledge.
-> Fill-in-the-blank solves (a) by reducing choices to short conjugation-level fills rather than
-> complete sentences. It remains the right design for multi-gap patterns (〜し〜し, ば〜ほど).
-> For single-gap grammar, full-sentence MC with properly-differentiated distractors is also viable.
+> **Production tiers 1 and 2: full-sentence multiple choice** (decided 2026-03-15)
 >
-> The fix: generate a Japanese sentence with one or more `___` gaps and 4 short
-> conjugation-level choices. Each choice is an **array of strings**, one per gap.
-> Single-gap example (potential verbs):
+> The current design uses full-sentence multiple choice: Haiku generates an English stem
+> describing a concrete situation, one correct Japanese sentence using the target grammar,
+> and three distractor sentences that use the same vocabulary/situation but swap in a
+> different grammar form (e.g. causative instead of potential, passive instead of conditional).
+> The distractors express different meanings from the English stem because they use the wrong
+> grammar construction — the student's job is to pick the sentence that correctly matches
+> the English scenario.
+>
+> JSON format:
+> ```json
+> {"stem": "Yuki practices every day and can now play a difficult Beethoven piece.",
+>  "sentence": "",
+>  "choices": [
+>    ["ユキは毎日練習しているので、今ベートーベンの難しい曲が弾かせるようになりました。"],
+>    ["ユキは毎日練習しているので、今ベートーベンの難しい曲が弾けるようになりました。"],
+>    ["ユキは毎日練習しているので、今ベートーベンの難しい曲が弾かれるようになりました。"],
+>    ["ユキは毎日練習しているので、今ベートーベンの難しい曲が弾くようになりました。"]
+>  ],
+>  "correct": 1}
+> ```
+> `"sentence"` is always empty string. Each choice is a 1-element array containing a
+> complete Japanese sentence. `correct` is randomized 0–3.
+>
+> **Key distractor rules** (enforced in the generation prompt):
+> - Same core vocabulary and situation — only the grammar form changes
+> - Each distractor uses a clearly different grammar construction (not just a particle swap)
+> - No distractor may use a valid alternative for the target grammar's meaning (e.g. if
+>   target is potential verbs, ことができる is excluded — it's also correct)
+> - Each distractor must be grammatically valid Japanese (even though it expresses the
+>   wrong meaning for the English stem)
+>
+> **Prompt ordering: English-first** (Step 1 = English stem, Step 2 = correct Japanese,
+> Step 3 = distractors, Step 4 = self-check). Tested against Japanese-first ordering
+> (Step 1 = Japanese sentence, Step 2 = derive English from it). English-first produced
+> better results: more varied verbs/settings, no self-revision loops that burned tokens,
+> and stricter adherence to the "same sentence frame" constraint for distractors.
+>
+> **Distractor semantics**: distractors do NOT have the same meaning as the correct
+> sentence — they express a different meaning because they use a different grammar form.
+> The English stem fixes the intended meaning; the student picks the grammar form that
+> matches. This was a key insight: the original (pre-2026-03-15) framing assumed
+> distractors should be "same meaning, different form" which is much harder to generate
+> and led to ことができる-as-distractor problems.
+>
+> **Implementation**: `GrammarMultipleChoiceQuestion.choices` is `[[String]]`.
+> For full-sentence multiple choice, each sub-array has one element. The JSON parser
+> also accepts legacy flat `[String]` format (auto-wrapped into 1-element sub-arrays).
+>
+> ### Alternative designs considered (for future reference)
+>
+> **Fill-in-the-blank** (implemented 2026-03-14, superseded 2026-03-15): instead of
+> four complete sentences, generate a gapped Japanese sentence with `___` and four
+> short conjugation-level fills. Solves the particle-only-variation problem by reducing
+> choices to the grammar slot itself. Better for multi-gap patterns (〜し〜し, ば〜ほど)
+> where short fills per gap are cleaner than four long sentences. The generation prompt
+> used a 5-step chain of thought: (1) write full sentence, (2) bracket grammar slots
+> with 【】, (3) self-check for target grammar leaking outside brackets, (4) English
+> stem, (5) three distractors with substitution validation.
+>
+> Fill-in-the-blank prompt (for reference):
+> ```
+> Step 1 — Full sentence: Write a complete Japanese sentence using the target grammar. No gaps yet.
+> Step 2 — Slot: Mark the grammar slot(s) using 【】 brackets. Bracket enough so that every
+>   choice combines cleanly with the text outside the brackets. For conjugation grammar,
+>   include any attached auxiliary: 彼女はピアノが【弾けない】。For conjunction/particle
+>   grammar, the particle itself is the complete unit: 先生は厳しい【し】、宿題も多い【し】。
+> Step 3 — Self-check: Does the target grammar form appear OUTSIDE the 【】 brackets
+>   anywhere in Step 1? If yes, rewrite Step 1 so it does not.
+> Step 4 — English stem: One or two English sentences describing a concrete situation.
+> Step 5 — Distractors: Three wrong fills. Each must be a real Japanese form — wrong for
+>   this context but not a nonsense string. Substitute each into the gap: the result must
+>   be grammatically valid Japanese.
+> ```
+> Fill-in-the-blank JSON format:
 > ```json
 > {"stem": "Describe that you can play guitar.",
 >  "sentence": "彼は毎日ギターが___。",
 >  "choices": [["弾けます"], ["弾きます"], ["弾かせます"], ["弾けません"]],
 >  "correct": 0}
 > ```
-> Multi-gap example (〜し、〜し — multiple reasons):
-> ```json
-> {"stem": "Explain why you don't like the class.",
->  "sentence": "先生は厳しい___、宿題はたくさんある___。",
->  "choices": [["し", "し"], ["て", "て"], ["から", "から"], ["のに", "のに"]],
->  "correct": 0}
-> ```
-> Heterogeneous-gap example (〜ば〜ほど):
-> ```json
-> {"stem": "Say that the more you study, the more fun it gets.",
->  "sentence": "勉強すれ___楽しくなる___。",
->  "choices": [["ば", "ほど"], ["たら", "くらい"], ["と", "ほど"], ["ば", "ない"]],
->  "correct": 0}
-> ```
-> The gap isolates exactly the grammar slot(s) under test; each choice fills all gaps
-> and the discrimination is purely about knowing the correct form. The verb stem
-> visible around the gap (e.g. `弾___`) does reveal which verb is used, but this is
-> acceptable — the student already sees the grammar topic name in the UI, and we have
-> decided that sharing vocabulary context with the student on demand is fine.
+> Multi-gap: `[["し","し"],["て","て"],["から","から"],["のに","のに"]]`.
 >
-> **Note on distractor semantics**: distractors do NOT need to have the same meaning
-> as the correct choice — they just need to be plausible Japanese forms that happen to
-> express the wrong meaning for this context. For example, `し` vs `て` vs `から` all
-> express different relationships (multiple reasons vs sequential vs single cause). The
-> English stem fixes the intended meaning; the student's job is to pick the form that
-> correctly expresses that meaning. This is also true for full-sentence multiple choice
-> (see "full-sentence MC" notes below).
->
-> For tier 2, typing short fills into gaps is more tractable than reconstructing a
-> whole sentence from memory, which better targets grammar knowledge rather than
-> sentence production. For multi-gap tier 2, the student types each fill in sequence.
->
-> In practice `correct` is a random 0–3, not always 0 — the examples above show 0 for
-> brevity. The generation prompt instructs Haiku to place the correct fill at a random index.
->
-> **Implementation** (done): `GrammarMultipleChoiceQuestion.choices` is `[[String]]`.
-> The display layer counts `___` occurrences and fills the *n*th gap with `choice[n]`.
-> The generation prompt instructs Claude to place one or more `___` gaps as needed
-> by the grammar pattern, and return choices as arrays of strings (one element per gap).
-> The tier-2 string-match fast path compares each typed segment against the
-> corresponding element of `choices[correctIndex]`. The JSON parser also accepts
-> legacy flat `[String]` format (auto-wrapped into 1-element sub-arrays).
+> **Japanese-first chain of thought** (tested 2026-03-15, rejected): Step 1 = write
+> the correct Japanese sentence first, Step 2 = derive English from it. Hypothesis:
+> thinking in Japanese first produces more natural sentences. Results: Haiku got stuck
+> in visible self-revision loops (rewriting the sentence 3–5 times before settling),
+> burning ~600 extra tokens. Verb variety was worse for potential-verbs (弾く every
+> time). Distractors occasionally broke the "same sentence frame" constraint (e.g.
+> conditional 走ったら changed sentence structure entirely). For し, one run produced
+> a correct answer that only used し once (mixed with から), weakening the quiz.
 
 Recognition collapses to two tiers because fill-in-the-blank in a Japanese sentence
 is production by another name — it tests supplying the grammar form, not comprehending it.
@@ -358,14 +387,6 @@ Iterated on fill-in-the-blank generation prompt across `genki:potential-verbs`,
 - **Token budget**: the chain-of-thought prompt is more verbose (~400–500 reasoning tokens before
   the JSON). One PATH 4 generation hit the 1024 maxTokens ceiling and needed a retry. Consider
   raising maxTokens for grammar generation calls to 1500 or 2000.
-
-- **Full-sentence multiple choice reconsidered**: the original motivation for fill-in-the-blank
-  included "generating four same-meaning sentences is hard." This framing was wrong — distractors
-  in full-sentence MC should express *different* (plausibly wrong) meanings, not the same meaning.
-  Full-sentence MC with different-meaning choices is actually feasible and arguably better for
-  single-gap grammar (the surrounding context provides more information). Fill-in-the-blank remains
-  the right design for multi-gap patterns (〜し〜し, ば〜ほど) where short fills per gap is cleaner.
-  A future UI could diff-highlight the varying parts of full-sentence choices to aid readability.
 
 - **Part-of-speech annotation for coaching accuracy**: Haiku occasionally misidentifies verb
   class in coaching responses (observed: calling 弾く a "る-verb" and directing the student

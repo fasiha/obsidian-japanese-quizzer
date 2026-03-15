@@ -312,19 +312,24 @@ final class GrammarQuizSession {
         switch item.facet {
         case "production":
             return """
-            Generate ONE fill-in-the-blank question for the production facet.
+            Generate ONE multiple-choice question for the production facet.
             Work through these steps explicitly — write out each step before the JSON:
 
-            Step 1 — Full sentence: Write a complete Japanese sentence using the target grammar. No gaps yet.
-            Step 2 — Slot: Mark the grammar slot(s) using 【】 brackets. Bracket enough so that every choice combines cleanly with the text outside the brackets. For conjugation grammar, include any attached auxiliary: 彼女はピアノが【弾けない】。 not 彼女はピアノが【弾け】ない。 For conjunction/particle grammar, the particle itself is the complete unit: 先生は厳しい【し】、宿題も多い【し】。
-            Step 3 — Self-check: Does the target grammar form appear OUTSIDE the 【】 brackets anywhere in Step 1? If yes, rewrite Step 1 so it does not.
-            Step 4 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions.
-            Step 5 — Distractors: Three wrong fills. Each must be a real Japanese form — wrong for this context but not a nonsense string. Briefly name each (e.g. "plain negative", "causative", "te-form"). Substitute each distractor into the gap: the result must be grammatically valid Japanese (even if the meaning is wrong). If a distractor produces invalid Japanese, replace it. If most distractors produce invalid Japanese, the surrounding text is too constraining — rewrite Step 1 with a more neutral context.
+            Step 1 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+            Step 2 — Correct sentence: Write one complete, natural Japanese sentence that correctly expresses the English stem using the target grammar.
+            Step 3 — Distractors: Write three distractor Japanese sentences. Each must:
+              (a) use the SAME core vocabulary and situation as the correct sentence — keep the subject, object, and setting identical,
+              (b) swap ONLY the grammar construction — use a clearly different grammar form (e.g. causative instead of potential, passive instead of conditional, te-form instead of volitional),
+              (c) NOT use any construction that is a valid alternative way to express the target grammar's meaning (e.g. if target is potential verbs, do NOT use ことができる as a distractor — that is also correct; use causative, passive, plain form, etc.),
+              (d) result in a grammatically valid Japanese sentence that expresses a DIFFERENT meaning from the English stem because it uses the wrong grammar form.
+              Name the grammar form each distractor uses.
+            Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
 
             Then end with a ```json code block:
-            {"stem":"<Step 4>","sentence":"<Step 2 sentence with 【…】 replaced by \(grammarGapToken)>","choices":[["<correct fill(s)>"],["<distractor 1 fill(s)>"],["<distractor 2 fill(s)>"],["<distractor 3 fill(s)>"]],"correct":<0-3>}
-            - Place the correct fill at a randomly chosen index (0–3) and record it in "correct".
-            - Each choice is an array with one element per gap. Single-gap: [["弾けない"],["弾かない"],["弾かせない"],["弾きます"]]. Two-gap: [["し","し"],["て","て"],["から","から"],["のに","のに"]].
+            {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
+            - "sentence" is empty string (no gap — the whole sentence is the choice).
+            - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
+            - Each choice is a 1-element array containing the full Japanese sentence.
             """
         case "recognition":
             return """
