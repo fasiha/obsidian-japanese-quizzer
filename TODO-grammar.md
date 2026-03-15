@@ -6,7 +6,7 @@
 Three sources, each providing topic IDs:
 - **Genki** (`grammar-stolaf-genki.tsv`): ~123 topics, slugified IDs like `potential-verbs`
 - **Bunpro** (`grammar-bunpro.tsv`): ~943 topics, IDs like `られる-Potential`
-- **DBJG** (`grammar-dbjg.md`): ~370 entries from Dictionary of Basic Japanese Grammar table of contents
+- **DBJG** (`grammar-dbjg.tsv`): ~370 entries from Dictionary of Basic Japanese Grammar table of contents (slugified from `grammar-dbjg.md` via `slugify-dbjg.mjs`)
 
 All IDs are prefixed by source in annotations and in the app: `genki:potential-verbs`,
 `bunpro:られる-Potential`, `dbjg:rareru2`.
@@ -87,20 +87,41 @@ deterministic parts to pure logic as patterns emerge.
 
 ### Phase 0 — content pipeline (no iOS)
 
-- [ ] Slugify DBJG entries into a proper TSV (id, option, title-en) matching the Genki/Bunpro format
+- [x] Slugify DBJG entries into a proper TSV (id, option, title-en) matching the Genki/Bunpro format
   - Handle cross-references like `chau <shimau>` — these become aliases pointing to the main entry
   - Numbering disambiguates homographs: `ageru1`, `ageru2`
   - `option` = `"basic"` for all (future: `"intermediate"`, `"advanced"` for the sequel books)
-- [ ] Build grammar database loader in `.claude/scripts/` — reads all three TSVs, prefixes IDs by source
-- [ ] Parse `<details><summary>Grammar</summary>` blocks from Markdown (parallel to vocab extraction)
-- [ ] Build `check-grammar.mjs` — validates grammar tags against known databases, reports unknown IDs
-- [ ] Build equivalence groups: LLM-assisted clustering of topics across databases
-  - Output: `grammar-equivalences.json` — array of arrays of topic IDs
-  - One-time generation, manually reviewed, checked into repo
-- [ ] Generate `grammar.json` (analogous to `vocab.json`)
+  - Done: `grammar/slugify-dbjg.mjs` → `grammar/grammar-dbjg.tsv`
+- [x] Build grammar database loader in `.claude/scripts/` — reads all three TSVs, prefixes IDs by source
+  - Done: `loadGrammarDatabases()` in `.claude/scripts/shared.mjs`
+- [x] Parse `<details><summary>Grammar</summary>` blocks from Markdown (parallel to vocab extraction)
+  - Done: `extractGrammarBullets()` in `.claude/scripts/shared.mjs`
+- [x] Build `check-grammar.mjs` — validates grammar tags against known databases, reports unknown IDs
+  - Done: `.claude/scripts/check-grammar.mjs`
+- [x] Build equivalence groups: LLM-assisted clustering of topics across databases
+  - Output: `grammar-equivalences.json` — array of arrays of prefixed topic IDs (e.g. `[["bunpro:causative", "genki:causative", "dbjg:saseru"]]`)
+  - `add-grammar-equivalence.mjs`: pure graph operation script
+    - 1 argument: adds topic as a singleton group
+    - 2+ arguments: merges all into one group (union-find style), idempotent
+    - Reads/writes `grammar-equivalences.json`
+  - `/cluster-grammar-topics` skill: finds topics in `grammar.json` missing from `grammar-equivalences.json`, uses LLM to suggest matches against all three databases, calls `add-grammar-equivalence.mjs` to apply
+  - Checked into repo, manually reviewable
+- [x] Generate `grammar.json` (analogous to `vocab.json`)
   - `sources`: metadata per database
   - `topics`: keyed by prefixed ID, contains title, level, href, example sentences, equivalence group
-- [ ] Update `prepare-publish.mjs` (or equivalent) to produce `grammar.json` alongside `vocab.json`
+  - Done: `prepare-publish.mjs` collects grammar annotations and writes `grammar.json`
+- [x] Update `prepare-publish.mjs` (or equivalent) to produce `grammar.json` alongside `vocab.json`
+- [x] `prepare-publish.mjs` validation: fail if any topic in `grammar.json` is missing from `grammar-equivalences.json`
+
+### Content workflow
+
+1. Edit Markdown files — add `<details><summary>Grammar</summary>` blocks with `source:id` bullets
+2. Run `check-grammar.mjs` — validates all IDs exist in the three grammar databases
+3. Run `prepare-publish.mjs` — produces `grammar.json` (and `vocab.json`); **fails** if `grammar-equivalences.json` is missing any topics
+4. If step 3 fails, run `/cluster-grammar-topics` — adds new topics to `grammar-equivalences.json` (LLM-assisted, then manually review the diff)
+5. Re-run `prepare-publish.mjs`
+6. [x] `publish.mjs` pushes `grammar.json` alongside `vocab.json`
+7. TODO: bundle `grammar.json` and `grammar-equivalences.json` into the iOS app
 
 ### Phase 1 — iOS app
 

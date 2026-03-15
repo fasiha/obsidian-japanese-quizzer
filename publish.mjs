@@ -41,6 +41,12 @@ if (!existsSync(vocabPath)) {
   process.exit(1);
 }
 
+const grammarPath = path.join(projectRoot, "grammar.json");
+if (!existsSync(grammarPath)) {
+  console.error("grammar.json not found — run `node prepare-publish.mjs` first");
+  process.exit(1);
+}
+
 const tmpDir = mkdtempSync(path.join(tmpdir(), "gist-publish-"));
 
 function run(cmd, opts = {}) {
@@ -52,8 +58,9 @@ try {
   run(`git clone git@gist.github.com:${gistId}.git "${tmpDir}"`);
 
   copyFileSync(vocabPath, path.join(tmpDir, "vocab.json"));
+  copyFileSync(grammarPath, path.join(tmpDir, "grammar.json"));
 
-  run(`git -C "${tmpDir}" add vocab.json`);
+  run(`git -C "${tmpDir}" add vocab.json grammar.json`);
 
   // Check if there's anything staged to commit
   const diff = execSync(`git -C "${tmpDir}" diff --cached --name-only`, {

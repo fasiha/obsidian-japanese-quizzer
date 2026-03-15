@@ -367,6 +367,52 @@ const grammarOutput = {
   topics: grammarTopics,
 };
 
+// Write grammar.json before equivalence check so /cluster-grammar-topics can
+// read the latest topics even if this script exits with an error below.
+
+// Validate grammar-equivalences.json covers all grammar topics
+const equivPath = path.join(projectRoot, "grammar-equivalences.json");
+let grammarEquivalences;
+try {
+  grammarEquivalences = JSON.parse(readFileSync(equivPath, "utf-8"));
+} catch {
+  grammarEquivalences = [];
+}
+const coveredTopics = new Set(grammarEquivalences.flat());
+const missingFromEquiv = Object.keys(grammarTopics).filter(
+  (id) => !coveredTopics.has(id),
+);
+if (missingFromEquiv.length > 0) {
+  console.error(
+    `\nError: ${missingFromEquiv.length} grammar topic(s) missing from grammar-equivalences.json:`,
+  );
+  for (const id of missingFromEquiv) {
+    console.error(`  - ${id}`);
+  }
+  console.error(
+    `\nRun /cluster-grammar-topics to add them, then re-run this script.`,
+  );
+  process.exit(1);
+}
+
+// Inject equivalence group index into each topic
+const topicToGroup = new Map();
+for (let i = 0; i < grammarEquivalences.length; i++) {
+  for (const id of grammarEquivalences[i]) {
+    topicToGroup.set(id, i);
+  }
+}
+for (const [id, topic] of Object.entries(grammarTopics)) {
+  const groupIdx = topicToGroup.get(id);
+  if (groupIdx !== undefined) {
+    const group = grammarEquivalences[groupIdx];
+    // Only include equivalenceGroup if topic shares a group with others
+    if (group.length > 1) {
+      topic.equivalenceGroup = group.filter((other) => other !== id);
+    }
+  }
+}
+
 const grammarOutPath = path.join(projectRoot, "grammar.json");
 writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
 console.log(
