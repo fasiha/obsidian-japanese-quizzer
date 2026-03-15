@@ -261,6 +261,51 @@ All items complete as of 2026-03-15:
 - [x] `GrammarQuizItem.tier: Int` added (1/2/3 for production, 1/2 for recognition); computed from review count + halflife in `GrammarQuizContext.build()`
 - [x] `--extra-grammar topic1,topic2` flag in TestHarness to simulate a student who knows specific grammar
 
+### Phase 1A.5 — Pre-UI outstanding items
+
+Three items that should be resolved before Phase 1B, in this order:
+
+- [ ] **Enriched topic descriptions** — `prepare-publish.mjs` should run an LLM-assisted
+  step that writes a short explanation for each equivalence group and stores it in
+  `grammar.json`. The current prompt only has topic ID, title, level, and a reference URL
+  Haiku cannot fetch; for obscure or ambiguously titled topics this is insufficient.
+  Open questions to resolve:
+  - Per-topic or per-equivalence-group? (Group is more token-efficient; topic allows
+    source-specific nuance)
+  - What to include: a two-sentence conjugation gloss + example of correct vs. wrong
+    form is likely enough; full paradigm tables are overkill
+  - How to handle ら抜き言葉 and similar "colloquially accepted but textbook-wrong" forms —
+    the description must flag these so Haiku doesn't use them as distractors or penalize
+    them in grading
+  - Regeneration strategy when the grammar databases change (hash the source data,
+    skip if unchanged)
+
+- [ ] **VOCAB_ASSUMED contract** — define which generation paths emit a
+  `VOCAB_ASSUMED: word1,word2,...` line, how the app parses and stores it alongside the
+  stem, and what the "Show vocabulary" button does in the UI.
+  Open questions to resolve:
+  - Which tiers emit it: tier 3 production and tier 2 recognition are the clear cases;
+    tier 1/2 production arguably don't need it (the Japanese sentence already shown)
+  - Storage: add a `vocab_assumed` column to wherever stems are cached, or compute on
+    the fly from the generation response
+  - JMDict lookup: look up meanings at generation time and cache, or look up lazily
+    when the student taps "Show vocabulary"
+  - Passive vocab boost: if any VOCAB_ASSUMED word is enrolled in vocab, emit
+    `PASSIVE_VOCAB: word_id score` from the grading step (see Open items section)
+
+- [ ] **Equivalence-group Ebisu propagation** — when a quiz updates Ebisu for one topic,
+  all other topics in the same equivalence group should receive the same update. Without
+  this, the scheduler will re-queue `bunpro:られる-Potential` after the student has already
+  demonstrated mastery via `genki:potential-verbs`.
+  Open questions to resolve:
+  - Where to wire it in: at review-write time in `GrammarQuizSession` (write one review
+    row + N Ebisu updates), or at scheduling time in `GrammarQuizContext` (read all
+    group members' Ebisu states and take the best)? Write-time propagation is simpler
+    and keeps the Ebisu states consistent; read-time merging avoids phantom review rows
+    for topics the student never explicitly studied
+  - What score to propagate: same score as the primary review (full weight), or a
+    discounted passive score (e.g. 0.9×)?
+
 ### Phase 1B — iOS Views
 
 - [ ] Grammar topic list view — filterable by source, level, enrollment status
@@ -374,6 +419,21 @@ latency acceptable.
     verb's part-of-speech tag. Adds latency and tokens on every coaching turn.
   - Current priority: low — the error is rare and the student can still reach the correct
     answer despite the wrong hint.
+
+- **`verbNote` field for coaching accuracy**: Haiku occasionally misidentifies verb class
+  in coaching responses (observed: calling 弾く a "る-verb" and directing the student
+  toward the ichidan potential pattern 食べ**られ**る, when the correct godan pattern is
+  弾**け**る). This happens because the coaching prompt only receives the correct fill
+  string (e.g. `弾ける`) without knowing how it was derived.
+  - **Option A** (preferred): ask the generation step to include a `verbNote` field
+    (e.g. `"verbNote": "godan: 弾く → 弾ける"`) alongside `sentence` and `choices`. The
+    coaching prompt receives this as a plain-text hint with no extra tool calls or latency.
+  - **Option B**: give the coaching LLM access to `lookup_jmdict` so it can look up the
+    verb's part-of-speech tag (e.g. `v5k` = godan-ku). Adds latency and tokens on every
+    coaching turn; `lookup_jmdict` already returns part-of-speech data (via `ToolHandler.swift`)
+    so the data is available if needed.
+  - Current priority: low — the error is rare and the student can still reach the correct
+    answer despite the wrong hint. Revisit if coaching quality becomes a complaint.
 
 - **VOCAB_ASSUMED: on-demand vocabulary glossary for grammar quiz stems**: grammar quiz
   stems use vocabulary that the student may not know — vocabulary knowledge should not
