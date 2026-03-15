@@ -63,12 +63,17 @@ Tiers 1 and 2 share the same generated question — the only difference is the U
 (four tap buttons vs a text input). This means the LLM generation call happens once; the
 tier 1 question is reused at tier 2 without regenerating.
 
-> **Fill-in-the-blank for production tiers 1 and 2** (implemented, testing as of 2026-03-14): the
-> current full-sentence choice design has two recurring problems observed in live testing:
-> (a) distractors that differ only by particle (が vs を) rather than by grammar form,
+> **Fill-in-the-blank for production tiers 1 and 2** (implemented and iterated through
+> 2026-03-15): the original full-sentence choice design had recurring problems:
+> (a) distractors that differed only by particle (が vs を) rather than by grammar form,
 > and (b) ことができる appearing as a distractor even though it is valid Japanese.
-> Both problems arise because generating four grammatically-distinct full sentences
-> around the same meaning is genuinely hard for the model.
+> Note: problem (b) was originally framed as "generating four same-meaning sentences is hard"
+> — this was a mis-framing. Full-sentence MC distractors should have *different* meanings (they
+> express the wrong grammar for the English stem), not the same meaning. The real issue was just
+> (a): particle-only variation between distractors is too subtle to discriminate grammar knowledge.
+> Fill-in-the-blank solves (a) by reducing choices to short conjugation-level fills rather than
+> complete sentences. It remains the right design for multi-gap patterns (〜し〜し, ば〜ほど).
+> For single-gap grammar, full-sentence MC with properly-differentiated distractors is also viable.
 >
 > The fix: generate a Japanese sentence with one or more `___` gaps and 4 short
 > conjugation-level choices. Each choice is an **array of strings**, one per gap.
@@ -99,9 +104,20 @@ tier 1 question is reused at tier 2 without regenerating.
 > acceptable — the student already sees the grammar topic name in the UI, and we have
 > decided that sharing vocabulary context with the student on demand is fine.
 >
+> **Note on distractor semantics**: distractors do NOT need to have the same meaning
+> as the correct choice — they just need to be plausible Japanese forms that happen to
+> express the wrong meaning for this context. For example, `し` vs `て` vs `から` all
+> express different relationships (multiple reasons vs sequential vs single cause). The
+> English stem fixes the intended meaning; the student's job is to pick the form that
+> correctly expresses that meaning. This is also true for full-sentence multiple choice
+> (see "full-sentence MC" notes below).
+>
 > For tier 2, typing short fills into gaps is more tractable than reconstructing a
 > whole sentence from memory, which better targets grammar knowledge rather than
 > sentence production. For multi-gap tier 2, the student types each fill in sequence.
+>
+> In practice `correct` is a random 0–3, not always 0 — the examples above show 0 for
+> brevity. The generation prompt instructs Haiku to place the correct fill at a random index.
 >
 > **Implementation** (done): `GrammarMultipleChoiceQuestion.choices` is `[[String]]`.
 > The display layer counts `___` occurrences and fills the *n*th gap with `choice[n]`.
@@ -287,33 +303,40 @@ grammar quizzes could do the same, which would make Sonnet's 5–18 s more toler
 For now, stick with Haiku and improve prompts; revisit Sonnet if prompt improvements
 plateau or if prefetch makes the latency acceptable in practice.
 
-### Prompt quality observations (from 2026-03-14 live tests)
+### Prompt quality observations (from 2026-03-15 live tests)
 
-Tested `genki:potential-verbs`, `bunpro:causative`, and `bunpro:てならない` against Haiku.
-All 6 generation paths passed validation. Notes for future prompt work:
+Iterated on fill-in-the-blank generation prompt across `genki:potential-verbs`,
+`bunpro:causative`, and `genki:shi`. All 6 paths pass. Key changes made and their effects:
 
-- **Technically-correct distractor problem**: for `genki:potential-verbs` production, Haiku generated
-  `泳ぐことができます` as a distractor — but that is a correct way to express ability in Japanese
-  (ことができる construction). The system prompt currently asks for "plausible but incorrect grammar"
-  but doesn't distinguish between "wrong Japanese" and "correct Japanese that doesn't use the
-  target grammar form." For tier-1 questions, this is only cosmetically wrong (the app marks it
-  incorrect), but it could confuse or mislead the student.
-  - **TODO**: Clarify the system prompt to distinguish between (a) grammatically wrong choices and
-    (b) grammatically correct choices that use a *different* construction than the target. Explicitly
-    note which distractors are "wrong Japanese" vs "correct Japanese, wrong form", or just instruct
-    Claude to avoid alternative-correct constructions entirely.
+**Changes implemented (2026-03-15):**
 
-- **Vocabulary fixation in stem generation**: Haiku tends to reach for the same scenario
-  repeatedly when generating stems — for `genki:potential-verbs`, essentially every stem
-  involves 食べる (eating, often spicy food), which is the canonical textbook example.
-  This is demotivating and limits practice breadth.
-  - **TODO**: Add a prompt instruction asking Haiku to vary the action verb across questions.
-    Something like: "Choose a fresh action verb for this question — avoid 食べる, 飲む,
-    and 泳ぐ unless the topic strongly warrants them."
-  - **Observation**: the `--extra-grammar` scaffolding may naturally break this fixation
-    because Haiku must weave in other grammar topics and tends to pick richer scenarios
-    as a result. If the test with extra-grammar topics shows variety, the fix may only
-    matter for beginner (no scaffolding) sessions.
+- **Mandatory chain-of-thought in `questionRequest`** (replaces "Think first if helpful"):
+  Five explicit steps — (1) write full sentence with no gaps, (2) bracket the grammar slot(s),
+  (3) self-check that the target form doesn't appear outside the brackets, (4) English stem,
+  (5) three distractors each verified to produce valid Japanese when substituted.
+  Fixed: ことができる appearing in sentence body alongside the gap; causative subject reversal;
+  nonsense distractors (e.g. `捕まええない`).
+
+- **Bracket size instruction updated**: old example `彼女はピアノが【弾け】ない` taught
+  verb-stem splitting. New instruction: "bracket enough so every choice combines cleanly with
+  the surrounding text." For conjugation grammar: include auxiliaries → `【弾けない】`.
+  For conjunction/particle grammar: the particle is the complete unit → `【し】`.
+  This generalizes cleanly — tested with `genki:shi` (two-gap 〜し〜し), where each gap is
+  correctly a single conjunction character.
+
+- **Quirky instruction relaxed**: "quirky, unexpected, or funny" reduced to "Vary the verb and
+  setting; 食べる, 飲む, and 泳ぐ are overused." Removes pressure to reach for unusual vocabulary
+  that caused e.g. `撃つ` (shoot a weapon) for a basketball scenario.
+
+- **Correct index now randomized**: added explicit instruction to place the correct fill at a
+  randomly chosen index (0–3). Previously Haiku defaulted to index 0 almost every time.
+
+**Remaining observations / open items:**
+
+- **ことができる is no longer a relevant concern for fill-in-the-blank** generation: short
+  conjugation fills can't contain ことができる, so the old distractor problem is moot. The
+  prompt's "Do NOT use ことができる" now guards against it leaking into the sentence body,
+  which is a different (and rarer) pathology — the chain-of-thought self-check handles it.
 
 - **Enriched topic descriptions**: the current prompt provides only topic ID, title, level, and a
   reference URL (which Haiku cannot fetch). For well-known topics like potential verbs and causative,
@@ -331,6 +354,18 @@ All 6 generation paths passed validation. Notes for future prompt work:
     in grading. The distractor for "wrong potential form" should be an unambiguously wrong
     conjugation instead (e.g. dropping the potential suffix entirely, or using the wrong verb class
     pattern).
+
+- **Token budget**: the chain-of-thought prompt is more verbose (~400–500 reasoning tokens before
+  the JSON). One PATH 4 generation hit the 1024 maxTokens ceiling and needed a retry. Consider
+  raising maxTokens for grammar generation calls to 1500 or 2000.
+
+- **Full-sentence multiple choice reconsidered**: the original motivation for fill-in-the-blank
+  included "generating four same-meaning sentences is hard." This framing was wrong — distractors
+  in full-sentence MC should express *different* (plausibly wrong) meanings, not the same meaning.
+  Full-sentence MC with different-meaning choices is actually feasible and arguably better for
+  single-gap grammar (the surrounding context provides more information). Fill-in-the-blank remains
+  the right design for multi-gap patterns (〜し〜し, ば〜ほど) where short fills per gap is cleaner.
+  A future UI could diff-highlight the varying parts of full-sentence choices to aid readability.
 
 - **Part-of-speech annotation for coaching accuracy**: Haiku occasionally misidentifies verb
   class in coaching responses (observed: calling 弾く a "る-verb" and directing the student

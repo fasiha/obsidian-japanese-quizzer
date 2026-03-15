@@ -142,7 +142,7 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
-        let quirkyNote = "Feel free to use quirky, unexpected, or funny scenarios rather than textbook classics — vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused."
+        let quirkyNote = "Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused."
         let extraTopicsLine: String
         if extraGrammarTopics.isEmpty {
             extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple). \(quirkyNote)"
@@ -314,14 +314,18 @@ final class GrammarQuizSession {
         case "production":
             return """
             Generate ONE fill-in-the-blank question for the production facet.
-            Think first if helpful, then end with a ```json code block containing:
-            {"stem":"<English context>","sentence":"<Japanese with \(grammarGapToken) gap(s)>","choices":[["<fill1a>","<fill1b>"],...],"correct":<0-3>}
-            Rules:
-            - "stem": English description of the situation — no Japanese, no grammar labels.
-            - "sentence": a complete natural Japanese sentence with one or more \(grammarGapToken) gaps where the target grammar form(s) go. Use multiple gaps for patterns that appear in more than one place (e.g. 〜し、〜し → two gaps; 〜ば〜ほど → two gaps with different fills). Single-slot grammar uses one gap.
-            - "choices": four arrays of SHORT conjugation-level forms (NOT complete sentences). Each array has one element per gap. Single-gap example: [["弾けます"],["弾きます"],["弾かせます"],["弾けません"]]. Two-gap example: [["し","し"],["て","て"],["から","から"],["のに","のに"]]. Heterogeneous example: [["ば","ほど"],["たら","くらい"],["と","ほど"],["ば","ない"]].
-            - Only the choice at "correct" uses the target grammar correctly for every gap; the others are wrong conjugations or wrong grammar forms.
-            - Do NOT use ことができる or other alternative-correct constructions as distractors.
+            Work through these steps explicitly — write out each step before the JSON:
+
+            Step 1 — Full sentence: Write a complete Japanese sentence using the target grammar. No gaps yet. Do NOT use ことができる or any other alternative construction anywhere in this sentence.
+            Step 2 — Slot: Mark the grammar slot(s) using 【】 brackets. Bracket enough so that every choice combines cleanly with the text outside the brackets. For conjugation grammar, include any attached auxiliary: 彼女はピアノが【弾けない】。 not 彼女はピアノが【弾け】ない。 For conjunction/particle grammar, the particle itself is the complete unit: 先生は厳しい【し】、宿題も多い【し】。
+            Step 3 — Self-check: Does the target grammar form appear OUTSIDE the 【】 brackets anywhere in Step 1? If yes, rewrite Step 1 so it does not.
+            Step 4 — English stem: One or two English sentences describing the situation. No Japanese, no grammar labels, no grammar structure hints.
+            Step 5 — Distractors: Three wrong fills. Each must be a real Japanese form — wrong for this context but not a nonsense string. Briefly name each (e.g. "plain negative", "causative", "te-form"). Verify: each distractor substituted into the gap must produce grammatically valid Japanese (even if wrong meaning). If a distractor would create an impossible combination with the surrounding text, replace it.
+
+            Then end with a ```json code block:
+            {"stem":"<Step 4>","sentence":"<Step 2 sentence with 【…】 replaced by \(grammarGapToken)>","choices":[["<correct fill(s)>"],["<distractor 1 fill(s)>"],["<distractor 2 fill(s)>"],["<distractor 3 fill(s)>"]],"correct":<0-3>}
+            - Place the correct fill at a randomly chosen index (0–3) and record it in "correct".
+            - Each choice is an array with one element per gap. Single-gap: [["弾けない"],["弾かない"],["弾かせない"],["弾きます"]]. Two-gap: [["し","し"],["て","て"],["から","から"],["のに","のに"]].
             """
         case "recognition":
             return """
