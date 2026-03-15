@@ -290,9 +290,9 @@ struct AnthropicClient: Sendable {
         for (i, msg) in messages.enumerated() {
             let content = msg.content.map { block -> String in
                 switch block {
-                case .text(let t): return "text(\(t.prefix(200)))"
+                case .text(let t): return "text(\(t))"
                 case .toolUse(_, let name, let input): return "toolUse(\(name) \(input))"
-                case .toolResult(_, let c): return "toolResult(\(c.prefix(200)))"
+                case .toolResult(_, let c): return "toolResult(\(c))"
                 }
             }.joined(separator: "; ")
             print("[Anthropic]   msg[\(i)] \(msg.role): \(content)")
