@@ -123,20 +123,29 @@ deterministic parts to pure logic as patterns emerge.
 6. [x] `publish.mjs` pushes `grammar.json` alongside `vocab.json`
 7. TODO: bundle `grammar.json` and `grammar-equivalences.json` into the iOS app
 
-### Phase 1 — iOS app
+### Phase 1A — Core library (TestHarness-compatible)
 
-- [ ] GRDB migration: `grammar_enrollment` table (user_id, topic_id, status)
+- [x] GRDB migration: `grammar_enrollment` table (topic_id, status, enrolled_at)
   - Reuse existing `ebisu_models` and `reviews` tables with `word_type = 'grammar'`
-- [ ] Grammar JSON loader — fetch and parse `grammar.json` from same host as `vocab.json`
+- [x] Grammar JSON loader — `GrammarSync.swift`; model types `GrammarManifest`, `GrammarTopic`, `GrammarSourceMeta`; URL derived from vocab URL (same Gist)
+- [x] `GrammarQuizContext.swift` — `GrammarQuizItem` + context builder ranked by Ebisu recall; scaffolding topic list for difficulty scaling; `QuizDB` extensions for grammar enrollment and review counts
+- [x] `GrammarQuizSession.swift` — tier-1 multiple choice only (production + recognition); system prompt builder with topic info + scaffolding list; `generateQuestionForTesting` + `gradeAnswerForTesting` entry points; `GrammarMultipleChoiceQuestion` parsed from Claude JSON
+- [x] TestHarness integration: `--grammar <topic_id>` mode with `--dump-prompts`, `--live`, and single-item generate; symlinks added for all three new Swift files
+- [x] Update documentation in TESTING.md
+- [ ] Tier 2 (fill-in-the-blank) library — `GrammarQuizSession` support for fill-in-the-blank format: LLM generates sentence with `___` gap + correct fill + distractors; grading is string-match or lightweight LLM; graduation threshold TBD
+  - [ ] TestHarness: add `--tier 2` flag to `--dump-prompts` and `--live` modes
+- [ ] Tier 3 (free text) library — `GrammarQuizSession` support for free-text production/recognition; LLM-generated stem cached between turns; SCORE grading; opportunistic passive grading (`PASSIVE: topic_id score` lines) for other enrolled grammar visible in response
+  - [ ] TestHarness: add `--tier 3` flag; validate SCORE token, passive grading lines, and correct-answer score ≥ 0.8
+- [ ] `--scaffold topic1,topic2` flag in TestHarness to simulate a student who knows specific grammar, for testing difficulty scaling
+
+### Phase 1B — iOS Views
+
 - [ ] Grammar topic list view — filterable by source, level, enrollment status
 - [ ] GrammarDetailSheet — example sentences, chat box (Claude), mnemonic support
   - Reuses mnemonic infrastructure with `word_type = 'grammar'`
-- [ ] Grammar quiz: multiple choice (tier 1) — both production and recognition facets
-  - System prompt: topic info + example sentences + scaffolding grammar list
-  - Claude returns JSON: stem + 4 choices + correct index
-  - Pure-logic grading, then discussion turn
-- [ ] Grammar quiz: fill-in-the-blank (tier 2)
-- [ ] Grammar quiz: free text with opportunistic passive grading (tier 3)
+- [ ] Grammar quiz view — tier 1 multiple choice (reuses `GrammarQuizSession` from Phase 1A)
+- [ ] Grammar quiz: fill-in-the-blank (tier 2) — requires tier 2 library from Phase 1A
+- [ ] Grammar quiz: free text with opportunistic passive grading (tier 3) — requires tier 3 library from Phase 1A; passive Ebisu updates for all `PASSIVE:` lines in response
 - [ ] Integrate grammar items into unified quiz scheduling (alongside vocab)
 
 ### Future

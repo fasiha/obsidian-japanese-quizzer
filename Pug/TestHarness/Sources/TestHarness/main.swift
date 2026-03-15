@@ -29,7 +29,22 @@ guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --dump-prompts\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> [facet]\n", stderr)
     exit(1)
+}
+
+// MARK: - Grammar mode detection
+
+let isGrammarMode: Bool
+let grammarTopicId: String?
+if let gIdx = args.firstIndex(of: "--grammar"), gIdx + 1 < args.count {
+    isGrammarMode  = true
+    grammarTopicId = args[gIdx + 1]
+} else {
+    isGrammarMode  = false
+    grammarTopicId = nil
 }
 
 let isDumpMode = args.contains("--dump-prompts")
@@ -43,7 +58,8 @@ if let facetIdx = args.firstIndex(of: "--facet"), facetIdx + 1 < args.count {
 } else {
     liveOnlyFacet = nil
 }
-let wordId = args[1]
+// In grammar mode args[1] is "--grammar", not a word ID; use empty string as placeholder.
+let wordId = isGrammarMode ? "" : args[1]
 
 // --repeat N: how many times to run each generation path (default 1)
 let repeatCount: Int
@@ -113,7 +129,7 @@ if isDumpMode {
     }
 }
 
-// MARK: - Open jmdict.sqlite
+// MARK: - Open jmdict.sqlite (and shared file-finder)
 
 // Walk up from cwd to find jmdict.sqlite
 func findFile(_ name: String) -> String? {
@@ -124,6 +140,76 @@ func findFile(_ name: String) -> String? {
         dir = dir.deletingLastPathComponent()
     }
     return nil
+}
+
+// MARK: - Grammar mode dispatch (exits before jmdict is needed)
+
+if isGrammarMode {
+    guard let topicId = grammarTopicId, !topicId.isEmpty else {
+        fputs("Error: --grammar requires a topic ID, e.g. --grammar genki:potential-verbs\n", stderr)
+        exit(1)
+    }
+
+    guard let manifest = loadGrammarManifest(findFile: findFile) else {
+        fputs("Error: grammar.json not found (searched up from cwd) — run prepare-publish.mjs first\n", stderr)
+        exit(1)
+    }
+
+    guard let topic = manifest.topics[topicId] else {
+        let known = manifest.topics.keys.sorted().prefix(10).joined(separator: "\n  ")
+        fputs("Error: topic '\(topicId)' not found in grammar.json\nKnown topics (first 10):\n  \(known)\n", stderr)
+        exit(1)
+    }
+
+    let grammarFacet = liveOnlyFacet ?? "production"
+    let tmpPath   = NSTemporaryDirectory() + "testharness-grammar-\(ProcessInfo.processInfo.processIdentifier).sqlite"
+    let grammarDB = try QuizDB.open(path: tmpPath)
+
+    print("Topic:  \(topic.prefixedId) — \(topic.titleEn)")
+    if let jp = topic.titleJp { print("JP:     \(jp)") }
+    print("Level:  \(topic.level)")
+    print("Facet:  \(grammarFacet)")
+    print("")
+
+    if isDumpMode {
+        dumpGrammarPrompts(topic: topic, quizDB: grammarDB)
+        try? FileManager.default.removeItem(atPath: tmpPath)
+        exit(0)
+    }
+
+    if isLiveMode {
+        let liveModel = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
+        await liveGrammarPrompts(topic: topic, apiKey: apiKey, model: liveModel,
+                                  quizDB: grammarDB, repeatCount: repeatCount,
+                                  genOnly: isGenOnly, onlyFacet: liveOnlyFacet)
+        try? FileManager.default.removeItem(atPath: tmpPath)
+        exit(0)
+    }
+
+    // Default: single-item generation
+    print("Generating question…\n")
+    let model   = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
+    let client  = AnthropicClient(apiKey: apiKey, model: model)
+    let session = GrammarQuizSession(client: client, db: grammarDB)
+
+    let item = buildGrammarQuizItem(topic: topic,
+                                    path: GrammarPromptPath(facet: grammarFacet, mode: "multiple-choice-generation"))
+    let start = Date()
+    do {
+        let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)
+        let elapsed = Date().timeIntervalSince(start)
+        print("─────────────────────────────────")
+        print(question)
+        print("─────────────────────────────────")
+        print("")
+        print("api_turns: \(conversation.count / 2 + 1)   elapsed: \(String(format: "%.1f", elapsed))s   messages: \(conversation.count)")
+    } catch {
+        fputs("Error: \(error)\n", stderr)
+        try? FileManager.default.removeItem(atPath: tmpPath)
+        exit(1)
+    }
+    try? FileManager.default.removeItem(atPath: tmpPath)
+    exit(0)
 }
 
 guard let jmdictPath = findFile("jmdict.sqlite") else {

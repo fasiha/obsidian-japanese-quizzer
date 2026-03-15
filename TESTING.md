@@ -72,3 +72,49 @@ state machine. Helpers (`systemPrompt`, `questionRequest`, `freeAnswerStem`,
 `runGenerationLoop`) were de-privatised to `internal` to support this. `QuizDB` gained a
 `static func open(path:)` factory for arbitrary file paths (vs `makeDefault()` which
 uses the iOS Documents directory).
+
+---
+
+## Grammar quiz testing (`--grammar <topic_id>`)
+
+Grammar quizzes use `GrammarQuizSession` (parallel to `QuizSession` for vocab).
+Pass `--grammar <topic_id>` as the first argument instead of a word ID.
+
+```sh
+# Generate a multiple-choice question for a grammar topic:
+.build/debug/TestHarness --grammar genki:potential-verbs [--facet production]
+# facet defaults to "production"; other option: "recognition"
+
+# Dump all system prompts for every grammar path (NO API calls):
+.build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts
+
+# Live test: send all grammar paths to Haiku and validate responses:
+.build/debug/TestHarness --grammar genki:potential-verbs --live
+
+# Live test restricted to one facet, repeated N times:
+.build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --repeat 3
+```
+
+**Grammar path coverage** (facet × mode):
+
+| Paths | Description |
+|-------|-------------|
+| 2 | production + recognition × multiple-choice-generation (Phase 1A) |
+| 2 | production + recognition × free-grading (Phase 1B preview) |
+
+**Required additional file** (searched by walking up from cwd):
+- `grammar.json` — required for grammar mode; run `node prepare-publish.mjs` to generate it.
+
+**Reference grammar topic IDs** (from current `grammar.json`):
+
+| Topic ID | Title | Level |
+|----------|-------|-------|
+| `genki:potential-verbs` | Potential verbs | Genki II |
+| `bunpro:causative` | To make/let/have | JLPT N4 |
+| `bunpro:Verb[passive]` | Was done to ~ by ~ | JLPT N4 |
+| `bunpro:てならない` | Very, Extremely | JLPT N2 |
+
+**Validation checks** (live mode):
+- production: stem contains no Japanese characters (English only)
+- recognition: stem contains Japanese characters
+- free-grading: response contains `SCORE:` token; correct answer scores ≥ 0.8

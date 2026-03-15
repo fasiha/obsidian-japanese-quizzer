@@ -471,6 +471,16 @@ final class QuizDB: Sendable {
                 t.add(column: "pre_recall", .double)
             }
         }
+        migrator.registerMigration("v9") { db in
+            // grammar_enrollment: tracks which grammar topics the user has enrolled for study.
+            // Reuses ebisu_models and reviews tables (word_type='grammar') for scheduling.
+            try db.create(table: "grammar_enrollment", ifNotExists: true) { t in
+                t.column("topic_id", .text).notNull().primaryKey()   // full prefixed ID e.g. "genki:potential-verbs"
+                t.column("status", .text).notNull()
+                t.column("enrolled_at", .text).notNull()
+                t.check(sql: "status IN ('learning', 'known')")
+            }
+        }
         try migrator.migrate(pool)
     }
 
