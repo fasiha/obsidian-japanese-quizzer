@@ -19,7 +19,7 @@
  *
  *   node enrich-grammar-descriptions.mjs --write
  *     Reads JSON from stdin: { groups: [WriteInput, ...] }
- *     Writes descriptions into grammar-equivalences.json.
+ *     Writes descriptions into grammar/grammar-equivalences.json.
  *
  * @typedef {Object} GatherResult
  * @property {string[]} topics           - Sorted prefixed topic IDs in this group
@@ -38,8 +38,7 @@
  *
  * @typedef {Object} ContentItem
  * @property {string} sentence    - Clean Japanese text (ruby tags stripped), for LLM consumption
- * @property {string} rawSentence - Original Markdown with ruby tags intact, stored in sourcesSeen
- *                                  for change-detection and future source-linking
+ * @property {string} rawSentence - Original Markdown with ruby tags intact (for display/reference)
  * @property {string} note        - Free-text annotation note from the bullet (may be empty)
  * @property {string} file        - Relative path of the Markdown file
  * @property {string} topicId     - Which topic ID this annotation referenced
@@ -48,15 +47,13 @@
  * @property {string} [summary]
  * @property {string[]} [subUses]
  * @property {string[]} [cautions]
- * @property {string[]} [sourcesSeen]
  * @property {boolean} [stub]
  *
  * @typedef {Object} WriteInput
- * @property {string[]} topics     - Must match a group in grammar-equivalences.json exactly
+ * @property {string[]} topics     - Must match a group in grammar/grammar-equivalences.json exactly
  * @property {string} summary
  * @property {string[]} subUses
  * @property {string[]} cautions
- * @property {string[]} sourcesSeen
  * @property {boolean} [stub]      - Omit or false if content sentences were used
  */
 
@@ -72,7 +69,7 @@ import {
   migrateEquivalences,
 } from "./shared.mjs";
 
-const EQUIV_PATH = path.join(projectRoot, "grammar-equivalences.json");
+const EQUIV_PATH = path.join(projectRoot, "grammar", "grammar-equivalences.json");
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -249,27 +246,19 @@ function gather(requestedTopics, { onlyNeeded = false } = {}) {
       };
     });
 
-    // Check whether description needs (re)generation
+    // Check whether description needs (re)generation.
+    // A group needs enrichment if it has no description yet. Re-enrichment when
+    // content changes must be triggered manually by running /cluster-grammar-topics.
     const existingDescription = group.summary
       ? {
           summary: group.summary,
           ...(group.subUses ? { subUses: group.subUses } : {}),
           ...(group.cautions ? { cautions: group.cautions } : {}),
-          ...(group.sourcesSeen ? { sourcesSeen: group.sourcesSeen } : {}),
           ...(group.stub ? { stub: group.stub } : {}),
         }
       : null;
 
-    const currentSourcesSeen = contentItems
-      .filter((it) => it.sentence)
-      .map((it) => `${it.file}: ${it.rawSentence}`)
-      .sort();
-
-    const storedSourcesSeen = (group.sourcesSeen ?? []).slice().sort();
-    const sourcesChanged =
-      JSON.stringify(currentSourcesSeen) !== JSON.stringify(storedSourcesSeen);
-
-    const needsEnrichment = !existingDescription || sourcesChanged;
+    const needsEnrichment = !existingDescription;
 
     results.push({
       topics: group.topics,
@@ -320,7 +309,6 @@ function write() {
       summary: desc.summary,
       subUses: desc.subUses,
       cautions: desc.cautions,
-      sourcesSeen: desc.sourcesSeen,
       ...(desc.stub ? { stub: true } : {}),
     };
     written++;

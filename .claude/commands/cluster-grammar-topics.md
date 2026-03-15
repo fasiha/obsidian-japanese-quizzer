@@ -2,7 +2,7 @@
 description: Find new grammar topics and cluster them into equivalence groups
 ---
 
-This skill updates `grammar-equivalences.json` by finding grammar topics in
+This skill updates `grammar/grammar-equivalences.json` by finding grammar topics in
 `grammar.json` that are not yet in any equivalence group, then using LLM
 knowledge to decide if they match existing topics. It also enriches equivalence
 groups with human-readable descriptions (summary, sub-uses, cautions) that are
@@ -22,7 +22,7 @@ for groups that need enrichment or re-enrichment.
 ## Step 2: Decide equivalences
 
 For each new topic, consider whether it is equivalent to any topic already in
-`grammar-equivalences.json` OR to any other new topic. Two topics are equivalent
+`grammar/grammar-equivalences.json` OR to any other new topic. Two topics are equivalent
 if they teach the same grammatical concept (even if from different databases or
 with slightly different scope).
 
@@ -108,9 +108,6 @@ For each group:
      clause. Verify that cautions do not contradict the examples in `subUses`.
      Example:
      `"ら抜き言葉: 食べれる/見れる are colloquially accepted — do not mark wrong"`
-   - `sourcesSeen`: array of strings in `"filename.md: <raw sentence>"` format,
-     built from contentItems that have a non-empty `sentence`:
-     each entry is `item.file + ": " + item.rawSentence`
    - `stub`: set to `true` if `contentItems` contains no sentences with non-empty
      `sentence` field (description based on web pages + your knowledge only);
      omit the field otherwise
@@ -138,8 +135,7 @@ back in one batch. Build a JSON object with this shape:
       "topics": ["bunpro:て-form", "genki:te-form"],
       "summary": "...",
       "subUses": ["...", "..."],
-      "cautions": ["..."],
-      "sourcesSeen": ["file.md: sentence"]
+      "cautions": ["..."]
     }
   ]
 }
@@ -164,4 +160,4 @@ Show the user a summary:
 - Which equivalence groups had descriptions written or updated
 - Which groups remain as stubs (generated without user content sentences)
 
-Remind the user to review the diff of `grammar-equivalences.json` before committing.
+Remind the user to review the diff of `grammar/grammar-equivalences.json` before committing.

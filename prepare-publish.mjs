@@ -370,8 +370,8 @@ const grammarOutput = {
 // Write grammar.json before equivalence check so /cluster-grammar-topics can
 // read the latest topics even if this script exits with an error below.
 
-// Validate grammar-equivalences.json covers all grammar topics
-const equivPath = path.join(projectRoot, "grammar-equivalences.json");
+// Validate grammar/grammar-equivalences.json covers all grammar topics
+const equivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
 let grammarEquivalencesRaw;
 try {
   grammarEquivalencesRaw = JSON.parse(readFileSync(equivPath, "utf-8"));
@@ -388,7 +388,7 @@ const missingFromEquiv = Object.keys(grammarTopics).filter(
 );
 if (missingFromEquiv.length > 0) {
   console.error(
-    `\nError: ${missingFromEquiv.length} grammar topic(s) missing from grammar-equivalences.json:`,
+    `\nError: ${missingFromEquiv.length} grammar topic(s) missing from grammar/grammar-equivalences.json:`,
   );
   for (const id of missingFromEquiv) {
     console.error(`  - ${id}`);

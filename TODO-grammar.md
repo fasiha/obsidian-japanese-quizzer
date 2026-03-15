@@ -212,29 +212,34 @@ Current token budgets (as of 2026-03-15):
 - [x] Build `check-grammar.mjs` — validates grammar tags against known databases, reports unknown IDs
   - Done: `.claude/scripts/check-grammar.mjs`
 - [x] Build equivalence groups: LLM-assisted clustering of topics across databases
-  - Output: `grammar-equivalences.json` — array of arrays of prefixed topic IDs (e.g. `[["bunpro:causative", "genki:causative", "dbjg:saseru"]]`)
+  - Output: `grammar/grammar-equivalences.json` — generic, version-controlled, no user content.
+    Array of objects: `{ topics: [...], summary, subUses, cautions, stub? }`.
+    Covers only annotated topics today; grows incrementally via `/cluster-grammar-topics`.
   - `add-grammar-equivalence.mjs`: pure graph operation script
     - 1 argument: adds topic as a singleton group
     - 2+ arguments: merges all into one group (union-find style), idempotent
-    - Reads/writes `grammar-equivalences.json`
-  - `/cluster-grammar-topics` skill: finds topics in `grammar.json` missing from `grammar-equivalences.json`, uses LLM to suggest matches against all three databases, calls `add-grammar-equivalence.mjs` to apply
+    - Reads/writes `grammar/grammar-equivalences.json`
+  - `/cluster-grammar-topics` skill: finds topics in `grammar.json` missing from `grammar/grammar-equivalences.json`, uses LLM to suggest matches against all three databases, calls `add-grammar-equivalence.mjs` to apply
   - Checked into repo, manually reviewable
 - [x] Generate `grammar.json` (analogous to `vocab.json`)
+  - Personal, generated at publish time, pushed to the Gist alongside `vocab.json`
   - `sources`: metadata per database
-  - `topics`: keyed by prefixed ID, contains title, level, href, example sentences, equivalence group
+  - `topics`: keyed by prefixed ID, contains title, level, href, sources (which Markdown files annotate it), equivalenceGroup (peer topic IDs — convenience denormalization for the iOS app)
+  - Does NOT contain descriptions (summary/subUses/cautions) — those live in `grammar/grammar-equivalences.json`
   - Done: `prepare-publish.mjs` collects grammar annotations and writes `grammar.json`
 - [x] Update `prepare-publish.mjs` (or equivalent) to produce `grammar.json` alongside `vocab.json`
-- [x] `prepare-publish.mjs` validation: fail if any topic in `grammar.json` is missing from `grammar-equivalences.json`
+- [x] `prepare-publish.mjs` validation: fail if any topic in `grammar.json` is missing from `grammar/grammar-equivalences.json`
 
 ### Content workflow
 
 1. Edit Markdown files — add `<details><summary>Grammar</summary>` blocks with `source:id` bullets
 2. Run `check-grammar.mjs` — validates all IDs exist in the three grammar databases
-3. Run `prepare-publish.mjs` — produces `grammar.json` (and `vocab.json`); **fails** if `grammar-equivalences.json` is missing any topics
-4. If step 3 fails, run `/cluster-grammar-topics` — adds new topics to `grammar-equivalences.json` (LLM-assisted, then manually review the diff)
+3. Run `prepare-publish.mjs` — produces `grammar.json` (and `vocab.json`); **fails** if `grammar/grammar-equivalences.json` is missing any topics
+4. If step 3 fails, run `/cluster-grammar-topics` — adds new topics to `grammar/grammar-equivalences.json` (LLM-assisted, then manually review the diff)
 5. Re-run `prepare-publish.mjs`
 6. [x] `publish.mjs` pushes `grammar.json` alongside `vocab.json`
-7. TODO: bundle `grammar.json` and `grammar-equivalences.json` into the iOS app
+7. TODO: push `grammar/grammar-equivalences.json` to the Gist alongside `grammar.json` so
+   the iOS app can fetch descriptions without requiring an app update (see Infrastructure section)
 
 ### Phase 1A — Core library (TestHarness-compatible)
 
@@ -266,56 +271,53 @@ All items complete as of 2026-03-15:
 Three items that should be resolved before Phase 1B, in this order:
 
 - [ ] **Enriched topic descriptions** — per-equivalence-group descriptions stored in
-  `grammar-equivalences.json` (which evolves from array-of-arrays to array-of-objects).
-  Merged into `grammar.json` at publish time. Generated/reviewed via the
-  `/cluster-grammar-topics` skill.
+  `grammar/grammar-equivalences.json`. Generated/reviewed via the `/cluster-grammar-topics`
+  skill. Descriptions are generic (no user content), committed to the repo, and fetched
+  by the iOS app independently of `grammar.json`.
 
   Decided:
   - Per-equivalence-group (not per-topic)
+  - Descriptions live only in `grammar/grammar-equivalences.json` — NOT merged into
+    `grammar.json` (which is personal/generated). The iOS app fetches both files.
+  - No `sourcesSeen` field — user content sentences stay out of the generic descriptions
+    file. The enrichment script passes content sentences to the LLM at generation time
+    but does not store them. Re-enrichment when content changes must be triggered
+    manually by running `/cluster-grammar-topics`.
   - No sub-topic Ebisu modeling — sub-uses are enumerated in the description and Haiku
     varies across them naturally; quiz `reviews.notes` tracks which sub-use was exercised,
     and recent notes are fed back into generation for diversity
-  - Descriptions are committed to the repo (public); no copyrighted example sentences —
-    use original examples or sentences from the user's annotated content
+  - `stub: true` flag retained — marks groups whose description was generated without
+    any user content sentences (web pages + LLM knowledge only). Used by TestHarness
+    to warn when running unannotated topics.
 
   Task breakdown:
-  - [x] **1. Evolve `grammar-equivalences.json` schema** — migrate from array-of-arrays
-    to array-of-objects: `{ topics: [...], summary, subUses, cautions, sourcesSeen, stub? }`.
-    Write a migration in `add-grammar-equivalence.mjs` that reads either format.
-    Update `prepare-publish.mjs` to read the new format and merge descriptions into
-    `grammar.json` topics.
-  - [x] **2. Build description generation logic** — a Node.js script
-    (`.claude/scripts/enrich-grammar-descriptions.mjs`) that, for each equivalence group:
-    - Fetches Bunpro page (if any topic has an href) via web fetch
-    - Fetches St Olaf/Genki page (if any Genki topic has an href)
-    - Gathers annotated sentences + free-text notes from all Markdown files that
-      reference any topic in the group
-    - Calls Claude to produce: `summary` (2-3 sentences), `subUses` (list of distinct
-      uses with one original example each), `cautions` (colloquial forms like ら抜き言葉,
-      common confusables)
-    - Records `sourcesSeen` (which content sentences informed the description)
-    - Sets `stub: true` if no content sentences were found (description based on
-      web pages + Claude knowledge only); omits the field or sets `stub: false`
-      once real content sentences are incorporated
-    - Skips groups whose `sourcesSeen` + fetched page content hasn't changed
-      (hash-based); re-runs if new content sentences are added to any Markdown file
-  - [x] **3. Extend `/cluster-grammar-topics` skill** — after clustering, run the
-    enrichment step for new groups and for existing groups with new content references.
-    Show the user a diff of description changes for review.
-  - [ ] **4. Wire descriptions into quiz prompts** — update
+  - [x] **1. Evolve `grammar/grammar-equivalences.json` schema** — migrated from
+    array-of-arrays to array-of-objects: `{ topics: [...], summary, subUses, cautions, stub? }`.
+    Migration in `add-grammar-equivalence.mjs` reads either format.
+  - [x] **2. Move `grammar-equivalences.json` to `grammar/` directory** — keeps generic
+    version-controlled assets together. Dropped `sourcesSeen` field. All scripts updated.
+  - [x] **3. Build description generation logic** — `.claude/scripts/enrich-grammar-descriptions.mjs`
+    gathers context (topic metadata, annotated sentences from Markdown files); the
+    `/cluster-grammar-topics` skill fetches Bunpro/St Olaf pages, calls Claude to
+    produce summary/subUses/cautions, then writes back via `--write` mode.
+    Sets `stub: true` if no content sentences were found.
+  - [x] **4. Extend `/cluster-grammar-topics` skill** — after clustering, enriches new
+    groups. Added critical-evaluation directive and self-review step to improve
+    description quality (avoid textbook oversimplifications, precise cautions).
+  - [ ] **5. Wire descriptions into quiz prompts** — update
     `GrammarQuizSession.systemPrompt()` to inject `summary`, `subUses`, and `cautions`
-    from the topic's equivalence group. Replace the current bare `topicLine` with a
-    richer block. Pass `stub: true` topics through unchanged (Haiku still gets a
-    reasonable description; it just wasn't grounded in user content sentences).
-  - [ ] **5. TestHarness support** — when `--grammar <topic_id>` is run and the topic's
-    equivalence group has no description (or `stub: true`), the harness prints a warning:
-    `"[warn] no enriched description for <topic_id> — run /cluster-grammar-topics to generate one"`
-    and continues. The harness must NOT block on missing descriptions; the quiz works
-    without them (just less informative prompts). Add `--enrich` flag: if passed and the
-    description is missing, the harness calls `enrich-grammar-descriptions.mjs` for that
-    group before running (lightweight, on-demand, generates a stub since no content
-    sentences are available in the harness context).
-  - [ ] **6. Feed review notes back into generation** — update generation prompts to
+    from the topic's equivalence group. The iOS app fetches `grammar/grammar-equivalences.json`
+    alongside `grammar.json` (new `GrammarSync` fetch); `GrammarTopic` gains optional
+    description fields populated at sync time. Pass `stub: true` topics through
+    unchanged (Haiku still gets a reasonable description).
+  - [ ] **6. TestHarness: load `grammar/grammar-equivalences.json` directly** — remove
+    the `grammar.json` overlay path in `GrammarDumpPrompts.swift`. TestHarness builds its
+    manifest from TSV files + `grammar/grammar-equivalences.json` only, never needing
+    `grammar.json` (which is personal/user-specific). When a topic's equivalence group has
+    no description (or `stub: true`), print a warning and continue (quiz works without
+    descriptions, just less informative prompts). Add `--enrich` flag: calls
+    `enrich-grammar-descriptions.mjs` on demand to generate a stub for the requested topic.
+  - [ ] **7. Feed review notes back into generation** — update generation prompts to
     accept a "recently tested sub-uses" list (from `reviews.notes`) and instruct Haiku
     to prioritize untested sub-uses. Update grading prompts to always note which sub-use
     was exercised in the `notes` field.
@@ -491,9 +493,16 @@ latency acceptable.
 
 ### Infrastructure
 
-- **Bundle `grammar.json` and `grammar-equivalences.json` into the iOS app**: currently
-  these are fetched from the Gist at runtime. Bundling would allow offline use and
-  faster first launch.
+- **Publish `grammar/grammar-equivalences.json` to the Gist**: `grammar.json` is already
+  pushed by `publish.mjs`. `grammar/grammar-equivalences.json` (generic descriptions, no
+  user content) should also be pushed so the iOS app can fetch it without an app update.
+  `GrammarSync.swift` would derive the URL the same way as `grammar.json` (substituting
+  the filename). Once pushed, `GrammarTopic` description fields can be populated at sync
+  time (Phase 1A.5 task 5).
+
+- **Offline / bundling**: both `grammar.json` and `grammar/grammar-equivalences.json` could
+  also be bundled in the app binary for offline use and faster first launch. Lower priority
+  than getting the Gist fetch working first.
 
 ---
 

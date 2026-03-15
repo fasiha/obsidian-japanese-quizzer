@@ -1,0 +1,184 @@
+[
+  {
+    "topics": [
+      "bunpro:causative",
+      "genki:causative-sentences"
+    ],
+    "summary": "The causative form expresses making or letting someone do something. For godan verbs, change the final vowel to the あ-row and add せる (話す→話させる); for ichidan verbs, drop る and add させる (食べる→食べさせる); irregulars: する→させる, くる→こさせる.",
+    "subUses": [
+      "Forcing/compelling: 先生は学生を立たせた (The teacher made the student stand up)",
+      "Permitting/allowing: 母は子供にケーキを食べさせた (The mother let the child eat cake)",
+      "Causative + てあげる/てくれる (strong 'let' reading): 好きな本を読ませてくれた (They let me read the book I wanted)",
+      "Causative of intransitive verbs for indirect causation: 木に実をならせる (to make a tree bear fruit)"
+    ],
+    "cautions": [
+      "Particle choice for the causee depends primarily on verb transitivity: intransitive verbs use を for the causee (学生を立たせた); transitive verbs use に to avoid double を (子供にケーキを食べさせた). The に=letting/を=forcing distinction taught in textbooks is a secondary tendency, not the primary rule",
+      "When てあげる/てくれる/てもらう follows the causative, it almost always means 'let' rather than 'make'",
+      "Do not confuse causative させる with passive される — they look similar for する but differ for other verbs",
+      "The short causative (す instead of せる, e.g. 行かす instead of 行かせる) is colloquial — accept it but note it is informal"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:describing-verbs"
+    ],
+    "summary": "い-adjectives become adverbs by replacing the final い with く (早い→早く, 大きい→大きく). な-adjectives become adverbs by adding に (静か→静かに). These adverbs modify verbs to describe how an action is performed, equivalent to English '-ly' adverbs.",
+    "subUses": [
+      "Manner adverbs from い-adjectives: 早く走る (run quickly)",
+      "Manner adverbs from な-adjectives: 丁寧に書く (write carefully)",
+      "Adverbial use with なる for change of state: 大きくなる (become big)",
+      "Standalone adverbs that are neither い nor な derived: いっぱい食べる (eat a lot) — these function adverbially without a particle"
+    ],
+    "cautions": [
+      "いい becomes よく (not いく) — this is the only irregular い-adjective adverb",
+      "Some words like いっぱい function as adverbs without any conjugation or particle — they are 'true adverbs' rather than adjective-derived adverbs",
+      "The く form of い-adjectives also serves as the conjunctive/continuative form (美しく、優しい人 = a beautiful and kind person) — don't confuse this linking use with the adverbial use"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:transitive-intransitive-verbs",
+      "genki:transitive-pairs"
+    ],
+    "summary": "Japanese has paired verbs where one is transitive (他動詞, takes a direct object with を) and the other is intransitive (自動詞, the subject undergoes the change with が). For example, 開ける (to open something) vs 開く (something opens). The transitive verb implies a deliberate agent acting on an object; the intransitive verb describes a change happening on its own or focuses on the result.",
+    "subUses": [
+      "Deliberate action with transitive verb: ドアを閉めた (I closed the door)",
+      "Spontaneous change with intransitive verb: ドアが閉まった (The door closed)",
+      "Describing resulting states with intransitive て-form + いる: 電気がついている (The light is on)",
+      "Expressing accidental or uncontrolled events: コップが割れた (The cup broke — no agent implied)"
+    ],
+    "cautions": [
+      "Particle choice is the key signal: transitive uses を for the object; intransitive uses が for the subject undergoing change",
+      "Some verbs look similar but have different transitivity — つく (intransitive, to be attached) vs つける (transitive, to attach)",
+      "する and なる can be thought of as a transitive/intransitive pair: Xにする (make it X) vs Xになる (become X)",
+      "Not all verbs have a transitive/intransitive partner — some exist only as one type (e.g., つまずく is intransitive with no transitive counterpart; ある is intransitive with no direct transitive pair)"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:Verb[passive]",
+      "dbjg:rareru1",
+      "genki:passive-sentences"
+    ],
+    "summary": "The passive form is made by changing godan verbs to the あ-row + れる (書く→書かれる) and ichidan verbs by replacing る with られる (食べる→食べられる); irregulars: する→される, くる→こられる. The agent is marked with に. Japanese passive has both a direct passive (equivalent to English passive) and an indirect or 'suffering' passive where the subject is adversely affected by someone else's action.",
+    "subUses": [
+      "Direct passive: 先生に名前を呼ばれた (My name was called by the teacher)",
+      "Indirect/suffering passive: 雨に降られた (I got rained on — adversely affected by rain)",
+      "Possessive passive: 友達に本を読まれた (My friend read my book — on me, to my displeasure)",
+      "Respectful passive (honorific): 先生が話された (The teacher spoke — polite/respectful)"
+    ],
+    "cautions": [
+      "For ichidan verbs, passive られる and potential られる are identical in form — context distinguishes them",
+      "ら抜き言葉 (dropping ら) applies ONLY to the potential meaning, never to the passive — 食べれる is colloquial potential, but the passive is always 食べられる",
+      "The indirect/suffering passive has no English equivalent — it expresses that an event happened and the speaker was negatively affected, even if they weren't the direct object",
+      "から can replace に for the agent when there is no physical contact: みんなから愛されている (loved by everyone)"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:てならない"
+    ],
+    "summary": "てならない expresses an uncontrollable, persistent feeling or sensation — 'can't help but feel' or 'extremely.' It attaches to the て-form of verbs and い-adjectives, or で for な-adjectives (さびしくてならない, 気になってならない). It is a formal, literary expression more common in writing than speech.",
+    "subUses": [
+      "Uncontrollable emotion: 残念でならない (I can't help but feel regret)",
+      "Persistent sensation: 暑くてならない (It's unbearably hot)",
+      "Spontaneous feeling: 気がしてならない (I can't shake the feeling that...)"
+    ],
+    "cautions": [
+      "The feeling must be ongoing and persistent, not momentary — てならない is wrong for sudden, fleeting reactions",
+      "More formal than てたまらない (which stresses unbearable intensity) and てしょうがない (which is conversational)",
+      "In polite speech, なりません replaces ならない: さびしくてなりません",
+      "Only used for spontaneous, involuntary feelings — not for deliberate actions or controllable states"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:ては-ては"
+    ],
+    "summary": "ては〜ては expresses repeated alternation between two actions, often implying a cycle or habitual pattern. The structure is Verb-てはVerb-ては, where the two verbs are typically contrasting or complementary actions. It can also appear with a single ては when context already implies repetition.",
+    "subUses": [
+      "Repeated alternation between two actions: 食べては寝、食べては寝の生活だ (A life of eating then sleeping, eating then sleeping)",
+      "Habitual cycle leading to a result: 練習しては失敗し、また練習した (Practiced and failed, practiced and failed again)",
+      "Single ては with implied repetition: たんこぶをつくっては渡した (kept making bumps and handing them out — repeated giving)"
+    ],
+    "cautions": [
+      "ては can appear only once when the sentence structure already conveys repetition — the doubled form is not always required",
+      "Contracted forms ちゃ and じゃ are acceptable in casual speech, but must be used consistently (don't mix ては and ちゃ in the same sentence)",
+      "The same ては form also appears in conditional/consequential patterns like てはいけない (must not) and ては困る (it would be a problem if). These share the literal structure 'if you do X' but are fixed expressions, not the repetitive-alternation pattern — distinguish by whether the sentence describes a recurring cycle or a one-time consequence"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:のは",
+      "dbjg:no3"
+    ],
+    "summary": "The particle の nominalizes verb phrases, turning them into noun-like units that can fill subject, object, or topic positions in a sentence. Verb+のは makes the verb phrase a topic ('doing X is...'), Verb+のが marks it as a subject (often with adjectives like 好き, 上手), and Verb+のを marks it as a direct object. This is one of the most fundamental Japanese grammar structures.",
+    "subUses": [
+      "Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)",
+      "Nominalizing as subject with のが + emotive adjective: 絵を描くのが好きだ (I like drawing pictures)",
+      "Nominalizing as object with のを: 鳥が飛ぶのを見た (I saw a bird fly)",
+      "Cleft sentence / exhaustive listing with のは...だ: 早く咲くのは東京だ (The one that blooms earliest is Tokyo)"
+    ],
+    "cautions": [
+      "の and こと are often interchangeable for nominalization, but こと is required in set phrases: ことができる, ことがある — の cannot substitute here",
+      "の followed by だ/です forms the explanatory のだ/んです construction — this is grammatical but has a different function (explanation/emphasis) from plain nominalization. Do not tell students that の + だ is ungrammatical",
+      "In the cleft sentence pattern (Xのは Y だ), のは highlights Y as the specific answer — this is a focus/emphasis construction, not simple nominalization"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:のように-のような"
+    ],
+    "summary": "のように and のような express similarity or comparison — 'like (noun)' or 'in the manner of (noun).' のように modifies verbs and adjectives (how something is done), while のような modifies nouns (what kind of thing). Both require の after the comparison noun. This is the more formal equivalent of みたいに/みたいな.",
+    "subUses": [
+      "Simile modifying a verb: 鳥のように飛びたい (I want to fly like a bird)",
+      "Simile modifying a noun: 夢のような話 (A story like a dream)",
+      "Referring back to a previous state: もとのように元気になった (Became healthy like before)",
+      "Giving an example: このような場合はどうしますか (What do you do in cases like this?)"
+    ],
+    "cautions": [
+      "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
+      "When following a clause (not a noun), よう attaches directly without の: 走っているように見える (looks like they're running)"
+    ]
+  },
+  {
+    "topics": [
+      "dbjg:-te",
+      "genki:te-form"
+    ],
+    "summary": "The て-form is one of the most versatile verb conjugations in Japanese. For godan verbs, the ending changes based on the final consonant (く→いて, ぐ→いで, す→して, む/ぶ/ぬ→んで, う/つ/る→って); ichidan verbs drop る and add て; irregulars: する→して, くる→きて. The て-form connects clauses and is the basis for many grammatical constructions.",
+    "subUses": [
+      "Sequential actions: 起きて、顔を洗って、朝ごはんを食べた (Got up, washed my face, and ate breakfast)",
+      "Requests with ください: 窓を開けてください (Please open the window)",
+      "Means/method: バスに乗って学校に行く (Go to school by taking the bus)",
+      "Cause/reason linking: 風邪をひいて学校を休んだ (Caught a cold and missed school)",
+      "Ongoing state with いる: 本を読んでいる (Is reading a book)",
+      "Permission with もいい: 帰ってもいいですか (May I go home?)",
+      "Prohibition with はいけない: ここで走ってはいけない (You must not run here)"
+    ],
+    "cautions": [
+      "Exception: 行く becomes 行って (not 行いて) — the only godan く-verb with this irregular て-form",
+      "The て-form itself carries no tense — the tense comes from the final verb in the sentence",
+      "When linking sequential actions, the て-form implies the actions happen in order — reversing the order changes the meaning",
+      "続けて (from 続ける) uses て-form as 'means': 5週続けて増えている = has been increasing for 5 weeks running (continuing by means of consecutive weeks)"
+    ]
+  },
+  {
+    "topics": [
+      "genki:potential-verbs"
+    ],
+    "summary": "Potential verbs express ability — 'can do' or 'be able to do.' For godan verbs, change the final う-row to the え-row + る (書く→書ける, 話す→話せる); for ichidan verbs, drop る and add られる (食べる→食べられる); irregulars: する→できる, くる→こられる. Potential verbs themselves conjugate as ichidan verbs.",
+    "subUses": [
+      "Expressing ability: 日本語が読める (I can read Japanese)",
+      "Expressing possibility due to circumstances: 今日は早く帰れる (I can go home early today)",
+      "Negative inability: 辛いものが食べられない (I can't eat spicy food)"
+    ],
+    "cautions": [
+      "ら抜き言葉: 食べれる/見れる (dropping ら from ichidan potential) are widely used in casual speech — do not mark wrong, but note it is colloquial",
+      "The particle often shifts from を to が with potential verbs: ピアノが弾ける (can play piano) — but を is also acceptable in modern Japanese",
+      "For ichidan verbs, potential られる is identical in form to passive られる — context distinguishes them",
+      "できる (potential of する) is a standalone verb, not a conjugation pattern — it takes が for the object: 料理ができる (can cook)"
+    ],
+    "stub": true
+  }
+]

@@ -1,7 +1,7 @@
 /**
  * add-grammar-equivalence.mjs
  *
- * Pure graph operation on grammar-equivalences.json.
+ * Pure graph operation on grammar/grammar-equivalences.json.
  *
  * Usage:
  *   node .claude/scripts/add-grammar-equivalence.mjs bunpro:causative
@@ -12,7 +12,7 @@
  *
  * Idempotent: if all given topics are already in the same group, no change.
  *
- * Format: grammar-equivalences.json is an array of EquivalenceGroup objects.
+ * Format: grammar/grammar-equivalences.json is an array of EquivalenceGroup objects.
  * Old format (array-of-arrays) is read and auto-migrated on load.
  *
  * @typedef {Object} EquivalenceGroup
@@ -36,11 +36,6 @@
  *   Example: ["ら抜き言葉: 食べれる/見れる are colloquially accepted — do not use as distractors or penalize in grading",
  *             "Do not confuse with potential: ことができる is also correct but is a separate grammar point"]
  *
- * @property {string[]} [sourcesSeen]
- *   Content sentences from the user's Markdown files that informed this description,
- *   in "filename.md: <Japanese sentence>" format.
- *   Used to detect when new annotations have been added and the description should be re-reviewed.
- *
  * @property {boolean} [stub]
  *   True if the description was generated without any user content sentences (based on web
  *   pages and Claude's internal knowledge only). Omitted or false once real content sentences
@@ -54,7 +49,7 @@ import { migrateEquivalences } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
-const EQUIV_PATH = path.join(projectRoot, "grammar-equivalences.json");
+const EQUIV_PATH = path.join(projectRoot, "grammar", "grammar-equivalences.json");
 
 const args = process.argv.slice(2);
 if (args.length === 0) {

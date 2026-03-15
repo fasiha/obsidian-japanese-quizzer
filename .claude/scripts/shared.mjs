@@ -308,7 +308,7 @@ export function extractGrammarBullets(content) {
  * import it without triggering add-grammar-equivalence's top-level side effects.
  *
  * @param {Array} raw
- * @returns {Array<{topics: string[], summary?: string, subUses?: string[], cautions?: string[], sourcesSeen?: string[], stub?: boolean}>}
+ * @returns {Array<{topics: string[], summary?: string, subUses?: string[], cautions?: string[], stub?: boolean}>}
  */
 export function migrateEquivalences(raw) {
   if (!Array.isArray(raw)) return [];

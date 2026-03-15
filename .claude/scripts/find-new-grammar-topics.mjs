@@ -2,7 +2,7 @@
  * find-new-grammar-topics.mjs
  *
  * Reports grammar topics from grammar.json that are not yet covered by any
- * equivalence group in grammar-equivalences.json.
+ * equivalence group in grammar/grammar-equivalences.json.
  *
  * Usage:
  *   node find-new-grammar-topics.mjs
@@ -11,7 +11,7 @@
  *   If all topics are already grouped: prints the string ALL_UP_TO_DATE
  *   Otherwise: prints JSON { newTopics, existingGroups, allTopics }
  *     - newTopics:     string[]  — prefixed topic IDs not yet in any group
- *     - existingGroups: EquivalenceGroup[] — current contents of grammar-equivalences.json
+ *     - existingGroups: EquivalenceGroup[] — current contents of grammar/grammar-equivalences.json
  *     - allTopics:     Record<string, { titleJp, titleEn }> — all topics from grammar.json
  */
 
@@ -20,7 +20,7 @@ import path from "path";
 import { projectRoot, migrateEquivalences } from "./shared.mjs";
 
 const grammarPath = path.join(projectRoot, "grammar.json");
-const equivPath = path.join(projectRoot, "grammar-equivalences.json");
+const equivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
 
 // Load grammar.json
 let grammar;
@@ -31,7 +31,7 @@ try {
   process.exit(1);
 }
 
-// Load grammar-equivalences.json (tolerate missing file)
+// Load grammar/grammar-equivalences.json (tolerate missing file)
 let existingGroups;
 try {
   existingGroups = migrateEquivalences(
