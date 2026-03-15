@@ -164,6 +164,52 @@ deterministic parts to pure logic as patterns emerge.
 - [ ] Grammar quiz: free text with opportunistic passive grading (tier 3) — requires tier 3 library from Phase 1A; passive Ebisu updates for all `PASSIVE:` lines in response
 - [ ] Integrate grammar items into unified quiz scheduling (alongside vocab)
 
+### Prompt design decisions (2026-03-14)
+
+**Target grammar strictness (all production grading paths).**
+All production grading — tier 2 fill-in-the-blank fallback (path 4), tier 3 free text (path 6) —
+requires the student to use the *specific target grammar form*, not a semantically equivalent
+alternative construction. If the student writes correct Japanese that uses a different construction
+(e.g. ことができる instead of potential verb form), Haiku coaches them toward the target form
+rather than scoring immediately. If they cannot produce it after coaching, score is 0.0–0.2.
+Rationale: without this, the Ebisu model for the target grammar never gets meaningful signal.
+
+**Production tier 3 grading is multi-turn coaching.**
+Like tier 2 fallback, tier 3 production grading uses a multi-turn coaching conversation
+(`gradeTier3ProductionForTesting`). Haiku also points out other errors in the student's
+Japanese (wrong particles, conjugation mistakes) as coaching notes — but these don't affect
+the SCORE for the target grammar.
+
+**Recognition tier 2 expects English translation only.**
+The recognition tier 2 grading prompt expects a plain English translation, not grammar
+analysis or metalinguistic explanation. SCORE reflects whether the translation captures
+the meaning that the target grammar conveys.
+
+**Stem generation: reasoning + divider format.**
+Free-text stem generation (production tier 3, recognition tier 2) allows Haiku to reason
+before a `---` divider. After the divider: only the stem text. The parser strips everything
+before `---`. This improves output quality without polluting the stem.
+
+**GRAMMAR_TOPICS: stem generation emits topic IDs for passive grading.**
+When scaffolding topics are provided, the stem generation step asks Haiku to emit a
+`GRAMMAR_TOPICS: id1, id2, ...` line listing which scaffolding topics the sentence exercises.
+These IDs are parsed and passed to the grading prompt, which uses them for PASSIVE lines.
+This avoids the grader guessing topic IDs (which may not match actual IDs in the system).
+When scaffolding is empty, no GRAMMAR_TOPICS line is requested and no PASSIVE is possible.
+
+**Passive grading of botched extra topics.**
+When the student's response demonstrates incorrect use of a non-target grammar topic from the
+GRAMMAR_TOPICS list, Haiku should skip emitting a PASSIVE line for that topic (neither positive
+nor negative). Rationale: the student's attention is on the main quiz topic; errors in peripheral
+grammar may reflect inattention rather than lack of knowledge, and a negative passive update
+would unfairly penalize them. Only emit PASSIVE when there is genuine positive evidence.
+
+**Paths 1 and 2 produce identical prompts (by design).**
+Tier 1 and tier 2 production use the same multiple-choice generation prompt. The only
+difference is the halflife in the Memory line (24h vs 96h, reflecting different graduation
+thresholds). The generated question is reused: tier 1 shows it as tap-a-button, tier 2
+shows it as type-the-answer (fill-in-the-blank).
+
 ### Prompt quality observations (from 2026-03-14 live tests)
 
 Tested `genki:potential-verbs`, `bunpro:causative`, and `bunpro:てならない` against Haiku.

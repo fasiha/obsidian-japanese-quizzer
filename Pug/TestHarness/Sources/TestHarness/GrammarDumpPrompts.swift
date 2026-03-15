@@ -195,27 +195,46 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
             }
 
         case "free-grading":
-            let system = session.systemPrompt(for: item, isGenerating: false,
-                                              preRecall: 0.42, preHalflife: halflife(path))
-            let placeholderStem: String
-            let sampleAnswer: String
             switch path.facet {
             case "production":
-                placeholderStem = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
-                sampleAnswer    = "泳ぐことができます。"
+                // Production tier 3 uses the coaching prompt (multi-turn, like tier 2 fallback).
+                let placeholderStem = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
+                let system = session.tier3ProductionGradingSystemPrompt(
+                    for: item, stem: placeholderStem,
+                    grammarTopics: item.scaffoldingTopics.map { $0.topicId })
+                print("── SYSTEM PROMPT (coaching, multi-turn until SCORE) ──")
+                print(system)
+                print("")
+                print("── TURN 1 USER MESSAGE ──")
+                print("Question you asked me: \(placeholderStem)")
+                print("My answer: 泳ぐことができます。")
+                print("Please grade my answer.")
+                print("")
+                print("── TURN 2+ (if Haiku coaches instead of scoring immediately) ──")
+                print("[student's follow-up attempt after coaching]")
+                print("Conversation continues until Haiku emits SCORE: X.X or max turns reached.")
             case "recognition":
-                placeholderStem = "[LLM-generated Japanese sentence, e.g. '彼女は泳げるらしい。']"
-                sampleAnswer    = "It seems she can swim. The potential form (れる/られる) is used here."
+                let system = session.systemPrompt(for: item, isGenerating: false,
+                                                  preRecall: 0.42, preHalflife: halflife(path))
+                let placeholderStem = "[LLM-generated Japanese sentence, e.g. '彼女は泳げるらしい。']"
+                print("── SYSTEM PROMPT ──")
+                print(system)
+                print("")
+                print("── USER MESSAGE ──")
+                print("Question you asked me: \(placeholderStem)")
+                print("My answer: It seems she can swim.")
+                print("Please grade my answer.")
             default:
-                placeholderStem = "[LLM-generated stem]"
-                sampleAnswer    = "sample answer"
+                let system = session.systemPrompt(for: item, isGenerating: false,
+                                                  preRecall: 0.42, preHalflife: halflife(path))
+                print("── SYSTEM PROMPT ──")
+                print(system)
+                print("")
+                print("── USER MESSAGE ──")
+                print("Question you asked me: [LLM-generated stem]")
+                print("My answer: sample answer")
+                print("Please grade my answer.")
             }
-            print("── SYSTEM PROMPT ──")
-            print(system)
-            print("")
-            print("── USER MESSAGE ──")
-            print("[App-generated stem shown to student]: \(placeholderStem)")
-            print("[Student's answer]: \(sampleAnswer)")
 
         default:
             print("(unknown mode: \(path.mode))")
@@ -458,7 +477,7 @@ func validateFreeGradingResponse(_ response: String, minScore: Double = 0.8) -> 
                 results.append((path: path, passed: fbPassed, issue: fbIssues.first))
 
             case "free-generation":
-                let (stem, _) = try await session.generateFreeTextStemForTesting(item: item)
+                let (stem, _, _) = try await session.generateFreeTextStemForTesting(item: item)
                 let elapsed   = Date().timeIntervalSince(start)
 
                 print("── RESPONSE (generated stem) ──")
@@ -491,27 +510,55 @@ func validateFreeGradingResponse(_ response: String, minScore: Double = 0.8) -> 
             case "free-grading":
                 // Generate a stem first, then grade a sample correct answer.
                 print("── Generating free-text stem… ──")
-                let (stem, _) = try await session.generateFreeTextStemForTesting(item: item)
+                let (stem, grammarTopics, _) = try await session.generateFreeTextStemForTesting(item: item)
                 print("Stem: \(stem)")
+                if !grammarTopics.isEmpty {
+                    print("Grammar topics: \(grammarTopics.joined(separator: ", "))")
+                }
                 print("")
 
-                let sampleAnswer: String
+                var issues: [String] = []
                 switch path.facet {
-                case "production":   sampleAnswer = "彼は日本語を話すことができます。"
-                case "recognition":  sampleAnswer = "This uses the potential form (られる/れる) to express that someone can do something."
-                default:             sampleAnswer = "sample answer"
+                case "production":
+                    // Tier 3 production: multi-turn coaching (like tier 2 fallback).
+                    let sampleAnswer = "彼は日本語が話せます。"
+                    print("── Grading sample answer (coaching): \(sampleAnswer) ──")
+                    let (response, _) = try await session.gradeTier3ProductionForTesting(
+                        item: item, stem: stem, grammarTopics: grammarTopics,
+                        studentAnswer: sampleAnswer, maxCoachingTurns: 3)
+                    let elapsed = Date().timeIntervalSince(start)
+                    print("── RESPONSE ──")
+                    print(response)
+                    print("")
+                    print("elapsed: \(String(format: "%.1fs", elapsed))")
+                    issues = validateFreeGradingResponse(response)
+
+                case "recognition":
+                    // Recognition tier 2: single-turn grading of English translation.
+                    let sampleAnswer = "It seems she can swim."
+                    print("── Grading sample answer: \(sampleAnswer) ──")
+                    let response = try await session.gradeAnswerForTesting(
+                        item: item, stem: stem, answer: sampleAnswer)
+                    let elapsed = Date().timeIntervalSince(start)
+                    print("── RESPONSE ──")
+                    print(response)
+                    print("")
+                    print("elapsed: \(String(format: "%.1fs", elapsed))")
+                    issues = validateFreeGradingResponse(response)
+
+                default:
+                    let sampleAnswer = "sample answer"
+                    print("── Grading sample answer: \(sampleAnswer) ──")
+                    let response = try await session.gradeAnswerForTesting(
+                        item: item, stem: stem, answer: sampleAnswer)
+                    let elapsed = Date().timeIntervalSince(start)
+                    print("── RESPONSE ──")
+                    print(response)
+                    print("")
+                    print("elapsed: \(String(format: "%.1fs", elapsed))")
+                    issues = validateFreeGradingResponse(response)
                 }
 
-                print("── Grading sample answer: \(sampleAnswer) ──")
-                let response = try await session.gradeAnswerForTesting(item: item, stem: stem, answer: sampleAnswer)
-                let elapsed  = Date().timeIntervalSince(start)
-
-                print("── RESPONSE ──")
-                print(response)
-                print("")
-                print("elapsed: \(String(format: "%.1fs", elapsed))")
-
-                let issues = validateFreeGradingResponse(response)
                 let passed = issues.isEmpty
                 if passed { print("✅ PASS"); passCount += 1 }
                 else { for issue in issues { print("❌ \(issue)") }; failCount += 1 }
