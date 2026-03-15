@@ -30,6 +30,8 @@ import {
   parseFrontmatter,
   projectRoot,
   JMDICT_DB,
+  loadGrammarDatabases,
+  extractGrammarBullets,
 } from "./.claude/scripts/shared.mjs";
 
 // --- JmdictFurigana enrichment ---
@@ -223,12 +225,16 @@ function extractVocabBullets(content) {
 }
 
 const { db } = await setup(JMDICT_DB);
+const grammarDb = loadGrammarDatabases();
 const mdFiles = findMdFiles(projectRoot);
 
 const errors = [];
 const stories = [];
 // Map from word id -> { id, sources: Set<title> }
 const wordMap = new Map();
+// Map from grammar topicId -> { topicId, sources: Set<title>, sentences: [] }
+const grammarMap = new Map();
+const grammarErrors = [];
 
 for (const filePath of mdFiles) {
   const content = readFileSync(filePath, "utf8");
@@ -247,6 +253,33 @@ for (const filePath of mdFiles) {
     stories.push({ title });
   }
 
+  // --- Grammar extraction ---
+  for (const { topicId, note, line } of extractGrammarBullets(content)) {
+    const colonIdx = topicId.indexOf(":");
+    if (colonIdx === -1) {
+      grammarErrors.push(
+        `${relPath}:${line}: grammar tag "${topicId}" missing source prefix`,
+      );
+      continue;
+    }
+    if (!grammarDb.has(topicId)) {
+      grammarErrors.push(
+        `${relPath}:${line}: grammar tag "${topicId}" not found in database`,
+      );
+      continue;
+    }
+
+    if (grammarMap.has(topicId)) {
+      grammarMap.get(topicId).sources.add(title);
+    } else {
+      grammarMap.set(topicId, {
+        topicId,
+        sources: new Set([title]),
+      });
+    }
+  }
+
+  // --- Vocab extraction ---
   for (const { bullet, line } of extractVocabBullets(content)) {
     const tokens = extractJapaneseTokens(bullet);
     if (tokens.length === 0) continue;
@@ -271,9 +304,10 @@ for (const filePath of mdFiles) {
   }
 }
 
-if (errors.length > 0) {
-  console.error(`\nPublication blocked by ${errors.length} error(s):\n`);
-  for (const err of errors) console.error(`  ✗ ${err}`);
+const allErrors = [...errors, ...grammarErrors];
+if (allErrors.length > 0) {
+  console.error(`\nPublication blocked by ${allErrors.length} error(s):\n`);
+  for (const err of allErrors) console.error(`  ✗ ${err}`);
   process.exit(1);
 }
 
@@ -303,4 +337,38 @@ const outPath = path.join(projectRoot, "vocab.json");
 writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
 console.log(
   `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
+);
+
+// --- Grammar JSON ---
+const grammarSources = {
+  genki: { name: "Genki I & II", type: "textbook" },
+  bunpro: { name: "Bunpro", type: "online" },
+  dbjg: { name: "Dictionary of Basic Japanese Grammar", type: "book" },
+};
+
+const grammarTopics = {};
+for (const [topicId, { sources }] of grammarMap) {
+  const dbEntry = grammarDb.get(topicId);
+  grammarTopics[topicId] = {
+    source: dbEntry.source,
+    id: dbEntry.id,
+    titleEn: dbEntry.titleEn,
+    titleJp: dbEntry.titleJp || undefined,
+    level: dbEntry.level,
+    href: dbEntry.href || undefined,
+    aliasOf: dbEntry.aliasOf || undefined,
+    sources: [...sources],
+  };
+}
+
+const grammarOutput = {
+  generatedAt: new Date().toISOString(),
+  sources: grammarSources,
+  topics: grammarTopics,
+};
+
+const grammarOutPath = path.join(projectRoot, "grammar.json");
+writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+console.log(
+  `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
 );

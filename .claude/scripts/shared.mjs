@@ -3,7 +3,7 @@
  * Utilities shared across scripts.
  */
 
-import { existsSync, readdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
@@ -194,6 +194,111 @@ export function summarizeWord(word) {
     .filter(Boolean)
     .join(" / ");
   return `${forms} ${meanings}`;
+}
+
+// --- Grammar helpers ---
+
+export const GRAMMAR_DIR = path.join(projectRoot, "grammar");
+
+/**
+ * Load all three grammar databases and return a Map<prefixedId, entry>.
+ * Each entry: { source, id, prefixedId, titleEn, titleJp?, level, href, aliasOf? }
+ * Source prefixes: "genki:", "bunpro:", "dbjg:"
+ */
+export function loadGrammarDatabases() {
+  const map = new Map();
+
+  function loadTsv(filePath, source, opts = {}) {
+    const content = readFileSync(filePath, "utf8");
+    const lines = content.split("\n");
+    // Skip comment/header line(s)
+    const startLine = lines[0].startsWith("#") ? 2 : 1;
+    for (let i = startLine; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      const cols = line.split("\t");
+      const id = cols[0];
+      const prefixedId = `${source}:${id}`;
+      const entry = {
+        source,
+        id,
+        prefixedId,
+        href: cols[1] || "",
+        level: cols[2] || "",
+        titleEn: cols[opts.titleEnCol ?? 3] || "",
+        titleJp: opts.titleJpCol != null ? cols[opts.titleJpCol] || "" : "",
+      };
+      if (opts.aliasOfCol != null && cols[opts.aliasOfCol]) {
+        entry.aliasOf = cols[opts.aliasOfCol]
+          .split(",")
+          .map((t) => `${source}:${t.trim()}`);
+      }
+      map.set(prefixedId, entry);
+    }
+  }
+
+  // Genki: id, href, option, title-en
+  loadTsv(path.join(GRAMMAR_DIR, "grammar-stolaf-genki.tsv"), "genki");
+
+  // Bunpro: id, href, option, title-jp, title-en
+  loadTsv(path.join(GRAMMAR_DIR, "grammar-bunpro.tsv"), "bunpro", {
+    titleJpCol: 3,
+    titleEnCol: 4,
+  });
+
+  // DBJG: id, href, option, title-en, alias-of
+  loadTsv(path.join(GRAMMAR_DIR, "grammar-dbjg.tsv"), "dbjg", {
+    aliasOfCol: 4,
+  });
+
+  return map;
+}
+
+/**
+ * Extract grammar bullets (with line numbers) from Grammar details blocks.
+ * Returns [{ topicId, note, line }] where topicId is the prefixed ID (first token)
+ * and note is any free text after it.
+ */
+export function extractGrammarBullets(content) {
+  const SUMMARY_REGEXP = /<summary>\s*Grammar\s*<\/summary>/i;
+  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
+  const bullets = [];
+  let match;
+  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
+    const inner = match[1];
+    if (!SUMMARY_REGEXP.test(inner)) continue;
+
+    // Strip the <summary>...</summary> tag so bullets on the same line are visible
+    const stripped = inner.replace(/<summary>[\s\S]*?<\/summary>/i, "");
+
+    const openingTagLen = match[0].length - inner.length - "</details>".length;
+    const innerStartIdx = match.index + openingTagLen;
+    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
+
+    const innerLines = stripped.split("\n");
+    for (let i = 0; i < innerLines.length; i++) {
+      const trimmed = innerLines[i].trim();
+      if (!trimmed.startsWith("-")) continue;
+      const bullet = trimmed.slice(1).trim();
+      if (!bullet) continue;
+
+      // First token is the topic ID (must contain a colon for the source prefix)
+      const spaceIdx = bullet.indexOf(" ");
+      const topicId = spaceIdx === -1 ? bullet : bullet.slice(0, spaceIdx);
+      const note = spaceIdx === -1 ? "" : bullet.slice(spaceIdx + 1).trim();
+
+      // Normalize prefix to lowercase
+      const colonIdx = topicId.indexOf(":");
+      const normalized =
+        colonIdx === -1
+          ? topicId
+          : topicId.slice(0, colonIdx).toLowerCase() +
+            topicId.slice(colonIdx);
+
+      bullets.push({ topicId: normalized, note, line: innerStartLine + i });
+    }
+  }
+  return bullets;
 }
 
 // Parse YAML frontmatter and return key-value pairs, or null if none present.

@@ -21,3 +21,9 @@ Pug/*.xcworkspace/xcuserdata/
 Pug/Pug.xcodeproj/xcuserdata/
 Pug/Pug.xcodeproj/project.xcworkspace/xcuserdata/
 Pug/Pug.xcodeproj/xcshareddata/xcschemes/
+
+# Personal files
+*.md
+vocab.json
+grammar.json
+quiz.sqlite
