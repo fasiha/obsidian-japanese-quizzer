@@ -142,10 +142,16 @@ deterministic parts to pure logic as patterns emerge.
 - [x] `GrammarQuizSession.swift` — tier-1 multiple choice only (production + recognition); system prompt builder with topic info + scaffolding list; `generateQuestionForTesting` + `gradeAnswerForTesting` entry points; `GrammarMultipleChoiceQuestion` parsed from Claude JSON
 - [x] TestHarness integration: `--grammar <topic_id>` mode with `--dump-prompts`, `--live`, and single-item generate; symlinks added for all three new Swift files
 - [x] Update documentation in TESTING.md
-- [ ] Tier 2 (fill-in-the-blank) library — `GrammarQuizSession` support for fill-in-the-blank format: LLM generates sentence with `___` gap + correct fill + distractors; grading is string-match or lightweight LLM; graduation threshold TBD
-  - [ ] TestHarness: add `--tier 2` flag to `--dump-prompts` and `--live` modes
-- [ ] Tier 3 (free text) library — `GrammarQuizSession` support for free-text production/recognition; LLM-generated stem cached between turns; SCORE grading; opportunistic passive grading (`PASSIVE: topic_id score` lines) for other enrolled grammar visible in response
-  - [ ] TestHarness: add `--tier 3` flag; validate SCORE token, passive grading lines, and correct-answer score ≥ 0.8
+- [x] Tier 2 (fill-in-the-blank) library — two-stage grading:
+  - [x] Fast path: `GrammarQuizSession.gradeFillin(studentAnswer:correctAnswer:)` — pure Swift string match (normalize trailing 。/、 and whitespace) against `choices[correctIndex]` from the tier-1/2 generation call. Score 1.0 immediately, no LLM.
+  - [x] Fallback coaching path: `GrammarQuizSession.gradeTier2FallbackForTesting(item:stem:referenceAnswer:studentAnswer:)` — invoked when string match fails. Haiku acts as a coaching tutor: scores immediately if the answer is clearly right (different valid form) or clearly wrong; asks a focused Socratic question if the answer is close but uses the wrong construction, then waits for the student's next attempt. Multi-turn conversation continues until SCORE is emitted or a max-turn limit is reached.
+  - [x] TestHarness `fillin-grading` path: tests exact match, wrong-choice rejection, and punctuation normalization (no LLM). `fillin-fallback` path: generates a question, sends a wrong distractor as the student's first attempt to trigger the coaching path, then validates SCORE format.
+  - Graduation threshold: ≥ 3 reviews, halflife ≥ 72 h.
+- [x] Tier 3 (free text) production + tier 2 free text recognition — `GrammarQuizSession.generateFreeTextStemForTesting()`: LLM generates English context (production) or Japanese sentence (recognition); `gradeAnswerForTesting()` grades with SCORE + opportunistic `PASSIVE: topic_id score` lines. Graduation threshold for production tier 3: ≥ 6 reviews, halflife ≥ 120 h.
+  - [x] TestHarness: `free-generation` and `free-grading` paths added to `allGrammarPaths`; live mode validates stem language (English-only or Japanese), SCORE token, score ≥ 0.8 for correct answer, and PASSIVE line format.
+  - [x] System prompts updated with SCORE and PASSIVE instructions; distractor prompt tightened to exclude alternative-correct constructions (e.g. ことができる as a potential-verb distractor).
+  - [x] `GrammarQuizItem.tier: Int` added (1/2/3 for production, 1/2 for recognition); computed from review count + halflife in `GrammarQuizContext.build()`.
+  - [x] TESTING.md updated with tier table, thresholds, and validation check list.
 - [ ] `--scaffold topic1,topic2` flag in TestHarness to simulate a student who knows specific grammar, for testing difficulty scaling
 
 ### Phase 1B — iOS Views

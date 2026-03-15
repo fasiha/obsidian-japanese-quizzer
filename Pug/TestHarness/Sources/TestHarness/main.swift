@@ -193,7 +193,7 @@ if isGrammarMode {
     let session = GrammarQuizSession(client: client, db: grammarDB)
 
     let item = buildGrammarQuizItem(topic: topic,
-                                    path: GrammarPromptPath(facet: grammarFacet, mode: "multiple-choice-generation"))
+                                    path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"))
     let start = Date()
     do {
         let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)

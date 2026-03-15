@@ -120,28 +120,37 @@ final class GrammarQuizSession {
         case "production":
             if isGenerating {
                 facetRule = """
-                Facet: production — student sees English context, selects the Japanese sentence \
-                that correctly uses the target grammar.
+                Facet: production (tier \(item.tier)) — student sees English context, selects or \
+                types the Japanese sentence that correctly uses the target grammar.
                 The English stem describes a situation or meaning; it must NOT contain Japanese \
                 or reveal the exact target grammar structure.
                 All four choices must be complete natural Japanese sentences. Only the correct \
                 choice uses the target grammar correctly; the others use plausible but incorrect \
-                grammar (wrong conjugation, wrong form, or a different grammar point).
+                grammar (wrong conjugation, wrong form, or a different grammar point). \
+                Do NOT include grammatically correct alternatives that merely use a different \
+                construction (e.g. ことができる as a distractor for a potential-verb question) — \
+                distractors must be clearly wrong Japanese or wrong grammar form for this meaning.
                 Distractors: draw on your grammar knowledge — no lookup needed. Make them feel \
                 natural and close to correct so the student must truly know the target grammar \
                 to distinguish them.
                 """
-            } else {
+            } else if item.tier == 3 {
                 facetRule = """
-                Facet tested: production — student was shown English context and chose a Japanese \
-                sentence using the target grammar.
+                Facet tested: production (tier 3, free text) — student was shown English context \
+                and wrote their own Japanese sentence using the target grammar.
+                """
+            } else {
+                // Tier 1 multiple choice discussion or tier 2 fill-in-the-blank discussion.
+                facetRule = """
+                Facet tested: production (tier \(item.tier)) — student was shown English context \
+                and selected/typed a Japanese sentence using the target grammar.
                 """
             }
         case "recognition":
             if isGenerating {
                 facetRule = """
-                Facet: recognition — student sees a Japanese sentence, selects the correct \
-                natural English translation.
+                Facet: recognition (tier \(item.tier)) — student sees a Japanese sentence, \
+                selects or writes the correct natural English translation.
                 The Japanese stem must naturally contain the target grammar. It must NOT contain \
                 any English.
                 All four choices must be natural, idiomatic English translations of the stem. \
@@ -152,16 +161,21 @@ final class GrammarQuizSession {
                 Do NOT write grammar labels or descriptions as choices — write natural English \
                 sentences a fluent speaker would actually say.
                 """
+            } else if item.tier >= 2 {
+                facetRule = """
+                Facet tested: recognition (tier 2, free text) — student was shown a Japanese \
+                sentence and wrote a free-text explanation of its meaning and grammar.
+                """
             } else {
                 facetRule = """
-                Facet tested: recognition — student was shown a Japanese sentence and chose the \
-                correct English translation.
+                Facet tested: recognition (tier 1) — student was shown a Japanese sentence and \
+                chose the correct English translation.
                 """
             }
         default:
             facetRule = isGenerating
-                ? "Facet: \(item.facet) — generate an appropriate multiple-choice question."
-                : "Facet tested: \(item.facet)."
+                ? "Facet: \(item.facet) (tier \(item.tier)) — generate an appropriate multiple-choice question."
+                : "Facet tested: \(item.facet) (tier \(item.tier))."
         }
 
         let header = """
@@ -176,17 +190,28 @@ final class GrammarQuizSession {
         if isGenerating {
             return header + "\nCRITICAL: Never reveal the answer in the question stem. Silently verify before outputting."
         } else if item.isFreeAnswer {
+            // Tier 3 production and tier 2+ recognition: LLM grades and emits SCORE.
+            // Opportunistic passive grading: also score any other enrolled grammar visible in
+            // the student's response, using PASSIVE lines (one per topic, same turn as SCORE).
             return header + """
 
         Open conversation: student may answer, ask about this grammar point, or mix topics.
-        SCORE: X.X (0.0–1.0) — emit this on the same turn you grade. Format exactly: SCORE: X.X — <one grading sentence>. Never emit SCORE on a line by itself with no other prose.
-        Scoring is Bayesian confidence, not percentage-correct. Ask: "how confident am I that this answer reflects whether the student actually knows the target grammar?"
+        SCORE: X.X (0.0–1.0) — emit this on the same turn you grade. Format exactly:
+          SCORE: X.X — <one grading sentence>
+        Never emit SCORE on a line by itself with no other prose.
+        Scoring is Bayesian confidence, not percentage-correct:
         - 1.0: strong evidence they know it — correct or trivially equivalent
         - 0.8–0.9: right idea with a minor error (small conjugation slip, missing particle)
         - 0.5: ambiguous — can't tell if they know it (do NOT use 0.5 as "half credit")
         - 0.1–0.3: shows some understanding but clearly wrong for the target grammar
         - 0.0: completely wrong or off-topic
-        NOTES: one sentence on same message as SCORE.
+        Opportunistic passive grading: if the student's response also demonstrates knowledge of \
+        OTHER grammar topics (from the scaffolding list or any topic you recognise), emit one \
+        PASSIVE line per topic on the same turn, after SCORE:
+          PASSIVE: <prefixed-topic-id> <score>
+        Example: PASSIVE: genki:te-form 0.9
+        Only emit PASSIVE for topics where you have genuine evidence (not mere presence of a form).
+        NOTES: one brief sentence on the same message as SCORE.
         After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss.
         """
         } else {
@@ -221,19 +246,190 @@ final class GrammarQuizSession {
         """
     }
 
-    /// Build the app-side stem for free-text (tier 3) grammar questions.
-    /// Phase 1A: grammar free-text is not yet used; this is a placeholder for Phase 1B.
-    /// In Phase 1B, the stem will itself be LLM-generated and cached (unlike vocab, which
-    /// can derive the stem locally from JMDict data).
-    func freeAnswerStem(for item: GrammarQuizItem) -> String {
+    /// Build the user request message for generating a tier-3 production stem.
+    /// Tier 3 production: the LLM provides an English context only (no choices).
+    /// The student then writes a full Japanese sentence.
+    func tier3ProductionStemRequest(for item: GrammarQuizItem) -> String {
+        return """
+        Generate ONE English-language situation or sentence for the student to translate \
+        into Japanese using the target grammar.
+        The English must NOT contain Japanese or reveal the exact grammar structure.
+        Keep it to one or two sentences. Output only the English text — no JSON, no labels.
+        """
+    }
+
+    /// Build the user request message for generating a tier-2 recognition stem.
+    /// Tier 2 recognition: the LLM provides a Japanese sentence only (no choices).
+    /// The student then writes a free-text English explanation.
+    func tier2RecognitionStemRequest(for item: GrammarQuizItem) -> String {
+        return """
+        Generate ONE Japanese sentence that naturally uses the target grammar.
+        The sentence must NOT contain English. Output only the Japanese sentence — no JSON, \
+        no labels, no furigana annotations.
+        """
+    }
+
+    /// Generate a free-text stem for tier-3 production or tier-2 recognition.
+    /// Returns the LLM-generated stem string and the raw conversation for caching.
+    func generateFreeTextStemForTesting(item: GrammarQuizItem)
+        async throws -> (stem: String, conversation: [AnthropicMessage])
+    {
+        let system = systemPrompt(for: item, isGenerating: true)
+        let request: String
         switch item.facet {
-        case "production":
-            return "Write a Japanese sentence using \(item.titleEn) (\(item.topicId))."
-        case "recognition":
-            return "Explain the grammar used in the following sentence."
-        default:
-            return "Answer the question about \(item.titleEn)."
+        case "production":  request = tier3ProductionStemRequest(for: item)
+        case "recognition": request = tier2RecognitionStemRequest(for: item)
+        default:            request = "Generate a question stem for the \(item.facet) facet."
         }
+        let initMsg = AnthropicMessage(role: "user", content: [.text(request)])
+        let (raw, msgs, meta) = try await client.send(
+            messages: [initMsg],
+            system: system,
+            tools: [],
+            maxTokens: 256,
+            toolHandler: nil
+        )
+        try? await db.log(apiEvent: ApiEvent(
+            timestamp:            ISO8601DateFormatter().string(from: Date()),
+            eventType:            "stem_gen",
+            wordId:               item.topicId,
+            quizType:             item.facet,
+            inputTokens:          meta.totalInputTokens,
+            outputTokens:         meta.totalOutputTokens,
+            model:                client.model,
+            generationAttempt:    1,
+            apiTurns:             meta.totalTurns,
+            firstTurnInputTokens: meta.firstTurnInputTokens,
+            questionChars:        raw.count,
+            questionFormat:       "free_text_stem",
+            prefetch:             0
+        ))
+        return (raw.trimmingCharacters(in: .whitespacesAndNewlines), msgs)
+    }
+
+    /// Grade a fill-in-the-blank (tier-2 production) answer by string matching.
+    /// Returns true if the student's typed answer matches the correct choice (after normalization).
+    /// No LLM call — pure Swift logic.
+    func gradeFillin(studentAnswer: String, correctAnswer: String) -> Bool {
+        let normalize: (String) -> String = { s in
+            s.trimmingCharacters(in: .whitespacesAndNewlines)
+             .replacingOccurrences(of: "。", with: "")
+             .replacingOccurrences(of: "、", with: "")
+        }
+        return normalize(studentAnswer) == normalize(correctAnswer)
+    }
+
+    // MARK: - Tier-2 fallback coaching (LLM grading when string match fails)
+
+    /// Build the system prompt for the tier-2 production coaching conversation.
+    ///
+    /// This is used when the student's fill-in-the-blank answer fails string match.
+    /// Haiku acts as a coaching tutor: it scores immediately when it has clear signal
+    /// (correct grammar form → high score; clearly wrong/off-topic → low score), and
+    /// asks a focused Socratic question when the answer is close but not quite right,
+    /// waiting for the student to try again before committing a SCORE.
+    ///
+    /// - Parameters:
+    ///   - item: the quiz item (provides topic, facet, scaffolding)
+    ///   - stem: the English context shown to the student
+    ///   - referenceAnswer: the correct choice from the generation call (one valid form)
+    func tier2FallbackSystemPrompt(for item: GrammarQuizItem, stem: String, referenceAnswer: String) -> String {
+        let sourceName: String
+        switch item.source {
+        case "genki":   sourceName = "Genki I & II (textbook)"
+        case "bunpro":  sourceName = "Bunpro (online)"
+        case "dbjg":    sourceName = "Dictionary of Basic Japanese Grammar"
+        default:        sourceName = item.source
+        }
+
+        var topicLine = "Target grammar: \(item.topicId) — \(item.titleEn)"
+        if let jp = item.titleJp, !jp.isEmpty { topicLine += " (\(jp))" }
+        var metaLine = "Level: \(item.level) | Source: \(sourceName)"
+        if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
+
+        let scaffoldLine: String
+        if item.scaffoldingTopics.isEmpty {
+            scaffoldLine = ""
+        } else {
+            let list = item.scaffoldingTopics.prefix(8)
+                .map { "- \($0.topicId) — \($0.titleEn)" }
+                .joined(separator: "\n")
+            scaffoldLine = "\nGrammar the student knows well (context only):\n\(list)"
+        }
+
+        return """
+        You are coaching a Japanese learner on a fill-in-the-blank grammar exercise.
+        \(topicLine)
+        \(metaLine)\(scaffoldLine)
+
+        The student was shown this English context:
+          \(stem)
+
+        One correct reference answer (there may be other valid forms):
+          \(referenceAnswer)
+
+        The student typed an answer that did not exactly match. Evaluate it as follows:
+
+        - If their answer correctly uses the target grammar (even in a different but valid form): \
+        emit SCORE immediately.
+        - If their answer is close but uses the wrong construction or has a fixable error: do NOT \
+        emit SCORE yet. Ask ONE focused coaching question to guide them toward the target grammar \
+        form (e.g. "That means something slightly different — how would you express ability using \
+        the potential verb form directly?"). Wait for their next attempt before scoring.
+        - If their answer is clearly wrong, off-topic, or shows no understanding: emit SCORE \
+        immediately with a brief explanation.
+
+        SCORE format (emit on the turn you decide to grade):
+          SCORE: X.X — <one grading sentence>
+        Scoring scale (Bayesian confidence):
+        - 1.0: correct grammar form, clear understanding
+        - 0.8–0.9: right idea, very minor slip
+        - 0.5: ambiguous — do NOT use as "half credit"; use coaching instead
+        - 0.1–0.3: shows partial understanding but wrong for target grammar
+        - 0.0: completely wrong or off-topic
+        Never emit SCORE on a line by itself. After emitting SCORE, stop — do not ask follow-up \
+        questions. The student will ask if they want to discuss further.
+        """
+    }
+
+    /// Run the tier-2 production fallback coaching conversation.
+    ///
+    /// Called when the student's fill-in-the-blank answer fails string match. Haiku may
+    /// ask coaching questions across multiple turns before emitting SCORE. The conversation
+    /// ends as soon as SCORE appears or the turn limit is reached.
+    ///
+    /// - Returns: the final Haiku response text (always contains SCORE if successful) and
+    ///   the full conversation for display.
+    func gradeTier2FallbackForTesting(item: GrammarQuizItem, stem: String,
+                                       referenceAnswer: String, studentAnswer: String,
+                                       maxCoachingTurns: Int = 4)
+        async throws -> (response: String, conversation: [AnthropicMessage])
+    {
+        let system   = tier2FallbackSystemPrompt(for: item, stem: stem, referenceAnswer: referenceAnswer)
+        var messages = [AnthropicMessage(role: "user", content: [.text(studentAnswer)])]
+        var lastResponse = ""
+
+        for turn in 1...maxCoachingTurns {
+            let (raw, msgs, _) = try await client.send(
+                messages: messages,
+                system: system,
+                tools: [],
+                maxTokens: 512,
+                toolHandler: nil
+            )
+            messages    = msgs
+            lastResponse = raw
+
+            if raw.contains("SCORE:") {
+                print("[GrammarQuizSession] tier-2 fallback scored on turn \(turn)")
+                break
+            }
+            if turn == maxCoachingTurns {
+                print("[GrammarQuizSession] tier-2 fallback reached max turns without SCORE")
+            }
+        }
+
+        return (lastResponse, messages)
     }
 
     // MARK: - Generation loop (mirrors QuizSession.runGenerationLoop)

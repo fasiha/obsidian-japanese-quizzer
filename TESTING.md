@@ -95,12 +95,30 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 .build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --repeat 3
 ```
 
-**Grammar path coverage** (facet × mode):
+**Grammar path coverage** (facet × tier × mode):
 
-| Paths | Description |
-|-------|-------------|
-| 2 | production + recognition × multiple-choice-generation (Phase 1A) |
-| 2 | production + recognition × free-grading (Phase 1B preview) |
+| # | Facet | Tier | Mode | LLM call? | What is validated |
+|---|-------|------|------|-----------|-------------------|
+| 1 | production | 1 | multiple-choice-generation | yes | stem is English-only; JSON parses |
+| 2 | production | 2 | multiple-choice-generation | yes | same as tier 1 (stem reused for fill-in-the-blank) |
+| 3 | production | 2 | fill-in-the-blank grading | no (string match) | exact match passes; wrong choice rejected; punctuation normalization works |
+| 4 | production | 3 | free-text stem generation | yes | generated English stem contains no Japanese |
+| 5 | production | 3 | free-text grading (SCORE) | yes | `SCORE:` present; correct answer ≥ 0.8; any `PASSIVE:` lines are well-formed |
+| 6 | recognition | 1 | multiple-choice-generation | yes | stem is Japanese; JSON parses |
+| 7 | recognition | 2 | free-text stem generation | yes | generated Japanese stem contains Japanese characters |
+| 8 | recognition | 2 | free-text grading (SCORE) | yes | `SCORE:` present; correct answer ≥ 0.8; any `PASSIVE:` lines are well-formed |
+
+**Tier graduation thresholds** (grammar — higher than vocab):
+
+| Threshold | Reviews | Halflife |
+|-----------|---------|---------|
+| Tier 2 (production fill-in-the-blank; recognition free text) | ≥ 3 | ≥ 72 h |
+| Tier 3 (production free text) | ≥ 6 | ≥ 120 h |
+
+**Opportunistic passive grading** (tier 3 production and tier 2 recognition free-grading):
+Claude emits one `PASSIVE: <prefixed-topic-id> <score>` line per additional enrolled grammar topic it observes in the student's response. The app applies `updateRecall(..., score, 1, elapsed)` for each. The test harness validates that any `PASSIVE:` lines present are well-formed.
+
+**`--gen-only` flag**: skips all grading paths (`free-grading` and `fillin-grading`), running only generation paths. Useful for rapid prompt iteration.
 
 **Required additional file** (searched by walking up from cwd):
 - `grammar.json` — required for grammar mode; run `node prepare-publish.mjs` to generate it.
@@ -115,6 +133,7 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 | `bunpro:てならない` | Very, Extremely | JLPT N2 |
 
 **Validation checks** (live mode):
-- production: stem contains no Japanese characters (English only)
-- recognition: stem contains Japanese characters
-- free-grading: response contains `SCORE:` token; correct answer scores ≥ 0.8
+- multiple-choice-generation: JSON parses; production stem is English-only; recognition stem contains Japanese
+- fill-in-the-blank grading: correct answer matches itself; wrong answer rejected; punctuation-stripped answer matches
+- free-text stem generation: production stem is English-only; recognition stem contains Japanese
+- free-text grading: response contains `SCORE:` token; correct answer scores ≥ 0.8; any `PASSIVE:` lines are well-formed (`PASSIVE: <id> <score>`)

@@ -35,16 +35,23 @@ struct GrammarQuizItem: Identifiable {
     let status: QuizStatus
     /// Grammar topics the student knows well — injected into the system prompt for difficulty scaling.
     let scaffoldingTopics: [GrammarScaffoldEntry]
+    /// Quiz format tier.
+    /// Production: 1 = multiple choice, 2 = fill-in-the-blank (typed, string-match graded),
+    ///             3 = free text (LLM graded with SCORE).
+    /// Recognition: 1 = multiple choice, 2 = free text (LLM graded with SCORE).
+    let tier: Int
 
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
     }
 
-    /// Grammar free-answer (tier 3) requires at least 3 reviews and halflife ≥ 72 hours.
-    /// Tier 3 is Phase 1B; in Phase 1A all grammar items are multiple choice.
+    /// True when the item uses LLM-scored free-text grading (SCORE token).
+    /// Production tier 3 and recognition tier 2 and above.
     var isFreeAnswer: Bool {
-        if case .reviewed(_, let free, _) = status { return free }
-        return false
+        switch facet {
+        case "production":  return tier >= 3
+        default:            return tier >= 2
+        }
     }
 }
 
@@ -53,9 +60,17 @@ struct GrammarQuizItem: Identifiable {
 struct GrammarQuizContext {
     static let grammarFacets = ["production", "recognition"]
 
-    /// Free-answer thresholds — higher than vocab because grammar production is harder.
-    static let freeAnswerMinReviews  = 3
-    static let freeAnswerMinHalflife = 72.0     // hours
+    /// Tier-2 thresholds (production fill-in-the-blank; recognition free text).
+    static let tier2MinReviews  = 3
+    static let tier2MinHalflife = 72.0      // hours
+
+    /// Tier-3 threshold (production free text only). Higher bar because open production is harder.
+    static let tier3MinReviews  = 6
+    static let tier3MinHalflife = 120.0     // hours
+
+    // Backward-compatible alias used by existing code outside this file.
+    static var freeAnswerMinReviews:  Int    { tier2MinReviews }
+    static var freeAnswerMinHalflife: Double { tier2MinHalflife }
 
     /// Halflife threshold above which a topic is considered "established" for scaffolding.
     static let scaffoldingMinHalflife = 48.0    // hours
@@ -117,8 +132,22 @@ struct GrammarQuizContext {
                 let recall  = predictRecall(r.model, tnow: elapsed, exact: true)
 
                 let reviewCount = counts["\(topicId):\(r.quizType)"] ?? 0
-                let isFree = reviewCount >= freeAnswerMinReviews && r.t >= freeAnswerMinHalflife
 
+                // Compute tier based on facet, review count, and halflife.
+                // Production: 1 → 2 (fill-in-the-blank) → 3 (free text).
+                // Recognition: 1 → 2 (free text).
+                let tier: Int
+                if r.quizType == "production"
+                    && reviewCount >= tier3MinReviews
+                    && r.t >= tier3MinHalflife {
+                    tier = 3
+                } else if reviewCount >= tier2MinReviews && r.t >= tier2MinHalflife {
+                    tier = 2
+                } else {
+                    tier = 1
+                }
+
+                let isFree = tier >= 2  // used only to satisfy QuizStatus shape; isFreeAnswer is tier-based
                 let equivalenceGroupIds = topic.equivalenceGroup ?? []
 
                 items.append(GrammarQuizItem(
@@ -131,7 +160,8 @@ struct GrammarQuizContext {
                     equivalenceGroupIds: equivalenceGroupIds,
                     facet:               r.quizType,
                     status:              .reviewed(recall: recall, isFree: isFree, halflife: r.t),
-                    scaffoldingTopics:   scaffoldingTopics
+                    scaffoldingTopics:   scaffoldingTopics,
+                    tier:                tier
                 ))
             }
         }
