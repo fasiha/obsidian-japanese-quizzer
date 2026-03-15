@@ -25,6 +25,7 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 # Personal files
 *.md
 !.claude/*.md
+!TODO-*md
 
 vocab.json
 grammar.json

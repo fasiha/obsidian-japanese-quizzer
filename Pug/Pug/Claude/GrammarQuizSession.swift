@@ -31,8 +31,8 @@ let grammarGapToken = "___"
 struct GrammarMultipleChoiceQuestion: Equatable {
     let stem: String        // English context (production) or Japanese sentence (recognition)
     let sentence: String?   // Japanese sentence with ___ gap(s) (production only; nil for recognition)
-    let choices: [[String]] // exactly 4 options; each sub-array has one element per gap
-    let correctIndex: Int   // 0–3
+    let choices: [[String]] // 4 options for multiple choice, 1 option for fill-in-the-blank; each sub-array has one element per gap
+    let correctIndex: Int   // 0–3 for multiple choice, always 0 for fill-in-the-blank
 
     /// Number of gaps this question expects (derived from the first choice).
     var gapCount: Int { choices.first?.count ?? 1 }
@@ -853,9 +853,9 @@ final class GrammarQuizSession {
               let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
               let rawChoices = obj["choices"] as? [Any],
-              rawChoices.count == 4,
+              rawChoices.count == 4 || rawChoices.count == 1,
               let correctIndex = obj["correct"] as? Int,
-              (0..<4).contains(correctIndex)
+              (0..<rawChoices.count).contains(correctIndex)
         else { return nil }
 
         // Accept both [[String]] (multi-gap) and [String] (legacy/recognition fallback).
@@ -876,7 +876,7 @@ final class GrammarQuizSession {
         // mid-response but the wrong block was picked, or the model made an error).
         // Compare choices as joined strings so multi-gap arrays are compared element-wise.
         let choiceKeys = choices.map { $0.joined(separator: "\u{001F}") }
-        guard Set(choiceKeys).count == 4 else { return nil }
+        guard Set(choiceKeys).count == choices.count else { return nil }
 
         // "sentence" is present for production fill-in-the-blank, absent for recognition.
         let sentence = obj["sentence"] as? String
