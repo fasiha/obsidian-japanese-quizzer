@@ -168,8 +168,7 @@ final class GrammarQuizSession {
                 Facet: production (tier \(item.tier)) — student sees English context plus a \
                 Japanese sentence with one or more \(grammarGapToken) gaps, then \
                 \(item.tier == 1 ? "selects" : "types") the short form(s) that correctly fill the gap(s).
-                The English stem describes a situation or meaning; it must NOT contain Japanese \
-                or reveal the exact target grammar structure.
+                The English stem describes a situation or meaning; it must NOT contain Japanese.
                 The Japanese sentence must be a complete, natural sentence with one or more \
                 \(grammarGapToken) gaps where the target grammar form(s) belong. Use multiple \
                 gaps for grammar patterns that appear in more than one place (e.g. 〜し、〜し \
@@ -182,7 +181,7 @@ final class GrammarQuizSession {
                 Only the correct choice uses the target grammar correctly for every gap; the \
                 others are plausible but wrong conjugations or wrong grammar forms. \
                 Do NOT include a choice that is grammatically correct Japanese using a different \
-                construction (e.g. ことができます as a distractor for a potential-verb question) — \
+                construction that also expresses the correct meaning — \
                 distractors must be unambiguously wrong for the target grammar slot(s).
                 Distractors: draw on your grammar knowledge — no lookup needed. Make them feel \
                 natural and close to correct so the student must truly know the target grammar \
@@ -193,7 +192,7 @@ final class GrammarQuizSession {
                 Facet: production (tier 3, free text) — you will generate a short English \
                 sentence or situation for the student to translate into Japanese using the \
                 target grammar. No choices or JSON needed — output only the English text.
-                The English must NOT contain Japanese or reveal the exact target grammar structure.
+                The English must NOT contain Japanese.
                 """
             } else if item.tier == 3 {
                 facetRule = """
@@ -258,7 +257,7 @@ final class GrammarQuizSession {
         if isGenerating && isFreeTextStemGeneration {
             if item.facet == "production" {
                 // For production, the stem is English — make sure it doesn't leak the grammar name.
-                return header + "\nDo NOT name or describe the target grammar structure in the English text."
+                return header + "\nWrite a concrete scenario. Do not write what the student should \"express\", \"describe\", \"explain\", or \"demonstrate\" — write a situation, not instructions."
             } else {
                 // For recognition, the stem is Japanese — no additional instruction needed here.
                 return header
@@ -316,11 +315,11 @@ final class GrammarQuizSession {
             Generate ONE fill-in-the-blank question for the production facet.
             Work through these steps explicitly — write out each step before the JSON:
 
-            Step 1 — Full sentence: Write a complete Japanese sentence using the target grammar. No gaps yet. Do NOT use ことができる or any other alternative construction anywhere in this sentence.
+            Step 1 — Full sentence: Write a complete Japanese sentence using the target grammar. No gaps yet.
             Step 2 — Slot: Mark the grammar slot(s) using 【】 brackets. Bracket enough so that every choice combines cleanly with the text outside the brackets. For conjugation grammar, include any attached auxiliary: 彼女はピアノが【弾けない】。 not 彼女はピアノが【弾け】ない。 For conjunction/particle grammar, the particle itself is the complete unit: 先生は厳しい【し】、宿題も多い【し】。
             Step 3 — Self-check: Does the target grammar form appear OUTSIDE the 【】 brackets anywhere in Step 1? If yes, rewrite Step 1 so it does not.
-            Step 4 — English stem: One or two English sentences describing the situation. No Japanese, no grammar labels, no grammar structure hints.
-            Step 5 — Distractors: Three wrong fills. Each must be a real Japanese form — wrong for this context but not a nonsense string. Briefly name each (e.g. "plain negative", "causative", "te-form"). Verify: each distractor substituted into the gap must produce grammatically valid Japanese (even if wrong meaning). If a distractor would create an impossible combination with the surrounding text, replace it.
+            Step 4 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions.
+            Step 5 — Distractors: Three wrong fills. Each must be a real Japanese form — wrong for this context but not a nonsense string. Briefly name each (e.g. "plain negative", "causative", "te-form"). Substitute each distractor into the gap: the result must be grammatically valid Japanese (even if the meaning is wrong). If a distractor produces invalid Japanese, replace it. If most distractors produce invalid Japanese, the surrounding text is too constraining — rewrite Step 1 with a more neutral context.
 
             Then end with a ```json code block:
             {"stem":"<Step 4>","sentence":"<Step 2 sentence with 【…】 replaced by \(grammarGapToken)>","choices":[["<correct fill(s)>"],["<distractor 1 fill(s)>"],["<distractor 2 fill(s)>"],["<distractor 3 fill(s)>"]],"correct":<0-3>}
@@ -366,8 +365,9 @@ final class GrammarQuizSession {
         return """
         Generate ONE English-language situation or sentence for the student to translate \
         into Japanese using the target grammar.
-        The English must NOT contain Japanese or reveal the exact grammar structure.
-        Keep it to one or two sentences.
+        The English must NOT contain Japanese.
+        Keep it to one or two sentences. Write a concrete scenario — not instructions about \
+        what the student should "express", "describe", "explain", or "demonstrate".
         Think step by step if helpful, then write --- on its own line, followed by only \
         the English text (no labels, no JSON).\(grammarTopicsInstruction)
         """
