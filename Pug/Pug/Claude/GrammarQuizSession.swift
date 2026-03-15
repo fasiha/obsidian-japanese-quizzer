@@ -142,15 +142,16 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
-        let quirkyNote = "Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused."
+        // Verb-variety nudge is only relevant for generation calls, not grading.
+        let quirkyNote = isGenerating ? "\nVary the verb and setting; 食べる, 飲む, and 泳ぐ are overused." : ""
         let extraTopicsLine: String
         if extraGrammarTopics.isEmpty {
-            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple). \(quirkyNote)"
+            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple).\(quirkyNote)"
         } else {
             let list = extraGrammarTopics.prefix(8)
                 .map { "- \($0.topicId) — \($0.titleEn)" }
                 .joined(separator: "\n")
-            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)\n\(quirkyNote)"
+            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)\(quirkyNote)"
         }
 
         // Whether this generation call is for a free-text stem (no choices needed)
@@ -214,16 +215,14 @@ final class GrammarQuizSession {
             if isGenerating && !isFreeTextStemGeneration {
                 facetRule = """
                 Facet: recognition (tier \(item.tier)) — student sees a Japanese sentence, \
-                selects or writes the correct natural English translation.
+                selects the correct natural English translation from four choices.
                 The Japanese stem must naturally contain the target grammar. It must NOT contain \
                 any English.
-                All four choices must be natural, idiomatic English translations of the stem. \
-                Only the correct choice reflects the meaning of the target grammar; the others \
-                are plausible mistranslations that would result from confusing the target grammar \
-                with a related grammar point (e.g. confusing potential with obligation, causative \
-                with passive, てならない with てはいけない, etc.).
-                Do NOT write grammar labels or descriptions as choices — write natural English \
-                sentences a fluent speaker would actually say.
+                All four choices must be natural, idiomatic English sentences — not grammar \
+                labels or descriptions. Only the correct choice accurately reflects what the \
+                target grammar contributes to the sentence's meaning; the other three are \
+                plausible mistranslations a student would produce by confusing the target \
+                grammar with a related grammar point.
                 """
             } else if isGenerating && isFreeTextStemGeneration {
                 facetRule = """
@@ -282,14 +281,6 @@ final class GrammarQuizSession {
         - 0.5: ambiguous — can't tell if they understood the grammar (do NOT use as "half credit")
         - 0.1–0.3: translation misunderstands the target grammar
         - 0.0: completely wrong or off-topic
-        Opportunistic passive grading: if the student's translation also demonstrates understanding \
-        of OTHER grammar topics from the grammar topics list below, emit one PASSIVE line per topic \
-        on the same turn, after SCORE:
-          PASSIVE: <prefixed-topic-id> <score>
-        Example: PASSIVE: genki:te-form 0.9
-        Only emit PASSIVE for topics where the translation demonstrates correct understanding. \
-        If the translation mishandles a non-target grammar topic, do NOT emit a PASSIVE line \
-        for it — the student's attention is on the main quiz topic.
         On the same turn you emit SCORE, add one brief sentence explaining your reasoning.
         After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss.
         """
@@ -356,12 +347,21 @@ final class GrammarQuizSession {
         case "recognition":
             return """
             Generate ONE multiple-choice question for the recognition facet.
-            Think first if helpful, then end with a ```json code block containing:
-            {"stem":"<Japanese sentence>","choices":[["<English A>"],["<English B>"],["<English C>"],["<English D>"]],"correct":<0-3>}
-            Rules:
-            - "stem": a complete natural Japanese sentence using the target grammar — no English.
-            - "choices": four 1-element arrays, each containing a natural English translation of the stem. Only the correct one reflects the target grammar; the others are plausible mistranslations from confusing it with related grammar points.
-            - Do NOT use grammar labels or descriptions as choices — write English sentences.
+            Work through these steps explicitly — write out each step before the JSON:
+
+            Step 1 — Japanese stem: Write one complete, natural Japanese sentence using the target grammar. No English.
+            Step 2 — Correct translation: Write a natural, idiomatic English translation that accurately reflects what the target grammar contributes to the meaning.
+            Step 3 — Distractors: Write three alternative English translations. Each must:
+              (a) be a natural English sentence a fluent speaker would actually say — NOT a grammar label or description,
+              (b) be a plausible mistranslation a student would produce by confusing the target grammar with a specific related grammar point — name the confusion for each (e.g. "confuses causative with passive"),
+              (c) NOT be a valid alternative way to translate the stem — if a native speaker could reasonably accept it, revise it.
+            Step 4 — Self-check: (a) Does any distractor express a meaning close enough to the correct answer that a student could reasonably argue for it? If yes, revise. (b) Are all four choices clearly different in meaning, not just in nuance?
+
+            Then end with a ```json code block:
+            {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
+            - "stem": the Japanese sentence from Step 1 — no English.
+            - Place the correct translation at a randomly chosen index (0–3) and record it in "correct".
+            - Each choice is a 1-element array containing the English translation.
             """
         default:
             return """
@@ -442,7 +442,7 @@ final class GrammarQuizSession {
             messages: [initMsg],
             system: system,
             tools: [],
-            maxTokens: 256,
+            maxTokens: 512,
             toolHandler: nil
         )
         try? await db.log(apiEvent: ApiEvent(
@@ -775,7 +775,7 @@ final class GrammarQuizSession {
                 messages: [initMsg],
                 system: system,
                 tools: [],
-                maxTokens: 1024,
+                maxTokens: 1500,
                 toolHandler: nil
             )
             finalMsgs = msgs
