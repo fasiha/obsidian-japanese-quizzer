@@ -140,20 +140,22 @@ final class GrammarQuizSession {
         case "recognition":
             if isGenerating {
                 facetRule = """
-                Facet: recognition — student sees a Japanese sentence, selects the English \
-                description that correctly identifies the grammar used.
+                Facet: recognition — student sees a Japanese sentence, selects the correct \
+                natural English translation.
                 The Japanese stem must naturally contain the target grammar. It must NOT contain \
                 any English.
-                All four choices must be English descriptions of grammar or meaning. Only the \
-                correct choice accurately identifies the target grammar in context; the others \
-                describe plausible but incorrect interpretations.
-                Distractors: draw on your grammar knowledge — no lookup needed. Use descriptions \
-                of related grammar points or common confusers.
+                All four choices must be natural, idiomatic English translations of the stem. \
+                Only the correct choice reflects the meaning of the target grammar; the others \
+                are plausible mistranslations that would result from confusing the target grammar \
+                with a related grammar point (e.g. confusing potential with obligation, causative \
+                with passive, てならない with てはいけない, etc.).
+                Do NOT write grammar labels or descriptions as choices — write natural English \
+                sentences a fluent speaker would actually say.
                 """
             } else {
                 facetRule = """
-                Facet tested: recognition — student was shown a Japanese sentence and identified \
-                the grammar/meaning in English.
+                Facet tested: recognition — student was shown a Japanese sentence and chose the \
+                correct English translation.
                 """
             }
         default:
@@ -206,7 +208,7 @@ final class GrammarQuizSession {
         case "production":
             choicesDesc = "All four choices must be complete natural Japanese sentences. Only the correct choice uses the target grammar correctly."
         case "recognition":
-            choicesDesc = "All four choices must be English descriptions of grammar or meaning. Only the correct choice accurately identifies the target grammar."
+            choicesDesc = "All four choices must be natural English translations of the stem sentence. Only the correct choice reflects the target grammar; the others are plausible mistranslations from confusing it with related grammar points. Do NOT use grammar labels or descriptions — write English sentences."
         default:
             choicesDesc = "Provide four answer choices. Only one is correct."
         }

@@ -39,22 +39,32 @@ only the first token (up to first space) is the topic ID used for lookup.
 | `error-correction` | Japanese sentence with deliberate grammar mistake | Corrected sentence | Future |
 | `sentence-completion` | Beginning of Japanese sentence | Completion using target grammar | Future |
 
-Both `production` and `recognition` share the same three format tiers (below).
 `error-correction` and `sentence-completion` are future variants that may live
 within existing facets rather than as independent facets.
 
 ### Format tiers
 
-All facets progress through format tiers, graduated by Ebisu thresholds:
+The two facets have different tier progressions:
 
+**Recognition** (Japanese → English): two tiers
 | Tier | Format | Generation | Grading |
 |------|--------|------------|---------|
-| 1. Multiple choice | Pick from 4 choices | LLM (Haiku) | Pure logic (zero tokens) |
-| 2. Fill-in-the-blank | Sentence with gap for the grammar point | LLM (Haiku) | Possibly pure logic (string match) or LLM |
-| 3. Free text | Full translation (production) or open explanation (recognition) | LLM (Haiku) | LLM (Haiku) |
+| 1. Multiple choice | Pick English meaning/grammar explanation from 4 choices | LLM (Haiku) | Pure logic (zero tokens) |
+| 2. Free text | Open explanation of meaning and grammar point | LLM (Haiku) | LLM (Haiku) |
 
-Note: tiers 1 and 2 are both fill-in-the-blank conceptually — the difference is
-whether the student picks from choices (tier 1) or types freely (tier 2).
+**Production** (English → Japanese): three tiers
+| Tier | Format | Generation | Grading |
+|------|--------|------------|---------|
+| 1. Multiple choice | Japanese sentence with `___` gap + 4 fill choices; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
+| 2. Fill-in-the-blank | Same `___` stem as tier 1; student types the answer in a text input | (reuses tier 1 stem) | String match or lightweight LLM |
+| 3. Free text | Full translation from English prompt | LLM (Haiku) | LLM (Haiku) |
+
+Tiers 1 and 2 share the same generated stem — the only difference is the UI widget
+(four buttons vs a text input). This means the LLM generation call happens once; the
+tier 1 stem can be reused at tier 2 without regenerating.
+
+Recognition collapses to two tiers because fill-in-the-blank in a Japanese sentence
+is production by another name — it tests supplying the grammar form, not comprehending it.
 
 Graduation thresholds TBD but likely higher than vocab (grammar production is harder).
 
