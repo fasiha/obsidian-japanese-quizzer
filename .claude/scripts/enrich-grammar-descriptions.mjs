@@ -13,6 +13,10 @@
  *     given topic IDs. If no topic IDs are given, reports ALL groups.
  *     Output: { groups: [GatherResult, ...] }
  *
+ *   node enrich-grammar-descriptions.mjs --needs-enrichment [topic-id ...]
+ *     Same as --gather but filters output to groups where needsEnrichment is true.
+ *     Output: { groups: [GatherResult, ...] }
+ *
  *   node enrich-grammar-descriptions.mjs --write
  *     Reads JSON from stdin: { groups: [WriteInput, ...] }
  *     Writes descriptions into grammar-equivalences.json.
@@ -176,7 +180,7 @@ function loadEquivalences() {
 // --gather mode
 // ---------------------------------------------------------------------------
 
-function gather(requestedTopics) {
+function gather(requestedTopics, { onlyNeeded = false } = {}) {
   const grammarDb = loadGrammarDatabases();
   const groups = loadEquivalences();
   const mdFiles = findMdFiles(projectRoot);
@@ -276,7 +280,8 @@ function gather(requestedTopics) {
     });
   }
 
-  process.stdout.write(JSON.stringify({ groups: results }, null, 2) + "\n");
+  const output = onlyNeeded ? results.filter((r) => r.needsEnrichment) : results;
+  process.stdout.write(JSON.stringify({ groups: output }, null, 2) + "\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -335,10 +340,13 @@ if (args[0] === "--write") {
 } else if (args[0] === "--gather" || args.length === 0) {
   const topics = args[0] === "--gather" ? args.slice(1) : [];
   gather(topics);
+} else if (args[0] === "--needs-enrichment") {
+  gather(args.slice(1), { onlyNeeded: true });
 } else {
   process.stderr.write(
     "Usage:\n" +
     "  node enrich-grammar-descriptions.mjs --gather [topic-id ...]\n" +
+    "  node enrich-grammar-descriptions.mjs --needs-enrichment [topic-id ...]\n" +
     "  node enrich-grammar-descriptions.mjs --write   (reads JSON from stdin)\n",
   );
   process.exit(1);

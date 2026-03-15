@@ -299,7 +299,7 @@ Three items that should be resolved before Phase 1B, in this order:
       once real content sentences are incorporated
     - Skips groups whose `sourcesSeen` + fetched page content hasn't changed
       (hash-based); re-runs if new content sentences are added to any Markdown file
-  - [ ] **3. Extend `/cluster-grammar-topics` skill** — after clustering, run the
+  - [x] **3. Extend `/cluster-grammar-topics` skill** — after clustering, run the
     enrichment step for new groups and for existing groups with new content references.
     Show the user a diff of description changes for review.
   - [ ] **4. Wire descriptions into quiz prompts** — update
