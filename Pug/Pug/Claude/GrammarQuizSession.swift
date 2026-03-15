@@ -164,29 +164,33 @@ final class GrammarQuizSession {
         switch item.facet {
         case "production":
             if isGenerating && !isFreeTextStemGeneration {
-                facetRule = """
-                Facet: production (tier \(item.tier)) — student sees English context plus a \
-                Japanese sentence with one or more \(grammarGapToken) gaps, then \
-                \(item.tier == 1 ? "selects" : "types") the short form(s) that correctly fill the gap(s).
-                The English stem describes a situation or meaning; it must NOT contain Japanese.
-                The Japanese sentence must be a complete, natural sentence with one or more \
-                \(grammarGapToken) gaps where the target grammar form(s) belong. Use multiple \
-                gaps for grammar patterns that appear in more than one place (e.g. 〜し、〜し \
-                needs two gaps; 〜ば〜ほど needs two gaps with different fills). Single-slot \
-                grammar (e.g. potential verbs) uses one gap.
-                Each of the four choices is an ARRAY of short forms — one element per gap. \
-                For a single gap: [["弾けます"],["弾きます"],["弾かせます"],["弾けません"]]. \
-                For two gaps: [["し","し"],["て","て"],["から","から"],["のに","のに"]]. \
-                Elements within a choice may differ (e.g. [["ば","ほど"],["たら","くらい"]]). \
-                Only the correct choice uses the target grammar correctly for every gap; the \
-                others are plausible but wrong conjugations or wrong grammar forms. \
-                Do NOT include a choice that is grammatically correct Japanese using a different \
-                construction that also expresses the correct meaning — \
-                distractors must be unambiguously wrong for the target grammar slot(s).
-                Distractors: draw on your grammar knowledge — no lookup needed. Make them feel \
-                natural and close to correct so the student must truly know the target grammar \
-                to distinguish them.
-                """
+                if item.tier == 1 {
+                    facetRule = """
+                    Facet: production (tier 1) — student sees an English context sentence and \
+                    four complete Japanese sentences; they select the one that correctly expresses \
+                    the English using the target grammar.
+                    The English stem must NOT contain Japanese.
+                    The four choices are complete, natural Japanese sentences. Only the correct \
+                    choice uses the target grammar; the three distractors use clearly different \
+                    grammar constructions (e.g. causative instead of potential, passive instead \
+                    of conditional). Distractors must express a DIFFERENT meaning from the \
+                    English stem — do NOT use a construction that is a valid alternative way to \
+                    express the same meaning.
+                    """
+                } else {
+                    // Tier 2: fill-in-the-blank — student types the short form(s) into the gap(s).
+                    facetRule = """
+                    Facet: production (tier 2) — student sees an English context sentence and a \
+                    Japanese sentence with one or more \(grammarGapToken) gaps; they TYPE the \
+                    short form(s) that correctly fill the gap(s). No multiple-choice distractors.
+                    The English stem must NOT contain Japanese.
+                    The Japanese sentence must be complete and natural, with \(grammarGapToken) \
+                    marking every slot where the target grammar form belongs. Use multiple gaps \
+                    for grammar patterns that appear more than once (e.g. 〜し、〜し needs two \
+                    gaps; 〜ば〜ほど needs two gaps with different fills). Single-slot grammar \
+                    (e.g. potential verbs) uses one gap.
+                    """
+                }
             } else if isGenerating && isFreeTextStemGeneration {
                 facetRule = """
                 Facet: production (tier 3, free text) — you will generate a short English \
@@ -311,26 +315,44 @@ final class GrammarQuizSession {
     func questionRequest(for item: GrammarQuizItem) -> String {
         switch item.facet {
         case "production":
-            return """
-            Generate ONE multiple-choice question for the production facet.
-            Work through these steps explicitly — write out each step before the JSON:
+            if item.tier == 1 {
+                return """
+                Generate ONE multiple-choice question for the production facet (tier 1).
+                Work through these steps explicitly — write out each step before the JSON:
 
-            Step 1 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
-            Step 2 — Correct sentence: Write one complete, natural Japanese sentence that correctly expresses the English stem using the target grammar.
-            Step 3 — Distractors: Write three distractor Japanese sentences. Each must:
-              (a) use the SAME core vocabulary and situation as the correct sentence — keep the subject, object, and setting identical,
-              (b) swap ONLY the grammar construction — use a clearly different grammar form (e.g. causative instead of potential, passive instead of conditional, te-form instead of volitional),
-              (c) NOT use any construction that is a valid alternative way to express the target grammar's meaning (e.g. if target is potential verbs, do NOT use ことができる as a distractor — that is also correct; use causative, passive, plain form, etc.),
-              (d) result in a grammatically valid Japanese sentence that expresses a DIFFERENT meaning from the English stem because it uses the wrong grammar form.
-              Name the grammar form each distractor uses.
-            Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
+                Step 1 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 2 — Correct sentence: Write one complete, natural Japanese sentence that correctly expresses the English stem using the target grammar.
+                Step 3 — Distractors: Write three distractor Japanese sentences. Each must:
+                  (a) use the SAME core vocabulary and situation as the correct sentence — keep the subject, object, and setting identical,
+                  (b) swap ONLY the grammar construction — use a clearly different grammar form (e.g. causative instead of potential, passive instead of conditional, te-form instead of volitional),
+                  (c) NOT use any construction that is a valid alternative way to express the target grammar's meaning (e.g. if target is potential verbs, do NOT use ことができる as a distractor — that is also correct; use causative, passive, plain form, etc.),
+                  (d) result in a grammatically valid Japanese sentence that expresses a DIFFERENT meaning from the English stem because it uses the wrong grammar form.
+                  Name the grammar form each distractor uses.
+                Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
 
-            Then end with a ```json code block:
-            {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
-            - "sentence" is empty string (no gap — the whole sentence is the choice).
-            - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
-            - Each choice is a 1-element array containing the full Japanese sentence.
-            """
+                Then end with a ```json code block:
+                {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
+                - "sentence" is empty string (no gap — the whole sentence is the choice).
+                - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
+                - Each choice is a 1-element array containing the full Japanese sentence.
+                """
+            } else {
+                return """
+                Generate ONE fill-in-the-blank question for the production facet (tier 2).
+                Work through these steps explicitly — write out each step before the JSON:
+
+                Step 1 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
+                Step 3 — Mark the gap: Replace every occurrence of the target grammar form(s) with \(grammarGapToken). Include enough surrounding text that the gap is unambiguous — for conjugation grammar, include any attached auxiliary inside the gap (彼女はピアノが\(grammarGapToken)。 not 彼女はピアノが\(grammarGapToken)ない。). For multi-slot grammar (e.g. 〜し、〜し), mark every slot.
+                Step 4 — Self-check: Substitute the correct answer back into the gap(s) — does it read naturally? Is there only one plausible correct answer for each gap?
+
+                Then end with a ```json code block:
+                {"stem":"<Step 1>","sentence":"<Step 3 with \(grammarGapToken) gaps>","choices":[["<correct form(s)>"]],"correct":0}
+                - "choices" has exactly ONE entry: the correct answer. No distractors.
+                - Each choice is an array with one element per gap (e.g. ["弾けます"] for one gap, ["し","し"] for two gaps).
+                - "correct" is always 0.
+                """
+            }
         case "recognition":
             return """
             Generate ONE multiple-choice question for the recognition facet.

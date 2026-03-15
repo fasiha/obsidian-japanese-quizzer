@@ -56,22 +56,29 @@ The two facets have different tier progressions:
 | Tier | Format | Generation | Grading |
 |------|--------|------------|---------|
 | 1. Multiple choice | English stem + 4 full Japanese sentences; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
-| 2. Type the answer | Same English stem + same 4 sentences; student types the correct sentence | (reuses tier 1 generation) | String match, fallback to coaching LLM |
+| 2. Fill-in-the-blank | English stem + gapped Japanese sentence; student types the correct form(s) | LLM (Haiku) | String match, fallback to coaching LLM |
 | 3. Free text | Full translation from English prompt | LLM (Haiku) | LLM (Haiku, multi-turn coaching) |
 
-Tiers 1 and 2 share the same generated question — the only difference is the UI widget
-(four tap buttons vs a text input). This means the LLM generation call happens once; the
-tier 1 question is reused at tier 2 without regenerating.
+Tiers 1 and 2 each require their own LLM generation call — they use different formats
+(full-sentence MC vs fill-in-the-blank) and different prompts. Tier 2 generates a gapped
+sentence with only the correct answer (no distractors); grading is string match with
+coaching fallback.
 
-> **Production tiers 1 and 2: full-sentence multiple choice** (decided 2026-03-15)
+> **Production tiers 1 and 2: format design** (decided 2026-03-15)
 >
-> The current design uses full-sentence multiple choice: Haiku generates an English stem
-> describing a concrete situation, one correct Japanese sentence using the target grammar,
-> and three distractor sentences that use the same vocabulary/situation but swap in a
-> different grammar form (e.g. causative instead of potential, passive instead of conditional).
-> The distractors express different meanings from the English stem because they use the wrong
-> grammar construction — the student's job is to pick the sentence that correctly matches
-> the English scenario.
+> **Tier 1 (multiple choice):** Haiku generates an English stem describing a concrete
+> situation, one correct Japanese sentence using the target grammar, and three distractor
+> sentences that use the same vocabulary/situation but swap in a different grammar form
+> (e.g. causative instead of potential, passive instead of conditional). The distractors
+> express different meanings from the English stem because they use the wrong grammar
+> construction — the student's job is to pick the sentence that correctly matches the
+> English scenario.
+>
+> **Tier 2 (fill-in-the-blank):** Haiku generates an English stem and a Japanese sentence
+> with `___` gap(s) where the target grammar form belongs, plus only the correct answer
+> (no distractors). The student types the form(s) that fill the gap(s). Grading is string
+> match first; if that fails, a coaching LLM session guides the student. This is a separate
+> generation call from tier 1 — the two tiers no longer share a question.
 >
 > JSON format:
 > ```json

@@ -407,24 +407,48 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                             if containsJapanese(mc.stem) {
                                 issues.append("LEAK: production stem contains Japanese characters")
                             }
-                            // Production fill-in-the-blank: must have a gapped sentence.
-                            if let sentence = mc.sentence {
-                                let gapCount = sentence.components(separatedBy: grammarGapToken).count - 1
-                                if gapCount == 0 {
-                                    issues.append("FAIL: production sentence missing \(grammarGapToken) gap: \(sentence)")
+                            if path.tier == 1 {
+                                // Tier 1 whole-sentence format: "sentence" is empty, four choices are
+                                // complete Japanese sentences (correct + three distractors).
+                                if let sentence = mc.sentence, !sentence.isEmpty {
+                                    issues.append("FAIL: tier-1 'sentence' field should be empty string (whole-sentence format), got: \(sentence)")
                                 }
-                                if !containsJapanese(sentence) {
-                                    issues.append("FAIL: production sentence contains no Japanese characters: \(sentence)")
+                                if mc.choices.count != 4 {
+                                    issues.append("FAIL: tier-1 expects 4 choices, got \(mc.choices.count)")
                                 }
-                                // Validate that each choice sub-array has the right number of elements.
                                 for (ci, choice) in mc.choices.enumerated() {
-                                    if choice.count != gapCount {
-                                        issues.append("FAIL: choice \(ci) has \(choice.count) elements but sentence has \(gapCount) gap(s)")
+                                    if choice.count != 1 {
+                                        issues.append("FAIL: choice \(ci) has \(choice.count) elements (expected 1 full sentence)")
+                                    } else if !containsJapanese(choice[0]) {
+                                        issues.append("FAIL: choice \(ci) contains no Japanese characters: \(choice[0])")
                                     }
                                 }
-                                print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(sentence)")
+                                print("Whole-sentence choices (\(mc.choices.count)):")
+                                for (ci, choice) in mc.choices.enumerated() {
+                                    let marker = ci == mc.correctIndex ? "✓" : " "
+                                    print("  [\(marker)] \(choice.first ?? "(empty)")")
+                                }
                             } else {
-                                issues.append("FAIL: production question missing 'sentence' field (expected fill-in-the-blank format)")
+                                // Tier 2 fill-in-the-blank format: "sentence" has one or more gaps,
+                                // "choices" has exactly one entry (the correct answer, no distractors).
+                                if let sentence = mc.sentence {
+                                    let gapCount = sentence.components(separatedBy: grammarGapToken).count - 1
+                                    if gapCount == 0 {
+                                        issues.append("FAIL: tier-2 sentence missing \(grammarGapToken) gap: \(sentence)")
+                                    }
+                                    if !containsJapanese(sentence) {
+                                        issues.append("FAIL: tier-2 sentence contains no Japanese characters: \(sentence)")
+                                    }
+                                    if mc.choices.count != 1 {
+                                        issues.append("FAIL: tier-2 expects exactly 1 choice (correct answer only), got \(mc.choices.count)")
+                                    } else if mc.choices[0].count != gapCount {
+                                        issues.append("FAIL: tier-2 correct answer has \(mc.choices[0].count) element(s) but sentence has \(gapCount) gap(s)")
+                                    }
+                                    print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(sentence)")
+                                    print("Correct answer: \(mc.choices.first?.joined(separator: ", ") ?? "(missing)")")
+                                } else {
+                                    issues.append("FAIL: tier-2 production question missing 'sentence' field")
+                                }
                             }
                         case "recognition":
                             if !containsJapanese(mc.stem) {
