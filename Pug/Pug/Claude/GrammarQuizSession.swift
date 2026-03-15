@@ -127,8 +127,8 @@ final class GrammarQuizSession {
         case "production":
             if isGenerating && !isFreeTextStemGeneration {
                 facetRule = """
-                Facet: production (tier \(item.tier)) — student sees English context, selects or \
-                types the Japanese sentence that correctly uses the target grammar.
+                Facet: production (tier \(item.tier)) — student sees English context, \
+                \(item.tier == 1 ? "selects" : "types") the Japanese sentence that correctly uses the target grammar.
                 The English stem describes a situation or meaning; it must NOT contain Japanese \
                 or reveal the exact target grammar structure.
                 All four choices must be complete natural Japanese sentences. Only the correct \
@@ -208,7 +208,9 @@ final class GrammarQuizSession {
         \(extraTopicsLine)
         """
 
-        if isGenerating {
+        if isGenerating && isFreeTextStemGeneration {
+            return header + "\nDo NOT name or describe the target grammar structure in the English text."
+        } else if isGenerating {
             return header + "\nCRITICAL: Never reveal the answer in the question stem. Silently verify before outputting."
         } else if item.facet == "recognition" && item.isFreeAnswer {
             // Recognition tier 2: single-turn LLM grading of the student's English translation.

@@ -55,13 +55,18 @@ The two facets have different tier progressions:
 **Production** (English → Japanese): three tiers
 | Tier | Format | Generation | Grading |
 |------|--------|------------|---------|
-| 1. Multiple choice | Japanese sentence with `___` gap + 4 fill choices; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
-| 2. Fill-in-the-blank | Same `___` stem as tier 1; student types the answer in a text input | (reuses tier 1 stem) | String match or lightweight LLM |
-| 3. Free text | Full translation from English prompt | LLM (Haiku) | LLM (Haiku) |
+| 1. Multiple choice | English context + 4 complete Japanese sentence choices; student taps a button | LLM (Haiku) | Pure logic (zero tokens) |
+| 2. Fill-in-the-blank | Same English context + same 4 choices; student types the correct sentence | (reuses tier 1 generation) | String match, fallback to coaching LLM |
+| 3. Free text | Full translation from English prompt | LLM (Haiku) | LLM (Haiku, multi-turn coaching) |
 
-Tiers 1 and 2 share the same generated stem — the only difference is the UI widget
-(four buttons vs a text input). This means the LLM generation call happens once; the
-tier 1 stem can be reused at tier 2 without regenerating.
+Tiers 1 and 2 share the same generated question — the only difference is the UI widget
+(four tap buttons vs a text input). This means the LLM generation call happens once; the
+tier 1 question is reused at tier 2 without regenerating.
+
+> **Alternative design considered**: instead of full-sentence choices, use a Japanese
+> sentence with a `___` gap and 4 short filler choices. This would force the model to
+> generate otherwise-identical sentences that differ only in the grammar slot, making
+> the distractor task more precise. Left as a possible future refinement.
 
 Recognition collapses to two tiers because fill-in-the-blank in a Japanese sentence
 is production by another name — it tests supplying the grammar form, not comprehending it.
