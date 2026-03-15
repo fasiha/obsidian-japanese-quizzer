@@ -13,11 +13,48 @@ import Foundation
 
 // MARK: - Multiple choice question
 
+/// Token used to mark the grammar gap in production fill-in-the-blank questions.
+/// The LLM is instructed to emit exactly this string; Swift code checks for it.
+let grammarGapToken = "___"
+
 /// A grammar multiple-choice question returned by Claude.
+///
+/// For **production** (English → Japanese) tiers 1 and 2, Claude generates a Japanese
+/// sentence with one or more `___` gaps at the grammar slot(s) under test. Each choice
+/// is an array of strings — one element per gap. For single-gap patterns this is a
+/// 1-element array (e.g. `[["弾けます"], ["弾きます"], …]`); for multi-gap patterns like
+/// 〜し、〜し or 〜ば〜ほど the sub-arrays have as many elements as gaps.
+///
+/// For **recognition** (Japanese → English) tier 1, Claude generates full English
+/// translation choices and `sentence` is nil. Each choice is still a 1-element array
+/// containing the English string.
 struct GrammarMultipleChoiceQuestion: Equatable {
     let stem: String        // English context (production) or Japanese sentence (recognition)
-    let choices: [String]   // exactly 4 options
+    let sentence: String?   // Japanese sentence with ___ gap(s) (production only; nil for recognition)
+    let choices: [[String]] // exactly 4 options; each sub-array has one element per gap
     let correctIndex: Int   // 0–3
+
+    /// Number of gaps this question expects (derived from the first choice).
+    var gapCount: Int { choices.first?.count ?? 1 }
+
+    /// Flat display string for a choice (joins elements with ", " for multi-gap).
+    func choiceDisplay(_ index: Int) -> String {
+        choices[index].joined(separator: ", ")
+    }
+
+    /// Fill the sentence's `___` gaps with the elements of a choice, returning the
+    /// completed sentence. Returns nil if `sentence` is nil.
+    func filledSentence(choiceIndex: Int) -> String? {
+        guard let s = sentence else { return nil }
+        let fills = choices[choiceIndex]
+        var result = s
+        for fill in fills {
+            if let range = result.range(of: grammarGapToken) {
+                result = result.replacingCharacters(in: range, with: fill)
+            }
+        }
+        return result
+    }
 }
 
 // MARK: - Session
@@ -128,16 +165,25 @@ final class GrammarQuizSession {
         case "production":
             if isGenerating && !isFreeTextStemGeneration {
                 facetRule = """
-                Facet: production (tier \(item.tier)) — student sees English context, \
-                \(item.tier == 1 ? "selects" : "types") the Japanese sentence that correctly uses the target grammar.
+                Facet: production (tier \(item.tier)) — student sees English context plus a \
+                Japanese sentence with one or more \(grammarGapToken) gaps, then \
+                \(item.tier == 1 ? "selects" : "types") the short form(s) that correctly fill the gap(s).
                 The English stem describes a situation or meaning; it must NOT contain Japanese \
                 or reveal the exact target grammar structure.
-                All four choices must be complete natural Japanese sentences. Only the correct \
-                choice uses the target grammar correctly; the others use plausible but incorrect \
-                grammar (wrong conjugation, wrong form, or a different grammar point). \
-                Do NOT include grammatically correct alternatives that merely use a different \
-                construction (e.g. ことができる as a distractor for a potential-verb question) — \
-                distractors must be clearly wrong Japanese or wrong grammar form for this meaning.
+                The Japanese sentence must be a complete, natural sentence with one or more \
+                \(grammarGapToken) gaps where the target grammar form(s) belong. Use multiple \
+                gaps for grammar patterns that appear in more than one place (e.g. 〜し、〜し \
+                needs two gaps; 〜ば〜ほど needs two gaps with different fills). Single-slot \
+                grammar (e.g. potential verbs) uses one gap.
+                Each of the four choices is an ARRAY of short forms — one element per gap. \
+                For a single gap: [["弾けます"],["弾きます"],["弾かせます"],["弾けません"]]. \
+                For two gaps: [["し","し"],["て","て"],["から","から"],["のに","のに"]]. \
+                Elements within a choice may differ (e.g. [["ば","ほど"],["たら","くらい"]]). \
+                Only the correct choice uses the target grammar correctly for every gap; the \
+                others are plausible but wrong conjugations or wrong grammar forms. \
+                Do NOT include a choice that is grammatically correct Japanese using a different \
+                construction (e.g. ことができます as a distractor for a potential-verb question) — \
+                distractors must be unambiguously wrong for the target grammar slot(s).
                 Distractors: draw on your grammar knowledge — no lookup needed. Make them feel \
                 natural and close to correct so the student must truly know the target grammar \
                 to distinguish them.
@@ -210,7 +256,13 @@ final class GrammarQuizSession {
         """
 
         if isGenerating && isFreeTextStemGeneration {
-            return header + "\nDo NOT name or describe the target grammar structure in the English text."
+            if item.facet == "production" {
+                // For production, the stem is English — make sure it doesn't leak the grammar name.
+                return header + "\nDo NOT name or describe the target grammar structure in the English text."
+            } else {
+                // For recognition, the stem is Japanese — no additional instruction needed here.
+                return header
+            }
         } else if isGenerating {
             return header
         } else if item.facet == "recognition" && item.isFreeAnswer {
@@ -258,22 +310,37 @@ final class GrammarQuizSession {
 
     /// Build the user message that asks Claude to generate a multiple-choice question.
     func questionRequest(for item: GrammarQuizItem) -> String {
-        let choicesDesc: String
         switch item.facet {
         case "production":
-            choicesDesc = "All four choices must be complete natural Japanese sentences. Only the correct choice uses the target grammar correctly."
+            return """
+            Generate ONE fill-in-the-blank question for the production facet.
+            Think first if helpful, then end with a ```json code block containing:
+            {"stem":"<English context>","sentence":"<Japanese with \(grammarGapToken) gap(s)>","choices":[["<fill1a>","<fill1b>"],...],"correct":<0-3>}
+            Rules:
+            - "stem": English description of the situation — no Japanese, no grammar labels.
+            - "sentence": a complete natural Japanese sentence with one or more \(grammarGapToken) gaps where the target grammar form(s) go. Use multiple gaps for patterns that appear in more than one place (e.g. 〜し、〜し → two gaps; 〜ば〜ほど → two gaps with different fills). Single-slot grammar uses one gap.
+            - "choices": four arrays of SHORT conjugation-level forms (NOT complete sentences). Each array has one element per gap. Single-gap example: [["弾けます"],["弾きます"],["弾かせます"],["弾けません"]]. Two-gap example: [["し","し"],["て","て"],["から","から"],["のに","のに"]]. Heterogeneous example: [["ば","ほど"],["たら","くらい"],["と","ほど"],["ば","ない"]].
+            - Only the choice at "correct" uses the target grammar correctly for every gap; the others are wrong conjugations or wrong grammar forms.
+            - Do NOT use ことができる or other alternative-correct constructions as distractors.
+            """
         case "recognition":
-            choicesDesc = "All four choices must be natural English translations of the stem sentence. Only the correct choice reflects the target grammar; the others are plausible mistranslations from confusing it with related grammar points. Do NOT use grammar labels or descriptions — write English sentences."
+            return """
+            Generate ONE multiple-choice question for the recognition facet.
+            Think first if helpful, then end with a ```json code block containing:
+            {"stem":"<Japanese sentence>","choices":[["<English A>"],["<English B>"],["<English C>"],["<English D>"]],"correct":<0-3>}
+            Rules:
+            - "stem": a complete natural Japanese sentence using the target grammar — no English.
+            - "choices": four 1-element arrays, each containing a natural English translation of the stem. Only the correct one reflects the target grammar; the others are plausible mistranslations from confusing it with related grammar points.
+            - Do NOT use grammar labels or descriptions as choices — write English sentences.
+            """
         default:
-            choicesDesc = "Provide four answer choices. Only one is correct."
+            return """
+            Generate ONE multiple-choice question for the \(item.facet) facet.
+            Think first if helpful, then end with a ```json code block containing:
+            {"stem":"<question text>","choices":[["<A>"],["<B>"],["<C>"],["<D>"]],"correct":<0-3>}
+            Provide four answer choices (each a 1-element array). Only one is correct.
+            """
         }
-
-        return """
-        Generate ONE multiple-choice question for the \(item.facet) facet.
-        Think first if helpful, then end with a ```json code block containing:
-        {"stem":"<question text>","choices":["<A>","<B>","<C>","<D>"],"correct":<0-3>}
-        \(choicesDesc)
-        """
     }
 
     /// Build the user request message for generating a tier-3 production stem.
@@ -401,15 +468,17 @@ final class GrammarQuizSession {
     }
 
     /// Grade a fill-in-the-blank (tier-2 production) answer by string matching.
-    /// Returns true if the student's typed answer matches the correct choice (after normalization).
-    /// No LLM call — pure Swift logic.
-    func gradeFillin(studentAnswer: String, correctAnswer: String) -> Bool {
+    /// `studentAnswers` is one string per gap (the student types each fill separately).
+    /// `correctFills` is the correct choice sub-array from the question.
+    /// Returns true if every segment matches after normalization. No LLM call — pure Swift logic.
+    func gradeFillin(studentAnswers: [String], correctFills: [String]) -> Bool {
+        guard studentAnswers.count == correctFills.count else { return false }
         let normalize: (String) -> String = { s in
             s.trimmingCharacters(in: .whitespacesAndNewlines)
              .replacingOccurrences(of: "。", with: "")
              .replacingOccurrences(of: "、", with: "")
         }
-        return normalize(studentAnswer) == normalize(correctAnswer)
+        return zip(studentAnswers, correctFills).allSatisfy { normalize($0) == normalize($1) }
     }
 
     // MARK: - Tier-2 fallback coaching (LLM grading when string match fails)
@@ -455,13 +524,14 @@ final class GrammarQuizSession {
         \(topicLine)
         \(metaLine)\(extraTopicsLine)
 
-        The student was shown this English context:
+        The student was shown this English context plus a Japanese sentence with \(grammarGapToken) gap(s).
+        English context:
           \(stem)
 
-        One correct reference answer (there may be other valid forms):
+        Correct fill(s) for the gap(s) (there may be other valid conjugations):
           \(referenceAnswer)
 
-        The student typed an answer that did not exactly match. The student MUST use the target \
+        The student typed fill(s) that did not exactly match. The student MUST use the target \
         grammar form — not a semantically equivalent alternative construction. Evaluate as follows:
 
         - If their answer correctly uses the target grammar form (even with minor surface \
@@ -682,10 +752,16 @@ final class GrammarQuizSession {
             if let multipleChoice = parseMultipleChoiceJSON(raw) {
                 finalMultipleChoice = multipleChoice
                 let letters     = ["A", "B", "C", "D"]
-                let choicesText = multipleChoice.choices.enumerated()
-                    .map { "\(letters[$0])) \($1)" }
+                let choicesText = multipleChoice.choices.indices
+                    .map { "\(letters[$0])) \(multipleChoice.choiceDisplay($0))" }
                     .joined(separator: "\n")
-                finalQuestion = "\(multipleChoice.stem)\n\n\(choicesText)"
+                if let sentence = multipleChoice.sentence {
+                    // Production fill-in-the-blank: show English stem, then gapped Japanese sentence, then choices.
+                    finalQuestion = "\(multipleChoice.stem)\n\n\(sentence)\n\n\(choicesText)"
+                } else {
+                    // Recognition: show Japanese stem, then English choices.
+                    finalQuestion = "\(multipleChoice.stem)\n\n\(choicesText)"
+                }
             } else {
                 print("[GrammarQuizSession] \(label) attempt \(attempt): multiple choice JSON parse failed")
                 finalQuestion = raw.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
@@ -740,11 +816,29 @@ final class GrammarQuizSession {
         guard let data = text.data(using: .utf8),
               let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
-              let choices = obj["choices"] as? [String],
-              choices.count == 4,
+              let rawChoices = obj["choices"] as? [Any],
+              rawChoices.count == 4,
               let correctIndex = obj["correct"] as? Int,
               (0..<4).contains(correctIndex)
         else { return nil }
-        return GrammarMultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+
+        // Accept both [[String]] (multi-gap) and [String] (legacy/recognition fallback).
+        let choices: [[String]]
+        if let nested = rawChoices as? [[String]] {
+            // Validate: all sub-arrays must have the same length.
+            let lengths = Set(nested.map(\.count))
+            guard lengths.count == 1, let len = lengths.first, len >= 1 else { return nil }
+            choices = nested
+        } else if let flat = rawChoices as? [String] {
+            // Legacy flat format — wrap each string in a 1-element array.
+            choices = flat.map { [$0] }
+        } else {
+            return nil
+        }
+
+        // "sentence" is present for production fill-in-the-blank, absent for recognition.
+        let sentence = obj["sentence"] as? String
+        return GrammarMultipleChoiceQuestion(stem: stem, sentence: sentence,
+                                             choices: choices, correctIndex: correctIndex)
     }
 }

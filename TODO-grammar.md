@@ -63,29 +63,53 @@ Tiers 1 and 2 share the same generated question — the only difference is the U
 (four tap buttons vs a text input). This means the LLM generation call happens once; the
 tier 1 question is reused at tier 2 without regenerating.
 
-> **Planned migration — true fill-in-the-blank for production tiers 1 and 2**: the
+> **Fill-in-the-blank for production tiers 1 and 2** (implemented, testing as of 2026-03-14): the
 > current full-sentence choice design has two recurring problems observed in live testing:
 > (a) distractors that differ only by particle (が vs を) rather than by grammar form,
 > and (b) ことができる appearing as a distractor even though it is valid Japanese.
 > Both problems arise because generating four grammatically-distinct full sentences
 > around the same meaning is genuinely hard for the model.
 >
-> The fix: generate a Japanese sentence with a `___` gap and 4 short conjugation-level
-> choices (e.g. `食べられます / 食べます / 食べさせます / 食べられません`).
-> The gap isolates exactly the grammar slot under test; all four choices fit the slot
-> grammatically and the discrimination is purely about knowing the correct form.
-> The verb stem visible in the gap (e.g. `食べ___`) does reveal which verb is used,
-> but this is acceptable — the student already sees the grammar topic name in the UI,
-> and we have decided that sharing vocabulary context with the student on demand is fine.
+> The fix: generate a Japanese sentence with one or more `___` gaps and 4 short
+> conjugation-level choices. Each choice is an **array of strings**, one per gap.
+> Single-gap example (potential verbs):
+> ```json
+> {"stem": "Describe that you can play guitar.",
+>  "sentence": "彼は毎日ギターが___。",
+>  "choices": [["弾けます"], ["弾きます"], ["弾かせます"], ["弾けません"]],
+>  "correct": 0}
+> ```
+> Multi-gap example (〜し、〜し — multiple reasons):
+> ```json
+> {"stem": "Explain why you don't like the class.",
+>  "sentence": "先生は厳しい___、宿題はたくさんある___。",
+>  "choices": [["し", "し"], ["て", "て"], ["から", "から"], ["のに", "のに"]],
+>  "correct": 0}
+> ```
+> Heterogeneous-gap example (〜ば〜ほど):
+> ```json
+> {"stem": "Say that the more you study, the more fun it gets.",
+>  "sentence": "勉強すれ___楽しくなる___。",
+>  "choices": [["ば", "ほど"], ["たら", "くらい"], ["と", "ほど"], ["ば", "ない"]],
+>  "correct": 0}
+> ```
+> The gap isolates exactly the grammar slot(s) under test; each choice fills all gaps
+> and the discrimination is purely about knowing the correct form. The verb stem
+> visible around the gap (e.g. `弾___`) does reveal which verb is used, but this is
+> acceptable — the student already sees the grammar topic name in the UI, and we have
+> decided that sharing vocabulary context with the student on demand is fine.
 >
-> For tier 2, typing a short suffix into a gap (e.g. `食べられます`) is more tractable
-> than reconstructing a whole sentence from memory, which better targets grammar
-> knowledge rather than sentence production.
+> For tier 2, typing short fills into gaps is more tractable than reconstructing a
+> whole sentence from memory, which better targets grammar knowledge rather than
+> sentence production. For multi-gap tier 2, the student types each fill in sequence.
 >
-> **TODO**: redesign the generation prompt and JSON schema for production tiers 1 and 2
-> to produce `{"stem": "...", "sentence": "東京では食べ物が___。", "choices": [...], "correct": 0}`
-> and update `GrammarMultipleChoiceQuestion`, the display layer, and the tier-2
-> string-match fast path accordingly.
+> **Implementation** (done): `GrammarMultipleChoiceQuestion.choices` is `[[String]]`.
+> The display layer counts `___` occurrences and fills the *n*th gap with `choice[n]`.
+> The generation prompt instructs Claude to place one or more `___` gaps as needed
+> by the grammar pattern, and return choices as arrays of strings (one element per gap).
+> The tier-2 string-match fast path compares each typed segment against the
+> corresponding element of `choices[correctIndex]`. The JSON parser also accepts
+> legacy flat `[String]` format (auto-wrapped into 1-element sub-arrays).
 
 Recognition collapses to two tiers because fill-in-the-blank in a Japanese sentence
 is production by another name — it tests supplying the grammar form, not comprehending it.

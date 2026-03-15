@@ -166,22 +166,25 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
         case "fillin-grading":
             print("── NOTE ──")
             print("Fill-in-the-blank grading (tier 2 production) fast path: pure string matching in Swift.")
-            print("No LLM call. The correct answer is choices[correctIndex] from the tier-1/2 generation")
-            print("call. The student's typed answer is normalised (trim, strip 。/、) and compared.")
+            print("The student sees a Japanese sentence with \(grammarGapToken) gap(s) and types the short")
+            print("form(s) that fill the gap(s). The correct answer is choices[correctIndex] — an array")
+            print("of short forms (one per gap, e.g. [\"食べられます\"] or [\"し\",\"し\"]) — from the")
+            print("tier-1/2 generation call. The student's typed answer(s) are normalised (trim,")
+            print("strip 。/、) and compared per gap.")
             print("If this fails, the fillin-fallback coaching path is invoked instead.")
-            print("See GrammarQuizSession.gradeFillin(studentAnswer:correctAnswer:).")
+            print("See GrammarQuizSession.gradeFillin(studentAnswers:correctFills:).")
 
         case "fillin-fallback":
             // Show the coaching system prompt with placeholder stem and reference answer.
             let placeholderStem   = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
-            let placeholderRef    = "[correct choice from generation, e.g. '泳げます。']"
+            let placeholderRef    = "[correct short form from generation, e.g. '泳げます']"
             let system = session.tier2FallbackSystemPrompt(for: item, stem: placeholderStem,
                                                             referenceAnswer: placeholderRef)
             print("── SYSTEM PROMPT (coaching, multi-turn until SCORE) ──")
             print(system)
             print("")
-            print("── TURN 1 USER MESSAGE (student's answer that failed string match) ──")
-            print("[e.g. '泳ぐことができます。']")
+            print("── TURN 1 USER MESSAGE (student's short form(s) that failed string match) ──")
+            print("[e.g. '泳ぐことができます' — wrong construction or form for the gap(s)]")
             print("")
             print("── TURN 2+ (optional, if Haiku asks a coaching question) ──")
             print("[student's follow-up attempt, e.g. '泳げます。']")
@@ -385,9 +388,31 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                             if containsJapanese(mc.stem) {
                                 issues.append("LEAK: production stem contains Japanese characters")
                             }
+                            // Production fill-in-the-blank: must have a gapped sentence.
+                            if let sentence = mc.sentence {
+                                let gapCount = sentence.components(separatedBy: grammarGapToken).count - 1
+                                if gapCount == 0 {
+                                    issues.append("FAIL: production sentence missing \(grammarGapToken) gap: \(sentence)")
+                                }
+                                if !containsJapanese(sentence) {
+                                    issues.append("FAIL: production sentence contains no Japanese characters: \(sentence)")
+                                }
+                                // Validate that each choice sub-array has the right number of elements.
+                                for (ci, choice) in mc.choices.enumerated() {
+                                    if choice.count != gapCount {
+                                        issues.append("FAIL: choice \(ci) has \(choice.count) elements but sentence has \(gapCount) gap(s)")
+                                    }
+                                }
+                                print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(sentence)")
+                            } else {
+                                issues.append("FAIL: production question missing 'sentence' field (expected fill-in-the-blank format)")
+                            }
                         case "recognition":
                             if !containsJapanese(mc.stem) {
                                 issues.append("FAIL: recognition stem contains no Japanese characters")
+                            }
+                            if mc.sentence != nil {
+                                issues.append("WARN: recognition question unexpectedly has a 'sentence' field")
                             }
                         default: break
                         }
@@ -409,11 +434,11 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
 
                 var issues: [String] = []
                 if let mc = mc {
-                    let correct = mc.choices[mc.correctIndex]
-                    print("Correct answer: \(correct)")
+                    let correctFills = mc.choices[mc.correctIndex]
+                    print("Correct fills: \(correctFills)")
 
                     // Test: exact correct answer → should match.
-                    let exactMatch = session.gradeFillin(studentAnswer: correct, correctAnswer: correct)
+                    let exactMatch = session.gradeFillin(studentAnswers: correctFills, correctFills: correctFills)
                     if !exactMatch {
                         issues.append("FAIL: exact correct answer did not match itself")
                     } else {
@@ -421,9 +446,9 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                     }
 
                     // Test: wrong answer → should not match (will trigger fallback in production).
-                    let wrongChoice = mc.choices.indices.filter { $0 != mc.correctIndex }.first
-                        .map { mc.choices[$0] } ?? "wrong answer"
-                    let wrongMatch = session.gradeFillin(studentAnswer: wrongChoice, correctAnswer: correct)
+                    let wrongFills = mc.choices.indices.filter { $0 != mc.correctIndex }.first
+                        .map { mc.choices[$0] } ?? ["wrong answer"]
+                    let wrongMatch = session.gradeFillin(studentAnswers: wrongFills, correctFills: correctFills)
                     if wrongMatch {
                         issues.append("WARN: wrong answer matched correct answer (may be near-duplicates)")
                     } else {
@@ -431,9 +456,11 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                     }
 
                     // Test: correct answer without trailing punctuation → should match (normalization).
-                    let stripped = correct.replacingOccurrences(of: "。", with: "")
-                                         .replacingOccurrences(of: "、", with: "")
-                    let strippedMatch = session.gradeFillin(studentAnswer: stripped, correctAnswer: correct)
+                    let strippedFills = correctFills.map {
+                        $0.replacingOccurrences(of: "。", with: "")
+                          .replacingOccurrences(of: "、", with: "")
+                    }
+                    let strippedMatch = session.gradeFillin(studentAnswers: strippedFills, correctFills: correctFills)
                     if !strippedMatch {
                         issues.append("WARN: punctuation-stripped answer did not match (normalization may be too strict)")
                     } else {
@@ -461,21 +488,23 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
 
                 var fbIssues: [String] = []
                 if let fbMC = fbMC {
-                    let stem    = fbMC.stem
-                    let correct = fbMC.choices[fbMC.correctIndex]
+                    let stem        = fbMC.stem
+                    let correctFills = fbMC.choices[fbMC.correctIndex]
+                    let correctDisplay = correctFills.joined(separator: ", ")
                     // Use a wrong distractor as the "student's first attempt" — this always fails
                     // string match and exercises the fallback path.
-                    let wrongChoice = fbMC.choices.indices.filter { $0 != fbMC.correctIndex }.first
-                        .map { fbMC.choices[$0] } ?? "wrong answer"
+                    let wrongFills = fbMC.choices.indices.filter { $0 != fbMC.correctIndex }.first
+                        .map { fbMC.choices[$0] } ?? ["wrong answer"]
+                    let wrongDisplay = wrongFills.joined(separator: ", ")
 
                     print("Stem:      \(stem)")
-                    print("Reference: \(correct)")
-                    print("Student's first attempt (wrong distractor): \(wrongChoice)")
+                    print("Reference: \(correctDisplay)")
+                    print("Student's first attempt (wrong distractor): \(wrongDisplay)")
                     print("")
 
                     let (response1, conversation1) = try await session.gradeTier2FallbackForTesting(
-                        item: item, stem: stem, referenceAnswer: correct,
-                        studentAnswer: wrongChoice, maxCoachingTurns: 1)
+                        item: item, stem: stem, referenceAnswer: correctDisplay,
+                        studentAnswer: wrongDisplay, maxCoachingTurns: 1)
 
                     print("── HAIKU TURN 1 ──")
                     print(response1)
@@ -490,16 +519,16 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                         print("Haiku scored immediately (expected for a wrong distractor).")
                     } else {
                         // Haiku asked a coaching question — now send the correct answer.
-                        print("Haiku asked a coaching question. Sending correct answer: \(correct)")
+                        print("Haiku asked a coaching question. Sending correct answer: \(correctDisplay)")
                         print("")
 
                         // Append the coaching question to conversation and send the correct answer.
                         var conversation2 = conversation1
-                        conversation2.append(AnthropicMessage(role: "user", content: [.text(correct)]))
+                        conversation2.append(AnthropicMessage(role: "user", content: [.text(correctDisplay)]))
 
                         let (response2, _) = try await session.gradeTier2FallbackForTesting(
-                            item: item, stem: stem, referenceAnswer: correct,
-                            studentAnswer: correct, maxCoachingTurns: 3)
+                            item: item, stem: stem, referenceAnswer: correctDisplay,
+                            studentAnswer: correctDisplay, maxCoachingTurns: 3)
 
                         print("── HAIKU TURN 2+ ──")
                         print(response2)
