@@ -88,8 +88,14 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 # Dump all system prompts for every grammar path (NO API calls):
 .build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts
 
+# Dump prompts with scaffolding — simulates a student who also knows causative and passive:
+.build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts --extra-grammar "bunpro:causative,bunpro:Verb[passive]"
+
 # Live test: send all grammar paths to Haiku and validate responses:
 .build/debug/TestHarness --grammar genki:potential-verbs --live
+
+# Live test with scaffolding (affects tier-3 production and tier-2 recognition prompts):
+.build/debug/TestHarness --grammar genki:potential-verbs --live --extra-grammar "bunpro:causative,bunpro:Verb[passive]"
 
 # Live test restricted to one facet, repeated N times:
 .build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --repeat 3
@@ -119,6 +125,8 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 Claude emits one `PASSIVE: <prefixed-topic-id> <score>` line per additional enrolled grammar topic it observes in the student's response. The app applies `updateRecall(..., score, 1, elapsed)` for each. The test harness validates that any `PASSIVE:` lines present are well-formed.
 
 **`--gen-only` flag**: skips all grading paths (`free-grading` and `fillin-grading`), running only generation paths. Useful for rapid prompt iteration.
+
+**`--extra-grammar id1,id2` flag**: comma-separated list of grammar topic IDs that the student is assumed to know well. These are injected as extra grammar context into all system prompts, and specifically trigger the `GRAMMAR_TOPICS:` line in tier-3 production and tier-2 recognition stem-generation requests. Haiku uses this list to weave those known grammar patterns into the generated sentence, then names which ones it used so the grading step can award passive Ebisu updates. Topic IDs must be valid prefixed IDs present in `grammar.json` (e.g. `bunpro:causative`); unknown IDs produce a warning and are skipped. When scaffolding is empty, no `GRAMMAR_TOPICS:` line is requested and no passive updates are possible.
 
 **Required additional file** (searched by walking up from cwd):
 - `grammar.json` — required for grammar mode; run `node prepare-publish.mjs` to generate it.

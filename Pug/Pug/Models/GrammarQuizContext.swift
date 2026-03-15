@@ -10,11 +10,11 @@
 import GRDB
 import Foundation
 
-// MARK: - Scaffold entry
+// MARK: - Extra topic entry
 
 /// A grammar topic the student already knows well, used to calibrate quiz difficulty.
 /// Claude incorporates these patterns into generated example sentences.
-struct GrammarScaffoldEntry {
+struct GrammarExtraTopic {
     let topicId: String     // full prefixed ID, e.g. "bunpro:causative"
     let titleEn: String     // English title, e.g. "To make/let/have"
 }
@@ -34,7 +34,7 @@ struct GrammarQuizItem: Identifiable {
     let facet: String               // "production" | "recognition"
     let status: QuizStatus
     /// Grammar topics the student knows well — injected into the system prompt for difficulty scaling.
-    let scaffoldingTopics: [GrammarScaffoldEntry]
+    let extraGrammarTopics: [GrammarExtraTopic]
     /// Quiz format tier.
     /// Production: 1 = multiple choice, 2 = fill-in-the-blank (typed, string-match graded),
     ///             3 = free text (LLM graded with SCORE).
@@ -72,8 +72,8 @@ struct GrammarQuizContext {
     static var freeAnswerMinReviews:  Int    { tier2MinReviews }
     static var freeAnswerMinHalflife: Double { tier2MinHalflife }
 
-    /// Halflife threshold above which a topic is considered "established" for scaffolding.
-    static let scaffoldingMinHalflife = 48.0    // hours
+    /// Halflife threshold above which a topic qualifies as well-known extra grammar for difficulty scaling.
+    static let extraTopicsMinHalflife = 48.0    // hours
 
     /// Number of top-urgency candidates to sample from when building a session.
     static let selectionPoolSize = 10
@@ -95,25 +95,25 @@ struct GrammarQuizContext {
             byTopic[r.wordId, default: []].append(r)
         }
 
-        // Identify well-established topics for the scaffolding list (high halflife, decent recall).
-        var scaffoldCandidates: [(topicId: String, recall: Double)] = []
+        // Identify well-established topics to inject as extra grammar for difficulty scaling.
+        var extraTopicCandidates: [(topicId: String, recall: Double)] = []
         for (topicId, facetRecords) in byTopic {
             for r in facetRecords {
                 guard let lastDate = parseISO8601(r.lastReview) else { continue }
                 let elapsed = now.timeIntervalSince(lastDate) / 3600.0
                 let recall  = predictRecall(r.model, tnow: elapsed, exact: true)
-                if r.t >= scaffoldingMinHalflife {
-                    scaffoldCandidates.append((topicId, recall))
+                if r.t >= extraTopicsMinHalflife {
+                    extraTopicCandidates.append((topicId, recall))
                     break   // one facet is enough to qualify the topic
                 }
             }
         }
-        scaffoldCandidates.sort { $0.recall > $1.recall }   // best recall first
+        extraTopicCandidates.sort { $0.recall > $1.recall }   // best recall first
 
-        // Build scaffold entries from topic metadata.
-        let scaffoldingTopics: [GrammarScaffoldEntry] = scaffoldCandidates.compactMap { candidate in
+        // Build extra topic entries from topic metadata.
+        let extraGrammarTopics: [GrammarExtraTopic] = extraTopicCandidates.compactMap { candidate in
             guard let topic = manifest.topics[candidate.topicId] else { return nil }
-            return GrammarScaffoldEntry(topicId: candidate.topicId, titleEn: topic.titleEn)
+            return GrammarExtraTopic(topicId: candidate.topicId, titleEn: topic.titleEn)
         }
 
         // Build quiz items — one per topic+facet pair.
@@ -160,7 +160,7 @@ struct GrammarQuizContext {
                     equivalenceGroupIds: equivalenceGroupIds,
                     facet:               r.quizType,
                     status:              .reviewed(recall: recall, isFree: isFree, halflife: r.t),
-                    scaffoldingTopics:   scaffoldingTopics,
+                    extraGrammarTopics:  extraGrammarTopics,
                     tier:                tier
                 ))
             }

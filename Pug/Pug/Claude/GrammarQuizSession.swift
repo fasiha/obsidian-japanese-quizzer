@@ -30,8 +30,8 @@ final class GrammarQuizSession {
     let db: QuizDB
 
     /// Grammar topics the student knows well — included in every system prompt for difficulty scaling.
-    /// Populated by the caller from GrammarQuizContext.scaffoldingTopics before calling generate.
-    var scaffoldingTopics: [GrammarScaffoldEntry] = []
+    /// Populated by the caller from GrammarQuizContext before calling generate.
+    var extraGrammarTopics: [GrammarExtraTopic] = []
 
     /// The most recent multiple-choice result (set by Phase 1B QuizView after student taps).
     /// Included in the post-answer chat system prompt so Claude knows whether they got it right.
@@ -105,14 +105,14 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
-        let scaffoldLine: String
-        if scaffoldingTopics.isEmpty {
-            scaffoldLine = "Scaffolding: (none — student is a beginner; use very simple sentences)"
+        let extraTopicsLine: String
+        if extraGrammarTopics.isEmpty {
+            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; use very simple sentences)"
         } else {
-            let list = scaffoldingTopics.prefix(8)
+            let list = extraGrammarTopics.prefix(8)
                 .map { "- \($0.topicId) — \($0.titleEn)" }
                 .joined(separator: "\n")
-            scaffoldLine = "Scaffolding — grammar the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)"
+            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)"
         }
 
         // Whether this generation call is for a free-text stem (no choices needed)
@@ -205,7 +205,7 @@ final class GrammarQuizSession {
         \(metaLine)
         Memory: \(ebisuLine)
         \(facetRule)
-        \(scaffoldLine)
+        \(extraTopicsLine)
         """
 
         if isGenerating {
@@ -278,10 +278,10 @@ final class GrammarQuizSession {
     /// The student then writes a full Japanese sentence.
     func tier3ProductionStemRequest(for item: GrammarQuizItem) -> String {
         let grammarTopicsInstruction: String
-        if !item.scaffoldingTopics.isEmpty {
+        if !item.extraGrammarTopics.isEmpty {
             grammarTopicsInstruction = """
             \nAfter the English text, on a new line write GRAMMAR_TOPICS: followed by a \
-            comma-separated list of topic IDs (from the scaffolding list in the system prompt) \
+            comma-separated list of topic IDs (from the extra grammar topics list in the system prompt) \
             that a correct Japanese translation would naturally exercise. Omit this line if none apply.
             """
         } else {
@@ -302,10 +302,10 @@ final class GrammarQuizSession {
     /// The student then writes a free-text English translation.
     func tier2RecognitionStemRequest(for item: GrammarQuizItem) -> String {
         let grammarTopicsInstruction: String
-        if !item.scaffoldingTopics.isEmpty {
+        if !item.extraGrammarTopics.isEmpty {
             grammarTopicsInstruction = """
             \nAfter the Japanese sentence, on a new line write GRAMMAR_TOPICS: followed by a \
-            comma-separated list of topic IDs (from the scaffolding list in the system prompt) \
+            comma-separated list of topic IDs (from the extra grammar topics list in the system prompt) \
             that the sentence also exercises. Omit this line if none apply.
             """
         } else {
@@ -426,20 +426,20 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
-        let scaffoldLine: String
-        if item.scaffoldingTopics.isEmpty {
-            scaffoldLine = ""
+        let extraTopicsLine: String
+        if item.extraGrammarTopics.isEmpty {
+            extraTopicsLine = ""
         } else {
-            let list = item.scaffoldingTopics.prefix(8)
+            let list = item.extraGrammarTopics.prefix(8)
                 .map { "- \($0.topicId) — \($0.titleEn)" }
                 .joined(separator: "\n")
-            scaffoldLine = "\nGrammar the student knows well (context only):\n\(list)"
+            extraTopicsLine = "\nExtra grammar topics the student knows well (context only — these were used to build the exercise sentence):\n\(list)"
         }
 
         return """
         You are coaching an English-speaking student on a fill-in-the-blank Japanese grammar exercise.
         \(topicLine)
-        \(metaLine)\(scaffoldLine)
+        \(metaLine)\(extraTopicsLine)
 
         The student was shown this English context:
           \(stem)
@@ -549,7 +549,7 @@ final class GrammarQuizSession {
         if grammarTopics.isEmpty {
             grammarTopicsLine = ""
         } else {
-            grammarTopicsLine = "\nGrammar topics present in the prompt sentence (for passive grading):\n"
+            grammarTopicsLine = "\nExtra grammar topics present in the exercise sentence (passively grade these too):\n"
                 + grammarTopics.map { "- \($0)" }.joined(separator: "\n")
         }
 

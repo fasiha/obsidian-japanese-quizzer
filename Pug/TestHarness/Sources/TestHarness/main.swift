@@ -29,9 +29,9 @@ guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --dump-prompts\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> [facet]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--extra-grammar id1,id2]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2]\n", stderr)
     exit(1)
 }
 
@@ -60,6 +60,17 @@ if let facetIdx = args.firstIndex(of: "--facet"), facetIdx + 1 < args.count {
 }
 // In grammar mode args[1] is "--grammar", not a word ID; use empty string as placeholder.
 let wordId = isGrammarMode ? "" : args[1]
+
+// --extra-grammar topic1,topic2: comma-separated topic IDs that simulate grammar the student knows well.
+// These are injected into production tier-3 and recognition tier-2 prompts as extra grammar context,
+// which ask Haiku to weave those known patterns into the generated sentence.
+// Parsed later (after manifest is loaded) in grammar mode.
+let extraGrammarArg: String?
+if let sIdx = args.firstIndex(of: "--extra-grammar"), sIdx + 1 < args.count {
+    extraGrammarArg = args[sIdx + 1]
+} else {
+    extraGrammarArg = nil
+}
 
 // --repeat N: how many times to run each generation path (default 1)
 let repeatCount: Int
@@ -161,6 +172,20 @@ if isGrammarMode {
         exit(1)
     }
 
+    // Resolve --extra-grammar topic1,topic2 into GrammarExtraTopic values.
+    // Unknown IDs are warned about but not fatal, so the user can still test with partial lists.
+    var extraGrammarTopics: [GrammarExtraTopic] = []
+    if let raw = extraGrammarArg {
+        let ids = raw.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        for id in ids {
+            if let t = manifest.topics[id] {
+                extraGrammarTopics.append(GrammarExtraTopic(topicId: t.prefixedId, titleEn: t.titleEn))
+            } else {
+                fputs("Warning: --extra-grammar topic '\(id)' not found in grammar.json — skipping\n", stderr)
+            }
+        }
+    }
+
     let grammarFacet = liveOnlyFacet ?? "production"
     let tmpPath   = NSTemporaryDirectory() + "testharness-grammar-\(ProcessInfo.processInfo.processIdentifier).sqlite"
     let grammarDB = try QuizDB.open(path: tmpPath)
@@ -171,8 +196,13 @@ if isGrammarMode {
     print("Facet:  \(grammarFacet)")
     print("")
 
+    if !extraGrammarTopics.isEmpty {
+        print("Extra grammar topics: \(extraGrammarTopics.map { $0.topicId }.joined(separator: ", "))")
+        print("")
+    }
+
     if isDumpMode {
-        dumpGrammarPrompts(topic: topic, quizDB: grammarDB)
+        dumpGrammarPrompts(topic: topic, quizDB: grammarDB, extraGrammarTopics: extraGrammarTopics)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -181,7 +211,8 @@ if isGrammarMode {
         let liveModel = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
         await liveGrammarPrompts(topic: topic, apiKey: apiKey, model: liveModel,
                                   quizDB: grammarDB, repeatCount: repeatCount,
-                                  genOnly: isGenOnly, onlyFacet: liveOnlyFacet)
+                                  genOnly: isGenOnly, onlyFacet: liveOnlyFacet,
+                                  extraGrammarTopics: extraGrammarTopics)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -191,9 +222,11 @@ if isGrammarMode {
     let model   = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
     let client  = AnthropicClient(apiKey: apiKey, model: model)
     let session = GrammarQuizSession(client: client, db: grammarDB)
+    session.extraGrammarTopics = extraGrammarTopics
 
     let item = buildGrammarQuizItem(topic: topic,
-                                    path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"))
+                                    path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"),
+                                    extraGrammarTopics: extraGrammarTopics)
     let start = Date()
     do {
         let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)

@@ -152,7 +152,7 @@ deterministic parts to pure logic as patterns emerge.
   - [x] System prompts updated with SCORE and PASSIVE instructions; distractor prompt tightened to exclude alternative-correct constructions (e.g. ことができる as a potential-verb distractor).
   - [x] `GrammarQuizItem.tier: Int` added (1/2/3 for production, 1/2 for recognition); computed from review count + halflife in `GrammarQuizContext.build()`.
   - [x] TESTING.md updated with tier table, thresholds, and validation check list.
-- [ ] `--scaffold topic1,topic2` flag in TestHarness to simulate a student who knows specific grammar, for testing difficulty scaling
+- [x] `--extra-grammar topic1,topic2` flag in TestHarness to simulate a student who knows specific grammar, for testing difficulty scaling
 
 ### Phase 1B — iOS Views
 

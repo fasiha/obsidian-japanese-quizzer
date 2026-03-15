@@ -74,7 +74,7 @@ let allGrammarPaths: [GrammarPromptPath] = [
 
 /// Build a GrammarQuizItem for a given topic and path.
 func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
-                           scaffolding: [GrammarScaffoldEntry] = []) -> GrammarQuizItem {
+                           extraGrammarTopics: [GrammarExtraTopic] = []) -> GrammarQuizItem {
     // Halflife chosen to sit above the tier-N threshold for realistic prompt content.
     let halflife: Double
     switch path.tier {
@@ -92,7 +92,7 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         equivalenceGroupIds: topic.equivalenceGroup ?? [],
         facet:               path.facet,
         status:              .reviewed(recall: 0.42, isFree: path.isFreeAnswer, halflife: halflife),
-        scaffoldingTopics:   scaffolding,
+        extraGrammarTopics:  extraGrammarTopics,
         tier:                path.tier
     )
 }
@@ -117,9 +117,11 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
 
 // MARK: - Dump mode (no API calls)
 
-@MainActor func dumpGrammarPrompts(topic: GrammarTopic, quizDB: QuizDB) {
+@MainActor func dumpGrammarPrompts(topic: GrammarTopic, quizDB: QuizDB,
+                                   extraGrammarTopics: [GrammarExtraTopic] = []) {
     let client = AnthropicClient(apiKey: "dummy", model: "dummy")
     let session = GrammarQuizSession(client: client, db: quizDB)
+    session.extraGrammarTopics = extraGrammarTopics
 
     let paths = allGrammarPaths
     print("# Grammar Prompt Dump for topic: \(topic.prefixedId) — \(topic.titleEn)")
@@ -127,6 +129,10 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
     if let jp = topic.titleJp { print("# Title (JP): \(jp)") }
     if let href = topic.href   { print("# Reference:  \(href)") }
     print("# Paths to dump: \(paths.count)")
+    if !extraGrammarTopics.isEmpty {
+        print("# Extra grammar topics (\(extraGrammarTopics.count)):")
+        for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
+    }
     print("")
     print("# Review each path below. For each, check:")
     print("# 1. Does the system prompt correctly describe the facet and tier?")
@@ -134,7 +140,7 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
     print("# 3. Production: does the English stem NOT reveal the grammar structure?")
     print("# 4. Recognition: does the Japanese stem use the target grammar naturally?")
     print("# 5. Are distractor instructions appropriate (no alternative-correct choices)?")
-    print("# 6. Is the scaffolding section correctly populated?")
+    print("# 6. Is the extra grammar topics section correctly populated?")
     print("# 7. Free-grading paths: does the system prompt include SCORE and PASSIVE instructions?")
     print("")
 
@@ -143,7 +149,7 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
     }
 
     for (i, path) in paths.enumerated() {
-        let item = buildGrammarQuizItem(topic: topic, path: path)
+        let item = buildGrammarQuizItem(topic: topic, path: path, extraGrammarTopics: extraGrammarTopics)
 
         printGrammarPathHeader(index: i, total: paths.count, path: path)
 
@@ -201,7 +207,7 @@ func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
                 let placeholderStem = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
                 let system = session.tier3ProductionGradingSystemPrompt(
                     for: item, stem: placeholderStem,
-                    grammarTopics: item.scaffoldingTopics.map { $0.topicId })
+                    grammarTopics: item.extraGrammarTopics.map { $0.topicId })
                 print("── SYSTEM PROMPT (coaching, multi-turn until SCORE) ──")
                 print(system)
                 print("")
@@ -279,7 +285,8 @@ func validateFreeGradingResponse(_ response: String, minScore: Double = 0.8) -> 
                                     quizDB: QuizDB,
                                     repeatCount: Int = 1,
                                     genOnly: Bool = false,
-                                    onlyFacet: String? = nil) async {
+                                    onlyFacet: String? = nil,
+                                    extraGrammarTopics: [GrammarExtraTopic] = []) async {
     var allPaths: [GrammarPromptPath]
     if let facet = onlyFacet {
         allPaths = allGrammarPaths.filter { $0.facet == facet }
@@ -298,12 +305,17 @@ func validateFreeGradingResponse(_ response: String, minScore: Double = 0.8) -> 
 
     let client  = AnthropicClient(apiKey: apiKey, model: model)
     let session = GrammarQuizSession(client: client, db: quizDB)
+    session.extraGrammarTopics = extraGrammarTopics
 
     print("# Live Grammar Prompt Test for topic: \(topic.prefixedId) — \(topic.titleEn)")
     print("# Model:  \(model)")
     print("# Level:  \(topic.level)")
     if let jp = topic.titleJp { print("# Title (JP): \(jp)") }
     print("# Paths to test: \(allPaths.count)")
+    if !extraGrammarTopics.isEmpty {
+        print("# Extra grammar topics (\(extraGrammarTopics.count)):")
+        for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
+    }
     print("")
 
     var passCount = 0
@@ -311,7 +323,7 @@ func validateFreeGradingResponse(_ response: String, minScore: Double = 0.8) -> 
     var results: [(path: GrammarPromptPath, passed: Bool, issue: String?)] = []
 
     for (i, path) in allPaths.enumerated() {
-        let item  = buildGrammarQuizItem(topic: topic, path: path)
+        let item  = buildGrammarQuizItem(topic: topic, path: path, extraGrammarTopics: extraGrammarTopics)
         printGrammarPathHeader(index: i, total: allPaths.count, path: path)
         let start = Date()
 
