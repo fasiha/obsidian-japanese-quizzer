@@ -106,12 +106,31 @@ func printGrammarPathHeader(index: Int, total: Int, path: GrammarPromptPath) {
     print("")
 }
 
-// MARK: - Load grammar.json
+// MARK: - Load grammar.json (or synthesize from TSV files)
 
-/// Load grammar.json by walking up from cwd (same pattern as findFile in main.swift).
+/// Load grammar manifest for the test harness.
+/// Starts from grammar/all-topics.json (all 1400+ topics from the three TSV databases),
+/// then overlays grammar.json on top where it exists — grammar.json carries richer metadata
+/// (equivalenceGroup, sources) for topics that have been annotated in Markdown files.
+/// This lets the test harness run against any topic ID without requiring
+/// `prepare-publish.mjs` to have been run first.
 func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
-    guard let path = findFile("grammar.json") else { return nil }
-    guard let data = FileManager.default.contents(atPath: path) else { return nil }
+    guard let base = loadGrammarManifestFromTSVs(findFile: findFile) else { return nil }
+    var merged = base.topics
+    if let path = findFile("grammar.json"),
+       let data = FileManager.default.contents(atPath: path),
+       let annotated = try? JSONDecoder().decode(GrammarManifest.self, from: data) {
+        // Overlay annotated topics (richer metadata: equivalenceGroup, sources) onto the base.
+        for (key, topic) in annotated.topics { merged[key] = topic }
+    }
+    return GrammarManifest(generatedAt: base.generatedAt, sources: base.sources, topics: merged)
+}
+
+/// Load grammar/all-topics.json — a pre-generated snapshot of every topic from all three TSV
+/// databases.  Generate or refresh it with: node grammar/generate-all-topics.mjs
+func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManifest? {
+    guard let path = findFile("grammar/all-topics.json"),
+          let data = FileManager.default.contents(atPath: path) else { return nil }
     return try? JSONDecoder().decode(GrammarManifest.self, from: data)
 }
 

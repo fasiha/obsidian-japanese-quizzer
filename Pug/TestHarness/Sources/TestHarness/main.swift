@@ -162,13 +162,13 @@ if isGrammarMode {
     }
 
     guard let manifest = loadGrammarManifest(findFile: findFile) else {
-        fputs("Error: grammar.json not found (searched up from cwd) — run prepare-publish.mjs first\n", stderr)
+        fputs("Error: grammar/all-topics.json not found — run: node grammar/generate-all-topics.mjs\n", stderr)
         exit(1)
     }
 
     guard let topic = manifest.topics[topicId] else {
         let known = manifest.topics.keys.sorted().prefix(10).joined(separator: "\n  ")
-        fputs("Error: topic '\(topicId)' not found in grammar.json\nKnown topics (first 10):\n  \(known)\n", stderr)
+        fputs("Error: topic '\(topicId)' not found\nKnown topics (first 10):\n  \(known)\n", stderr)
         exit(1)
     }
 
@@ -181,7 +181,7 @@ if isGrammarMode {
             if let t = manifest.topics[id] {
                 extraGrammarTopics.append(GrammarExtraTopic(topicId: t.prefixedId, titleEn: t.titleEn))
             } else {
-                fputs("Warning: --extra-grammar topic '\(id)' not found in grammar.json — skipping\n", stderr)
+                fputs("Warning: --extra-grammar topic '\(id)' not found — skipping\n", stderr)
             }
         }
     }

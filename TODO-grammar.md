@@ -332,6 +332,22 @@ All 6 generation paths passed validation. Notes for future prompt work:
     conjugation instead (e.g. dropping the potential suffix entirely, or using the wrong verb class
     pattern).
 
+- **Part-of-speech annotation for coaching accuracy**: Haiku occasionally misidentifies verb
+  class in coaching responses (observed: calling 弾く a "る-verb" and directing the student
+  toward the ichidan potential pattern 食べ**られ**る, when the correct godan pattern is
+  弾**け**る). This happens because the coaching prompt only receives the correct fill string
+  (e.g. `弾ける`) without knowing how it was derived.
+  - **Option A — annotate the generation JSON**: ask the generation step to include a
+    `verbNote` field (e.g. `"verbNote": "godan: 弾く → 弾ける"`) alongside `sentence` and
+    `choices`. The coaching prompt receives this as a plain-text hint, no extra tool calls.
+  - **Option B — lookup_jmdict in coaching**: give the coaching LLM access to `lookup_jmdict`
+    so it can look up the verb's part-of-speech tag (e.g. `v5k` = godan-ku). Adds latency and
+    tokens on every coaching turn.
+  - Option A is simpler and token-cheaper; Option B is more general. Current priority: low —
+    the error is rare and the student can still reach the correct answer despite the wrong hint.
+  - **See also**: `lookup_jmdict` already returns part-of-speech data for vocab quizzes
+    (via `ToolHandler.swift`); the data is available if needed.
+
 - **VOCAB_ASSUMED: on-demand vocabulary glossary for grammar quiz stems**: grammar quiz stems
   use vocabulary that the student may not know — vocabulary knowledge should not block grammar
   testing. Both production (English → Japanese) and recognition (Japanese → English) facets can

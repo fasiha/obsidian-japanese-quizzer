@@ -793,6 +793,10 @@ final class GrammarQuizSession {
     // MARK: - JSON parsing helpers (mirrors QuizSession private helpers)
 
     func parseMultipleChoiceJSON(_ raw: String) -> GrammarMultipleChoiceQuestion? {
+        // Collect all fenced-code-block candidates, then return the last valid one.
+        // The model sometimes self-corrects mid-response by emitting a second JSON block;
+        // the last block is always the intended final answer.
+        var candidates: [GrammarMultipleChoiceQuestion] = []
         var search = raw[...]
         while let fenceStart = search.range(of: "```") {
             let afterFence = search[fenceStart.upperBound...]
@@ -800,12 +804,13 @@ final class GrammarQuizSession {
             if let closeRange = body.range(of: "```") {
                 let candidate = String(body[..<closeRange.lowerBound])
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                if let q = decodeMultipleChoice(from: candidate) { return q }
+                if let q = decodeMultipleChoice(from: candidate) { candidates.append(q) }
                 search = body[closeRange.upperBound...]
             } else {
                 break
             }
         }
+        if let last = candidates.last { return last }
         if let open = raw.firstIndex(of: "{"), let close = raw.lastIndex(of: "}") {
             return decodeMultipleChoice(from: String(raw[open...close]))
         }
@@ -835,6 +840,12 @@ final class GrammarQuizSession {
         } else {
             return nil
         }
+
+        // Reject questions where the model produced duplicate choices (e.g. after self-correcting
+        // mid-response but the wrong block was picked, or the model made an error).
+        // Compare choices as joined strings so multi-gap arrays are compared element-wise.
+        let choiceKeys = choices.map { $0.joined(separator: "\u{001F}") }
+        guard Set(choiceKeys).count == 4 else { return nil }
 
         // "sentence" is present for production fill-in-the-blank, absent for recognition.
         let sentence = obj["sentence"] as? String
