@@ -63,10 +63,29 @@ Tiers 1 and 2 share the same generated question — the only difference is the U
 (four tap buttons vs a text input). This means the LLM generation call happens once; the
 tier 1 question is reused at tier 2 without regenerating.
 
-> **Alternative design considered**: instead of full-sentence choices, use a Japanese
-> sentence with a `___` gap and 4 short filler choices. This would force the model to
-> generate otherwise-identical sentences that differ only in the grammar slot, making
-> the distractor task more precise. Left as a possible future refinement.
+> **Planned migration — true fill-in-the-blank for production tiers 1 and 2**: the
+> current full-sentence choice design has two recurring problems observed in live testing:
+> (a) distractors that differ only by particle (が vs を) rather than by grammar form,
+> and (b) ことができる appearing as a distractor even though it is valid Japanese.
+> Both problems arise because generating four grammatically-distinct full sentences
+> around the same meaning is genuinely hard for the model.
+>
+> The fix: generate a Japanese sentence with a `___` gap and 4 short conjugation-level
+> choices (e.g. `食べられます / 食べます / 食べさせます / 食べられません`).
+> The gap isolates exactly the grammar slot under test; all four choices fit the slot
+> grammatically and the discrimination is purely about knowing the correct form.
+> The verb stem visible in the gap (e.g. `食べ___`) does reveal which verb is used,
+> but this is acceptable — the student already sees the grammar topic name in the UI,
+> and we have decided that sharing vocabulary context with the student on demand is fine.
+>
+> For tier 2, typing a short suffix into a gap (e.g. `食べられます`) is more tractable
+> than reconstructing a whole sentence from memory, which better targets grammar
+> knowledge rather than sentence production.
+>
+> **TODO**: redesign the generation prompt and JSON schema for production tiers 1 and 2
+> to produce `{"stem": "...", "sentence": "東京では食べ物が___。", "choices": [...], "correct": 0}`
+> and update `GrammarMultipleChoiceQuestion`, the display layer, and the tier-2
+> string-match fast path accordingly.
 
 Recognition collapses to two tiers because fill-in-the-blank in a Japanese sentence
 is production by another name — it tests supplying the grammar form, not comprehending it.
@@ -215,6 +234,35 @@ difference is the halflife in the Memory line (24h vs 96h, reflecting different 
 thresholds). The generated question is reused: tier 1 shows it as tap-a-button, tier 2
 shows it as type-the-answer (fill-in-the-blank).
 
+### Model selection: Haiku is the right choice (2026-03-14)
+
+Ran `genki:potential-verbs` production facet (all 6 paths, with `bunpro:causative` and
+`bunpro:Verb[passive]` scaffolding) against Haiku, Sonnet 4.6, and Opus 4.6 in parallel.
+All three models passed all 6 validation checks. Key findings:
+
+- **Latency**: Haiku 2–9 s per call; Sonnet 5–18 s; Opus 13–22 s. For a quiz app where
+  the student is waiting at a spinner, Sonnet and Opus are too slow for real-time use.
+- **Spicy food fixation**: Haiku repeatedly defaulted to 食べる/食べ物 scenarios even with
+  scaffolding; Sonnet and Opus naturally varied their verbs (泳ぐ, 話す, 読む) and wove
+  scaffolding grammar into richer multi-clause sentences.
+- **GRAMMAR_TOPICS accuracy**: Haiku (old comma-separated prompt) hallucinated
+  `bunpro:causative` for a sentence that contained no causative construction. Switching to
+  a JSON array format with "only include if syntactically present" fixed the hallucination
+  in subsequent Haiku runs.
+- **Coaching quality**: Sonnet and Opus produced cleaner, more focused coaching responses.
+  Haiku occasionally echoed template language from the prompt that didn't apply to the
+  student's actual mistake.
+
+**Conclusion**: Haiku quality gaps are addressable with prompt improvements (verb-variety
+nudge, JSON GRAMMAR_TOPICS, pattern-not-example phrasing in coaching). Sonnet and Opus
+produced noticeably better output — richer multi-clause sentences that naturally wove
+scaffolding grammar in, more accurate GRAMMAR_TOPICS attribution, and cleaner coaching
+responses. However, the latency gap is large. Note that the vocab quiz already masks
+latency by prefetching the next question as soon as the student submits their answer;
+grammar quizzes could do the same, which would make Sonnet's 5–18 s more tolerable.
+For now, stick with Haiku and improve prompts; revisit Sonnet if prompt improvements
+plateau or if prefetch makes the latency acceptable in practice.
+
 ### Prompt quality observations (from 2026-03-14 live tests)
 
 Tested `genki:potential-verbs`, `bunpro:causative`, and `bunpro:てならない` against Haiku.
@@ -231,6 +279,18 @@ All 6 generation paths passed validation. Notes for future prompt work:
     note which distractors are "wrong Japanese" vs "correct Japanese, wrong form", or just instruct
     Claude to avoid alternative-correct constructions entirely.
 
+- **Vocabulary fixation in stem generation**: Haiku tends to reach for the same scenario
+  repeatedly when generating stems — for `genki:potential-verbs`, essentially every stem
+  involves 食べる (eating, often spicy food), which is the canonical textbook example.
+  This is demotivating and limits practice breadth.
+  - **TODO**: Add a prompt instruction asking Haiku to vary the action verb across questions.
+    Something like: "Choose a fresh action verb for this question — avoid 食べる, 飲む,
+    and 泳ぐ unless the topic strongly warrants them."
+  - **Observation**: the `--extra-grammar` scaffolding may naturally break this fixation
+    because Haiku must weave in other grammar topics and tends to pick richer scenarios
+    as a result. If the test with extra-grammar topics shows variety, the fix may only
+    matter for beginner (no scaffolding) sessions.
+
 - **Enriched topic descriptions**: the current prompt provides only topic ID, title, level, and a
   reference URL (which Haiku cannot fetch). For well-known topics like potential verbs and causative,
   Haiku's internal knowledge is sufficient. For more obscure or ambiguous topics this may be
@@ -240,6 +300,43 @@ All 6 generation paths passed validation. Notes for future prompt work:
     where the title alone is ambiguous (e.g. `bunpro:てならない` — "Very, Extremely, Can't help but
     do" is enough, but a two-sentence gloss of the conjugation pattern could prevent errors on
     unusual topics).
+  - **TODO**: The descriptor for `genki:potential-verbs` (and any equivalent group entry) must
+    explicitly note that ら抜き言葉 forms (e.g. `食べれる`, `見れる`) are colloquially accepted
+    alternatives — Genki II Chapter 13 calls this out explicitly. Haiku must not use these as
+    distractors (a student who writes `食べれます` is arguably correct) and must not penalize them
+    in grading. The distractor for "wrong potential form" should be an unambiguously wrong
+    conjugation instead (e.g. dropping the potential suffix entirely, or using the wrong verb class
+    pattern).
+
+- **VOCAB_ASSUMED: on-demand vocabulary glossary for grammar quiz stems**: grammar quiz stems
+  use vocabulary that the student may not know — vocabulary knowledge should not block grammar
+  testing. Both production (English → Japanese) and recognition (Japanese → English) facets can
+  benefit from this.
+  - **Design**: during stem generation (tier-2 fill-in-the-blank / tier-3 free-text / recognition
+    tier-2), Haiku emits a `VOCAB_ASSUMED: word1,word2,...` line listing the key content words
+    the student needs in order to answer the question (e.g. `VOCAB_ASSUMED: 泳ぐ,海` for a
+    swimming-in-the-ocean stem). This line is parsed and stored alongside the stem; it is NOT
+    shown to the student by default.
+  - **App UX**: a "Show vocabulary" button appears below the stem. Tapping it reveals a glossary
+    with the assumed words and their meanings (looked up from the local JMDict). Experienced
+    learners who know the words can ignore it; beginners can refer to it without penalty.
+  - **Passive vocab boost**: if any VOCAB_ASSUMED word is enrolled in the student's vocab list,
+    the grading step can emit a `PASSIVE_VOCAB: word_id score` line (analogous to `PASSIVE:` for
+    grammar) to award a passive recall update. This is a free bonus — the student used the word
+    in a grammar context without being explicitly quizzed on it.
+  - **Grading with VOCAB_ASSUMED**: grade based on grammar-form correctness, not vocabulary
+    precision. If the student uses the correct grammar form but the wrong vocabulary (e.g.
+    answers a swimming question with a sentence about eating), Haiku should note the vocabulary
+    mismatch in coaching but still score the grammar form appropriately. A completely off-topic
+    response (correct grammar, unrelated context, no attempt to address the stem) should score
+    lower because the grammar demonstration is decontextualized — the student may be gaming
+    the quiz rather than translating.
+  - **Open question**: how many words to include in VOCAB_ASSUMED? Keep it to 2–5 essential
+    content words (verbs, nouns). Particles, copulas, and the target grammar structure itself
+    should not be listed — the whole point is to test those.
+  - **Format consideration**: for tier-2 fill-in-the-blank (multiple choice), the correct answer
+    itself implicitly reveals the vocabulary, so VOCAB_ASSUMED is less critical there. Most
+    useful for tier-3 free-text production and recognition tier-2 free-text.
 
 - **Furigana for unknown kanji in quiz questions**: recognition stems are Japanese sentences
   containing the target grammar. Students who haven't learned all the kanji in a sentence may be

@@ -105,14 +105,15 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
+        let quirkyNote = "Feel free to use quirky, unexpected, or funny scenarios rather than textbook classics — vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused."
         let extraTopicsLine: String
         if extraGrammarTopics.isEmpty {
-            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; use very simple sentences)"
+            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple). \(quirkyNote)"
         } else {
             let list = extraGrammarTopics.prefix(8)
                 .map { "- \($0.topicId) — \($0.titleEn)" }
                 .joined(separator: "\n")
-            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)"
+            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)\n\(quirkyNote)"
         }
 
         // Whether this generation call is for a free-text stem (no choices needed)
@@ -211,7 +212,7 @@ final class GrammarQuizSession {
         if isGenerating && isFreeTextStemGeneration {
             return header + "\nDo NOT name or describe the target grammar structure in the English text."
         } else if isGenerating {
-            return header + "\nCRITICAL: Never reveal the answer in the question stem. Silently verify before outputting."
+            return header
         } else if item.facet == "recognition" && item.isFreeAnswer {
             // Recognition tier 2: single-turn LLM grading of the student's English translation.
             return header + """
@@ -283,8 +284,10 @@ final class GrammarQuizSession {
         if !item.extraGrammarTopics.isEmpty {
             grammarTopicsInstruction = """
             \nAfter the English text, on a new line write GRAMMAR_TOPICS: followed by a \
-            comma-separated list of topic IDs (from the extra grammar topics list in the system prompt) \
-            that a correct Japanese translation would naturally exercise. Omit this line if none apply.
+            JSON array of topic IDs (from the extra grammar topics list in the system prompt) \
+            that a correct Japanese translation would syntactically exercise — only include a topic \
+            if the Japanese sentence would genuinely use that grammar construction. \
+            Use an empty array if none apply: GRAMMAR_TOPICS: []
             """
         } else {
             grammarTopicsInstruction = ""
@@ -307,8 +310,10 @@ final class GrammarQuizSession {
         if !item.extraGrammarTopics.isEmpty {
             grammarTopicsInstruction = """
             \nAfter the Japanese sentence, on a new line write GRAMMAR_TOPICS: followed by a \
-            comma-separated list of topic IDs (from the extra grammar topics list in the system prompt) \
-            that the sentence also exercises. Omit this line if none apply.
+            JSON array of topic IDs (from the extra grammar topics list in the system prompt) \
+            that the sentence syntactically exercises — only include a topic if the sentence \
+            genuinely uses that grammar construction. \
+            Use an empty array if none apply: GRAMMAR_TOPICS: []
             """
         } else {
             grammarTopicsInstruction = ""
@@ -375,9 +380,16 @@ final class GrammarQuizSession {
             if trimmed.hasPrefix("GRAMMAR_TOPICS:") {
                 let topicsPart = trimmed.dropFirst("GRAMMAR_TOPICS:".count)
                     .trimmingCharacters(in: .whitespaces)
-                grammarTopics = topicsPart.components(separatedBy: ",")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
+                // Parse JSON array: ["id1","id2"] or fallback comma-separated
+                if topicsPart.hasPrefix("["),
+                   let data = topicsPart.data(using: .utf8),
+                   let parsed = try? JSONDecoder().decode([String].self, from: data) {
+                    grammarTopics = parsed.filter { !$0.isEmpty }
+                } else {
+                    grammarTopics = topicsPart.components(separatedBy: ",")
+                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                }
             } else {
                 stemLines.append(line)
             }
@@ -455,7 +467,7 @@ final class GrammarQuizSession {
         - If their answer correctly uses the target grammar form (even with minor surface \
         differences like spacing or politeness level): emit SCORE immediately.
         - If their answer is grammatically correct Japanese but uses a DIFFERENT construction \
-        (e.g. ことができる instead of the potential verb form): do NOT emit SCORE yet. \
+        (e.g. a different construction that expresses the same meaning): do NOT emit SCORE yet. \
         Acknowledge that their answer is valid Japanese, but explain that this exercise is testing \
         the target grammar form specifically. Ask them to rephrase using that form. Wait for their \
         next attempt before scoring.
@@ -571,7 +583,7 @@ final class GrammarQuizSession {
         unnatural phrasing) as brief coaching notes — but these do not lower the SCORE for the \
         target grammar.
         - If their answer is grammatically correct Japanese but uses a DIFFERENT construction \
-        (e.g. ことができる instead of the potential verb form): do NOT emit SCORE yet. \
+        (e.g. a different construction that expresses the same meaning): do NOT emit SCORE yet. \
         Acknowledge that their answer is valid Japanese, but explain that this exercise is testing \
         the target grammar form specifically. Ask them to rephrase using that form. Also note any \
         other errors you see. Wait for their next attempt before scoring.
