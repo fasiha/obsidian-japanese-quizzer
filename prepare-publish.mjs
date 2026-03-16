@@ -4,14 +4,13 @@
  *
  * Requirements per file:
  *   - `llm-review: true` in YAML frontmatter
- *   - `title: ...` in YAML frontmatter (required — used as source label in vocab.json)
  *   - All vocab bullets must resolve to exactly one JMDict entry
  *
  * Output: vocab.json at project root
  * {
  *   "generatedAt": "<ISO timestamp>",
- *   "stories": [{ "title": "..." }],
- *   "words": [{ "id": "1234567", "sources": ["分章読解3"] }]
+ *   "stories": [{ "title": "path/to/File" }],
+ *   "words": [{ "id": "1234567", "sources": ["path/to/File"] }]
  * }
  *
  * Words appearing in multiple stories accumulate sources.
@@ -45,7 +44,6 @@ function toHiragana(str) {
     String.fromCharCode(c.charCodeAt(0) - 0x60),
   );
 }
-
 
 /**
  * Load JmdictFurigana.json and return a Map<text, entry[]> for fast lookup by
@@ -211,8 +209,9 @@ function extractVocabBullets(content) {
     const inner = match[1];
     if (!SUMMARY_REGEXP.test(inner)) continue;
     const openingTagLen = match[0].length - inner.length - "</details>".length;
-    const innerStartLine =
-      content.slice(0, match.index + openingTagLen).split("\n").length;
+    const innerStartLine = content
+      .slice(0, match.index + openingTagLen)
+      .split("\n").length;
     const innerLines = inner.split("\n");
     for (let i = 0; i < innerLines.length; i++) {
       const trimmed = innerLines[i].trim();
@@ -243,12 +242,7 @@ for (const filePath of mdFiles) {
 
   const relPath = path.relative(projectRoot, filePath);
 
-  if (!fm.title) {
-    errors.push(`${relPath}: missing 'title' in frontmatter`);
-    continue;
-  }
-
-  const title = fm.title;
+  const title = relPath.replace(/\.md$/i, "");
   if (!stories.find((s) => s.title === title)) {
     stories.push({ title });
   }
@@ -371,7 +365,11 @@ const grammarOutput = {
 // read the latest topics even if this script exits with an error below.
 
 // Validate grammar/grammar-equivalences.json covers all grammar topics
-const equivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
+const equivPath = path.join(
+  projectRoot,
+  "grammar",
+  "grammar-equivalences.json",
+);
 let grammarEquivalencesRaw;
 try {
   grammarEquivalencesRaw = JSON.parse(readFileSync(equivPath, "utf-8"));
