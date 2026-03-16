@@ -304,7 +304,7 @@ Three items that should be resolved before Phase 1B, in this order:
   - [x] **4. Extend `/cluster-grammar-topics` skill** — after clustering, enriches new
     groups. Added critical-evaluation directive and self-review step to improve
     description quality (avoid textbook oversimplifications, precise cautions).
-  - [ ] **5. Wire descriptions into quiz prompts** — update
+  - [x] **5. Wire descriptions into quiz prompts** — update
     `GrammarQuizSession.systemPrompt()` to inject `summary`, `subUses`, and `cautions`
     from the topic's equivalence group. The iOS app fetches `grammar/grammar-equivalences.json`
     alongside `grammar.json` (new `GrammarSync` fetch); `GrammarTopic` gains optional

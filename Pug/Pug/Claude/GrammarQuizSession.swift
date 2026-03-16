@@ -142,6 +142,19 @@ final class GrammarQuizSession {
         var metaLine = "Level: \(item.level) | Source: \(sourceName)"
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
+        // Build description block from equivalence-group data (may be absent for stub or unsynced topics).
+        var descriptionBlock = ""
+        if let summary = item.summary {
+            var lines = "Description: \(summary)"
+            if let subUses = item.subUses, !subUses.isEmpty {
+                lines += "\nSub-uses:\n" + subUses.map { "- \($0)" }.joined(separator: "\n")
+            }
+            if let cautions = item.cautions, !cautions.isEmpty {
+                lines += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")
+            }
+            descriptionBlock = "\n" + lines
+        }
+
         // Verb-variety nudge is only relevant for generation calls, not grading.
         let quirkyNote = isGenerating ? "\nVary the verb and setting; 食べる, 飲む, and 泳ぐ are overused." : ""
         let extraTopicsLine: String
@@ -251,7 +264,7 @@ final class GrammarQuizSession {
         let header = """
         You are quizzing an English-speaking student who is learning Japanese grammar.
         \(topicLine)
-        \(metaLine)
+        \(metaLine)\(descriptionBlock)
         Memory: \(ebisuLine)
         \(facetRule)
         \(extraTopicsLine)

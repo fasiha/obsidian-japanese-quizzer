@@ -41,6 +41,12 @@ struct GrammarQuizItem: Identifiable {
     /// Recognition: 1 = multiple choice, 2 = free text (LLM graded with SCORE).
     let tier: Int
 
+    // Description fields from grammar-equivalences.json (nil when not yet synced or unavailable).
+    let summary: String?
+    let subUses: [String]?
+    let cautions: [String]?
+    let isStub: Bool?
+
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
     }
@@ -161,7 +167,11 @@ struct GrammarQuizContext {
                     facet:               r.quizType,
                     status:              .reviewed(recall: recall, isFree: isFree, halflife: r.t),
                     extraGrammarTopics:  extraGrammarTopics,
-                    tier:                tier
+                    tier:                tier,
+                    summary:             topic.summary,
+                    subUses:             topic.subUses,
+                    cautions:            topic.cautions,
+                    isStub:              topic.isStub
                 ))
             }
         }

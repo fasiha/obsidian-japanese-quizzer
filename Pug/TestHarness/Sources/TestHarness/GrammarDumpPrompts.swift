@@ -93,7 +93,11 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         facet:               path.facet,
         status:              .reviewed(recall: 0.42, isFree: path.isFreeAnswer, halflife: halflife),
         extraGrammarTopics:  extraGrammarTopics,
-        tier:                path.tier
+        tier:                path.tier,
+        summary:             topic.summary,
+        subUses:             topic.subUses,
+        cautions:            topic.cautions,
+        isStub:              topic.isStub
     )
 }
 
