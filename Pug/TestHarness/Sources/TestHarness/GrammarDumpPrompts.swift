@@ -110,24 +110,26 @@ func printGrammarPathHeader(index: Int, total: Int, path: GrammarPromptPath) {
     print("")
 }
 
-// MARK: - Load grammar.json (or synthesize from TSV files)
+// MARK: - Load grammar manifest (from TSV snapshot + equivalences)
 
 /// Load grammar manifest for the test harness.
-/// Starts from grammar/all-topics.json (all 1400+ topics from the three TSV databases),
-/// then overlays grammar.json on top where it exists — grammar.json carries richer metadata
-/// (equivalenceGroup, sources) for topics that have been annotated in Markdown files.
-/// This lets the test harness run against any topic ID without requiring
-/// `prepare-publish.mjs` to have been run first.
+/// Builds entirely from grammar/all-topics.json (all 1400+ topics from the three TSV databases)
+/// plus grammar/grammar-equivalences.json for descriptions (summary/subUses/cautions).
+/// Does NOT load grammar.json — that file is personal/user-specific and not needed here.
 func loadGrammarManifest(findFile: (String) -> String?) -> GrammarManifest? {
     guard let base = loadGrammarManifestFromTSVs(findFile: findFile) else { return nil }
-    var merged = base.topics
-    if let path = findFile("grammar.json"),
-       let data = FileManager.default.contents(atPath: path),
-       let annotated = try? JSONDecoder().decode(GrammarManifest.self, from: data) {
-        // Overlay annotated topics (richer metadata: equivalenceGroup, sources) onto the base.
-        for (key, topic) in annotated.topics { merged[key] = topic }
+    var manifest = GrammarManifest(generatedAt: base.generatedAt, sources: base.sources, topics: base.topics)
+    if let groups = loadEquivalenceGroups(findFile: findFile) {
+        GrammarSync.mergeDescriptions(into: &manifest, from: groups)
     }
-    return GrammarManifest(generatedAt: base.generatedAt, sources: base.sources, topics: merged)
+    return manifest
+}
+
+/// Load grammar/grammar-equivalences.json, returning nil if not found or unparseable.
+func loadEquivalenceGroups(findFile: (String) -> String?) -> [GrammarEquivalenceGroup]? {
+    guard let path = findFile("grammar/grammar-equivalences.json"),
+          let data = FileManager.default.contents(atPath: path) else { return nil }
+    return try? JSONDecoder().decode([GrammarEquivalenceGroup].self, from: data)
 }
 
 /// Load grammar/all-topics.json — a pre-generated snapshot of every topic from all three TSV

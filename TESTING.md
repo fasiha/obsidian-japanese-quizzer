@@ -128,11 +128,10 @@ Claude emits one `PASSIVE: <prefixed-topic-id> <score>` line per additional enro
 
 **`--extra-grammar id1,id2` flag**: comma-separated list of grammar topic IDs that the student is assumed to know well. These are injected as extra grammar context into all system prompts, and specifically trigger the `GRAMMAR_TOPICS:` line in tier-3 production and tier-2 recognition stem-generation requests. Haiku uses this list to weave those known grammar patterns into the generated sentence, then names which ones it used so the grading step can award passive Ebisu updates. Topic IDs must be valid prefixed IDs present in `grammar.json` (e.g. `bunpro:causative`); unknown IDs produce a warning and are skipped. When scaffolding is empty, no `GRAMMAR_TOPICS:` line is requested and no passive updates are possible.
 
-**`--enrich` flag** (future, see TODO-grammar.md Phase 1A.5 step 5): if the topic's
-equivalence group has no enriched description in `grammar/grammar-equivalences.json`, passing
-`--enrich` triggers on-demand stub generation via `enrich-grammar-descriptions.mjs`
-before running the quiz. Without `--enrich`, a missing description prints a warning but
-does not block the test run — the quiz prompt falls back to title + level only.
+**Missing description warning**: if the topic's equivalence group has no description in
+`grammar/grammar-equivalences.json` (or the description is a stub), a warning is printed
+on stderr but the test run continues — the quiz prompt falls back to title + level only.
+To generate or improve a description, run `/cluster-grammar-topics`.
 
 **Required additional file** (searched by walking up from cwd):
 - `grammar.json` — required for grammar mode; run `node prepare-publish.mjs` to generate it.

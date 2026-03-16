@@ -301,22 +301,24 @@ Three items that should be resolved before Phase 1B, in this order:
     `/cluster-grammar-topics` skill fetches Bunpro/St Olaf pages, calls Claude to
     produce summary/subUses/cautions, then writes back via `--write` mode.
     Sets `stub: true` if no content sentences were found.
-  - [x] **4. Extend `/cluster-grammar-topics` skill** — after clustering, enriches new
-    groups. Added critical-evaluation directive and self-review step to improve
-    description quality (avoid textbook oversimplifications, precise cautions).
+  - [x] **4. Extend `/cluster-grammar-topics` skill** — fetches reference URLs before
+    clustering (so equivalence decisions are well-informed), then enriches descriptions
+    for new and changed groups. Added critical-evaluation directive and self-review step
+    to improve description quality (avoid textbook oversimplifications, precise cautions).
   - [x] **5. Wire descriptions into quiz prompts** — update
     `GrammarQuizSession.systemPrompt()` to inject `summary`, `subUses`, and `cautions`
     from the topic's equivalence group. The iOS app fetches `grammar/grammar-equivalences.json`
     alongside `grammar.json` (new `GrammarSync` fetch); `GrammarTopic` gains optional
     description fields populated at sync time. Pass `stub: true` topics through
     unchanged (Haiku still gets a reasonable description).
-  - [ ] **6. TestHarness: load `grammar/grammar-equivalences.json` directly** — remove
+  - [x] **6. TestHarness: load `grammar/grammar-equivalences.json` directly** — removed
     the `grammar.json` overlay path in `GrammarDumpPrompts.swift`. TestHarness builds its
     manifest from TSV files + `grammar/grammar-equivalences.json` only, never needing
     `grammar.json` (which is personal/user-specific). When a topic's equivalence group has
-    no description (or `stub: true`), print a warning and continue (quiz works without
-    descriptions, just less informative prompts). Add `--enrich` flag: calls
-    `enrich-grammar-descriptions.mjs` on demand to generate a stub for the requested topic.
+    no description (or `stub: true`), prints a warning on stderr and continues (quiz works
+    without descriptions, just less informative prompts). No `--enrich` flag — the
+    `/cluster-grammar-topics` skill handles enrichment end-to-end via
+    `enrich-grammar-descriptions.mjs`; manual invocation of that script is never needed.
   - [ ] **7. Feed review notes back into generation** — update generation prompts to
     accept a "recently tested sub-uses" list (from `reviews.notes`) and instruct Haiku
     to prioritize untested sub-uses. Update grading prompts to always note which sub-use

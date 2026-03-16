@@ -172,6 +172,15 @@ if isGrammarMode {
         exit(1)
     }
 
+    // Warn when description is missing or was generated without user content sentences (stub).
+    if topic.summary == nil {
+        fputs("Warning: topic '\(topicId)' has no description in grammar/grammar-equivalences.json.\n", stderr)
+        fputs("  Quiz prompts will be less informative. Run /cluster-grammar-topics to enrich it.\n", stderr)
+    } else if topic.isStub == true {
+        fputs("Warning: topic '\(topicId)' description is a stub (generated without user content sentences).\n", stderr)
+        fputs("  Annotate the topic in a Markdown file and re-run /cluster-grammar-topics to improve it.\n", stderr)
+    }
+
     // Resolve --extra-grammar topic1,topic2 into GrammarExtraTopic values.
     // Unknown IDs are warned about but not fatal, so the user can still test with partial lists.
     var extraGrammarTopics: [GrammarExtraTopic] = []
