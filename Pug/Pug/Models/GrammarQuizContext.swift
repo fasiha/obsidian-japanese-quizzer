@@ -212,16 +212,13 @@ extension QuizDB {
                 ORDER BY word_id, quiz_type, timestamp DESC
                 """)
             var result: [String: [String]] = [:]
-            var counts: [String: Int] = [:]
             for row in rows {
                 guard let wid  = row["word_id"]  as? String,
                       let qt   = row["quiz_type"] as? String,
                       let note = row["notes"]     as? String else { continue }
                 let key = "\(wid):\(qt)"
-                let count = counts[key, default: 0]
-                if count < limit {
+                if result[key, default: []].count < limit {
                     result[key, default: []].append(note)
-                    counts[key] = count + 1
                 }
             }
             return result

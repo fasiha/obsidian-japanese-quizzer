@@ -162,23 +162,11 @@ final class GrammarQuizSession {
         var recentNotesBlock = ""
         if isGenerating && !item.recentNotes.isEmpty {
             let list = item.recentNotes.map { "- \($0)" }.joined(separator: "\n")
-            recentNotesBlock = "\nRecently exercised sub-uses (do not repeat; choose a different sub-use or construction this time):\n\(list)"
+            recentNotesBlock = "\nRecently exercised sub-uses (prefer a different sub-use; if all have been recently exercised, any is fine):\n\(list)"
         }
 
         // Verb-variety nudge is only relevant for generation calls, not grading.
         let quirkyNote = isGenerating ? "\nVary the verb and setting; 食べる, 飲む, and 泳ぐ are overused." : ""
-        let extraTopicsLine: String
-        if extraGrammarTopics.isEmpty {
-            extraTopicsLine = quirkyNote
-        } else {
-            let list = extraGrammarTopics.prefix(8)
-                .map { t -> String in
-                    if let s = t.summary { return "- \(t.topicId) — \(t.titleEn): \(s)" }
-                    return "- \(t.topicId) — \(t.titleEn)"
-                }
-                .joined(separator: "\n")
-            extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)\(quirkyNote)"
-        }
 
         // Whether this generation call is for a free-text stem (no choices needed)
         // rather than a multiple-choice question.
@@ -279,8 +267,7 @@ final class GrammarQuizSession {
         \(topicLine)
         \(metaLine)\(descriptionBlock)
         Memory: \(ebisuLine)
-        \(facetRule)
-        \(extraTopicsLine)\(recentNotesBlock)
+        \(facetRule)\(quirkyNote)\(recentNotesBlock)
         """
 
         if isGenerating && isFreeTextStemGeneration {
@@ -326,6 +313,25 @@ final class GrammarQuizSession {
         }
     }
 
+    // MARK: - Sub-use instruction (shared across generation prompts)
+
+    /// Instruction for the `"sub_use"` JSON field in multiple-choice / fill-in-the-blank generation.
+    private let subUseJsonInstruction = """
+        - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
+        (e.g. "godan potential affirmative" or "negative inability"). Prefer a sub-use not \
+        already listed under "Recently exercised sub-uses" in the system prompt; if all have \
+        been recently exercised, any sub-use is fine.
+        """
+
+    /// Instruction for the `SUB_USE:` line in free-text stem generation.
+    private let subUseFreeTextInstruction = """
+        On the final line, write: SUB_USE: <phrase>
+        where <phrase> is 5 words or fewer naming the specific sub-use targeted \
+        (e.g. "godan potential affirmative" or "negative inability"). Prefer a sub-use not \
+        already listed under "Recently exercised sub-uses" in the system prompt; if all have \
+        been recently exercised, any sub-use is fine.
+        """
+
     // MARK: - Question request (user turn for generation)
 
     /// Build the user message that asks Claude to generate a multiple-choice question.
@@ -352,9 +358,7 @@ final class GrammarQuizSession {
                 - "sentence" is always empty string for tier 1.
                 - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
                 - Each choice is a 1-element array containing the full Japanese sentence.
-                - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
-                (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
-                sub-use already listed in the system prompt under "Recently exercised sub-uses".
+                \(subUseJsonInstruction)
                 """
             } else {
                 return """
@@ -371,9 +375,7 @@ final class GrammarQuizSession {
                 - "choices" has exactly ONE entry: the correct answer. No distractors.
                 - Each choice is an array with one element per gap (e.g. ["弾けます"] for one gap, ["し","し"] for two gaps).
                 - "correct" is always 0.
-                - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
-                (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
-                sub-use already listed in the system prompt under "Recently exercised sub-uses".
+                \(subUseJsonInstruction)
                 """
             }
         case "recognition":
@@ -394,9 +396,7 @@ final class GrammarQuizSession {
             - "stem": the Japanese sentence from Step 1 — no English.
             - Place the correct translation at a randomly chosen index (0–3) and record it in "correct".
             - Each choice is a 1-element array containing the English translation.
-            - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
-            (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
-            sub-use already listed in the system prompt under "Recently exercised sub-uses".
+            \(subUseJsonInstruction)
             """
         default:
             return """
@@ -432,10 +432,7 @@ final class GrammarQuizSession {
         what the student should "express", "describe", "explain", or "demonstrate".
         Think step by step if helpful, then write --- on its own line, followed by the \
         English text (no labels, no JSON).\(grammarTopicsInstruction)
-        On the final line, write: SUB_USE: <phrase>
-        where <phrase> is 5 words or fewer naming the specific sub-use targeted \
-        (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
-        sub-use already listed under "Recently exercised sub-uses" in the system prompt.
+        \(subUseFreeTextInstruction)
         """
     }
 
@@ -460,10 +457,7 @@ final class GrammarQuizSession {
         The sentence must NOT contain English.
         Think step by step if helpful, then write --- on its own line, followed by the \
         Japanese sentence (no labels, no furigana annotations).\(grammarTopicsInstruction)
-        On the final line, write: SUB_USE: <phrase>
-        where <phrase> is 5 words or fewer naming the specific sub-use targeted \
-        (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
-        sub-use already listed under "Recently exercised sub-uses" in the system prompt.
+        \(subUseFreeTextInstruction)
         """
     }
 
@@ -944,6 +938,9 @@ final class GrammarQuizSession {
 // MARK: - String helper
 
 private extension String {
-    /// Returns nil when the string is empty after trimming, otherwise self.
-    var nonEmptyOrNil: String? { isEmpty ? nil : self }
+    /// Returns nil when the string is empty (or whitespace-only), otherwise the trimmed string.
+    var nonEmptyOrNil: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
 }
