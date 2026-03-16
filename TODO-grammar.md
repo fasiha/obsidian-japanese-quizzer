@@ -353,10 +353,16 @@ Three items that should be resolved before Phase 1B, in this order:
     without descriptions, just less informative prompts). No `--enrich` flag — the
     `/cluster-grammar-topics` skill handles enrichment end-to-end via
     `enrich-grammar-descriptions.mjs`; manual invocation of that script is never needed.
-  - [ ] **7. Feed review notes back into generation** — update generation prompts to
-    accept a "recently tested sub-uses" list (from `reviews.notes`) and instruct Haiku
-    to prioritize untested sub-uses. Update grading prompts to always note which sub-use
-    was exercised in the `notes` field.
+  - [x] **7. Feed review notes back into generation** — generation prompts accept a
+    `recentNotes: [String]` list (from `reviews.notes`) and instruct Haiku to avoid
+    repeating those sub-uses. All generation paths (multiple-choice JSON and free-text
+    stems) emit the targeted sub-use: `"sub_use"` field in the JSON response, or
+    `SUB_USE:` line after the `---` divider. Parsed into
+    `GrammarMultipleChoiceQuestion.subUse` and the free-text stem return tuple.
+    `GrammarQuizContext.build()` loads notes via `QuizDB.grammarAllRecentNotes()` and
+    passes them to `GrammarQuizItem.recentNotes`. TestHarness: `--recent-note "phrase"`
+    (repeatable) mocks prior notes. Storing `subUse` in `reviews.notes` is Phase 1B
+    (iOS UI writes reviews).
 
 - [ ] **VOCAB_ASSUMED contract** — define which generation paths emit a
   `VOCAB_ASSUMED: word1,word2,...` line, how the app parses and stores it alongside the

@@ -29,9 +29,9 @@ guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--extra-grammar id1,id2]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
     exit(1)
 }
 
@@ -90,6 +90,19 @@ if let mIdx = args.firstIndex(of: "--extra-grammar-mode"), mIdx + 1 < args.count
     }
 } else {
     extraGrammarMode = .all
+}
+
+// --recent-note "text": simulate a mocked review note for the grammar topic (can be repeated).
+// Passed to buildGrammarQuizItem so the generation system prompt shows recently tested sub-uses.
+var recentNotesArg: [String] = []
+var argIdx = 0
+while argIdx < args.count {
+    if args[argIdx] == "--recent-note" && argIdx + 1 < args.count {
+        recentNotesArg.append(args[argIdx + 1])
+        argIdx += 2
+    } else {
+        argIdx += 1
+    }
 }
 
 // --repeat N: how many times to run each generation path (default 1)
@@ -237,9 +250,15 @@ if isGrammarMode {
         print("Extra grammar topics: \(extraGrammarTopics.map { $0.topicId }.joined(separator: ", "))")
         print("")
     }
+    if !recentNotesArg.isEmpty {
+        print("Recent notes (mocked): \(recentNotesArg.joined(separator: "; "))")
+        print("")
+    }
 
     if isDumpMode {
-        dumpGrammarPrompts(topic: topic, quizDB: grammarDB, extraGrammarTopics: extraGrammarTopics)
+        dumpGrammarPrompts(topic: topic, quizDB: grammarDB,
+                           extraGrammarTopics: extraGrammarTopics,
+                           recentNotes: recentNotesArg)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -249,7 +268,8 @@ if isGrammarMode {
         await liveGrammarPrompts(topic: topic, apiKey: apiKey, model: liveModel,
                                   quizDB: grammarDB, repeatCount: repeatCount,
                                   genOnly: isGenOnly, onlyFacet: liveOnlyFacet,
-                                  extraGrammarTopics: extraGrammarTopics)
+                                  extraGrammarTopics: extraGrammarTopics,
+                                  recentNotes: recentNotesArg)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -263,7 +283,8 @@ if isGrammarMode {
 
     let item = buildGrammarQuizItem(topic: topic,
                                     path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"),
-                                    extraGrammarTopics: extraGrammarTopics)
+                                    extraGrammarTopics: extraGrammarTopics,
+                                    recentNotes: recentNotesArg)
     let start = Date()
     do {
         let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)

@@ -33,6 +33,9 @@ struct GrammarMultipleChoiceQuestion: Equatable {
     let sentence: String?   // Japanese sentence with ___ gap(s) (production only; nil for recognition)
     let choices: [[String]] // 4 options for multiple choice, 1 option for fill-in-the-blank; each sub-array has one element per gap
     let correctIndex: Int   // 0–3 for multiple choice, always 0 for fill-in-the-blank
+    /// The specific sub-use or construction targeted by this question (from the "sub_use" JSON field).
+    /// Stored in reviews.notes after the student answers, so future generation can vary sub-uses.
+    let subUse: String?
 
     /// Number of gaps this question expects (derived from the first choice).
     var gapCount: Int { choices.first?.count ?? 1 }
@@ -155,11 +158,18 @@ final class GrammarQuizSession {
             descriptionBlock = "\n" + lines
         }
 
+        // Recent sub-uses: injected only in generation calls to guide diversity.
+        var recentNotesBlock = ""
+        if isGenerating && !item.recentNotes.isEmpty {
+            let list = item.recentNotes.map { "- \($0)" }.joined(separator: "\n")
+            recentNotesBlock = "\nRecently exercised sub-uses (do not repeat; choose a different sub-use or construction this time):\n\(list)"
+        }
+
         // Verb-variety nudge is only relevant for generation calls, not grading.
         let quirkyNote = isGenerating ? "\nVary the verb and setting; 食べる, 飲む, and 泳ぐ are overused." : ""
         let extraTopicsLine: String
         if extraGrammarTopics.isEmpty {
-            extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple).\(quirkyNote)"
+            extraTopicsLine = quirkyNote
         } else {
             let list = extraGrammarTopics.prefix(8)
                 .map { t -> String in
@@ -270,7 +280,7 @@ final class GrammarQuizSession {
         \(metaLine)\(descriptionBlock)
         Memory: \(ebisuLine)
         \(facetRule)
-        \(extraTopicsLine)
+        \(extraTopicsLine)\(recentNotesBlock)
         """
 
         if isGenerating && isFreeTextStemGeneration {
@@ -337,11 +347,14 @@ final class GrammarQuizSession {
                   Name the grammar form each distractor uses.
                 Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
 
-                Then end with a ```json code block:
-                {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
-                - "sentence" is empty string (no gap — the whole sentence is the choice).
+                Finally, end with a ```json code block:
+                {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>,"sub_use":"<phrase>"}
+                - "sentence" is always empty string for tier 1.
                 - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
                 - Each choice is a 1-element array containing the full Japanese sentence.
+                - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
+                (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
+                sub-use already listed in the system prompt under "Recently exercised sub-uses".
                 """
             } else {
                 return """
@@ -353,11 +366,14 @@ final class GrammarQuizSession {
                 Step 3 — Mark the gap: Replace every occurrence of the target grammar form(s) with \(grammarGapToken). Include enough surrounding text that the gap is unambiguous — for conjugation grammar, include any attached auxiliary inside the gap (彼女はピアノが\(grammarGapToken)。 not 彼女はピアノが\(grammarGapToken)ない。). For multi-slot grammar (e.g. 〜し、〜し), mark every slot.
                 Step 4 — Self-check: Substitute the correct answer back into the gap(s) — does it read naturally? Is there only one plausible correct answer for each gap?
 
-                Then end with a ```json code block:
-                {"stem":"<Step 1>","sentence":"<Step 3 with \(grammarGapToken) gaps>","choices":[["<correct form(s)>"]],"correct":0}
+                Finally, end with a ```json code block:
+                {"stem":"<Step 1>","sentence":"<Step 3 with \(grammarGapToken) gaps>","choices":[["<correct form(s)>"]],"correct":0,"sub_use":"<phrase>"}
                 - "choices" has exactly ONE entry: the correct answer. No distractors.
                 - Each choice is an array with one element per gap (e.g. ["弾けます"] for one gap, ["し","し"] for two gaps).
                 - "correct" is always 0.
+                - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
+                (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
+                sub-use already listed in the system prompt under "Recently exercised sub-uses".
                 """
             }
         case "recognition":
@@ -373,11 +389,14 @@ final class GrammarQuizSession {
               (c) NOT be a valid alternative way to translate the stem — if a native speaker could reasonably accept it, revise it.
             Step 4 — Self-check: (a) Does any distractor express a meaning close enough to the correct answer that a student could reasonably argue for it? If yes, revise. (b) Are all four choices clearly different in meaning, not just in nuance?
 
-            Then end with a ```json code block:
-            {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>}
+            Finally, end with a ```json code block:
+            {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>,"sub_use":"<phrase>"}
             - "stem": the Japanese sentence from Step 1 — no English.
             - Place the correct translation at a randomly chosen index (0–3) and record it in "correct".
             - Each choice is a 1-element array containing the English translation.
+            - "sub_use": 5 words or fewer naming the specific sub-use this question targets \
+            (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
+            sub-use already listed in the system prompt under "Recently exercised sub-uses".
             """
         default:
             return """
@@ -411,8 +430,12 @@ final class GrammarQuizSession {
         The English must NOT contain Japanese.
         Keep it to one or two sentences. Write a concrete scenario — not instructions about \
         what the student should "express", "describe", "explain", or "demonstrate".
-        Think step by step if helpful, then write --- on its own line, followed by only \
-        the English text (no labels, no JSON).\(grammarTopicsInstruction)
+        Think step by step if helpful, then write --- on its own line, followed by the \
+        English text (no labels, no JSON).\(grammarTopicsInstruction)
+        On the final line, write: SUB_USE: <phrase>
+        where <phrase> is 5 words or fewer naming the specific sub-use targeted \
+        (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
+        sub-use already listed under "Recently exercised sub-uses" in the system prompt.
         """
     }
 
@@ -435,8 +458,12 @@ final class GrammarQuizSession {
         return """
         Generate ONE Japanese sentence that naturally uses the target grammar.
         The sentence must NOT contain English.
-        Think step by step if helpful, then write --- on its own line, followed by only \
-        the Japanese sentence (no labels, no JSON, no furigana annotations).\(grammarTopicsInstruction)
+        Think step by step if helpful, then write --- on its own line, followed by the \
+        Japanese sentence (no labels, no furigana annotations).\(grammarTopicsInstruction)
+        On the final line, write: SUB_USE: <phrase>
+        where <phrase> is 5 words or fewer naming the specific sub-use targeted \
+        (e.g. "godan potential affirmative" or "negative inability"). Do NOT repeat a \
+        sub-use already listed under "Recently exercised sub-uses" in the system prompt.
         """
     }
 
@@ -444,7 +471,7 @@ final class GrammarQuizSession {
     /// Returns the LLM-generated stem string, any grammar topics the LLM identified
     /// in the sentence, and the raw conversation for caching.
     func generateFreeTextStemForTesting(item: GrammarQuizItem)
-        async throws -> (stem: String, grammarTopics: [String], conversation: [AnthropicMessage])
+        async throws -> (stem: String, grammarTopics: [String], subUse: String?, conversation: [AnthropicMessage])
     {
         let system = systemPrompt(for: item, isGenerating: true)
         let request: String
@@ -487,6 +514,7 @@ final class GrammarQuizSession {
         }
 
         var grammarTopics: [String] = []
+        var subUse: String? = nil
         let lines = content.components(separatedBy: .newlines)
         var stemLines: [String] = []
         for line in lines {
@@ -504,6 +532,10 @@ final class GrammarQuizSession {
                         .map { $0.trimmingCharacters(in: .whitespaces) }
                         .filter { !$0.isEmpty }
                 }
+            } else if trimmed.hasPrefix("SUB_USE:") {
+                subUse = trimmed.dropFirst("SUB_USE:".count)
+                    .trimmingCharacters(in: .whitespaces)
+                    .nonEmptyOrNil
             } else {
                 stemLines.append(line)
             }
@@ -511,7 +543,7 @@ final class GrammarQuizSession {
         let stem = stemLines.joined(separator: "\n")
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        return (stem, grammarTopics, msgs)
+        return (stem, grammarTopics, subUse, msgs)
     }
 
     /// Grade a fill-in-the-blank (tier-2 production) answer by string matching.
@@ -677,11 +709,25 @@ final class GrammarQuizSession {
         if let href = item.href, !href.isEmpty { metaLine += " | Reference: \(href)" }
 
         let grammarTopicsLine: String
+        let passiveGradingBlock: String
         if grammarTopics.isEmpty {
             grammarTopicsLine = ""
+            passiveGradingBlock = ""
         } else {
             grammarTopicsLine = "\nExtra grammar topics present in the exercise sentence (passively grade these too):\n"
                 + grammarTopics.map { "- \($0)" }.joined(separator: "\n")
+            passiveGradingBlock = """
+
+            Opportunistic passive grading: on the same turn you emit SCORE, if the student's response \
+            also demonstrates knowledge of grammar topics from the list above, emit one PASSIVE line \
+            per topic:
+              PASSIVE: <prefixed-topic-id> <score>
+            Only emit PASSIVE for topics where the student demonstrates correct usage. \
+            If a non-target grammar topic is used incorrectly, do NOT emit a PASSIVE line for it — \
+            the student's attention is on the main quiz topic, so errors in other grammar may reflect \
+            inattention rather than lack of knowledge. Mention the error in your coaching notes, but \
+            skip the PASSIVE update.
+            """
         }
 
         return """
@@ -719,16 +765,7 @@ final class GrammarQuizSession {
         - 0.1–0.3: shows partial understanding but could not produce the target grammar form
         - 0.0: completely wrong, off-topic, or gave up
 
-        Opportunistic passive grading: on the same turn you emit SCORE, if the student's response \
-        also demonstrates knowledge of grammar topics from the list above, emit one PASSIVE line \
-        per topic:
-          PASSIVE: <prefixed-topic-id> <score>
-        Only emit PASSIVE for topics where the student demonstrates correct usage. \
-        If a non-target grammar topic is used incorrectly, do NOT emit a PASSIVE line for it — \
-        the student's attention is on the main quiz topic, so errors in other grammar may reflect \
-        inattention rather than lack of knowledge. Mention the error in your coaching notes, but \
-        skip the PASSIVE update.
-
+        \(passiveGradingBlock)
         Never emit SCORE on a line by itself. After emitting SCORE, stop — do not ask follow-up \
         questions. The student will ask if they want to discuss further.
         """
@@ -896,7 +933,17 @@ final class GrammarQuizSession {
 
         // "sentence" is present for production fill-in-the-blank, absent for recognition.
         let sentence = obj["sentence"] as? String
+        // "sub_use" names the specific construction targeted (e.g. "godan potential form").
+        let subUse = (obj["sub_use"] as? String)?.trimmingCharacters(in: .whitespaces).nonEmptyOrNil
         return GrammarMultipleChoiceQuestion(stem: stem, sentence: sentence,
-                                             choices: choices, correctIndex: correctIndex)
+                                             choices: choices, correctIndex: correctIndex,
+                                             subUse: subUse)
     }
+}
+
+// MARK: - String helper
+
+private extension String {
+    /// Returns nil when the string is empty after trimming, otherwise self.
+    var nonEmptyOrNil: String? { isEmpty ? nil : self }
 }

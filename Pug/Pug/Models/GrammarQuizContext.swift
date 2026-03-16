@@ -47,6 +47,9 @@ struct GrammarQuizItem: Identifiable {
     let subUses: [String]?
     let cautions: [String]?
     let isStub: Bool?
+    /// Recent review notes for this topic+facet (from reviews.notes). Used by generation
+    /// prompts to avoid repeating the same sub-use across consecutive quiz sessions.
+    let recentNotes: [String]
 
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
@@ -89,9 +92,10 @@ struct GrammarQuizContext {
     /// Only topics with active ebisu_models rows (word_type='grammar') are included.
     /// Items are sorted by ascending recall probability (most urgent first).
     static func build(db: QuizDB, manifest: GrammarManifest) async throws -> [GrammarQuizItem] {
-        let records  = try await db.enrolledGrammarRecords()
-        let counts   = try await db.grammarReviewCounts()
-        let now      = Date()
+        let records   = try await db.enrolledGrammarRecords()
+        let counts    = try await db.grammarReviewCounts()
+        let allNotes  = try await db.grammarAllRecentNotes()
+        let now       = Date()
 
         // Group records by topic ID, tracking facets.
         var byTopic: [String: [EbisuRecord]] = [:]
@@ -137,6 +141,7 @@ struct GrammarQuizContext {
 
                 let isFree = tier >= 2  // used only to satisfy QuizStatus shape; isFreeAnswer is tier-based
                 let equivalenceGroupIds = topic.equivalenceGroup ?? []
+                let recentNotes = allNotes["\(topicId):\(r.quizType)"] ?? []
 
                 items.append(GrammarQuizItem(
                     topicId:             topicId,
@@ -153,7 +158,8 @@ struct GrammarQuizContext {
                     summary:             topic.summary,
                     subUses:             topic.subUses,
                     cautions:            topic.cautions,
-                    isStub:              topic.isStub
+                    isStub:              topic.isStub,
+                    recentNotes:         recentNotes
                 ))
             }
         }
@@ -189,6 +195,34 @@ extension QuizDB {
                       let qt  = row["quiz_type"] as? String,
                       let cnt = row["cnt"] as? Int64 else { continue }
                 result["\(wid):\(qt)"] = Int(cnt)
+            }
+            return result
+        }
+    }
+
+    /// Recent review notes for all grammar topics and facets, keyed by "topicId:facet".
+    /// Returns up to `limit` notes per key, ordered most-recent first.
+    /// Used by GrammarQuizContext.build() to populate GrammarQuizItem.recentNotes.
+    func grammarAllRecentNotes(limit: Int = 3) async throws -> [String: [String]] {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT word_id, quiz_type, notes FROM reviews
+                WHERE word_type = 'grammar'
+                  AND notes IS NOT NULL AND notes != ''
+                ORDER BY word_id, quiz_type, timestamp DESC
+                """)
+            var result: [String: [String]] = [:]
+            var counts: [String: Int] = [:]
+            for row in rows {
+                guard let wid  = row["word_id"]  as? String,
+                      let qt   = row["quiz_type"] as? String,
+                      let note = row["notes"]     as? String else { continue }
+                let key = "\(wid):\(qt)"
+                let count = counts[key, default: 0]
+                if count < limit {
+                    result[key, default: []].append(note)
+                    counts[key] = count + 1
+                }
             }
             return result
         }

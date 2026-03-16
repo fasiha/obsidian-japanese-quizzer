@@ -74,7 +74,8 @@ let allGrammarPaths: [GrammarPromptPath] = [
 
 /// Build a GrammarQuizItem for a given topic and path.
 func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
-                           extraGrammarTopics: [GrammarExtraTopic] = []) -> GrammarQuizItem {
+                           extraGrammarTopics: [GrammarExtraTopic] = [],
+                           recentNotes: [String] = []) -> GrammarQuizItem {
     // Halflife chosen to sit above the tier-N threshold for realistic prompt content.
     let halflife: Double
     switch path.tier {
@@ -97,7 +98,8 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         summary:             topic.summary,
         subUses:             topic.subUses,
         cautions:            topic.cautions,
-        isStub:              topic.isStub
+        isStub:              topic.isStub,
+        recentNotes:         recentNotes
     )
 }
 
@@ -143,7 +145,8 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
 // MARK: - Dump mode (no API calls)
 
 @MainActor func dumpGrammarPrompts(topic: GrammarTopic, quizDB: QuizDB,
-                                   extraGrammarTopics: [GrammarExtraTopic] = []) {
+                                   extraGrammarTopics: [GrammarExtraTopic] = [],
+                                   recentNotes: [String] = []) {
     let client = AnthropicClient(apiKey: "dummy", model: "dummy")
     let session = GrammarQuizSession(client: client, db: quizDB)
     session.extraGrammarTopics = extraGrammarTopics
@@ -157,6 +160,10 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
     if !extraGrammarTopics.isEmpty {
         print("# Extra grammar topics (\(extraGrammarTopics.count)):")
         for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
+    }
+    if !recentNotes.isEmpty {
+        print("# Recent review notes (mocked via --recent-note):")
+        for n in recentNotes { print("#   \(n)") }
     }
     print("")
     print("# Review each path below. For each, check:")
@@ -174,7 +181,9 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
     }
 
     for (i, path) in paths.enumerated() {
-        let item = buildGrammarQuizItem(topic: topic, path: path, extraGrammarTopics: extraGrammarTopics)
+        let item = buildGrammarQuizItem(topic: topic, path: path,
+                                        extraGrammarTopics: extraGrammarTopics,
+                                        recentNotes: recentNotes)
 
         printGrammarPathHeader(index: i, total: paths.count, path: path)
 
@@ -201,7 +210,7 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
 
         case "fillin-fallback":
             // Show the coaching system prompt with placeholder stem and reference answer.
-            let placeholderStem   = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
+            let placeholderStem   = "[LLM-generated English context, e.g. 'Your friend asks if you want to go to the pool this weekend.']"
             let placeholderRef    = "[correct short form from generation, e.g. '泳げます']"
             let system = session.tier2FallbackSystemPrompt(for: item, stem: placeholderStem,
                                                             referenceAnswer: placeholderRef)
@@ -232,7 +241,7 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
             switch path.facet {
             case "production":
                 // Production tier 3 uses the coaching prompt (multi-turn, like tier 2 fallback).
-                let placeholderStem = "[LLM-generated English context, e.g. 'Describe that you can swim.']"
+                let placeholderStem = "[LLM-generated English context, e.g. 'Your friend asks if you want to go to the pool this weekend.']"
                 let system = session.tier3ProductionGradingSystemPrompt(
                     for: item, stem: placeholderStem,
                     grammarTopics: item.extraGrammarTopics.map { $0.topicId })
@@ -346,7 +355,8 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                     repeatCount: Int = 1,
                                     genOnly: Bool = false,
                                     onlyFacet: String? = nil,
-                                    extraGrammarTopics: [GrammarExtraTopic] = []) async {
+                                    extraGrammarTopics: [GrammarExtraTopic] = [],
+                                    recentNotes: [String] = []) async {
     var allPaths: [GrammarPromptPath]
     if let facet = onlyFacet {
         allPaths = allGrammarPaths.filter { $0.facet == facet }
@@ -376,6 +386,10 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
         print("# Extra grammar topics (\(extraGrammarTopics.count)):")
         for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
     }
+    if !recentNotes.isEmpty {
+        print("# Recent review notes (mocked via --recent-note):")
+        for n in recentNotes { print("#   \(n)") }
+    }
     print("")
 
     var passCount = 0
@@ -383,7 +397,9 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
     var results: [(path: GrammarPromptPath, passed: Bool, issue: String?)] = []
 
     for (i, path) in allPaths.enumerated() {
-        let item  = buildGrammarQuizItem(topic: topic, path: path, extraGrammarTopics: extraGrammarTopics)
+        let item  = buildGrammarQuizItem(topic: topic, path: path,
+                                          extraGrammarTopics: extraGrammarTopics,
+                                          recentNotes: recentNotes)
         printGrammarPathHeader(index: i, total: allPaths.count, path: path)
         let start = Date()
 
@@ -429,6 +445,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                         issues.append("FAIL: choice \(ci) contains no Japanese characters: \(choice[0])")
                                     }
                                 }
+                                if let su = mc.subUse { print("SUB_USE: \(su)") }
                                 print("Whole-sentence choices (\(mc.choices.count)):")
                                 for (ci, choice) in mc.choices.enumerated() {
                                     let marker = ci == mc.correctIndex ? "✓" : " "
@@ -450,6 +467,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                     } else if mc.choices[0].count != gapCount {
                                         issues.append("FAIL: tier-2 correct answer has \(mc.choices[0].count) element(s) but sentence has \(gapCount) gap(s)")
                                     }
+                                    if let su = mc.subUse { print("SUB_USE: \(su)") }
                                     print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(sentence)")
                                     print("Correct answer: \(mc.choices.first?.joined(separator: ", ") ?? "(missing)")")
                                 } else {
@@ -599,11 +617,12 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                 results.append((path: path, passed: fbPassed, issue: fbIssues.first))
 
             case "free-generation":
-                let (stem, _, _) = try await session.generateFreeTextStemForTesting(item: item)
+                let (stem, _, subUse, _) = try await session.generateFreeTextStemForTesting(item: item)
                 let elapsed   = Date().timeIntervalSince(start)
 
                 print("── RESPONSE (generated stem) ──")
                 print(stem)
+                if let su = subUse { print("SUB_USE: \(su)") }
                 print("")
                 print("elapsed: \(String(format: "%.1fs", elapsed))")
 
@@ -637,8 +656,9 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                 // the test passes as long as the response is non-empty and any PASSIVE lines
                 // are well-formed.
                 print("── Generating free-text stem… ──")
-                let (stem, grammarTopics, _) = try await session.generateFreeTextStemForTesting(item: item)
+                let (stem, grammarTopics, subUse, _) = try await session.generateFreeTextStemForTesting(item: item)
                 print("Stem: \(stem)")
+                if let su = subUse { print("SUB_USE: \(su)") }
                 if !grammarTopics.isEmpty {
                     print("Grammar topics: \(grammarTopics.joined(separator: ", "))")
                 }
