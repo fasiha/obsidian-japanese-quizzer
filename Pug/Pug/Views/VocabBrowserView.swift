@@ -26,6 +26,7 @@ struct VocabBrowserView: View {
     @State private var showSettings = false
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
+    @State private var collapsedSections: Set<String> = []  // path keys of collapsed nodes
 
     private var filteredItems: [VocabItem] {
         let f = filter
@@ -64,6 +65,8 @@ struct VocabBrowserView: View {
                     } else {
                         ContentUnavailableView(emptyTitle, systemImage: emptyIcon)
                     }
+                } else if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                    groupedWordList
                 } else {
                     wordList
                 }
@@ -88,7 +91,7 @@ struct VocabBrowserView: View {
         }
     }
 
-    // MARK: - Word list
+    // MARK: - Word list (flat — used when search is active)
 
     private var wordList: some View {
         List(filteredItems) { item in
@@ -98,6 +101,32 @@ struct VocabBrowserView: View {
             .buttonStyle(.plain)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 swipeButtons(for: item)
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    // MARK: - Grouped word list (tree of DisclosureGroups — used when search is inactive)
+
+    /// Alphabetically sorted list of source titles that have at least one word in filteredItems.
+    private var activeSources: [String] {
+        Array(Set(filteredItems.flatMap(\.sources))).sorted()
+    }
+
+    // Note: buildSourceTree recomputes on every redraw. Fine for current corpus sizes
+    // (~hundreds of words). If filter/collapse interactions feel janky with a larger
+    // corpus, cache `sourceTree` as a stored property updated via .onChange(of: filteredItems).
+    private var groupedWordList: some View {
+        let roots = buildSourceTree(sources: activeSources, items: filteredItems)
+        return List {
+            ForEach(roots, id: \.pathKey) { node in
+                SourceSectionView(
+                    node: node,
+                    collapsedSections: $collapsedSections,
+                    selectedItem: $selectedItem
+                ) { item in
+                    swipeButtons(for: item)
+                }
             }
         }
         .listStyle(.plain)
@@ -225,6 +254,143 @@ struct VocabBrowserView: View {
         case .learning:       return "tray"
         case .known:          return "eye.slash"
         case nil:             return "books.vertical"
+        }
+    }
+}
+
+// MARK: - Source tree model
+
+/// A node in the source path tree.
+/// - directory: a path prefix (e.g. "genki-app") containing child nodes
+/// - leaf: a single source title (e.g. "genki-app/L13") with its vocab words
+indirect enum SourceTreeNode {
+    case directory(name: String, pathKey: String, children: [SourceTreeNode])
+    case leaf(title: String, pathKey: String, items: [VocabItem])
+
+    var pathKey: String {
+        switch self {
+        case .directory(_, let key, _): return key
+        case .leaf(_, let key, _): return key
+        }
+    }
+}
+
+/// Build a sorted tree from a list of source title paths and a flat item list.
+/// Paths are split on "/": everything before the last "/" is a directory prefix.
+/// Sources with no "/" become root-level leaves.
+/// Directory nodes are injected when two or more sibling titles share a prefix.
+func buildSourceTree(sources: [String], items: [VocabItem]) -> [SourceTreeNode] {
+    // Map each source title to the items that list it.
+    let itemsBySource: [String: [VocabItem]] = {
+        var dict: [String: [VocabItem]] = [:]
+        for source in sources { dict[source] = [] }
+        for item in items {
+            for source in item.sources where dict[source] != nil {
+                dict[source]!.append(item)
+            }
+        }
+        return dict
+    }()
+
+    // Recursively build nodes for sources that share the given prefix.
+    // `prefix` is the directory path so far (e.g. "genki-app"), or "" for root.
+    func buildNodes(sources: [String], prefix: String) -> [SourceTreeNode] {
+        // Group sources by their next path component after the prefix.
+        // e.g. prefix="" and sources=["genki-app/L00","genki-app/L01","Bunsho Dokkai 3"]
+        // → groups: ["genki-app": ["genki-app/L00","genki-app/L01"], "Bunsho Dokkai 3": ["Bunsho Dokkai 3"]]
+        var groups: [(key: String, sources: [String])] = []
+        var seen: [String: Int] = [:]  // first-component -> index in groups
+
+        for source in sources {
+            let remainder = prefix.isEmpty ? source : String(source.dropFirst(prefix.count + 1))
+            let slashIdx = remainder.firstIndex(of: "/")
+            let firstComponent = slashIdx.map { String(remainder[..<$0]) } ?? remainder
+            let groupKey = prefix.isEmpty ? firstComponent : "\(prefix)/\(firstComponent)"
+
+            if let idx = seen[groupKey] {
+                groups[idx].sources.append(source)
+            } else {
+                seen[groupKey] = groups.count
+                groups.append((key: groupKey, sources: [source]))
+            }
+        }
+
+        // Each group becomes either a leaf (1 source, path == key) or a directory.
+        return groups.map { group in
+            if group.sources.count == 1 && group.sources[0] == group.key {
+                // Leaf: exactly one source maps to this key directly.
+                let title = group.key
+                let words = itemsBySource[title] ?? []
+                return SourceTreeNode.leaf(title: title, pathKey: title, items: words)
+            } else {
+                // Directory: multiple sources share this path prefix.
+                let dirName = group.key.components(separatedBy: "/").last ?? group.key
+                let children = buildNodes(sources: group.sources, prefix: group.key)
+                return SourceTreeNode.directory(name: dirName, pathKey: group.key, children: children)
+            }
+        }
+    }
+
+    return buildNodes(sources: sources, prefix: "")
+}
+
+// MARK: - SourceSectionView
+
+/// Renders one node of the source tree: a DisclosureGroup for directories and
+/// leaf sections, each containing word rows with swipe actions.
+struct SourceSectionView<SwipeContent: View>: View {
+    let node: SourceTreeNode
+    @Binding var collapsedSections: Set<String>
+    @Binding var selectedItem: VocabItem?
+    @ViewBuilder let swipeButtons: (VocabItem) -> SwipeContent
+
+    private var isExpanded: Binding<Bool> {
+        Binding(
+            get: { !collapsedSections.contains(node.pathKey) },
+            set: { expanded in
+                if expanded { collapsedSections.remove(node.pathKey) }
+                else { collapsedSections.insert(node.pathKey) }
+            }
+        )
+    }
+
+    @ViewBuilder var body: some View {
+        switch node {
+        case .directory(let name, _, let children):
+            DisclosureGroup(isExpanded: isExpanded) {
+                ForEach(children, id: \.pathKey) { child in
+                    SourceSectionView(
+                        node: child,
+                        collapsedSections: $collapsedSections,
+                        selectedItem: $selectedItem,
+                        swipeButtons: swipeButtons
+                    )
+                }
+            } label: {
+                Text(name)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .textCase(nil)
+            }
+
+        case .leaf(let title, _, let items):
+            DisclosureGroup(isExpanded: isExpanded) {
+                ForEach(items) { item in
+                    Button { selectedItem = item } label: {
+                        VocabRowView(item: item)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        swipeButtons(item)
+                    }
+                }
+            } label: {
+                // Show only the last path component as the section header.
+                Text(title.components(separatedBy: "/").last ?? title)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .textCase(nil)
+            }
         }
     }
 }

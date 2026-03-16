@@ -332,13 +332,16 @@ stories/
 ```
 
 **`vocab.json`** — extracted from `<details><summary>Vocab</summary>` blocks:
+
+`title` / `sources` values are the Markdown file's path relative to the project root, with the `.md` suffix stripped (e.g. `"genki-app/L13"`, `"Bunsho Dokkai 3"`). No `title:` frontmatter key is needed or used.
+
 ```json
 {
   "generatedAt": "2026-03-04T00:00:00Z",
-  "stories": [{ "title": "分章読解3" }],
+  "stories": [{ "title": "genki-app/L13" }],
   "words": [{
     "id": "1234567",
-    "sources": ["分章読解3"],
+    "sources": ["genki-app/L13"],
     "writtenForms": [{
       "reading": "はいりこむ",
       "forms": [{ "furigana": [{"ruby":"入","rt":"はい"},{"ruby":"り"},{"ruby":"込","rt":"こ"},{"ruby":"む"}], "text": "入り込む" }]
@@ -361,7 +364,7 @@ Used by: vocab browser, enrollment, furigana form picker. Rendered with pure Swi
   `WKUserContentController` for enrollment/quiz actions
 
 Pipeline steps:
-1. Find Markdown files with `llm-review: true` **and** `title:` in frontmatter — block if any `title` is missing
+1. Find Markdown files with `llm-review: true` in frontmatter (no `title:` key needed)
 2. Run check-vocab validation (inline in `prepare-publish.mjs`) — block on failures
 3. Extract `vocab.json` from `<details>` blocks, enrich with JmdictFurigana `writtenForms` → write to project root (`prepare-publish.mjs`)
 4. Push `vocab.json` to GitHub secret Gist via `git` over SSH (`publish.mjs`)
@@ -450,7 +453,7 @@ Pug/                          ← Xcode project root
       WordExploreSession.swift           ✓ free-form Claude chat for a single word
     Views/
       HomeView.swift                     ✓ TabView root: Vocab + Quiz tabs
-      VocabBrowserView.swift             ✓ filterable word list, swipe triage, search
+      VocabBrowserView.swift             ✓ filterable word list, swipe triage, search; grouped by source path (file tree DisclosureGroups) when search is inactive
       WordDetailSheet.swift              ✓ ruby heading, furigana picker, reading/kanji pickers, Claude chat
       QuizView.swift                     ✓ quiz UI (phase state machine)
       SettingsView.swift                 ✓ quiz style (varied/intensive), model picker
