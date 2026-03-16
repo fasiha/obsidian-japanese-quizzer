@@ -182,6 +182,40 @@ which scaffolding topics the sentence exercises. These IDs are passed to the gra
 prompt, which uses them for PASSIVE lines. This avoids the grader guessing topic IDs.
 When scaffolding is empty, no `GRAMMAR_TOPICS` line is requested and no PASSIVE is possible.
 
+### Extra grammar (scaffolding) — neither Haiku nor Sonnet uses it (2026-03-16)
+
+Tested three modes for `--extra-grammar` with `genki:potential-verbs` and 6 enriched
+scaffolding topics (causative, passive, て-form, てならない, ては-ては, のように-のような),
+`--live --gen-only --facet production --repeat 2`:
+
+```
+EXTRA="bunpro:causative,bunpro:Verb[passive],dbjg:-te,bunpro:てならない,bunpro:ては-ては,bunpro:のように-のような"
+for mode in all sample none; do
+  .build/debug/TestHarness --grammar genki:potential-verbs --live --gen-only \
+    --facet production --repeat 2 --extra-grammar "$EXTRA" --extra-grammar-mode $mode
+done
+```
+
+**Haiku results:**
+- **`all`** (6 topics with full descriptions): 5636-byte tier-3 prompt
+- **`none`** (no extra grammar): 2732-byte tier-3 prompt (~2.1× token cost for `all`)
+- `GRAMMAR_TOPICS: []` in every run — never wove scaffolding into sentences
+- Sentence variety indistinguishable; all modes gravitated toward Yuki + music/performance
+
+**Sonnet 4.6 results (same command with `ANTHROPIC_MODEL=claude-sonnet-4-6`):**
+- **`all`**: ~1690 average input tokens; **`none`**: ~1007 average input tokens (~1.7× for `all`)
+- `GRAMMAR_TOPICS: []` in every run — also never used scaffolding grammar
+- Sentence variety is better than Haiku (car/bicycle/violin/printer scenarios instead of
+  defaulting to Yuki + music), but indistinguishable across `all` / `sample` / `none` modes
+
+**Conclusion**: extra-grammar scaffolding does nothing for either Haiku or Sonnet. The
+2026-03-14 model comparison where "Sonnet wove scaffolding into richer sentences" was
+comparing against an older prompt format (comma-separated topics, no descriptions) — the
+richer sentences were likely Sonnet's general quality improvement, not a response to the
+scaffolding list. The extra-grammar feature provides no benefit at any tested capability
+level. The iOS app correctly defaults to empty `extraGrammarTopics`; do not re-enable
+without a controlled experiment that specifically demonstrates scaffolding-driven content.
+
 ### Token cost awareness
 Grammar quizzes always require at least one LLM call for question generation (unlike
 vocab where stems can be built locally). Keep prompts tight: topic ID, title, level,

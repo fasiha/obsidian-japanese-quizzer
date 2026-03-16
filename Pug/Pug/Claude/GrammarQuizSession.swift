@@ -162,7 +162,10 @@ final class GrammarQuizSession {
             extraTopicsLine = "Extra grammar topics: (none — student is a beginner; keep sentences simple).\(quirkyNote)"
         } else {
             let list = extraGrammarTopics.prefix(8)
-                .map { "- \($0.topicId) — \($0.titleEn)" }
+                .map { t -> String in
+                    if let s = t.summary { return "- \(t.topicId) — \(t.titleEn): \(s)" }
+                    return "- \(t.topicId) — \(t.titleEn)"
+                }
                 .joined(separator: "\n")
             extraTopicsLine = "Extra grammar topics the student knows well (use these patterns in example sentences where natural; do not test them):\n\(list)\(quirkyNote)"
         }

@@ -17,6 +17,7 @@ import Foundation
 struct GrammarExtraTopic {
     let topicId: String     // full prefixed ID, e.g. "bunpro:causative"
     let titleEn: String     // English title, e.g. "To make/let/have"
+    let summary: String?    // one-paragraph description from grammar-equivalences.json (optional)
 }
 
 // MARK: - Grammar quiz item
@@ -78,9 +79,6 @@ struct GrammarQuizContext {
     static var freeAnswerMinReviews:  Int    { tier2MinReviews }
     static var freeAnswerMinHalflife: Double { tier2MinHalflife }
 
-    /// Halflife threshold above which a topic qualifies as well-known extra grammar for difficulty scaling.
-    static let extraTopicsMinHalflife = 48.0    // hours
-
     /// Number of top-urgency candidates to sample from when building a session.
     static let selectionPoolSize = 10
     static let minItemsPerQuiz = 3
@@ -101,26 +99,10 @@ struct GrammarQuizContext {
             byTopic[r.wordId, default: []].append(r)
         }
 
-        // Identify well-established topics to inject as extra grammar for difficulty scaling.
-        var extraTopicCandidates: [(topicId: String, recall: Double)] = []
-        for (topicId, facetRecords) in byTopic {
-            for r in facetRecords {
-                guard let lastDate = parseISO8601(r.lastReview) else { continue }
-                let elapsed = now.timeIntervalSince(lastDate) / 3600.0
-                let recall  = predictRecall(r.model, tnow: elapsed, exact: true)
-                if r.t >= extraTopicsMinHalflife {
-                    extraTopicCandidates.append((topicId, recall))
-                    break   // one facet is enough to qualify the topic
-                }
-            }
-        }
-        extraTopicCandidates.sort { $0.recall > $1.recall }   // best recall first
-
-        // Build extra topic entries from topic metadata.
-        let extraGrammarTopics: [GrammarExtraTopic] = extraTopicCandidates.compactMap { candidate in
-            guard let topic = manifest.topics[candidate.topicId] else { return nil }
-            return GrammarExtraTopic(topicId: candidate.topicId, titleEn: topic.titleEn)
-        }
+        // Extra grammar scaffolding is disabled for Haiku — testing showed it never uses the
+        // list and the prompt bloat (2× tokens) provides no benefit. Re-enable if generation
+        // model is upgraded to Sonnet or above (see TODO-grammar.md 2026-03-16 note).
+        let extraGrammarTopics: [GrammarExtraTopic] = []
 
         // Build quiz items — one per topic+facet pair.
         var items: [GrammarQuizItem] = []

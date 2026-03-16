@@ -72,6 +72,26 @@ if let sIdx = args.firstIndex(of: "--extra-grammar"), sIdx + 1 < args.count {
     extraGrammarArg = nil
 }
 
+// --extra-grammar-mode all|sample|none
+//   all    — include descriptions for all extra grammar topics (default)
+//   sample — randomly pick 3 from the list and include their descriptions
+//   none   — pass no extra grammar topics at all (baseline; ignores --extra-grammar)
+// Purpose: lets us compare prompt verbosity vs. Haiku sentence quality.
+enum ExtraGrammarMode { case all, sample, none }
+let extraGrammarMode: ExtraGrammarMode
+if let mIdx = args.firstIndex(of: "--extra-grammar-mode"), mIdx + 1 < args.count {
+    switch args[mIdx + 1] {
+    case "all":    extraGrammarMode = .all
+    case "sample": extraGrammarMode = .sample
+    case "none":   extraGrammarMode = .none
+    default:
+        fputs("Error: --extra-grammar-mode must be all, sample, or none\n", stderr)
+        exit(1)
+    }
+} else {
+    extraGrammarMode = .all
+}
+
 // --repeat N: how many times to run each generation path (default 1)
 let repeatCount: Int
 if let repeatIdx = args.firstIndex(of: "--repeat"), repeatIdx + 1 < args.count,
@@ -184,15 +204,23 @@ if isGrammarMode {
     // Resolve --extra-grammar topic1,topic2 into GrammarExtraTopic values.
     // Unknown IDs are warned about but not fatal, so the user can still test with partial lists.
     var extraGrammarTopics: [GrammarExtraTopic] = []
-    if let raw = extraGrammarArg {
+    if extraGrammarMode != .none, let raw = extraGrammarArg {
         let ids = raw.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         for id in ids {
             if let t = manifest.topics[id] {
-                extraGrammarTopics.append(GrammarExtraTopic(topicId: t.prefixedId, titleEn: t.titleEn))
+                extraGrammarTopics.append(GrammarExtraTopic(topicId: t.prefixedId, titleEn: t.titleEn, summary: t.summary))
             } else {
                 fputs("Warning: --extra-grammar topic '\(id)' not found — skipping\n", stderr)
             }
         }
+        if extraGrammarMode == .sample && extraGrammarTopics.count > 3 {
+            extraGrammarTopics = Array(extraGrammarTopics.shuffled().prefix(3))
+        }
+    }
+    if extraGrammarMode == .none {
+        fputs("[extra-grammar-mode: none — extra grammar suppressed]\n", stderr)
+    } else {
+        fputs("[extra-grammar-mode: \(extraGrammarMode) — \(extraGrammarTopics.count) topic(s)]\n", stderr)
     }
 
     let grammarFacet = liveOnlyFacet ?? "production"
