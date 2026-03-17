@@ -79,11 +79,12 @@ express different meanings from the English stem because they use the wrong gram
 construction — the student's job is to pick the sentence that correctly matches the
 English scenario.
 
-**Tier 2 (fill-in-the-blank):** Haiku generates an English stem and a Japanese sentence
-with `___` gap(s) where the target grammar form belongs, plus only the correct answer
-(no distractors). The student types the form(s) that fill the gap(s). Grading is string
-match first; if that fails, a coaching LLM session guides the student. This is a separate
-generation call from tier 1 — the two tiers no longer share a question.
+**Tier 2 (fill-in-the-blank):** Haiku generates an English stem and a complete Japanese
+sentence, plus only the correct answer substring(s) — the exact form(s) that embody the
+target grammar (no distractors). The app creates the gapped display by replacing those
+substrings with `___`; the student types the form(s). Grading is string match first; if
+that fails, a coaching LLM session guides the student. This is a separate generation call
+from tier 1 — the two tiers do not share a question.
 
 JSON format for tier 1:
 ```json
@@ -103,12 +104,14 @@ complete Japanese sentence. `correct` is randomized 0–3.
 JSON format for tier 2:
 ```json
 {"stem": "Your younger brother refuses to clean his room.",
- "sentence": "弟が遊びに行きたいなら、まず部屋を掃除___なければならない。",
+ "sentence": "弟が遊びに行きたいなら、まず部屋を掃除させなければならない。",
  "choices": [["させ"]],
  "correct": 0}
 ```
-`"choices"` has exactly one entry: the correct answer. `correct` is always 0. Each choice
-is an array with one element per gap (e.g. `["し","し"]` for two gaps).
+`"sentence"` is the **full** Japanese sentence with no gaps. `"choices"` has exactly one
+entry: the correct answer substring(s). `correct` is always 0. Each choice is an array
+with one element per grammar slot (e.g. `["し","し"]` for two slots). Swift creates the
+gapped display by replacing each answer substring with `___`.
 
 **Key distractor rules for tier 1** (enforced in the generation prompt):
 - Same core vocabulary and situation — only the grammar form changes
@@ -304,7 +307,7 @@ All items complete as of 2026-03-15:
 
 Three items that should be resolved before Phase 1B, in this order:
 
-- [ ] **Enriched topic descriptions** — per-equivalence-group descriptions stored in
+- [x] **Enriched topic descriptions** — per-equivalence-group descriptions stored in
   `grammar/grammar-equivalences.json`. Generated/reviewed via the `/cluster-grammar-topics`
   skill. Descriptions are generic (no user content), committed to the repo, and fetched
   by the iOS app independently of `grammar.json`.

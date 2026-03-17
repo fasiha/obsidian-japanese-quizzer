@@ -452,24 +452,29 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                     print("  [\(marker)] \(choice.first ?? "(empty)")")
                                 }
                             } else {
-                                // Tier 2 fill-in-the-blank format: "sentence" has one or more gaps,
-                                // "choices" has exactly one entry (the correct answer, no distractors).
+                                // Tier 2 fill-in-the-blank format: "sentence" is the FULL Japanese sentence,
+                                // "choices" has exactly one entry whose elements are the answer substring(s).
+                                // Swift creates the gapped display by replacing those substrings with ___.
                                 if let sentence = mc.sentence {
-                                    let gapCount = sentence.components(separatedBy: grammarGapToken).count - 1
-                                    if gapCount == 0 {
-                                        issues.append("FAIL: tier-2 sentence missing \(grammarGapToken) gap: \(sentence)")
-                                    }
                                     if !containsJapanese(sentence) {
                                         issues.append("FAIL: tier-2 sentence contains no Japanese characters: \(sentence)")
                                     }
                                     if mc.choices.count != 1 {
                                         issues.append("FAIL: tier-2 expects exactly 1 choice (correct answer only), got \(mc.choices.count)")
-                                    } else if mc.choices[0].count != gapCount {
-                                        issues.append("FAIL: tier-2 correct answer has \(mc.choices[0].count) element(s) but sentence has \(gapCount) gap(s)")
+                                    } else {
+                                        // Validate each answer substring is actually present in the full sentence.
+                                        let answers = mc.choices[0]
+                                        for answer in answers {
+                                            if !sentence.contains(answer) {
+                                                issues.append("FAIL: tier-2 answer substring \"\(answer)\" not found in sentence: \(sentence)")
+                                            }
+                                        }
+                                        let gapCount = answers.count
+                                        let gapped = mc.gappedSentence ?? sentence
+                                        if let su = mc.subUse { print("SUB_USE: \(su)") }
+                                        print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(gapped)")
+                                        print("Correct answer: \(answers.joined(separator: ", "))")
                                     }
-                                    if let su = mc.subUse { print("SUB_USE: \(su)") }
-                                    print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(sentence)")
-                                    print("Correct answer: \(mc.choices.first?.joined(separator: ", ") ?? "(missing)")")
                                 } else {
                                     issues.append("FAIL: tier-2 production question missing 'sentence' field")
                                 }

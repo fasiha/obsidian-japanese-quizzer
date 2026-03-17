@@ -230,11 +230,6 @@ if isGrammarMode {
             extraGrammarTopics = Array(extraGrammarTopics.shuffled().prefix(3))
         }
     }
-    if extraGrammarMode == .none {
-        fputs("[extra-grammar-mode: none — extra grammar suppressed]\n", stderr)
-    } else {
-        fputs("[extra-grammar-mode: \(extraGrammarMode) — \(extraGrammarTopics.count) topic(s)]\n", stderr)
-    }
 
     let grammarFacet = liveOnlyFacet ?? "production"
     let tmpPath   = NSTemporaryDirectory() + "testharness-grammar-\(ProcessInfo.processInfo.processIdentifier).sqlite"

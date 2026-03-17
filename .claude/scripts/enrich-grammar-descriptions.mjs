@@ -127,14 +127,21 @@ function extractContentItems(content, relPath, topicIds) {
       // Skip empty lines
       if (!clean) continue;
 
-      // Skip lines that are part of another details block (closing/opening tags,
-      // summary lines, bullet lines inside other details, translation lines)
+      // Skip lines that are part of a details block. Check the RAW line before
+      // tag-stripping, because stripRuby removes all HTML tags — a Translation
+      // line like "<details><summary>Translation</summary>...ピーマン...</details>"
+      // would become "Translation...ピーマン..." after stripping, pass isJapanese,
+      // and be wrongly captured as the sentence.
+      // Do NOT skip lines starting with "-" — in list-style Markdown files the
+      // annotated sentence is itself a list item (e.g. "- 日本語が話せます").
+      // Non-Japanese bullets (e.g. "- genki:potential-verbs" inside a sibling
+      // Grammar block) will be rejected by the isJapanese check below.
+      const rawTrimmed = rawLine.trim();
       if (
-        clean.startsWith("<details") ||
-        clean.startsWith("</details") ||
-        clean.startsWith("<summary") ||
-        clean.startsWith("</summary") ||
-        clean.startsWith("-") // bullet inside another block
+        rawTrimmed.startsWith("<details") ||
+        rawTrimmed.startsWith("</details") ||
+        rawTrimmed.startsWith("<summary") ||
+        rawTrimmed.startsWith("</summary>")
       ) {
         continue;
       }
@@ -148,6 +155,16 @@ function extractContentItems(content, relPath, topicIds) {
 
       // If this line is purely ASCII/English (e.g. a translation line that
       // escaped its details block), skip and keep looking
+    }
+
+    // Warn if no parent sentence was found — likely a Markdown structure the
+    // extractor doesn't handle. Better to surface this loudly than silently
+    // produce a stub description.
+    if (!sentence) {
+      const lineNo = blockStartLine + 1; // 1-indexed for display
+      process.stderr.write(
+        `WARNING: ${relPath}:${lineNo}: Grammar block for [${relevantBullets.map((b) => b.topicId).join(", ")}] has no identifiable parent Japanese sentence — it will not contribute content to the description.\n`
+      );
     }
 
     // Record one item per relevant bullet, all sharing the same sentence
