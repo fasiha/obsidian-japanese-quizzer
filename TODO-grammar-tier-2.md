@@ -361,3 +361,195 @@ answer substring (left to right, first occurrence).
   (`["たり", "だり"]`) and flag that the closing する conjugates. Two-pass gets it
   right 1/3 of the time; the rest of the time it drops the する slot entirely.
   Literal metadata is the only robust solution.
+
+---
+
+## Approach D — Per-topic generation prompts (2026-03-17)
+
+### Core insight
+
+Every previous approach tried to write a *generic* prompt that works for all grammar
+topics, then patched failures with a second extraction call or a 3-category classifier.
+The fundamental problem: what constitutes "the grammar" in a sentence differs so much
+between topics (conjugation suffix vs. fixed particle vs. multi-slot frame vs. hybrid)
+that no single instruction set handles them all.
+
+**Solution**: each grammar topic in `grammar-equivalences.json` carries its own
+`generationSteps` field — a per-topic chain of thought that tells Haiku exactly how to
+construct the sentence *and* identify the answer substrings, in one call. No extraction
+pass. No category classifier. The chain of thought is Approach C (grammar-outward) but
+with the reasoning steps customized per topic rather than per category.
+
+### How it fits with existing prompts
+
+The system prompt is **unchanged** — it still injects `summary`, `subUses`, `cautions`,
+and `recentNotes` from the equivalence group. These describe *what the grammar is* and
+guide Haiku toward natural, varied sentences.
+
+The user-turn question request currently has two generic steps:
+
+```
+Step 1 — English stem: [scenario description]
+Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
+```
+
+Under Approach D, the user turn becomes:
+
+```
+Step 1 — English stem: [same as before — concrete scenario, no Japanese]
+{generationSteps}      ← injected from grammar-equivalences.json
+Final — JSON output    ← same structure for all topics
+```
+
+The `generationSteps` field replaces the old generic "Step 2" with topic-specific
+reasoning that produces both `sentence` and `answers[]`. The JSON output schema is
+uniform across all topics:
+
+```json
+{"stem":"<Step 1>","sentence":"<full sentence>","choices":[["<answer1>","<answer2>",...]],"correct":0,"sub_use":"<phrase>"}
+```
+
+- `choices` is a single entry (index 0) containing the answer substring(s) — same
+  shape as today's tier-2 output after extraction refinement.
+- `sentence` is the full Japanese sentence. The app blanks each answer substring
+  (left-to-right, first unused occurrence) to produce the gapped display.
+
+### `generationSteps` field format
+
+The field is an **array of strings**, each element one numbered step. The app
+injects them into the user turn as `Step 2`, `Step 3`, etc. (Step 1 is always the
+English stem, supplied by the app). This gives structure without being so rigid
+that it can't accommodate different step counts per topic.
+
+Example value in `grammar-equivalences.json`:
+```json
+"generationSteps": [
+  "Choose a verb: Pick a verb that fits the scenario.",
+  "Conjugate: Write the causative form (e.g. 走る→走らせた). Record ONLY the inflectional suffix (e.g. らせた, not 走らせた) — this is the answer.",
+  "Build sentence: Write a natural Japanese sentence containing the full conjugated verb. Every answer substring must appear verbatim in the sentence."
+]
+```
+
+The app renders this as:
+```
+Step 2 — Choose a verb: Pick a verb that fits the scenario.
+Step 3 — Conjugate: Write the causative form (e.g. 走る→走らせた). ...
+Step 4 — Build sentence: Write a natural Japanese sentence ...
+```
+
+The "avoid 食べる, 飲む, 泳ぐ" instruction is **not** in `generationSteps` — it
+already lives in the system prompt's `quirkyNote` (line 418 of GrammarQuizSession.swift)
+and applies to all topics uniformly.
+
+### Example `generationSteps` for each grammar type
+
+**Conjugation (e.g. causative)**:
+```json
+[
+  "Choose a verb: Pick a verb that fits the scenario.",
+  "Conjugate: Write the causative form of that verb (e.g. 走る→走らせた). Record ONLY the inflectional suffix (e.g. らせた, not 走らせた) — this is the answer.",
+  "Build sentence: Write a natural Japanese sentence containing the full conjugated verb. Use plain form throughout (not です/ます). The answer substring must appear verbatim."
+]
+```
+
+**Fixed expression (e.g. し〜し)**:
+```json
+[
+  "Choose predicates: Pick 2–3 predicates that fit the scenario.",
+  "Answers: The answer for each slot is literally \"し\". Record [\"し\", \"し\"] (or 3 entries).",
+  "Build sentence: Write a natural Japanese sentence connecting the predicates with し."
+]
+```
+
+**Grammatical frame (e.g. てはいけない)**:
+```json
+[
+  "Choose a verb: Pick a verb that fits the scenario.",
+  "Frame string: The answer is \"てはいけない\" (or conjugated form: \"てはいけません\", etc.). Record the exact frame substring as it will appear in the sentence.",
+  "Build sentence: Write a natural Japanese sentence where the verb attaches to the frame. The frame substring must appear verbatim."
+]
+```
+
+**Hybrid (e.g. たり〜たりする)**:
+```json
+[
+  "Choose verbs: Pick 2–3 verbs that fit the scenario.",
+  "Conjugate each: For each verb, write the たり/だり form (e.g. 読む→読んだり). Record each たり/だり substring.",
+  "Closing する: Decide the conjugation of the closing する (した, します, している, etc.). Record it as an additional answer substring.",
+  "Build sentence: Assemble the full sentence. Every answer substring must appear verbatim."
+]
+```
+
+### Validation (unchanged)
+
+Every answer in `choices[0]` must appear as a verbatim substring of `sentence`. The app
+finds and blanks each one left-to-right. This is the same validation as today — only the
+generation path changes.
+
+### `choices` schema change (tier 2 production)
+
+Today the generation call returns `"choices": [[""]]` (placeholder) and a second
+`refineAnswerExtraction` call fills in the real answer substrings. Under Approach D,
+the generation call returns the answers directly: `"choices": [["し", "し"]]`.
+
+This is **not** a breaking change to the app's internal contract:
+- The `GrammarMultipleChoiceQuestion` struct already handles `choices[0]` as an
+  array of answer strings — that's how it looks *after* refinement today.
+- Tier-1 questions (4 choices) are unaffected — they don't use `generationSteps`.
+- There is no persistent cache of tier-2 generation results; each question is
+  generated fresh. No migration needed.
+
+The only change is that `choices[0]` arrives populated from the generation call
+instead of being empty and then filled by a second call.
+
+### What `refineAnswerExtraction` becomes
+
+Eliminated entirely. The per-topic chain of thought produces correct answer substrings
+by construction.
+
+### `disambiguateGaps`
+
+Still needed. When the same answer substring (e.g. "し") appears in the sentence both
+as a grammar slot and as part of unrelated text, the app needs to know *which*
+occurrences to blank. `disambiguateGaps` handles this by asking Haiku to confirm
+positional indices. This is a display concern, not an extraction concern, and it's
+orthogonal to Approach D — it runs after generation regardless of how answers were
+produced.
+
+### No fallback needed
+
+`generationSteps` is a **required** field — every entry in `grammar-equivalences.json`
+must have it. No one is using grammar quizzes yet, so there are no backward-compatibility
+concerns. The old generic Step 2 and `refineAnswerExtraction` can be deleted outright
+once the new steps are written and tested.
+
+### What changes in code
+
+**`grammar-equivalences.json`** — add `generationSteps` string to each of the 12 entries.
+
+**`GrammarQuizItem`** (model) — add `generationSteps: String?` property, populated from
+the equivalence group data.
+
+**`GrammarQuizSession.questionRequest(for:)`** — for tier-2 production, replace the
+generic Step 2 with `item.generationSteps`. The Step 1 (English stem) and final JSON
+block remain the same template.
+
+**`GrammarQuizSession.runGenerationLoop(for:...)`** — remove the
+`refineAnswerExtraction` call for tier-2 production. The generation call now returns
+populated `choices[0]` directly.
+
+**`refineAnswerExtraction`** — delete (or keep as dead-code safety net during testing).
+
+**TestHarness** — update `--dump-prompts` to show the per-topic generation steps;
+update `--live` tier-2 tests to verify 1-shot extraction.
+
+### Work breakdown
+
+- [ ] Draft `generationSteps` (array of strings) for all 12 grammar topics in `grammar-equivalences.json`
+- [ ] Add `generationSteps: [String]` field (required) to `GrammarQuizItem` model and wire it from DB/JSON
+- [ ] Update `questionRequest(for:)` tier-2 production branch: inject numbered steps, tell the model to populate `choices`
+- [ ] Update `runGenerationLoop`: remove `refineAnswerExtraction` call; keep `disambiguateGaps` unconditionally
+- [ ] Run TestHarness `--live --tier 2` for all 12 topics, 3 runs each, record results in a new table below
+- [ ] Reliability threshold: **all answer substrings must appear verbatim in the sentence** (validation pass). Target: ≥ 11/12 topics pass all 3 runs (≥ 33/36 total). Any topic that fails 2+ of 3 runs gets its `generationSteps` revised and retested before proceeding.
+- [ ] Delete `refineAnswerExtraction` (no fallback needed — field is required)
+- [ ] Update `--dump-prompts` to show per-topic generation steps
