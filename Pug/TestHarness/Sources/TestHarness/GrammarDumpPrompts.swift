@@ -429,6 +429,9 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                             if containsJapanese(mc.stem) {
                                 issues.append("LEAK: production stem contains Japanese characters")
                             }
+                            if mc.stem.contains("_") {
+                                issues.append("FAIL: production stem contains underscores (the English scenario must be complete sentences with no blanks)")
+                            }
                             if path.tier == 1 {
                                 // Tier 1 whole-sentence format: "sentence" is empty, four choices are
                                 // complete Japanese sentences (correct + three distractors).
@@ -470,7 +473,13 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                             }
                                         }
                                         let gapCount = answers.count
-                                        let gapped = mc.gappedSentence ?? sentence
+                                        var resolvedMc = mc
+                                        if mc.needsDisambiguation {
+                                            resolvedMc = await disambiguateGaps(
+                                                question: mc, topicId: topic.prefixedId, client: client)
+                                            print("[Disambiguation] answer substring was ambiguous — Haiku resolved it")
+                                        }
+                                        let gapped = resolvedMc.displayGappedSentence ?? sentence
                                         if let su = mc.subUse { print("SUB_USE: \(su)") }
                                         print("Gap sentence (\(gapCount) gap\(gapCount == 1 ? "" : "s")): \(gapped)")
                                         print("Correct answer: \(answers.joined(separator: ", "))")
@@ -639,6 +648,9 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                     case "production":
                         if containsJapanese(stem) {
                             issues.append("LEAK: tier-3 production stem contains Japanese characters")
+                        }
+                        if stem.contains("_") {
+                            issues.append("FAIL: production stem contains underscores (the English scenario must be complete sentences with no blanks)")
                         }
                     case "recognition":
                         if !containsJapanese(stem) {

@@ -27,7 +27,7 @@ let grammarGapToken = "___"
 /// For **recognition** (Japanese → English) tier 1, Claude generates full English
 /// translation choices and `sentence` is nil. Each choice is still a 1-element array
 /// containing the English string.
-struct GrammarMultipleChoiceQuestion: Equatable {
+struct GrammarMultipleChoiceQuestion: Equatable, Sendable {
     let stem: String        // English context (production) or Japanese sentence (recognition)
     let sentence: String?   // Full Japanese sentence (production only; nil for recognition)
     let choices: [[String]] // 4 options for multiple choice, 1 option for fill-in-the-blank; each sub-array has one element per grammar slot
@@ -35,6 +35,9 @@ struct GrammarMultipleChoiceQuestion: Equatable {
     /// The specific sub-use or construction targeted by this question (from the "sub_use" JSON field).
     /// Stored in reviews.notes after the student answers, so future generation can vary sub-uses.
     let subUse: String?
+    /// Pre-resolved gapped sentence, populated after disambiguation when an answer substring
+    /// appears more than once in the sentence. Nil until resolved.
+    var resolvedGappedSentence: String? = nil
 
     /// Number of grammar slots this question exercises (derived from the first choice).
     var gapCount: Int { choices.first?.count ?? 1 }
@@ -44,9 +47,8 @@ struct GrammarMultipleChoiceQuestion: Equatable {
         choices[index].joined(separator: ", ")
     }
 
-    /// For fill-in-the-blank (tier 2): returns `sentence` with the correct answer substring(s)
-    /// replaced by `___`, creating the gapped display shown to the student.
-    /// Returns nil if `sentence` is nil (recognition questions have no sentence).
+    /// Naive gapping: replaces the first occurrence of each answer substring with `___`.
+    /// Use `displayGappedSentence` instead, which prefers the disambiguated result.
     var gappedSentence: String? {
         guard let s = sentence else { return nil }
         guard correctIndex < choices.count else { return s }
@@ -59,12 +61,166 @@ struct GrammarMultipleChoiceQuestion: Equatable {
         return result
     }
 
+    /// The gapped sentence to show the student. Prefers the Haiku-disambiguated result
+    /// if available, otherwise falls back to naive first-occurrence gapping.
+    var displayGappedSentence: String? {
+        resolvedGappedSentence ?? gappedSentence
+    }
+
     /// Returns the full sentence with the given choice substituted in — for tier 1 this is
     /// always just `sentence` (choices are whole sentences), and is unused. Returns nil if
     /// `sentence` is nil.
     func filledSentence(choiceIndex: Int) -> String? {
         return sentence
     }
+
+    /// True if any answer substring appears in the sentence more times than it is needed
+    /// as a grammar slot, meaning naive gapping could gap the wrong occurrence.
+    ///
+    /// Example: answers ["し", "し"] with a sentence containing exactly two "し" is NOT
+    /// ambiguous — we gap both. But answers ["の"] with a sentence containing two "の" IS
+    /// ambiguous — we don't know which one is the grammar slot.
+    var needsDisambiguation: Bool {
+        guard let s = sentence, correctIndex < choices.count else { return false }
+        let answers = choices[correctIndex]
+        // Count how many times each fill is needed across all grammar slots
+        var neededCounts: [String: Int] = [:]
+        for fill in answers { neededCounts[fill, default: 0] += 1 }
+        // For each unique fill, check if the sentence contains more occurrences than needed
+        for (fill, needed) in neededCounts {
+            var sentenceCount = 0
+            var searchRange = s.startIndex..<s.endIndex
+            while let range = s.range(of: fill, range: searchRange) {
+                sentenceCount += 1
+                if sentenceCount > needed { return true }
+                searchRange = range.upperBound..<s.endIndex
+            }
+        }
+        return false
+    }
+}
+
+// MARK: - Haiku disambiguation for ambiguous gapping
+
+/// Asks the LLM which occurrence of an ambiguous answer substring is the grammar slot.
+/// Returns a new `GrammarMultipleChoiceQuestion` with `resolvedGappedSentence` populated.
+/// If disambiguation fails or isn't needed, returns the question unchanged.
+nonisolated func disambiguateGaps(
+    question: GrammarMultipleChoiceQuestion,
+    topicId: String,
+    client: AnthropicClient
+) async -> GrammarMultipleChoiceQuestion {
+    guard question.needsDisambiguation,
+          let sentence = question.sentence,
+          question.correctIndex < question.choices.count
+    else { return question }
+
+    let answers = question.choices[question.correctIndex]
+    var result = sentence
+
+    // Count how many times each unique fill is needed as a grammar slot.
+    var neededCounts: [String: Int] = [:]
+    for fill in answers { neededCounts[fill, default: 0] += 1 }
+
+    for (fill, needed) in neededCounts {
+        // Find all occurrences in the original sentence.
+        var ranges: [Range<String.Index>] = []
+        var searchRange = sentence.startIndex..<sentence.endIndex
+        while let range = sentence.range(of: fill, range: searchRange) {
+            ranges.append(range)
+            searchRange = range.upperBound..<sentence.endIndex
+        }
+        guard ranges.count > needed else {
+            // Unambiguous — gap the first `needed` occurrences in order.
+            var gapped = 0
+            var sr = result.startIndex..<result.endIndex
+            while gapped < needed, let r = result.range(of: fill, range: sr) {
+                result = result.replacingCharacters(in: r, with: grammarGapToken)
+                gapped += 1
+                sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+            }
+            continue
+        }
+
+        // Build a numbered list of occurrences with surrounding context for Haiku.
+        var occurrenceDescriptions: [String] = []
+        for (i, range) in ranges.enumerated() {
+            let charPos = sentence.distance(from: sentence.startIndex, to: range.lowerBound)
+            let contextStart = sentence.index(range.lowerBound, offsetBy: -5, limitedBy: sentence.startIndex) ?? sentence.startIndex
+            let contextEnd = sentence.index(range.upperBound, offsetBy: 5, limitedBy: sentence.endIndex) ?? sentence.endIndex
+            let before = String(sentence[contextStart..<range.lowerBound])
+            let after  = String(sentence[range.upperBound..<contextEnd])
+            occurrenceDescriptions.append("\(i + 1). \"...\(before)[\(fill)]\(after)...\" (position \(charPos))")
+        }
+
+        let slotWord = needed == 1 ? "slot" : "slots"
+        let exampleReply = needed == 1 ? "\"2\"" : "\"1,3\""
+        let prompt = """
+        Japanese sentence: \(sentence)
+        Grammar topic: \(topicId)
+        The substring "\(fill)" appears \(ranges.count) times in this sentence, but only \(needed) occurrence\(needed == 1 ? "" : "s") \(needed == 1 ? "is" : "are") grammar \(slotWord) for \(topicId).
+        \(occurrenceDescriptions.joined(separator: "\n"))
+        Reply with ONLY the \(needed == 1 ? "occurrence number" : "\(needed) occurrence numbers as a comma-separated list") (e.g. \(exampleReply)). Nothing else.
+        """
+
+        // maxTokens: single-digit number or short comma-separated list fits in ~16 tokens.
+        let maxTok = 8 + needed * 4
+
+        do {
+            let (response, _, _) = try await client.send(
+                messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
+                maxTokens: maxTok
+            )
+            let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Parse one or more 1-based indices from the response.
+            let pickedIndices = trimmed
+                .components(separatedBy: CharacterSet(charactersIn: ", "))
+                .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+                .filter { $0 >= 1 && $0 <= ranges.count }
+            let uniquePicked = Array(Set(pickedIndices)).sorted()
+
+            if uniquePicked.count == needed {
+                // Gap the chosen occurrences. Work backwards through `result` by occurrence
+                // number so that earlier replacements don't shift later positions.
+                // We find the Nth occurrence of `fill` in `result` for each chosen index.
+                for occIndex in uniquePicked.sorted(by: >) {
+                    var count = 0
+                    var sr = result.startIndex..<result.endIndex
+                    while let r = result.range(of: fill, range: sr) {
+                        count += 1
+                        if count == occIndex {
+                            result = result.replacingCharacters(in: r, with: grammarGapToken)
+                            break
+                        }
+                        sr = r.upperBound..<result.endIndex
+                    }
+                }
+                print("[Disambiguation] Haiku picked occurrence\(needed == 1 ? "" : "s") \(uniquePicked) of \"\(fill)\" for topic \(topicId)")
+            } else {
+                print("[Disambiguation] Haiku returned unparseable response: \(trimmed), falling back to first \(needed) occurrence\(needed == 1 ? "" : "s")")
+                var gapped = 0
+                var sr = result.startIndex..<result.endIndex
+                while gapped < needed, let r = result.range(of: fill, range: sr) {
+                    result = result.replacingCharacters(in: r, with: grammarGapToken)
+                    gapped += 1
+                    sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+                }
+            }
+        } catch {
+            print("[Disambiguation] Haiku call failed: \(error), falling back to first \(needed) occurrence\(needed == 1 ? "" : "s")")
+            var gapped = 0
+            var sr = result.startIndex..<result.endIndex
+            while gapped < needed, let r = result.range(of: fill, range: sr) {
+                result = result.replacingCharacters(in: r, with: grammarGapToken)
+                gapped += 1
+                sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+            }
+        }
+    }
+
+    var resolved = question
+    resolved.resolvedGappedSentence = result
+    return resolved
 }
 
 // MARK: - Session
@@ -365,10 +521,10 @@ final class GrammarQuizSession {
                 """
             } else {
                 return """
-                Generate ONE fill-in-the-blank question for the production facet (tier 2).
+                Generate ONE production question for tier 2.
                 Work through these steps explicitly — write out each step before the JSON:
 
-                Step 1 — English stem: One or two English sentences. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 1 — English stem: One or two complete English sentences that set the scene. No Japanese. No blanks or underscores — write out the full scenario. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
                 Step 3 — Identify the answer(s): Quote the EXACT substring(s) from Step 2 that embody the target grammar form. The substring must be the COMPLETE conjugated form — include the entire verb stem + grammar morpheme + any attached ending (て、た、ます、ません, etc.). For example: full sentence "彼女はピアノが弾けます。", answer "弾けます". Another example: full sentence "同僚にファイルを削除されて困った。", answer "削除されて". For multi-slot grammar (e.g. 〜し、〜し), list every slot.
                 Step 4 — Self-check: (a) Copy the exact answer string(s) from Step 3 and confirm each one appears verbatim in the Step 2 sentence. (b) Is there only one plausible answer for each slot? (c) Would a student who knows the target grammar find the question fair?
@@ -830,13 +986,18 @@ final class GrammarQuizSession {
             )
             finalMsgs = msgs
 
-            if let multipleChoice = parseMultipleChoiceJSON(raw) {
+            if var multipleChoice = parseMultipleChoiceJSON(raw) {
+                // Disambiguate gapping if an answer substring appears multiple times
+                if multipleChoice.needsDisambiguation {
+                    multipleChoice = await disambiguateGaps(
+                        question: multipleChoice, topicId: item.topicId, client: client)
+                }
                 finalMultipleChoice = multipleChoice
                 let letters     = ["A", "B", "C", "D"]
                 let choicesText = multipleChoice.choices.indices
                     .map { "\(letters[$0])) \(multipleChoice.choiceDisplay($0))" }
                     .joined(separator: "\n")
-                if let gapped = multipleChoice.gappedSentence {
+                if let gapped = multipleChoice.displayGappedSentence {
                     // Production fill-in-the-blank: show English stem, then gapped Japanese sentence, then choices.
                     finalQuestion = "\(multipleChoice.stem)\n\n\(gapped)\n\n\(choicesText)"
                 } else {

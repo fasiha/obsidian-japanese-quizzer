@@ -113,6 +113,28 @@ entry: the correct answer substring(s). `correct` is always 0. Each choice is an
 with one element per grammar slot (e.g. `["し","し"]` for two slots). Swift creates the
 gapped display by replacing each answer substring with `___`.
 
+**Tier 2 gapping: substring replacement with Haiku disambiguation fallback**
+
+Swift creates the gapped display by searching for each answer substring in `sentence` and
+replacing it with `___`. The naive approach (replace first occurrence) breaks for short
+substrings like `の`, `は`, or `し` that appear multiple times in a sentence — the wrong
+occurrence may get gapped.
+
+To handle this, after parsing the LLM response the app checks whether any answer substring
+appears in the sentence more times than it is needed as a grammar slot (e.g. `["の"]` needs
+1, but the sentence has 2 `の`s; or `["し","し","し"]` needs 3, but the sentence has 4).
+If so, a second cheap LLM call is made — using whatever model is already configured — asking
+which specific occurrence(s) are the grammar slot(s). The prompt shows each occurrence with
+surrounding context and the substring highlighted in `[brackets]`, and asks for a
+comma-separated list of 1-based occurrence numbers. Swift then gaps exactly those
+occurrences and caches the result in `GrammarMultipleChoiceQuestion.resolvedGappedSentence`.
+
+This call is a rarity in practice — Haiku naturally writes sentences where conjugated
+answer forms (弾けます, 削除されて) are long enough to be unambiguous. The fallback exists
+for short particles and listing particles. Tested via `--test-disambiguation` in the
+TestHarness with cases including `のだ先輩の車` (の appears in a name and as possessive)
+and `少し疲れたけど…好きだし…好きだし…好きだし` (し in 少し vs three listing particles).
+
 **Key distractor rules for tier 1** (enforced in the generation prompt):
 - Same core vocabulary and situation — only the grammar form changes
 - Each distractor uses a clearly different grammar construction (not just a particle swap)

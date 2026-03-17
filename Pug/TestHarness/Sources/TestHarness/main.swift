@@ -50,6 +50,7 @@ if let gIdx = args.firstIndex(of: "--grammar"), gIdx + 1 < args.count {
 let isDumpMode = args.contains("--dump-prompts")
 let isLiveMode = args.contains("--live")
 let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --live mode
+let isTestDisambiguation = args.contains("--test-disambiguation")
 
 // --facet <name>: restrict --live mode to a single facet (omit to run all facets)
 let liveOnlyFacet: String?
@@ -159,12 +160,6 @@ let env = loadEnv()
 let apiKey: String
 if isDumpMode {
     apiKey = "not-needed"  // dump-prompts makes no API calls
-} else if isLiveMode {
-    apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
-    guard !apiKey.isEmpty else {
-        fputs("Error: ANTHROPIC_API_KEY not found in .env or environment\n", stderr)
-        exit(1)
-    }
 } else {
     apiKey = env["ANTHROPIC_API_KEY"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
     guard !apiKey.isEmpty else {
@@ -184,6 +179,15 @@ func findFile(_ name: String) -> String? {
         dir = dir.deletingLastPathComponent()
     }
     return nil
+}
+
+// MARK: - Disambiguation test mode (exits before jmdict is needed)
+
+if isTestDisambiguation {
+    let model  = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
+    let client = AnthropicClient(apiKey: apiKey, model: model)
+    await testDisambiguation(client: client)
+    exit(0)
 }
 
 // MARK: - Grammar mode dispatch (exits before jmdict is needed)
