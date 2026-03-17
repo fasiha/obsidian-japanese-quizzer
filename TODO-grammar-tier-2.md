@@ -316,17 +316,48 @@ answer substring (left to right, first occurrence).
 
 ---
 
-## Recommendation for parallel experiments
+## What each approach is good at (by approach)
 
-Each approach maps cleanly to an independent implementation experiment:
+- **Literal string search (no LLM)**: fixed expressions where the surface forms are
+  known at publish time — し, から, はず, したがって, どころか, etc.
 
-- **Approach A**: modify `generateTier2Production` to emit `gapped` alongside
-  `sentence`; add bracket-stripping validation; fall back to current extraction
-  on validation failure.
-- **Approach B**: change the JSON schema; update `QuizSession` to accept a token
-  array; update `QuizView` to render token lists.
-- **Approach C**: rewrite the generation chain of thought; output `answers` array;
-  update the app to blank by substring search.
+- **Approach C (grammar-outward)**: conjugation grammar — potential, causative,
+  passive, て-form derivatives. Answer committed before sentence is written; no
+  extraction judgment needed.
 
-Compare on: extraction accuracy across grammar categories in TestHarness
-`--live` mode, token cost per question, and failure/fallback rate.
+- **Two-pass extraction with worksheet-builder prompt**: best LLM option for fixed
+  expressions when literal search isn't set up yet. Consistently extracts `し, し, し`
+  where other LLM approaches over-include the predicate.
+
+- **Nothing yet**: たり-たりする and other hybrids where (a) the grammar particle has
+  phonological variants (たり/だり) and (b) the closing する conjugates. Needs explicit
+  metadata listing surface variants and flagging the closing conjugation.
+
+---
+
+## What each approach is good at (by grammar topic)
+
+- **Fixed expressions (し, から, はず, したがって, …)**: no LLM extraction needed at all.
+  The answer strings are known at publish time — store them as `surfaceForms` in
+  grammar metadata and do a literal string search in the generated sentence. Every
+  approach that delegates this decision to the LLM risks over-including the predicate.
+  Two-pass with the worksheet-builder prompt is the best LLM option (consistently
+  extracts `し, し, し`), but literal search removes the failure mode entirely.
+
+- **Conjugation grammar (potential, causative, passive, て-form derivatives)**:
+  **Approach C** (grammar-outward). The answer is committed in Step 3 before the
+  sentence is written, so it appears verbatim by construction. The polite/plain
+  mismatch (e.g. committing `弾ける` then writing `弾けます`) is a fixable prompt
+  issue (instruct: use plain form throughout). One-pass also works here but is
+  less reliable; two-pass has ~1/3 validation failures.
+
+- **Grammatical frames (てはいけない, ようにする, を余儀なくされる, …)**: not yet
+  tested, but both Approach A (bracket the whole frame) and Approach C (commit the
+  frame string in Step 3) should work — frames are long contiguous strings with no
+  ambiguous stem boundary.
+
+- **たり-たりする and other hybrids**: no tested approach handles the closing する
+  reliably. Requires explicit grammar metadata: list the per-slot surface forms
+  (`["たり", "だり"]`) and flag that the closing する conjugates. Two-pass gets it
+  right 1/3 of the time; the rest of the time it drops the する slot entirely.
+  Literal metadata is the only robust solution.
