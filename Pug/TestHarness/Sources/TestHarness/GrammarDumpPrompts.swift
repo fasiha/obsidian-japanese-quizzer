@@ -146,12 +146,16 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
 
 @MainActor func dumpGrammarPrompts(topic: GrammarTopic, quizDB: QuizDB,
                                    extraGrammarTopics: [GrammarExtraTopic] = [],
-                                   recentNotes: [String] = []) {
+                                   recentNotes: [String] = [],
+                                   onlyTiers: Set<Int>? = nil) {
     let client = AnthropicClient(apiKey: "dummy", model: "dummy")
     let session = GrammarQuizSession(client: client, db: quizDB)
     session.extraGrammarTopics = extraGrammarTopics
 
-    let paths = allGrammarPaths
+    var paths = allGrammarPaths
+    if let tiers = onlyTiers {
+        paths = paths.filter { tiers.contains($0.tier) }
+    }
     print("# Grammar Prompt Dump for topic: \(topic.prefixedId) — \(topic.titleEn)")
     print("# Level:  \(topic.level)")
     if let jp = topic.titleJp { print("# Title (JP): \(jp)") }
@@ -355,6 +359,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                     repeatCount: Int = 1,
                                     genOnly: Bool = false,
                                     onlyFacet: String? = nil,
+                                    onlyTiers: Set<Int>? = nil,
                                     extraGrammarTopics: [GrammarExtraTopic] = [],
                                     recentNotes: [String] = []) async {
     var allPaths: [GrammarPromptPath]
@@ -366,6 +371,11 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
         }
     } else {
         allPaths = allGrammarPaths
+    }
+
+    // --tier N or --tier N,M: restrict to specific tiers
+    if let tiers = onlyTiers {
+        allPaths = allPaths.filter { tiers.contains($0.tier) }
     }
 
     // --gen-only skips grading paths (free-grading and fillin-grading).

@@ -30,7 +30,7 @@ guard args.count >= 2 else {
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
     fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--tier 2,3] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
     fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
     exit(1)
 }
@@ -104,6 +104,19 @@ while argIdx < args.count {
     } else {
         argIdx += 1
     }
+}
+
+// --tier 2 or --tier 2,3: restrict grammar --live/--dump-prompts to specific tiers
+let onlyTiers: Set<Int>?
+if let tierIdx = args.firstIndex(of: "--tier"), tierIdx + 1 < args.count {
+    let parts = args[tierIdx + 1].components(separatedBy: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+    guard !parts.isEmpty else {
+        fputs("Error: --tier requires comma-separated integers, e.g. --tier 2 or --tier 2,3\n", stderr)
+        exit(1)
+    }
+    onlyTiers = Set(parts)
+} else {
+    onlyTiers = nil
 }
 
 // --repeat N: how many times to run each generation path (default 1)
@@ -257,7 +270,8 @@ if isGrammarMode {
     if isDumpMode {
         dumpGrammarPrompts(topic: topic, quizDB: grammarDB,
                            extraGrammarTopics: extraGrammarTopics,
-                           recentNotes: recentNotesArg)
+                           recentNotes: recentNotesArg,
+                           onlyTiers: onlyTiers)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -267,6 +281,7 @@ if isGrammarMode {
         await liveGrammarPrompts(topic: topic, apiKey: apiKey, model: liveModel,
                                   quizDB: grammarDB, repeatCount: repeatCount,
                                   genOnly: isGenOnly, onlyFacet: liveOnlyFacet,
+                                  onlyTiers: onlyTiers,
                                   extraGrammarTopics: extraGrammarTopics,
                                   recentNotes: recentNotesArg)
         try? FileManager.default.removeItem(atPath: tmpPath)

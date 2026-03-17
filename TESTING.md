@@ -99,6 +99,10 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 
 # Live test restricted to one facet, repeated N times:
 .build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --repeat 3
+
+# Live test restricted to specific tier(s):
+.build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --tier 2
+.build/debug/TestHarness --grammar genki:potential-verbs --live --facet production --tier 2,3
 ```
 
 **Grammar path coverage** (facet × tier × mode):
