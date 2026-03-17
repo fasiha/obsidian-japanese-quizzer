@@ -1,16 +1,96 @@
 # Tier 2 production: alternative extraction architectures
 
-Three candidate approaches to the blank-extraction problem for tier 2 production
-fill-in-the-blank questions. Each is a self-contained design; run parallel experiments
-to compare.
+Chronological record of approaches tried, from earliest to latest.
 
 Background: see `TODO-grammar.md` §"Tier 2 answer extraction: two-pass architecture
-and grammar classification (2026-03-17)" for the full problem statement and test results
-that motivate these alternatives.
+and grammar classification (2026-03-17)" for the full problem statement.
 
 ---
 
-## Approach A — Two-field generation
+## Original — One-pass with embedded gaps (pre-`81e1755`, on `main`)
+
+Generation prompt asked Haiku to write the sentence *with* `___` tokens already
+embedded at the grammar slots. The sentence itself was the gapped display; no
+extraction step needed.
+
+**Abandoned because**: Haiku inconsistently placed the `___` — sometimes too wide
+(blanking a full clause), sometimes too narrow (blanking only a particle when the
+full conjugated form was needed). The model was simultaneously writing natural
+Japanese and deciding what to hide, and it conflated content choices with form choices.
+
+---
+
+## One-pass substring extraction (`81e1755`, on `main`)
+
+Generation prompt asks Haiku to write a complete sentence (no gaps) and then, in the
+same call, quote the exact answer substrings from that sentence. The app blanks the
+quoted substrings to produce the gapped display. The chain of thought instructs Haiku
+to include the full conjugated form including stem + morpheme + any attached ending
+(e.g. `弾けます` not just `ます`).
+
+### Test results (2026-03-17, 3 runs each, worktree retest)
+
+| Topic | Run | Extracted answers | Gap sentence | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| potential | 1 | `弾ける` | `難しいソナタが___ようになった` | ✅ | Clean full form |
+| potential | 2 | *(only 1 run captured)* | | | |
+| potential | 3 | *(only 1 run captured)* | | | |
+| し | 1 | `低いし, 遠いし` | `給料が___、通勤が___` | ✅ | Over-includes predicate |
+| し | 2 | `つまらないし, 遠いし` | `プレゼンが___、ホテルが___` | ✅ | Over-includes predicate |
+| し | 3 | `つまらないし, あるし` | `パーティーは___、宿題も___` | ✅ | Over-includes predicate |
+| たり-たりする | 1 | `弾いたり, 読んだりしている` | `ギターを___雑誌を___` | ✅ | Run 1: includes `している` in last answer |
+| たり-たりする | 2 | `したり, 見たり` | `ゲームを___映画を___します` | ✅ | No closing する slot; `します` visible |
+| たり-たりする | 3 | `読んだり, 聴いたり` | `本を___、音楽を___する` | ✅ | No closing する slot; `する` visible |
+
+**Pattern**: One-pass reliably extracts the answer and passes validation, but for し it
+consistently over-includes the predicate (`低いし` instead of `し`). For たり-たりする
+the closing `する`/`している`/`します` is sometimes captured in the last answer (run 1),
+sometimes left fully visible (runs 2–3) — inconsistent across runs.
+
+---
+
+## Two-pass extraction refinement (`dd864bf`, on `main`)
+
+After the generation call produces a sentence, a second `refineAnswerExtraction` call
+re-extracts the answer substrings with a focused "worksheet builder" prompt. This
+separates sentence quality from extraction precision.
+
+### Test results (2026-03-17)
+
+**Historical results** (from TODO-grammar.md, "worksheet builder" prompt, mixed Haiku/Sonnet):
+
+| Topic | Model | Extraction | Quality |
+|---|---|---|---|
+| genki:shi (し) | Haiku | `し, し, し` | ✅ Perfect — just the particle |
+| genki:shi (し) | Haiku | `遠いし, 高いし, うるさいし` | ❌ Earlier prompt version — too greedy |
+| bunpro:causative | Haiku | `させた` | ✅ Perfect — just the inflectional suffix |
+| bunpro:Verb[potential] | Sonnet | `が書ける` | ⚠️ Slightly greedy — grabbed particle shift too |
+| bunpro:たり-たりする | Sonnet | `んだり, したり` | ✅ Good — correct morpheme boundary |
+| bunpro:たり-たりする | Haiku | `たり, たり, たり` | ⚠️ Works for た-row but would fail for だり |
+| bunpro:たり-たりする (fixed expr category) | Haiku | `たり, たり, たり, する` | ❌ する conjugates in context → validation failure |
+
+**Worktree retest (2026-03-17, 3 runs each, Haiku)**:
+
+| Topic | Run | Extracted answers | Gap sentence | Pass/Fail | Notes |
+|---|---|---|---|---|---|
+| potential | 1 | `られる` | `難しい質問に答え___と思う` | ✅ | Clean suffix only |
+| potential | 2 | *(validation fail — returned `られるようになった`, not in sentence)* | — | ❌ | Extracted form not verbatim in sentence |
+| potential | 3 | `弾ける` | `簡単なメロディーが___ようになったね` | ✅ | Clean full form |
+| し | 1 | `し, し, し` | `店長も厳しい___、給料も安い___、夜遅いシフトだ___` | ✅ | Perfect |
+| し | 2 | `し, し, し` | `カリキュラムも厳しい___、教授も有名だ___、場所も美しい___` | ✅ | Perfect |
+| し | 3 | `し, し` | `仕事場に近い___、レストランもたくさんある___` | ✅ | Perfect |
+| たり-たりする | 1 | `たり, たり` | `映画を見___部屋を片付け___` | ✅ | Missing closing する slot |
+| たり-たりする | 2 | `たり, たり, たり, した` | `コンサートに行っ___、映画を見___、庭仕事をし______` | ✅ | Correctly captures closing `した` |
+| たり-たりする | 3 | `たり, たり, たり` | `雑誌を読んだり、ポッドキャストを聞い___、ノートに書い___した` | ✅ | Missing closing する; gap count wrong (3 answers but sentence shows 2 blanks + visible `した`) |
+
+**Pattern**: Two-pass extraction is the only approach where し comes out clean (`し, し, し`)
+consistently. For potential verbs it is mostly clean but has a 1-in-3 validation failure
+(extracted form not verbatim in sentence). For たり-たりする it is inconsistent: sometimes
+captures the closing する conjugation (run 2), sometimes drops it entirely (runs 1, 3).
+
+---
+
+## Approach A — Two-field generation (`experiment-1-two-field` branch)
 
 ### Core idea
 
@@ -145,7 +225,7 @@ Japanese sentence.
 
 ---
 
-## Approach C — Grammar-outward generation
+## Approach C — Grammar-outward generation (`experiment-3-grammar-outward` branch)
 
 ### Core idea
 
