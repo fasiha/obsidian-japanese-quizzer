@@ -283,8 +283,7 @@ tamaranai
 tame (ni)
 ~tara
 ~tara dō desu ka
-~tari
-~tari suru
+~tari ~tari suru
 -tatte
 -te
 -te <~kudasai>

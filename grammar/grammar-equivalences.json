@@ -95,6 +95,26 @@
   },
   {
     "topics": [
+      "bunpro:たり-たりする",
+      "dbjg:~tari-~tari-suru",
+      "genki:tari-tarisuru"
+    ],
+    "summary": "たり～たりする lists actions or states as non-exhaustive examples, equivalent to \"do things like A and B.\" Form it by adding り to the plain past (た-form) of each verb, then close the chain with する (conjugated for tense and politeness). Unlike the て-form sequence, たり～たりする carries no implied order among the listed items.",
+    "subUses": [
+      "列挙 (listing representative actions): 音楽を聞いたり、本を読んだりした — implies other activities also occurred.",
+      "交互 (alternating or fluctuating states): 雨が降ったり止んだりしている — it keeps going back and forth between raining and stopping.",
+      "単独 (single-verb vagueness): 散歩したりする — one verb + たり + する implies other unspecified activities exist."
+    ],
+    "cautions": [
+      "て-form vs. たり: て-form (食べて寝た) sequences events in strict order and treats the list as complete; たり～たりする (食べたり寝たりした) presents events as examples with no order and implies the list is open-ended.",
+      "The list is always non-exhaustive: using たり～たりする implies \"among other things,\" so it sounds odd when the speaker intends to list every action precisely. Prefer て-form for exhaustive sequences.",
+      "たりして at sentence end: this fixed phrase (plain-past verb + たりして) expresses joking speculation or self-deprecating hedging (e.g. 間違えたりして). It is a distinct usage, not a regular たり list.",
+      "Conjugation: the final する carries all tense and politeness marking. The たり particles themselves do not change."
+    ],
+    "stub": true
+  },
+  {
+    "topics": [
       "bunpro:てならない"
     ],
     "summary": "てならない expresses an uncontrollable, persistent feeling or sensation — 'can't help but feel' or 'extremely.' It attaches to the て-form of verbs and い-adjectives, or で for な-adjectives (さびしくてならない, 気になってならない). It is a formal, literary expression more common in writing than speech.",

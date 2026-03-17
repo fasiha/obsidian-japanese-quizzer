@@ -30,7 +30,7 @@ let grammarGapToken = "___"
 struct GrammarMultipleChoiceQuestion: Equatable, Sendable {
     let stem: String        // English context (production) or Japanese sentence (recognition)
     let sentence: String?   // Full Japanese sentence (production only; nil for recognition)
-    let choices: [[String]] // 4 options for multiple choice, 1 option for fill-in-the-blank; each sub-array has one element per grammar slot
+    var choices: [[String]] // 4 options for multiple choice, 1 option for fill-in-the-blank; each sub-array has one element per grammar slot
     let correctIndex: Int   // 0–3 for multiple choice, always 0 for fill-in-the-blank
     /// The specific sub-use or construction targeted by this question (from the "sub_use" JSON field).
     /// Stored in reviews.notes after the student answers, so future generation can vary sub-uses.
@@ -221,6 +221,92 @@ nonisolated func disambiguateGaps(
     var resolved = question
     resolved.resolvedGappedSentence = result
     return resolved
+}
+
+// MARK: - Answer extraction refinement
+
+/// For tier 2 production fill-in-the-blank questions, asks Haiku to re-extract the
+/// shortest exact substrings the student must produce, given the full sentence and grammar
+/// topic. This corrects cases where the generation call extracted too large a chunk (e.g.
+/// an entire clause instead of just the particle) or an inconsistently sized fragment.
+///
+/// Returns a new question with the `choices` array replaced if Haiku returns valid substrings
+/// that all appear verbatim in the sentence; otherwise returns the question unchanged.
+nonisolated func refineAnswerExtraction(
+    question: GrammarMultipleChoiceQuestion,
+    topicId: String,
+    topicDescription: String,
+    client: AnthropicClient
+) async -> GrammarMultipleChoiceQuestion {
+    // Only applies to tier 2 production: exactly one choices entry, sentence is present.
+    guard question.choices.count == 1,
+          let sentence = question.sentence
+    else { return question }
+
+    let prompt = """
+    Japanese sentence: \(sentence)
+    Grammar topic: \(topicId) — \(topicDescription)
+
+    You are a Japanese teacher writing a worksheet. Identify the exact substring(s) that \
+    test the grammar — the part a student must produce to show they've learned this form. \
+    Everything else (vocabulary, verb stems, sentence structure) stays visible. \
+    The blank should contain the grammar form and nothing more — no surrounding vocabulary \
+    that the student could supply without knowing this grammar point. \
+    Each substring must appear verbatim in the sentence.
+    - Conjugation grammar (potential, causative, たり, etc.): just the inflectional suffix, \
+    not the verb stem — e.g. られます not 帰られます, させた not 掃除させた, したり not 買い物したり
+    - Fixed expressions (から, し, はず, したがって, etc.): just the grammar word/phrase — \
+    e.g. し, から, はずだ
+    - Grammatical frames (てはいけない, に堪えない, ようにする, etc.): the full frame pattern \
+    but not the content verb it attaches to — e.g. てはいけない not 撮ってはいけない
+    For multi-slot grammar, include one entry per slot.
+    Reply with ONLY a JSON array of strings — nothing else.
+    """
+
+    // Budget: a few short Japanese substrings fit comfortably in 64 tokens.
+    let maxTok = 64
+
+    do {
+        let (response, _, _) = try await client.send(
+            messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
+            maxTokens: maxTok
+        )
+        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Extract JSON array from response (may be wrapped in a code fence).
+        let jsonString: String
+        if let fenceStart = trimmed.range(of: "["),
+           let fenceEnd   = trimmed.range(of: "]", range: fenceStart.lowerBound..<trimmed.endIndex) {
+            jsonString = String(trimmed[fenceStart.lowerBound...fenceEnd.lowerBound])
+        } else {
+            jsonString = trimmed
+        }
+
+        guard let data = jsonString.data(using: .utf8),
+              let extracted = try? JSONDecoder().decode([String].self, from: data),
+              !extracted.isEmpty
+        else {
+            print("[ExtractionRefinement] Haiku returned unparseable response for \(topicId): \(trimmed)")
+            return question
+        }
+
+        // Validate every extracted substring appears verbatim in the sentence.
+        for substring in extracted {
+            guard sentence.contains(substring) else {
+                print("[ExtractionRefinement] Haiku returned substring not in sentence for \(topicId): \"\(substring)\"")
+                return question
+            }
+        }
+
+        print("[ExtractionRefinement] Extracted answers for \(topicId): \(extracted)")
+        var refined = question
+        refined.choices[0] = extracted
+        return refined
+
+    } catch {
+        print("[ExtractionRefinement] Haiku call failed for \(topicId): \(error)")
+        return question
+    }
 }
 
 // MARK: - Session
@@ -524,13 +610,11 @@ final class GrammarQuizSession {
 
                 Step 1 — English stem: One or two English sentences that tell a concrete, story-like scenario — something that happened or is happening to a specific person in a specific setting. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
-                Step 3 — Identify the answer(s): Quote the EXACT substring(s) from Step 2 that embody the target grammar form. The substring must be the COMPLETE conjugated form — include the entire verb stem + grammar morpheme + any attached ending (て、た、ます、ません, etc.). For example: full sentence "彼女はピアノが弾けます。", answer "弾けます". Another example: full sentence "同僚にファイルを削除されて困った。", answer "削除されて". For multi-slot grammar (e.g. 〜し、〜し), list every slot.
-                Step 4 — Self-check: (a) Copy the exact answer string(s) from Step 3 and confirm each one appears verbatim in the Step 2 sentence. (b) Is there only one plausible answer for each slot? (c) Would a student who knows the target grammar find the question fair?
 
                 Finally, end with a ```json code block:
-                {"stem":"<Step 1>","sentence":"<Step 2 full sentence>","choices":[["<answer(s) from Step 3>"]],"correct":0,"sub_use":"<phrase>"}
-                - "sentence" is the FULL Japanese sentence from Step 2. Write the sentence exactly as a native speaker would, with every word present.
-                - "choices" has exactly ONE entry: an array with one element per grammar slot (e.g. ["弾けます"] for one slot, ["し","し"] for two slots).
+                {"stem":"<Step 1>","sentence":"<Step 2 full sentence>","choices":[[""]],"correct":0,"sub_use":"<phrase>"}
+                - "sentence" is the FULL Japanese sentence from Step 2.
+                - "choices" is always [[""]] — answer extraction happens separately.
                 - "correct" is always 0.
                 \(subUseJsonInstruction)
                 """
@@ -985,6 +1069,16 @@ final class GrammarQuizSession {
             finalMsgs = msgs
 
             if var multipleChoice = parseMultipleChoiceJSON(raw) {
+                // For tier 2 production (single choices entry), do a focused second pass
+                // to correct over-extraction (entire clause) or under-extraction (bare particle)
+                // from the generation call.
+                if multipleChoice.choices.count == 1 && multipleChoice.sentence != nil {
+                    multipleChoice = await refineAnswerExtraction(
+                        question: multipleChoice,
+                        topicId: item.topicId,
+                        topicDescription: item.titleEn,
+                        client: client)
+                }
                 // Disambiguate gapping if an answer substring appears multiple times
                 if multipleChoice.needsDisambiguation {
                     multipleChoice = await disambiguateGaps(

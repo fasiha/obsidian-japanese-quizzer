@@ -619,6 +619,130 @@ fill — and sharing the call would have forced compromises in both.
 
 ---
 
+## Tier 2 answer extraction: two-pass architecture and grammar classification (2026-03-17)
+
+### Problem
+
+Tier 2 production questions need to identify the exact substring(s) of a Japanese sentence
+that a student must fill in to demonstrate knowledge of the target grammar. When the
+generation LLM (Haiku) does this in the same call as sentence generation, it inconsistently
+extracts either too little (just a particle) or too much (an entire clause). The model's
+reasoning about *why* it chose certain words during generation bleeds into its extraction,
+biasing toward content rather than form.
+
+### Solution: second LLM pass for extraction
+
+After the generation call produces a sentence, a separate extraction call identifies the
+blanks. This cleanly separates concerns — generation focuses on sentence quality, extraction
+focuses on precision. The extraction call is ~200–300 input tokens (negligible cost) and
+uses the same model as generation. Precedent: the existing cloze disambiguation pass is
+already a second LLM call.
+
+### Extraction prompt framing: "worksheet builder"
+
+The key insight is framing the extraction model as a Japanese teacher writing a worksheet.
+The goal is: **what is the minimum the student must produce to prove they know this grammar
+point, given that everything else is visible?** This is the same mental model as a textbook
+fill-in-the-blank exercise.
+
+The prompt tells the model: "Everything outside these substrings is given — so include only
+what cannot be inferred without knowing the grammar." This avoids mentioning blanks/gaps
+explicitly while correctly constraining extraction to the grammar form only.
+
+### Three grammar categories for extraction
+
+Testing across ~20 grammar topics revealed three distinct extraction patterns:
+
+**1. Conjugation grammar** (potential, causative, passive, たり, ませんか, etc.)
+- Blank: just the inflectional suffix, not the verb stem
+- Examples: `られます` not `帰られます`, `させた` not `掃除させた`
+- The student sees the verb stem and must produce the correct conjugated ending
+- Like a worksheet that shows `帰(　　)ます` and expects `られ`
+
+**2. Fixed expressions** (から, し, はず, したがって, どころか, etc.)
+- Blank: just the grammar word/phrase itself
+- Examples: `し`, `から`, `はずだ`, `したがって`
+- These are standalone lexical items — the blank is the word
+
+**3. Grammatical frames** (てはいけない, に堪えない, ようにする, を余儀なくされる, etc.)
+- Blank: the full frame pattern, but not the content verb it attaches to
+- Examples: `てはいけない` not `撮ってはいけない`, `に堪えない` not `見るに堪えない`
+- The frame IS the grammar — it may be long, but there's nothing to trim
+
+All three reduce to the same principle: **blank the grammar, show the vocabulary.**
+
+### Classification approach (future)
+
+Currently the extraction prompt includes examples of all three categories and lets the
+model decide. This works well for most topics but breaks down for hybrids like
+`たり～たりする`, where `たり` is a fixed particle but surfaces as `だり` after certain
+verb stems (rendaku), and the closing `する` conjugates.
+
+A future improvement: classify each grammar topic as one of these three categories at
+publish time (in `prepare-publish.mjs` or `grammar-equivalences.json`) and pass only the
+relevant extraction rule to the model. This would:
+- Remove ambiguity from the extraction prompt
+- Allow category-specific validation (e.g., for fixed expressions, do literal string search
+  instead of LLM extraction)
+- Handle hybrids via explicit metadata (e.g., たり: fixed particle, surface forms
+  `["たり", "だり"]`, ignore the closing する)
+
+### Test results (2026-03-17)
+
+Tested with the three-category prompt (all categories in one prompt, model chooses):
+
+| Topic | Model | Extraction | Quality |
+|-------|-------|------------|---------|
+| genki:shi (し) | Haiku | `し, し, し` | Perfect — just the particle |
+| genki:shi (し) | Haiku | `遠いし, 高いし, うるさいし` | Earlier prompt version — too greedy, includes predicate |
+| bunpro:causative | Haiku | `させた` | Perfect — just the inflectional suffix |
+| genki:potential-verbs | Sonnet | `が書ける` | Slightly greedy — grabbed the を→が particle shift too |
+| bunpro:たり-たりする | Sonnet | `んだり, したり` | Good — correct morpheme boundary for godan verb |
+| bunpro:たり-たりする | Haiku | `たり, たり, たり` | Works for た-row verbs but would fail for だり (rendaku) |
+| bunpro:たり-たりする (fixed expr) | Haiku | `たり, たり, たり, する` | Tried to include する but it conjugates in context → validation failure |
+
+Key finding: Haiku + worksheet framing is reliable for categories 1–3 individually. The
+main failure mode is hybrid grammar (たり) where the surface form varies phonologically.
+Sonnet handles morpheme boundaries more precisely (correctly extracting `んだり` for
+読んだり) but is inconsistent across runs and sometimes hallucinates matches.
+
+### Current extraction prompt
+
+```
+You are a Japanese teacher writing a worksheet. Identify the exact substring(s) that
+test the grammar — the part a student must produce to show they've learned this form.
+Everything else (vocabulary, verb stems, sentence structure) stays visible.
+The blank should contain the grammar form and nothing more — no surrounding vocabulary
+that the student could supply without knowing this grammar point.
+Each substring must appear verbatim in the sentence.
+- Conjugation grammar (potential, causative, たり, etc.): just the inflectional suffix,
+  not the verb stem — e.g. られます not 帰られます, させた not 掃除させた
+- Fixed expressions (から, し, はず, したがって, etc.): just the grammar word/phrase —
+  e.g. し, から, はずだ
+- Grammatical frames (てはいけない, に堪えない, ようにする, etc.): the full frame pattern
+  but not the content verb it attaches to — e.g. てはいけない not 撮ってはいけない
+For multi-slot grammar, include one entry per slot.
+Reply with ONLY a JSON array of strings — nothing else.
+```
+
+### Open questions
+
+- **Model for extraction**: Haiku is cheaper and faster; Sonnet handles morpheme boundaries
+  better but is less consistent. Currently using whatever model the client is configured with.
+  A dedicated Sonnet extraction pass (~300 tokens) might be worth the cost if classification
+  metadata isn't implemented.
+- **Rendaku/phonological variants**: たり surfaces as だり after voiced stems. The validation
+  step (`sentence.contains(substring)`) correctly rejects mismatches, but the fallback is
+  the original (empty) answer. Need either: (a) classification metadata listing surface
+  variants, or (b) a phonology-aware validator.
+- **Generation prompt simplification**: the generation prompt no longer asks Haiku to extract
+  answers (Steps 3–4 and `choices` field removed). It emits `choices: [[""]]` as a
+  placeholder. This means every tier 2 question pays for the extraction call, even when
+  single-pass extraction would have been fine. Acceptable tradeoff given the extraction call
+  is ~200 tokens, but revisit if token budgets tighten.
+
+---
+
 ## Future
 
 - [ ] Error-correction and sentence-completion quiz variants
