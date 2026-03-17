@@ -358,11 +358,9 @@ final class GrammarQuizSession {
                 } else {
                     // Tier 2: fill-in-the-blank — student types the grammar form(s) into gap(s).
                     facetRule = """
-                    Facet: production (tier 2) — student sees an English context sentence and a \
-                    complete Japanese sentence; the app hides the grammar form(s) and the student \
-                    TYPES the missing form(s). No multiple-choice distractors.
+                    Facet: production (tier 2) — you provide an English context sentence and a \
+                    complete, natural Japanese sentence that uses the target grammar. No multiple-choice distractors.
                     The English stem must NOT contain Japanese.
-                    The Japanese sentence must be complete and natural.
                     """
                 }
             } else if isGenerating && isFreeTextStemGeneration {
@@ -524,14 +522,14 @@ final class GrammarQuizSession {
                 Generate ONE production question for tier 2.
                 Work through these steps explicitly — write out each step before the JSON:
 
-                Step 1 — English stem: One or two complete English sentences that set the scene. No Japanese. No blanks or underscores — write out the full scenario. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 1 — English stem: One or two complete English sentences that set the scene. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
                 Step 3 — Identify the answer(s): Quote the EXACT substring(s) from Step 2 that embody the target grammar form. The substring must be the COMPLETE conjugated form — include the entire verb stem + grammar morpheme + any attached ending (て、た、ます、ません, etc.). For example: full sentence "彼女はピアノが弾けます。", answer "弾けます". Another example: full sentence "同僚にファイルを削除されて困った。", answer "削除されて". For multi-slot grammar (e.g. 〜し、〜し), list every slot.
                 Step 4 — Self-check: (a) Copy the exact answer string(s) from Step 3 and confirm each one appears verbatim in the Step 2 sentence. (b) Is there only one plausible answer for each slot? (c) Would a student who knows the target grammar find the question fair?
 
                 Finally, end with a ```json code block:
                 {"stem":"<Step 1>","sentence":"<Step 2 full sentence>","choices":[["<answer(s) from Step 3>"]],"correct":0,"sub_use":"<phrase>"}
-                - "sentence" is the FULL Japanese sentence from Step 2 — no gaps, no blanks, no underscores. Write the sentence exactly as a native speaker would, with every word present.
+                - "sentence" is the FULL Japanese sentence from Step 2. Write the sentence exactly as a native speaker would, with every word present.
                 - "choices" has exactly ONE entry: an array with one element per grammar slot (e.g. ["弾けます"] for one slot, ["し","し"] for two slots).
                 - "correct" is always 0.
                 \(subUseJsonInstruction)
