@@ -430,7 +430,7 @@ final class GrammarQuizSession {
         if isGenerating && isFreeTextStemGeneration {
             if item.facet == "production" {
                 // For production, the stem is English — make sure it doesn't leak the grammar name.
-                return header + "\nWrite a concrete scenario. Do not write what the student should \"express\", \"describe\", \"explain\", or \"demonstrate\" — write a situation, not instructions."
+                return header + "\nWrite a concrete, story-like scenario — something that happened or is happening to a specific person in a specific setting."
             } else {
                 // For recognition, the stem is Japanese — no additional instruction needed here.
                 return header
@@ -500,7 +500,7 @@ final class GrammarQuizSession {
                 Generate ONE multiple-choice question for the production facet (tier 1).
                 Work through these steps explicitly — write out each step before the JSON:
 
-                Step 1 — English stem: One or two English sentences describing a concrete situation. No Japanese. Do not write what the student should "express", "describe", "explain", or "demonstrate" — write a scenario, not instructions. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 1 — English stem: One or two English sentences that tell a concrete, story-like scenario — something that happened or is happening to a specific person in a specific setting. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Correct sentence: Write one complete, natural Japanese sentence that correctly expresses the English stem using the target grammar.
                 Step 3 — Distractors: Write three distractor Japanese sentences. Each must:
                   (a) use the SAME core vocabulary and situation as the correct sentence — keep the subject, object, and setting identical,
@@ -522,7 +522,7 @@ final class GrammarQuizSession {
                 Generate ONE production question for tier 2.
                 Work through these steps explicitly — write out each step before the JSON:
 
-                Step 1 — English stem: One or two complete English sentences that set the scene. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
+                Step 1 — English stem: One or two English sentences that tell a concrete, story-like scenario — something that happened or is happening to a specific person in a specific setting. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
                 Step 3 — Identify the answer(s): Quote the EXACT substring(s) from Step 2 that embody the target grammar form. The substring must be the COMPLETE conjugated form — include the entire verb stem + grammar morpheme + any attached ending (て、た、ます、ません, etc.). For example: full sentence "彼女はピアノが弾けます。", answer "弾けます". Another example: full sentence "同僚にファイルを削除されて困った。", answer "削除されて". For multi-slot grammar (e.g. 〜し、〜し), list every slot.
                 Step 4 — Self-check: (a) Copy the exact answer string(s) from Step 3 and confirm each one appears verbatim in the Step 2 sentence. (b) Is there only one plausible answer for each slot? (c) Would a student who knows the target grammar find the question fair?
@@ -585,8 +585,8 @@ final class GrammarQuizSession {
         Generate ONE English-language situation or sentence for the student to translate \
         into Japanese using the target grammar.
         The English must NOT contain Japanese.
-        Keep it to one or two sentences. Write a concrete scenario — not instructions about \
-        what the student should "express", "describe", "explain", or "demonstrate".
+        Keep it to one or two sentences. Write a concrete, story-like scenario — something that \
+        happened or is happening to a specific person in a specific setting.
         Think step by step if helpful, then write --- on its own line, followed by the \
         English text (no labels, no JSON).\(grammarTopicsInstruction)
         \(subUseFreeTextInstruction)
