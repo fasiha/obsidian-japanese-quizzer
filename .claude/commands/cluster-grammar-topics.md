@@ -54,8 +54,10 @@ hasn't annotated yet:
 - `grammar/grammar-dbjg.tsv` (Dictionary of Basic Japanese Grammar)
 
 If a new topic matches an entry in another database that ISN'T in grammar.json,
-note it for the user but do NOT add it to equivalences (only annotated topics
-get grouped).
+**still add it to the equivalence group** — the work of verifying the match has
+already been done, and pre-grouping means the topic will be correctly clustered
+if the user annotates it later. Note these cross-database additions in the
+report so the user is aware.
 
 ## Step 4: Apply equivalences
 

@@ -76,6 +76,25 @@
   },
   {
     "topics": [
+      "bunpro:し-し",
+      "dbjg:shi",
+      "genki:shi"
+    ],
+    "summary": "The particle し lists multiple reasons or properties of equal weight, attached to short-form predicates (verb/い-adj as-is, な-adj+だ, noun+だ). It functions like 'and besides' or 'and also,' presenting co-existing reasons that together support a conclusion.",
+    "subUses": [
+      "Listing multiple reasons: 安いし、おいしいし、あの店が好きだ (It's cheap and tasty — that's why I like that restaurant)",
+      "Single reason with implied others: 時間もないし、帰ろう (We're out of time [among other reasons], so let's head back)",
+      "Listing qualities without an explicit conclusion: あの先生は優しいし、説明も上手だし (That teacher is kind and good at explaining...)"
+    ],
+    "cautions": [
+      "し requires short-form predicates — だ appears after な-adjectives and nouns (静かだし) but NOT after い-adjectives (高いし, not 高いだし)",
+      "All reasons listed with し should carry roughly equal weight — if one reason clearly dominates, から or ので is more natural",
+      "し can appear just once (with other reasons implied) — the doubled し〜し pattern is common but not required",
+      "Do not confuse with the conjunctive particle て for sequential actions — し lists co-existing reasons without implying temporal order"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:てならない"
     ],
     "summary": "てならない expresses an uncontrollable, persistent feeling or sensation — 'can't help but feel' or 'extremely.' It attaches to the て-form of verbs and い-adjectives, or で for な-adjectives (さびしくてならない, 気になってならない). It is a formal, literary expression more common in writing than speech.",

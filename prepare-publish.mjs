@@ -363,6 +363,9 @@ const grammarOutput = {
 
 // Write grammar.json before equivalence check so /cluster-grammar-topics can
 // read the latest topics even if this script exits with an error below.
+// (Description fields from equivalences are injected after the check below.)
+const grammarOutPath = path.join(projectRoot, "grammar.json");
+writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
 
 // Validate grammar/grammar-equivalences.json covers all grammar topics
 const equivPath = path.join(
@@ -420,7 +423,6 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
   }
 }
 
-const grammarOutPath = path.join(projectRoot, "grammar.json");
 writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
 console.log(
   `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,

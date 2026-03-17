@@ -29,7 +29,6 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 
 vocab.json
 grammar.json
-grammar-equivalences.json
 quiz.sqlite
 .vscode/
 jmdict*json
