@@ -3,7 +3,7 @@
 // Housed in the Grammar tab alongside GrammarQuizView.
 //
 // Toolbar:
-//   Leading: filter menu (Not yet / Learning / All)
+//   Leading: filter menu (Not yet learning / Learning / All)
 //   Trailing: quiz button (when enrolled topics exist) + ··· menu (Settings, Re-download, last synced)
 
 import SwiftUI
@@ -34,7 +34,7 @@ struct GrammarBrowserView: View {
     enum EnrollmentFilter: String, CaseIterable {
         case all = "All"
         case enrolled = "Learning"
-        case notEnrolled = "Not yet"
+        case notEnrolled = "Not yet learning"
     }
 
     // Topics after applying search + enrollment filter, sorted by level then title.
@@ -62,9 +62,6 @@ struct GrammarBrowserView: View {
             }
     }
 
-    private var enrolledCount: Int {
-        enrollmentStatus.values.filter { $0 }.count
-    }
 
     var body: some View {
         NavigationStack {
@@ -81,12 +78,10 @@ struct GrammarBrowserView: View {
                 ToolbarItem(placement: .navigationBarLeading) { enrollmentFilterMenu }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 4) {
-                        if enrolledCount > 0 {
-                            Button {
-                                showQuiz = true
-                            } label: {
-                                Label("Quiz", systemImage: "brain.head.profile")
-                            }
+                        Button {
+                            showQuiz = true
+                        } label: {
+                            Label("Quiz", systemImage: "brain.head.profile")
                         }
                         BrowserToolbarMenu(
                             showSettings: $showSettings,
@@ -199,7 +194,7 @@ struct GrammarBrowserView: View {
             Button {
                 filterEnrolled = .notEnrolled
             } label: {
-                Label(filterEnrolled == .notEnrolled ? "Not yet ✓" : "Not yet",
+                Label(filterEnrolled == .notEnrolled ? "Not yet learning ✓" : "Not yet learning",
                       systemImage: "tray.and.arrow.down")
             }
             Button {
@@ -227,7 +222,7 @@ struct GrammarBrowserView: View {
         switch filterEnrolled {
         case .all:         return "All"
         case .enrolled:    return "Learning"
-        case .notEnrolled: return "Not yet"
+        case .notEnrolled: return "Not yet learning"
         }
     }
 

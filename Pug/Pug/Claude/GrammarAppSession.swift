@@ -41,6 +41,9 @@ final class GrammarAppSession {
     var uncertaintyUnlocked: Bool = false
     var preQuizRecall: Double? = nil
     var preQuizHalflife: Double? = nil
+    /// Vocabulary glosses for the current question's sentence, resolved after generation.
+    /// Nil while the fetch is in progress; empty array if none were found.
+    var assumedVocab: [VocabGloss]? = nil
 
     var currentItem: GrammarQuizItem? {
         items.indices.contains(currentIndex) ? items[currentIndex] : nil
@@ -129,7 +132,7 @@ final class GrammarAppSession {
         phase = .chatting
 
         Task {
-            try? await recordReview(item: item, score: score, notes: "autograder")
+            try? await recordReview(item: item, score: score, notes: resultSummary)
         }
     }
 
@@ -246,6 +249,7 @@ final class GrammarAppSession {
         }
 
         phase = .generating
+        assumedVocab = nil
         print("[GrammarAppSession] generating for \(item.topicId) facet:\(item.facet)")
 
         do {
@@ -256,6 +260,8 @@ final class GrammarAppSession {
             }
             currentQuestion = mc
             phase = .awaitingTap(mc)
+            // Await the vocab-assumed task that generateQuestionForTesting fired in the background.
+            assumedVocab = await itemSession.vocabTask?.value ?? []
         } catch {
             print("[GrammarAppSession] generateQuestion error: \(error)")
             phase = .error(error.localizedDescription)

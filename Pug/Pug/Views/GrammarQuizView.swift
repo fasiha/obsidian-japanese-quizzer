@@ -9,6 +9,7 @@ struct GrammarQuizView: View {
     @State var session: GrammarAppSession
     let manifest: GrammarManifest
     @State private var showRescaleSheet = false
+    @State private var vocabExpanded = false
 
     var body: some View {
         Group {
@@ -36,6 +37,7 @@ struct GrammarQuizView: View {
                 }
             }
         }
+        .onChange(of: session.currentItem?.topicId) { vocabExpanded = false }
         .sheet(isPresented: $showRescaleSheet) {
             RescaleSheet(
                 currentHalflife: session.gradedHalflife ?? 24,
@@ -69,6 +71,9 @@ struct GrammarQuizView: View {
 
                 // Stem (English context for production; Japanese sentence for recognition)
                 stemView(question: question)
+
+                // Collapsible vocabulary hints — disabled while fetch is in progress
+                assumedVocabDisclosure
 
                 // Choice buttons
                 let letters = ["A", "B", "C", "D"]
@@ -143,6 +148,35 @@ struct GrammarQuizView: View {
                     )
             }
         }
+    }
+
+    // MARK: - Assumed vocab disclosure
+
+    private var assumedVocabDisclosure: some View {
+        let ready = session.assumedVocab != nil
+        let empty = session.assumedVocab?.isEmpty == true
+        return DisclosureGroup(isExpanded: $vocabExpanded) {
+            if let glosses = session.assumedVocab, !glosses.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(glosses, id: \.word) { gloss in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(gloss.word)
+                                .font(.body)
+                            Text(gloss.gloss)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        } label: {
+            Text(empty ? "Vocabulary (none)" : "Vocabulary")
+                .font(.subheadline)
+                .foregroundStyle(ready ? .primary : .tertiary)
+        }
+        .disabled(!ready || empty)
     }
 
     // MARK: - Chatting

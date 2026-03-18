@@ -23,6 +23,7 @@ struct VocabBrowserView: View {
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
 
+    @State private var showQuiz = false
     @State private var showSettings = false
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
@@ -75,12 +76,19 @@ struct VocabBrowserView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    BrowserToolbarMenu(
-                        showSettings: $showSettings,
-                        db: db,
-                        lastSyncedAt: corpus.lastSyncedAt,
-                        onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict) } }
-                    )
+                    HStack(spacing: 4) {
+                        Button {
+                            showQuiz = true
+                        } label: {
+                            Label("Quiz", systemImage: "brain.head.profile")
+                        }
+                        BrowserToolbarMenu(
+                            showSettings: $showSettings,
+                            db: db,
+                            lastSyncedAt: corpus.lastSyncedAt,
+                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict) } }
+                        )
+                    }
                 }
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
@@ -89,6 +97,9 @@ struct VocabBrowserView: View {
             }
 
             .sheet(isPresented: $showSettings) { SettingsView() }
+            .navigationDestination(isPresented: $showQuiz) {
+                QuizView(session: session)
+            }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",
                                                       wordIds: corpus.items.map(\.id)) {
