@@ -391,18 +391,46 @@ Three items that should be resolved before Phase 1B, in this order:
     (repeatable) mocks prior notes. Storing `subUse` in `reviews.notes` is Phase 1B
     (iOS UI writes reviews).
 
-- [ ] **VOCAB_ASSUMED contract** — define which generation paths emit a
-  `VOCAB_ASSUMED: word1,word2,...` line, how the app parses and stores it alongside the
-  stem, and what the "Show vocabulary" button does in the UI.
-  Open questions to resolve:
-  - Which tiers emit it: tier 3 production and tier 2 recognition are the clear cases;
-    tier 1/2 production arguably don't need it (the Japanese sentence already shown)
-  - Storage: add a `vocab_assumed` column to wherever stems are cached, or compute on
-    the fly from the generation response
-  - JMDict lookup: look up meanings at generation time and cache, or look up lazily
-    when the student taps "Show vocabulary"
-  - Passive vocab boost: if any VOCAB_ASSUMED word is enrolled in vocab, emit
-    `PASSIVE_VOCAB: word_id score` from the grading step (see Open items section)
+- [ ] **VOCAB_ASSUMED contract** — a "Show vocabulary" button that glosses key content
+  words in the quiz stem so vocabulary gaps don't block grammar testing.
+
+  **Scope**: tier 1 only (both production and recognition) for now. Tiers 2/3 are
+  deferred — the Japanese sentence is already visible in tier 2 production, and
+  tiers 2/3 are out of scope for the current shipping milestone.
+
+  **Design decisions (2026-03-17)**:
+  - **Separate async Haiku call**, not embedded in the main generation JSON. The main
+    generation prompt already does heavy lifting; adding another required output field
+    would create more parse-failure surface area. If the vocab call fails the quiz
+    still works — the "Show vocabulary" button simply doesn't appear.
+  - **What to feed Haiku**: for production tier 1, pass the correct sentence (identified
+    by `correctIndex`) — it contains all the shared vocabulary since distractors keep
+    the same core words. For recognition tier 1, pass the Japanese stem sentence.
+  - **Haiku prompt**: ask for nouns, verbs, adjectives and adverbs (in dictionary form)
+    that an N4-level learner might not know. Exclude particles, copulas, the target
+    grammar structure itself, and very common words (ある, する, いる, etc.). Aim for
+    2–6 words. Ask Haiku to reply with a small JSON array including a brief gloss:
+    `[{"word":"弾く","gloss":"to play (a string instrument)"},...]`
+  - **JMDict resolution**: for each word returned by Haiku, try `findExact` in
+    jmdict.sqlite.
+    - Exactly one match → use JMDict's first English sense (authoritative, consistent
+      with the rest of the app). Haiku's gloss is discarded.
+    - Zero or 2+ matches → fall back to Haiku's gloss. No extra round-trip since
+      the gloss was already in the same response.
+    Words are always shown to the student (raw Japanese + best available gloss).
+  - **TestHarness**: in `--live` mode, await the vocab call, attempt JMDict resolution
+    for each word, and print a resolution report showing each word, its Haiku gloss,
+    and the JMDict result (resolved / fell back to Haiku gloss / not found in either).
+    This lets us measure how often `findExact` fails in practice.
+  - **Timing**: fire the vocab call async immediately after `parseMultipleChoiceJSON`
+    succeeds. Store it as a `Task<[VocabGloss], Never>` on the session, where
+    `VocabGloss` is `(word: String, gloss: String)` (best available gloss after
+    JMDict resolution). The iOS `QuizView` awaits it lazily when the student taps
+    "Show vocabulary"; the TestHarness awaits it before printing results.
+  - **Passive vocab boost** (deferred): if a VOCAB_ASSUMED word is enrolled in the
+    student's vocab quiz, the grading step could emit `PASSIVE_VOCAB: word_id score`.
+    Not planned for tier 1 since grading is pure logic (zero LLM tokens). Revisit
+    for tiers 2/3 when free-text grading is added.
 
 - [ ] **Equivalence-group Ebisu propagation** — when a quiz updates Ebisu for one topic,
   all other topics in the same equivalence group should receive the same update. Without
