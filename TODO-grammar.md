@@ -391,7 +391,7 @@ Three items that should be resolved before Phase 1B, in this order:
     (repeatable) mocks prior notes. Storing `subUse` in `reviews.notes` is Phase 1B
     (iOS UI writes reviews).
 
-- [ ] **VOCAB_ASSUMED contract** — a "Show vocabulary" button that glosses key content
+- [x] **VOCAB_ASSUMED contract** — a "Show vocabulary" button that glosses key content
   words in the quiz stem so vocabulary gaps don't block grammar testing.
 
   **Scope**: tier 1 only (both production and recognition) for now. Tiers 2/3 are

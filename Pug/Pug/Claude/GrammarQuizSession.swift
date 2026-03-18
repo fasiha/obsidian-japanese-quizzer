@@ -10,6 +10,7 @@
 // No tools are used by grammar quizzes (no JMDict, no Kanjidic lookup needed).
 
 import Foundation
+import GRDB
 
 // MARK: - Multiple choice question
 
@@ -325,6 +326,14 @@ final class GrammarQuizSession {
     /// The most recent multiple-choice result (set by Phase 1B QuizView after student taps).
     /// Included in the post-answer chat system prompt so Claude knows whether they got it right.
     var multipleChoiceResult: String? = nil
+
+    /// JMDict database for vocab resolution. Set by the caller before generating a question.
+    /// If nil, vocab glosses fall back entirely to Haiku's inline gloss (no local lookup).
+    var jmdict: (any DatabaseReader)? = nil
+
+    /// Fires after a successful multiple-choice generation. Awaiting it returns the resolved
+    /// vocabulary list for the "Show vocabulary" button. Nil until the first question is generated.
+    var vocabTask: Task<[VocabGloss], Never>? = nil
 
     init(client: AnthropicClient, db: QuizDB) {
         self.client = client
@@ -1121,6 +1130,31 @@ final class GrammarQuizSession {
             print("[GrammarQuizSession] \(label) attempt \(attempt): parse failed, retrying")
         }
 
+        // Fire vocab-assumed lookup async once we have a successfully parsed question.
+        // Production tier 1: gloss the correct sentence (choices[correctIndex][0]).
+        // Recognition tier 1: gloss the Japanese stem.
+        if let mc = finalMultipleChoice {
+            let sentenceToGloss: String?
+            switch item.facet {
+            case "production":
+                sentenceToGloss = mc.choices[mc.correctIndex].first
+            case "recognition":
+                sentenceToGloss = mc.stem
+            default:
+                sentenceToGloss = nil
+            }
+            if let s = sentenceToGloss, !s.isEmpty {
+                let capturedClient  = client
+                let capturedJmdict  = jmdict
+                let capturedTopicId = item.topicId
+                vocabTask = Task {
+                    await fetchAndResolveVocab(
+                        sentence: s, topicId: capturedTopicId,
+                        client: capturedClient, jmdict: capturedJmdict)
+                }
+            }
+        }
+
         return (finalQuestion, finalMultipleChoice, finalMsgs)
     }
 
@@ -1188,6 +1222,191 @@ final class GrammarQuizSession {
         return GrammarMultipleChoiceQuestion(stem: stem, sentence: sentence,
                                              choices: choices, correctIndex: correctIndex,
                                              subUse: subUse)
+    }
+}
+
+// MARK: - Vocab assumed
+
+/// A single vocabulary item with its best available English gloss.
+struct VocabGloss: Sendable, Equatable {
+    let word: String              // dictionary form (as returned by Haiku)
+    let gloss: String             // English gloss: JMDict senses if resolved, otherwise Haiku's gloss
+    let jmdictWordIds: [String]?  // JMDict entry IDs when the word matched at least one entry; nil if no match
+}
+
+/// Returns the する-stripped lookup key for a word if it ends in する and has content before it,
+/// otherwise returns nil. E.g. "練習する" → "練習", "する" → nil.
+private func suruPrefix(_ word: String) -> String? {
+    guard word.hasSuffix("する") else { return nil }
+    let prefix = String(word.dropLast(2))
+    return prefix.isEmpty ? nil : prefix
+}
+
+/// Returns true when the given lookup text matches a kanji or kana form in the entry that is
+/// marked `common: true`. Used to sort common entries before uncommon ones when combining
+/// senses for ambiguous words.
+private func isCommonMatch(_ raw: [String: Any], lookupText: String) -> Bool {
+    let kanjiForms = raw["kanji"] as? [[String: Any]] ?? []
+    if let match = kanjiForms.first(where: { ($0["text"] as? String) == lookupText }) {
+        return (match["common"] as? Bool) == true
+    }
+    let kanaForms = raw["kana"] as? [[String: Any]] ?? []
+    if let match = kanaForms.first(where: { ($0["text"] as? String) == lookupText }) {
+        return (match["common"] as? Bool) == true
+    }
+    return false
+}
+
+/// Extracts all English senses from a parsed JMDict entry_json object.
+/// Sub-glosses within one sense are joined with ", "; senses are joined with "; ".
+private func glossFromEntry(_ raw: [String: Any]) -> String? {
+    let senses = raw["sense"] as? [[String: Any]] ?? []
+    let parts = senses.compactMap { sense -> String? in
+        let texts = (sense["gloss"] as? [[String: Any]] ?? [])
+            .filter { ($0["lang"] as? String) == "eng" }
+            .compactMap { $0["text"] as? String }
+        return texts.isEmpty ? nil : texts.joined(separator: ", ")
+    }
+    return parts.isEmpty ? nil : parts.joined(separator: "; ")
+}
+
+/// Asks Haiku to identify key vocabulary in `sentence` that an N4 learner might not know,
+/// then resolves each word against jmdict.sqlite using exact match on kanji or kana form.
+///
+/// - Returns an array of `VocabGloss` (may be empty if Haiku returns nothing or the call fails).
+/// - する-compound verbs (e.g. 練習する) are retried without する when the full form has no match.
+/// - When multiple entries match, senses from all entries are combined (joined with " / ").
+/// - Haiku's gloss is used only when JMDict has no match at all.
+nonisolated func fetchAndResolveVocab(
+    sentence: String,
+    topicId: String,
+    client: AnthropicClient,
+    jmdict: (any DatabaseReader)?
+) async -> [VocabGloss] {
+    // Step 1: Ask Haiku for key vocabulary with brief glosses.
+    let prompt = """
+    Japanese text: \(sentence)
+    Grammar topic: \(topicId)
+
+    List the nouns, verbs, adjectives, and adverbs in this text that an N4-level Japanese \
+    learner might not know. Use dictionary form for each word.
+    Exclude: particles, copulas (だ/です/ある/いる/する), and the target grammar structure itself.
+    Aim for 2–6 words. If there are no such words, return [].
+
+    Reply with ONLY a JSON array, nothing else:
+    [{"word":"...","gloss":"brief English meaning"},...]
+    """
+
+    let haikuWords: [(word: String, gloss: String)]
+    do {
+        let (response, _, _) = try await client.send(
+            messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
+            maxTokens: 128,
+            toolHandler: nil
+        )
+        let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Extract JSON array from response (may be wrapped in a code fence or have leading prose).
+        guard let open = trimmed.firstIndex(of: "["),
+              let close = trimmed.lastIndex(of: "]")
+        else { return [] }
+        let jsonStr = String(trimmed[open...close])
+        guard let data = jsonStr.data(using: .utf8),
+              let arr = try? JSONDecoder().decode([[String: String]].self, from: data)
+        else { return [] }
+        haikuWords = arr.compactMap { dict in
+            guard let w = dict["word"], let g = dict["gloss"],
+                  !w.isEmpty, !g.isEmpty else { return nil }
+            return (w, g)
+        }
+    } catch {
+        return []
+    }
+
+    guard !haikuWords.isEmpty else { return [] }
+
+    // Step 2: Batch JMDict lookup. Build the set of lookup keys (original words + する-stripped
+    // alternates) so we can resolve them all in one query.
+    guard let db = jmdict else {
+        return haikuWords.map { VocabGloss(word: $0.word, gloss: $0.gloss, jmdictWordIds: nil) }
+    }
+
+    // Map each original word to its alternate lookup key (する-stripped), if applicable.
+    let suruAlternates: [String: String] = Dictionary(
+        uniqueKeysWithValues: haikuWords.compactMap { (word, _) -> (String, String)? in
+            guard let prefix = suruPrefix(word) else { return nil }
+            return (word, prefix)
+        }
+    )
+    let allLookupKeys: [String] = Array(Set(
+        haikuWords.map { $0.word } + suruAlternates.values
+    ))
+    let placeholders = allLookupKeys.map { _ in "?" }.joined(separator: ",")
+    // No GROUP BY — return one row per (text, entry) pair so we get all matched entries.
+    let sql = """
+        SELECT r.text, e.id AS entry_id, e.entry_json
+        FROM raws r JOIN entries e ON e.id = r.entry_id
+        WHERE r.text IN (\(placeholders))
+    """
+
+    struct EntryRow { let text: String; let entryId: String; let entryJson: String }
+
+    let entryRows: [EntryRow]
+    do {
+        entryRows = try await db.read { dbConn in
+            try Row.fetchAll(dbConn, sql: sql, arguments: StatementArguments(allLookupKeys))
+                .compactMap { row -> EntryRow? in
+                    guard let text = row["text"] as? String,
+                          let json = row["entry_json"] as? String else { return nil }
+                    let entryId: String
+                    if let s = row["entry_id"] as? String     { entryId = s }
+                    else if let n = row["entry_id"] as? Int64 { entryId = String(n) }
+                    else { return nil }
+                    return EntryRow(text: text, entryId: entryId, entryJson: json)
+                }
+        }
+    } catch {
+        return haikuWords.map { VocabGloss(word: $0.word, gloss: $0.gloss, jmdictWordIds: nil) }
+    }
+
+    // Group entry rows by lookup text.
+    var entriesByText: [String: [EntryRow]] = [:]
+    for row in entryRows {
+        entriesByText[row.text, default: []].append(row)
+    }
+
+    return haikuWords.map { (word, haikuGloss) in
+        // Prefer entries for the original word; fall back to the する-stripped form if no match.
+        let matchedRows: [EntryRow]
+        if let rows = entriesByText[word], !rows.isEmpty {
+            matchedRows = rows
+        } else if let alt = suruAlternates[word],
+                  let rows = entriesByText[alt], !rows.isEmpty {
+            matchedRows = rows
+        } else {
+            return VocabGloss(word: word, gloss: haikuGloss, jmdictWordIds: nil)
+        }
+
+        // Sort common entries before uncommon ones so the most-used meaning leads.
+        let lookupText = suruAlternates[word] ?? word
+        let sortedRows = matchedRows.sorted { a, b in
+            let aRaw = (a.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+            let bRaw = (b.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+            let aCommon = aRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
+            let bCommon = bRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
+            return aCommon && !bCommon
+        }
+        let ids = sortedRows.map { $0.entryId }
+
+        // Build combined gloss: one entry per segment, separated by " / ".
+        let combinedGloss = sortedRows.compactMap { row -> String? in
+            guard let data = row.entryJson.data(using: .utf8),
+                  let raw  = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { return nil }
+            return glossFromEntry(raw)
+        }.joined(separator: " / ")
+
+        return VocabGloss(word: word, gloss: combinedGloss.isEmpty ? haikuGloss : combinedGloss,
+                          jmdictWordIds: ids)
     }
 }
 

@@ -147,7 +147,9 @@ To generate or improve a description, run `/cluster-grammar-topics`.
 | `bunpro:てならない` | Very, Extremely | JLPT N2 |
 
 **Validation checks** (live mode):
-- multiple-choice-generation: JSON parses; production stem is English-only; recognition stem contains Japanese
+- multiple-choice-generation: JSON parses; production stem is English-only; recognition stem contains Japanese; followed by a `── VOCAB ASSUMED ──` report showing each word, its gloss source (`[JMDict]` or `[Haiku]`), and resolution counts
 - fill-in-the-blank grading: correct answer matches itself; wrong answer rejected; punctuation-stripped answer matches
 - free-text stem generation: production stem is English-only; recognition stem contains Japanese
 - free-text grading: response contains `SCORE:` token; correct answer scores ≥ 0.8; any `PASSIVE:` lines are well-formed (`PASSIVE: <id> <score>`)
+
+**Vocab assumed report** (`── VOCAB ASSUMED ──`): printed after every `multiple-choice-generation` path in live mode. Shows N4-unfamiliar content words Haiku identified in the quiz sentence, with the best available English gloss (JMDict first sense if exactly one entry matches; otherwise Haiku's inline gloss). The resolution line shows how many words resolved via each source. `jmdict.sqlite` must be findable from cwd for JMDict resolution; if not found, all words show `[Haiku]`.

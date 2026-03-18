@@ -356,6 +356,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
 
 @MainActor func liveGrammarPrompts(topic: GrammarTopic, apiKey: String, model: String,
                                     quizDB: QuizDB,
+                                    jmdict: (any DatabaseReader)? = nil,
                                     repeatCount: Int = 1,
                                     genOnly: Bool = false,
                                     onlyFacet: String? = nil,
@@ -386,6 +387,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
     let client  = AnthropicClient(apiKey: apiKey, model: model)
     let session = GrammarQuizSession(client: client, db: quizDB)
     session.extraGrammarTopics = extraGrammarTopics
+    session.jmdict = jmdict
 
     print("# Live Grammar Prompt Test for topic: \(topic.prefixedId) — \(topic.titleEn)")
     print("# Model:  \(model)")
@@ -513,6 +515,25 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                     if passed { print("✅ PASS"); passCount += 1 }
                     else { for issue in issues { print("❌ \(issue)") }; failCount += 1 }
                     results.append((path: path, passed: passed, issue: issues.first))
+
+                    // Vocab assumed: await the background resolution task and print a report.
+                    if let task = session.vocabTask {
+                        let vocab = await task.value
+                        print("── VOCAB ASSUMED ──")
+                        if vocab.isEmpty {
+                            print("  (none)")
+                        } else {
+                            for v in vocab {
+                                let source = v.jmdictWordIds.map { ids in "[JMDict:\(ids.joined(separator: ","))]" } ?? "[Haiku]"
+                                let preview = String(v.gloss.prefix(60))
+                                let suffix  = v.gloss.count > 60 ? "…" : ""
+                                print("  \(v.word): \(preview)\(suffix)  \(source)")
+                            }
+                            let jmdictCount = vocab.filter { $0.jmdictWordIds != nil }.count
+                            let haikuCount  = vocab.filter { $0.jmdictWordIds == nil }.count
+                            print("  Resolution: \(jmdictCount) JMDict, \(haikuCount) Haiku fallback")
+                        }
+                    }
                 }
 
             case "fillin-grading":

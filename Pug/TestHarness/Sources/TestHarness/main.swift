@@ -252,6 +252,17 @@ if isGrammarMode {
     let tmpPath   = NSTemporaryDirectory() + "testharness-grammar-\(ProcessInfo.processInfo.processIdentifier).sqlite"
     let grammarDB = try QuizDB.open(path: tmpPath)
 
+    // Open jmdict.sqlite for vocab resolution (optional — fall back to Haiku glosses if absent).
+    let grammarJmdict: (any DatabaseReader)?
+    if let jmdictPath = findFile("jmdict.sqlite") {
+        grammarJmdict = try? DatabaseQueue(path: jmdictPath)
+    } else {
+        grammarJmdict = nil
+        if isLiveMode {
+            fputs("[warn] jmdict.sqlite not found — vocab resolution will use Haiku glosses only\n", stderr)
+        }
+    }
+
     print("Topic:  \(topic.prefixedId) — \(topic.titleEn)")
     if let jp = topic.titleJp { print("JP:     \(jp)") }
     print("Level:  \(topic.level)")
@@ -279,7 +290,8 @@ if isGrammarMode {
     if isLiveMode {
         let liveModel = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
         await liveGrammarPrompts(topic: topic, apiKey: apiKey, model: liveModel,
-                                  quizDB: grammarDB, repeatCount: repeatCount,
+                                  quizDB: grammarDB, jmdict: grammarJmdict,
+                                  repeatCount: repeatCount,
                                   genOnly: isGenOnly, onlyFacet: liveOnlyFacet,
                                   onlyTiers: onlyTiers,
                                   extraGrammarTopics: extraGrammarTopics,
@@ -294,6 +306,7 @@ if isGrammarMode {
     let client  = AnthropicClient(apiKey: apiKey, model: model)
     let session = GrammarQuizSession(client: client, db: grammarDB)
     session.extraGrammarTopics = extraGrammarTopics
+    session.jmdict = grammarJmdict
 
     let item = buildGrammarQuizItem(topic: topic,
                                     path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"),
@@ -308,6 +321,25 @@ if isGrammarMode {
         print("─────────────────────────────────")
         print("")
         print("api_turns: \(conversation.count / 2 + 1)   elapsed: \(String(format: "%.1f", elapsed))s   messages: \(conversation.count)")
+
+        if let task = session.vocabTask {
+            let vocab = await task.value
+            print("")
+            print("── VOCAB ASSUMED ──")
+            if vocab.isEmpty {
+                print("  (none)")
+            } else {
+                for v in vocab {
+                    let source = v.jmdictWordIds.map { ids in "[JMDict:\(ids.joined(separator: ","))]" } ?? "[Haiku]"
+                    let preview = String(v.gloss.prefix(60))
+                    let suffix  = v.gloss.count > 60 ? "…" : ""
+                    print("  \(v.word): \(preview)\(suffix)  \(source)")
+                }
+                let jmdictCount = vocab.filter { $0.jmdictWordIds != nil }.count
+                let haikuCount  = vocab.filter { $0.jmdictWordIds == nil }.count
+                print("  Resolution: \(jmdictCount) JMDict, \(haikuCount) Haiku fallback")
+            }
+        }
     } catch {
         fputs("Error: \(error)\n", stderr)
         try? FileManager.default.removeItem(atPath: tmpPath)
