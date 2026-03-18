@@ -69,6 +69,8 @@ Graduation thresholds (higher than vocab because grammar production is harder):
 | Tier 2 (production fill-in-the-blank; recognition free text) | ≥ 3 | ≥ 72 h |
 | Tier 3 (production free text) | ≥ 6 | ≥ 120 h |
 
+**UPDATE 2026/03/17** we're going to ship Tier 1 first, and then revisit how tiers 2/3 will work (see TODO-grammar-tier-2.md).
+
 ### Production tiers 1 and 2: format design (decided 2026-03-15)
 
 **Tier 1 (multiple choice):** Haiku generates an English stem describing a concrete
@@ -79,7 +81,7 @@ express different meanings from the English stem because they use the wrong gram
 construction — the student's job is to pick the sentence that correctly matches the
 English scenario.
 
-**Tier 2 (fill-in-the-blank):** Haiku generates an English stem and a complete Japanese
+**Tier 2 (fill-in-the-blank — OUT OF SCOPE FOR NOW):** Haiku generates an English stem and a complete Japanese
 sentence, plus only the correct answer substring(s) — the exact form(s) that embody the
 target grammar (no distractors). The app creates the gapped display by replacing those
 substrings with `___`; the student types the form(s). Grading is string match first; if
@@ -174,12 +176,12 @@ grammar-terminology recognition), not a "hide the grammar topic" rule. The stude
 know they are being quizzed on causative — they still have to read and understand the
 Japanese sentence to pick the right English translation.
 
-**Tier 2 (free text):** Haiku generates a Japanese sentence. The student writes a free
+**Tier 2 (free text — DELAYED FOR NOW):** Haiku generates a Japanese sentence. The student writes a free
 English translation. Haiku grades with SCORE. No PASSIVE grading for recognition — the
 student writes English, so their response cannot demonstrate "use" of Japanese grammar
 patterns in the way PASSIVE requires.
 
-### Opportunistic passive grading (production only)
+### Opportunistic passive grading (production only — NOT PLANNED)
 On tier 3 production free-text quizzes, Claude emits one `PASSIVE: <prefixed-topic-id>
 <score>` line per additional enrolled grammar topic it observes *correctly used* in
 the student's Japanese response. The app applies `updateRecall(..., score, 1, elapsed)`
@@ -194,7 +196,7 @@ emitting a PASSIVE line for that topic. Only emit PASSIVE when there is genuine 
 evidence. Rationale: the student's attention is on the main quiz topic; errors in
 peripheral grammar may reflect inattention rather than lack of knowledge.
 
-### Difficulty scaling via known grammar
+### Difficulty scaling via known grammar (NOT PLANNED)
 At quiz generation time, Claude receives the list of grammar topics the student knows
 well (from `GrammarQuizContext`). Claude uses these as scaffolding — building sentences
 that incorporate well-known grammar patterns around the target point. A beginner studying
@@ -417,14 +419,38 @@ Three items that should be resolved before Phase 1B, in this order:
 
 ### Phase 1B — iOS Views
 
+Tier rollout order: **tier 1 → tier 3 → tier 2** (least per-topic customization to most).
+Tier 1 works for nearly all topics with the existing generic prompt. Tier 3 works for
+Group A topics (English uniquely determines the grammar) with no new fields; Group B/C
+topics need `gradingGuidance` and `stemGuidance` added incrementally. Tier 2 needs
+`generationSteps` (per-topic chain of thought for cloze construction) — the most complex
+per-topic field. See `TODO-grammar-tier-2.md` §"Approach D" for the full tier analysis
+and per-topic field designs.
+
+**Tier 1 (ship first):**
 - [ ] Grammar topic list view — filterable by source, level, enrollment status
 - [ ] GrammarDetailSheet — example sentences, chat box (Claude), mnemonic support
   - Reuses mnemonic infrastructure with `word_type = 'grammar'`
-- [ ] Grammar quiz view — tier 1 multiple choice for both facets
-- [ ] Grammar quiz: tier 2 production fill-in-the-blank
-- [ ] Grammar quiz: tier 2 recognition free text
-- [ ] Grammar quiz: tier 3 production free text with opportunistic passive grading
+- [ ] Grammar quiz view — tier 1 multiple choice for both facets (production + recognition)
 - [ ] Integrate grammar items into unified quiz scheduling (alongside vocab)
+
+**Tier 3 (ship second, optional before tier 2):**
+- [ ] Grammar quiz: tier 3 production free text with opportunistic passive grading
+  - Works today for Group A topics (causative, passive, potential, ば〜ほど, etc.)
+    with the existing generic grading prompt — no new per-topic fields needed
+  - Group B topics (し vs て-form, おかげで vs せいで): coach accepts valid alternatives
+    and asks for rewrite using the target form — add `gradingGuidance` field incrementally
+  - Group C topics (は vs が, sentence-final particles): stem must describe communicative
+    function — add `stemGuidance` field incrementally
+- [ ] Grammar quiz: tier 2 recognition free text
+  - Recognition is simpler: student writes English, no per-topic extraction needed
+
+**Tier 2 (ship last — most per-topic work):**
+- [ ] Grammar quiz: tier 2 production fill-in-the-blank
+  - Requires `generationSteps` per topic — see `TODO-grammar-tier-2.md` for field format,
+    examples, drafting guidance, and work breakdown
+  - Eliminates `refineAnswerExtraction` (current 2-pass approach)
+  - `disambiguateGaps` still needed for short/repeated answer substrings
 
 ---
 
@@ -671,21 +697,14 @@ Testing across ~20 grammar topics revealed three distinct extraction patterns:
 
 All three reduce to the same principle: **blank the grammar, show the vocabulary.**
 
-### Classification approach (future)
+### Classification approach — superseded by per-topic prompts (2026-03-17)
 
-Currently the extraction prompt includes examples of all three categories and lets the
-model decide. This works well for most topics but breaks down for hybrids like
-`たり～たりする`, where `たり` is a fixed particle but surfaces as `だり` after certain
-verb stems (rendaku), and the closing `する` conjugates.
-
-A future improvement: classify each grammar topic as one of these three categories at
-publish time (in `prepare-publish.mjs` or `grammar-equivalences.json`) and pass only the
-relevant extraction rule to the model. This would:
-- Remove ambiguity from the extraction prompt
-- Allow category-specific validation (e.g., for fixed expressions, do literal string search
-  instead of LLM extraction)
-- Handle hybrids via explicit metadata (e.g., たり: fixed particle, surface forms
-  `["たり", "だり"]`, ignore the closing する)
+The three-category classification idea has been superseded by **Approach D** (per-topic
+generation prompts). Instead of classifying topics into 3 categories with 3 extraction
+prompts, each topic gets its own `generationSteps` chain of thought that produces both
+the sentence and answer substrings in one call — no extraction pass needed. This handles
+hybrids (たり), discontinuous frames (ば〜ほど), and all edge cases without a classifier.
+See `TODO-grammar-tier-2.md` §"Approach D" for the full design.
 
 ### Test results (2026-03-17)
 

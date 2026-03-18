@@ -364,7 +364,7 @@ answer substring (left to right, first occurrence).
 
 ---
 
-## Approach D — Per-topic generation prompts (2026-03-17)
+## Approach D — Per-topic prompts (2026-03-17)
 
 ### Core insight
 
@@ -374,54 +374,91 @@ The fundamental problem: what constitutes "the grammar" in a sentence differs so
 between topics (conjugation suffix vs. fixed particle vs. multi-slot frame vs. hybrid)
 that no single instruction set handles them all.
 
-**Solution**: each grammar topic in `grammar-equivalences.json` carries its own
-`generationSteps` field — a per-topic chain of thought that tells Haiku exactly how to
-construct the sentence *and* identify the answer substrings, in one call. No extraction
-pass. No category classifier. The chain of thought is Approach C (grammar-outward) but
-with the reasoning steps customized per topic rather than per category.
+**Solution**: each grammar topic in `grammar-equivalences.json` can carry per-topic
+prompt fields that customize how questions are generated and graded for that topic.
+Different tiers need different fields — tier 1 needs the least customization, while
+tiers 2 and 3 need progressively more. We roll out tier by tier.
 
-### How it fits with existing prompts
+### Tier analysis: how well English constrains the target grammar
 
-The system prompt is **unchanged** — it still injects `summary`, `subUses`, `cautions`,
-and `recentNotes` from the equivalence group. These describe *what the grammar is* and
-guide Haiku toward natural, varied sentences.
+Surveyed the full corpus (~1400 topics across Bunpro, DBJG, and Genki). Topics fall
+into three groups based on how well an English stem determines which Japanese grammar
+the student should use:
 
-The user-turn question request currently has two generic steps:
+**Group A — English uniquely determines the grammar (~200-300 topics).**
+The English meaning *is* the grammar point. A neutral scenario works for all tiers.
+- Causative, passive, potential, causative-passive
+- ば〜ほど ("the more...the more"), ても ("even if"), てしまう ("accidentally")
+- Most N2-N1 compound expressions: わけにはいかない, ずにはいられない, を余儀なくされる
 
-```
-Step 1 — English stem: [scenario description]
-Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
-```
+**Group B — English is ambiguous but can be pragmatically framed (~200-300 topics).**
+Multiple Japanese forms could express the same English. The stem can be crafted to
+make one form more natural than others, but alternatives remain valid.
+- し〜し vs て-form listing vs たり (reasons vs sequence vs sampling)
+- ようにする vs ことにする ("try to" vs "decide to")
+- から vs ので (casual vs objective "because")
+- おかげで vs せいで (positive vs negative attribution)
+- Discourse connectors: ところが vs それなのに vs そこで (different logical relations)
 
-Under Approach D, the user turn becomes:
+**Group C — English cannot distinguish the grammar (~100-200 topics).**
+Structural/particle-level Japanese distinctions with no English equivalent.
+- は vs が (topic vs subject), particle も
+- の (nominalizer), って vs と (register)
+- Sentence-final particles (よ, ね, さ, かな, かしら)
+- Honorific/humble pairs (お〜になる vs お〜する)
 
-```
-Step 1 — English stem: [same as before — concrete scenario, no Japanese]
-{generationSteps}      ← injected from grammar-equivalences.json
-Final — JSON output    ← same structure for all topics
-```
+For Group C, the stem must describe the *communicative function*: "introduce new
+information about an established topic" (→ は), "confirm shared understanding with
+the listener" (→ ね). This is good pedagogy — it tests understanding of function,
+not just form.
 
-The `generationSteps` field replaces the old generic "Step 2" with topic-specific
-reasoning that produces both `sentence` and `answers[]`. The JSON output schema is
-uniform across all topics:
+### Per-tier strategy
 
-```json
-{"stem":"<Step 1>","sentence":"<full sentence>","choices":[["<answer1>","<answer2>",...]],"correct":0,"sub_use":"<phrase>"}
-```
+**Tier 1 (multiple choice)** works for nearly everything. The choices disambiguate —
+even は vs が works because the student picks from options. The existing generic
+generation prompt is sufficient. No per-topic prompt fields needed for tier 1 beyond
+the existing `summary`/`subUses`/`cautions`.
 
-- `choices` is a single entry (index 0) containing the answer substring(s) — same
-  shape as today's tier-2 output after extraction refinement.
-- `sentence` is the full Japanese sentence. The app blanks each answer substring
-  (left-to-right, first unused occurrence) to produce the gapped display.
+**Tier 2 (fill-in-the-blank / cloze)** needs `generationSteps` — a per-topic chain
+of thought that tells Haiku how to construct the sentence and identify the answer
+substrings in one call (Approach C grammar-outward, customized per topic). See the
+"Tier 2 future work" section below.
+
+**Tier 3 (free production)** for Group A topics works with a neutral stem. For Group B
+topics, the right approach is to accept valid alternatives and coach the student toward
+the target form: "Nice sentence — now rewrite it using し to emphasize that each reason
+independently supports your conclusion." This needs a per-topic `gradingGuidance` field
+that tells the grader what to accept, what to redirect, and how to coach. For Group C
+topics, the stem itself needs per-topic `stemGuidance` describing the communicative
+function to target. See the "Tier 3 future work" section below.
+
+### Immediate work: ship tier 1
+
+Tier 1 already works with the generic prompt + `summary`/`subUses`/`cautions`. No new
+per-topic fields are needed. The immediate task is getting grammar quizzes live with
+tier 1 for all topics in `grammar-equivalences.json`.
+
+### Work breakdown (tier 1 — now)
+
+- [ ] Verify tier 1 generation works for all 12 current grammar topics via TestHarness
+- [ ] Ship grammar quizzes with tier 1 production + recognition
+- [ ] As new grammar topics are added via `cluster-grammar-topics`, tier 1 works out of
+      the box with no additional per-topic fields
+
+---
+
+## Tier 2 future work: `generationSteps`
+
+Deferred until tier 1 is live and we have real usage data. This section preserves the
+design work from the earlier Approach D discussion.
 
 ### `generationSteps` field format
 
-The field is an **array of strings**, each element one numbered step. The app
-injects them into the user turn as `Step 2`, `Step 3`, etc. (Step 1 is always the
-English stem, supplied by the app). This gives structure without being so rigid
-that it can't accommodate different step counts per topic.
+An **array of strings** in `grammar-equivalences.json`, each element one numbered step.
+The app injects them into the tier-2 user turn as `Step 2`, `Step 3`, etc. (Step 1 is
+always the English stem, supplied by the app).
 
-Example value in `grammar-equivalences.json`:
+Example value:
 ```json
 "generationSteps": [
   "Choose a verb: Pick a verb that fits the scenario.",
@@ -430,16 +467,21 @@ Example value in `grammar-equivalences.json`:
 ]
 ```
 
-The app renders this as:
-```
-Step 2 — Choose a verb: Pick a verb that fits the scenario.
-Step 3 — Conjugate: Write the causative form (e.g. 走る→走らせた). ...
-Step 4 — Build sentence: Write a natural Japanese sentence ...
-```
-
 The "avoid 食べる, 飲む, 泳ぐ" instruction is **not** in `generationSteps` — it
-already lives in the system prompt's `quirkyNote` (line 418 of GrammarQuizSession.swift)
-and applies to all topics uniformly.
+already lives in the system prompt's `quirkyNote` and applies to all topics uniformly.
+
+### Core principle: commit the answer before writing the sentence
+
+The grammar-outward approach (Approach C) is the underlying principle. The chain of
+thought must:
+
+1. Decide the grammar form (and any variable elements) explicitly, **before**
+   the full sentence is written.
+2. Record the answer substring(s) at the point of decision.
+3. Then build the sentence around those committed substrings.
+
+This means Haiku never has to "extract" an answer from a finished sentence — it
+declared the answer while writing and must use it verbatim.
 
 ### Example `generationSteps` for each grammar type
 
@@ -480,76 +522,260 @@ and applies to all topics uniformly.
 ]
 ```
 
-### Validation (unchanged)
+### Validation
 
 Every answer in `choices[0]` must appear as a verbatim substring of `sentence`. The app
-finds and blanks each one left-to-right. This is the same validation as today — only the
-generation path changes.
+finds and blanks each one left-to-right. Same validation as today — only the generation
+path changes.
 
 ### `choices` schema change (tier 2 production)
 
 Today the generation call returns `"choices": [[""]]` (placeholder) and a second
-`refineAnswerExtraction` call fills in the real answer substrings. Under Approach D,
+`refineAnswerExtraction` call fills in the real answer substrings. With `generationSteps`,
 the generation call returns the answers directly: `"choices": [["し", "し"]]`.
 
-This is **not** a breaking change to the app's internal contract:
-- The `GrammarMultipleChoiceQuestion` struct already handles `choices[0]` as an
-  array of answer strings — that's how it looks *after* refinement today.
-- Tier-1 questions (4 choices) are unaffected — they don't use `generationSteps`.
-- There is no persistent cache of tier-2 generation results; each question is
-  generated fresh. No migration needed.
+Not a breaking change: `GrammarMultipleChoiceQuestion` already handles populated
+`choices[0]` (that's how it looks after refinement today), tier-1 is unaffected, and
+there is no persistent cache.
 
-The only change is that `choices[0]` arrives populated from the generation call
-instead of being empty and then filled by a second call.
+### `refineAnswerExtraction` and `disambiguateGaps`
 
-### What `refineAnswerExtraction` becomes
+`refineAnswerExtraction` is eliminated — the per-topic chain of thought produces correct
+answer substrings by construction. No fallback needed (no one is using grammar quizzes).
 
-Eliminated entirely. The per-topic chain of thought produces correct answer substrings
-by construction.
+`disambiguateGaps` is still needed — when the same answer substring (e.g. "し") appears
+in the sentence both as a grammar slot and as unrelated text, the app needs positional
+disambiguation. This is orthogonal to the generation approach.
 
-### `disambiguateGaps`
+### Tier 2 work breakdown (future)
 
-Still needed. When the same answer substring (e.g. "し") appears in the sentence both
-as a grammar slot and as part of unrelated text, the app needs to know *which*
-occurrences to blank. `disambiguateGaps` handles this by asking Haiku to confirm
-positional indices. This is a display concern, not an extraction concern, and it's
-orthogonal to Approach D — it runs after generation regardless of how answers were
-produced.
-
-### No fallback needed
-
-`generationSteps` is a **required** field — every entry in `grammar-equivalences.json`
-must have it. No one is using grammar quizzes yet, so there are no backward-compatibility
-concerns. The old generic Step 2 and `refineAnswerExtraction` can be deleted outright
-once the new steps are written and tested.
-
-### What changes in code
-
-**`grammar-equivalences.json`** — add `generationSteps` string to each of the 12 entries.
-
-**`GrammarQuizItem`** (model) — add `generationSteps: String?` property, populated from
-the equivalence group data.
-
-**`GrammarQuizSession.questionRequest(for:)`** — for tier-2 production, replace the
-generic Step 2 with `item.generationSteps`. The Step 1 (English stem) and final JSON
-block remain the same template.
-
-**`GrammarQuizSession.runGenerationLoop(for:...)`** — remove the
-`refineAnswerExtraction` call for tier-2 production. The generation call now returns
-populated `choices[0]` directly.
-
-**`refineAnswerExtraction`** — delete (or keep as dead-code safety net during testing).
-
-**TestHarness** — update `--dump-prompts` to show the per-topic generation steps;
-update `--live` tier-2 tests to verify 1-shot extraction.
-
-### Work breakdown
-
-- [ ] Draft `generationSteps` (array of strings) for all 12 grammar topics in `grammar-equivalences.json`
-- [ ] Add `generationSteps: [String]` field (required) to `GrammarQuizItem` model and wire it from DB/JSON
-- [ ] Update `questionRequest(for:)` tier-2 production branch: inject numbered steps, tell the model to populate `choices`
-- [ ] Update `runGenerationLoop`: remove `refineAnswerExtraction` call; keep `disambiguateGaps` unconditionally
-- [ ] Run TestHarness `--live --tier 2` for all 12 topics, 3 runs each, record results in a new table below
-- [ ] Reliability threshold: **all answer substrings must appear verbatim in the sentence** (validation pass). Target: ≥ 11/12 topics pass all 3 runs (≥ 33/36 total). Any topic that fails 2+ of 3 runs gets its `generationSteps` revised and retested before proceeding.
-- [ ] Delete `refineAnswerExtraction` (no fallback needed — field is required)
+- [ ] Draft `generationSteps` for all grammar topics in `grammar-equivalences.json`
+- [ ] Add `generationSteps: [String]` field to `GrammarQuizItem` model, wire from DB/JSON
+- [ ] Update `questionRequest(for:)` tier-2 production: inject numbered steps, populate `choices`
+- [ ] Update `runGenerationLoop`: remove `refineAnswerExtraction`; keep `disambiguateGaps`
+- [ ] Run TestHarness `--live --tier 2` for all topics, 3 runs each
+- [ ] Reliability threshold: ≥ 33/36 runs pass validation. Revise any topic failing 2+ of 3.
+- [ ] Delete `refineAnswerExtraction`
 - [ ] Update `--dump-prompts` to show per-topic generation steps
+
+---
+
+## Tier 3 future work: `gradingGuidance` and `stemGuidance`
+
+Tier 3 could ship before tier 2 — it needs less machinery. For Group A topics (English
+uniquely determines the grammar), tier 3 works today with the existing generic grading
+prompt and no new per-topic fields. The fields below are refinements for Group B/C topics
+and can be added incrementally.
+
+### `gradingGuidance` (for Group B topics)
+
+Tells the tier-3 grader/coach what to accept, what to redirect, and how to coach.
+For Group B topics where the student might produce a valid alternative form:
+
+Example for し〜し:
+```json
+"gradingGuidance": "Accept し, て-form listing, or たり as structurally correct. If the student used て-form or たり, score 0.5 and ask them to rewrite using し, explaining that し emphasizes independent reasons while て implies sequence and たり implies non-exhaustive sampling."
+```
+
+Example for おかげで:
+```json
+"gradingGuidance": "Accept おかげで or せいで as grammatically correct. If the student used せいで for a positive outcome, score 0.5 and explain that おかげで carries gratitude/positive attribution while せいで implies blame."
+```
+
+The coach accepts the student's valid work, scores partially, and uses the rewrite
+request as a teaching moment for the *nuance* between similar forms — which is the
+actual learning goal for Group B topics.
+
+### `stemGuidance` (for Group C topics)
+
+Tells the LLM how to write the English stem so it targets the grammar's communicative
+function. For Group C topics where English cannot distinguish the grammar form:
+
+Example for は (topic marker):
+```json
+"stemGuidance": "Frame the scenario so the speaker is commenting on an already-established topic — e.g. 'Your friend asks about the weather. Tell them about today's weather.' The English should make clear what the topic of conversation is."
+```
+
+Example for ね (confirmation particle):
+```json
+"stemGuidance": "Frame the scenario so the speaker is confirming shared understanding or seeking agreement with the listener — e.g. 'You and your friend are both looking at a beautiful sunset. Comment on it expecting agreement.'"
+```
+
+### Tier 3 work breakdown (future)
+
+- [ ] Draft `gradingGuidance` for Group B topics
+- [ ] Draft `stemGuidance` for Group C topics
+- [ ] Add fields to `GrammarQuizItem` model
+- [ ] Wire `gradingGuidance` into tier-3 coaching system prompt
+- [ ] Wire `stemGuidance` into tier-3 stem generation prompt
+- [ ] Test with representative topics from each group
+
+---
+
+## Drafting `generationSteps` (notes for `cluster-grammar-topics` skill update)
+
+These notes are for when we implement tier 2. Preserved here for future reference.
+
+This guidance must work for any grammar topic that will eventually enter the
+system, not just the current 12. The full corpus spans basic N5 particles through
+complex N1 frames: single particles (な prohibitive, しか), auxiliary verbs
+(なおす, たがる), comparison expressions (にもまして, のように), compound
+postpositions (に照らして, にかかわらず), aspectual frames (ところだった, ように
+なる), double negatives (ないでもない), idiomatic compounds (をいいことに,
+どころではない), adverbs that carry no blank at all (どうせ), and more. No
+fixed category list covers this range — the skill should reason from first
+principles for each topic.
+
+### Where it fits in the skill
+
+Add a new **Step 6: Add generationSteps** immediately after Step 5 (Enrich
+descriptions). It runs only when entries are missing the `generationSteps` field.
+Gate it with a check:
+
+```bash
+node -e "const g=require('./grammar/grammar-equivalences.json'); \
+  g.filter(e=>!e.generationSteps).forEach(e=>console.log(e.topics[0]));"
+```
+
+If all entries already have the field, report "all generationSteps present" and
+skip. Otherwise generate and write steps for the missing entries.
+
+### Designing steps for a new topic: three questions
+
+For each topic, answer these questions in order:
+
+**Q1: What is the answer — the thing the student must produce?**
+
+The answer is whatever gets blanked in the cloze question. It is a verbatim
+substring of the Japanese sentence. Be precise:
+
+- Is it the grammar particle/expression itself (し, ながら, にもまして)?
+- Is it an inflected form derived from a verb or adjective the sentence must
+  contain (potential form, adverb form, causative suffix)?
+- Is it a frame that attaches to a verb (てならない, ことになっている,
+  を余儀なくさせる)?
+- Are there multiple answer slots, and do they vary phonologically (たり/だり)
+  or conjugate (closing する)?
+
+**Q2: What is the minimum scope that tests the grammar point?**
+
+The scope determines what exactly is recorded as the answer string. Lean toward
+the smallest string that still tests the grammar form, not surrounding vocabulary.
+Consider:
+
+- Fixed particle that never changes form (し, ながら, に照らして): the particle/
+  expression itself, exactly as it always appears.
+- Inflectional suffix that attaches to different stems (causative, passive,
+  て-form): suffix only or full-form depends on whether the stem matters
+  pedagogically (see below).
+- Multi-word frame where the entire phrase is the grammar point
+  (ことになっている, どころではない): the whole frame, because partial blanking
+  makes the question trivially easy.
+- Conjugating element within a frame (closing する in たり-たりする, tense of
+  ことになっている): decide before writing and record the conjugated form.
+
+**Full form vs. suffix-only for inflectional grammar:**
+There is a trade-off. Suffix-only (e.g. `らせた` for causative) is more robust:
+if Haiku writes a polite sentence (`走らせます`) but commits the plain form, the
+suffix still appears verbatim. Full-form (e.g. `書ける` for potential) is better
+when recognising the complete word is itself part of the learning goal, or when
+the suffix alone would be too short to be unambiguous in the sentence. Use
+`summary` and `cautions` for the topic to guide this choice — they already
+describe what the learner needs to master.
+
+**Q3: How many steps does committing the answer require?**
+
+Some topics need one commitment step (the frame is fixed, just pick a verb and
+write it down). Some need two or more (pick verbs, conjugate each slot, decide
+the closing form). Scale the step count to the actual complexity of the topic:
+
+- Simple fixed expression or particle: 1 commitment step + 1 sentence step.
+- Single conjugation or frame choice: 1 choice step + 1 commitment step +
+  1 sentence step.
+- Multi-slot or hybrid: 1 choice step + 1 commitment step per variable element
+  + 1 sentence step.
+
+Avoid padding: don't add steps that don't produce a decision or a recorded answer.
+
+### Step writing conventions
+
+- Each step string is one or two sentences. It will be rendered as a numbered
+  line (e.g. "Step 3 — ...") in the user-turn prompt, so keep it self-contained.
+- The commitment step must include a concrete example (e.g. `走る→走らせる`),
+  taken from the topic's `subUses` or written freshly — never copied verbatim
+  from any reference page.
+- The final step is always the sentence-building step and must include: "Every
+  answer substring must appear verbatim in the sentence."
+- Use plain form by default for verb-based topics. If a topic's primary use
+  is in polite register, note this explicitly.
+- Do **not** include the "avoid 食べる, 飲む, 泳ぐ" instruction — it lives in
+  the system prompt's `quirkyNote` and applies universally.
+- Do **not** mention `choices`, JSON, or any output format — those come from
+  the surrounding prompt template.
+
+### Topics where the answer scope is non-obvious
+
+Some common patterns that need careful thought:
+
+**Standalone adverbs and discourse markers** (どうせ, まず, せっかく, etc.):
+These words don't conjugate and don't attach to a verb stem. The answer is the
+word itself. The commitment step is trivial — the word is always the same —
+so the step should say: "Answer: The answer is '[word]'. Record it." The
+interesting work is in building a sentence where the word's nuance is used
+correctly.
+
+**Compound postpositions** (に照らして, にかかわらず, にもまして, を余儀なく
+させる, etc.): The answer is the full compound expression. These don't vary
+phonologically, so there is no commitment ambiguity. The commitment step should
+record the exact surface form that will appear in the sentence, including any
+particle at the front (に) and any closing element (して, ず). If the expression
+has a conjugating tail (に照らすと vs に照らして), the step must commit to which
+variant before writing.
+
+**Discontinuous frames** (ば〜ほど, かは〜によって違う, さえ〜ば, たとえ〜ても):
+The grammar wraps around intervening content. The `generationSteps` must produce
+both halves as separate answer entries. E.g. for ば〜ほど: commit to ["ば", "ほど"]
+as two answers, then build the sentence with both appearing verbatim. The app's
+left-to-right blanking handles the positional separation.
+
+**Two-variant contrasts** (たらいい vs といい, でできる vs からできる): The topic
+teaches two related forms. The step should explicitly pick one variant per
+sentence — not try to use both in the same sentence. Record the chosen variant as
+the answer.
+
+**Double negatives and softened expressions** (ないでもない, なくもない): The
+answer is the fixed expression. The student must produce it whole — partial
+blanking (e.g. blanking only ない) would test something different. One commitment
+step, record the full expression.
+
+**Auxiliary verbs** (なおす, だす, 続ける, etc.): These attach to the conjunctive
+form (連用形) or て-form depending on the auxiliary. The answer scope question: test
+the auxiliary alone, or the full compound? Prefer the auxiliary alone — it's the
+grammar point. Commitment step: choose a main verb, write the conjunctive form,
+then append the auxiliary. Record only the auxiliary (e.g. なおした) as the answer.
+But check the topic's `cautions` — if the main verb's conjugation pattern is the
+pedagogical point, adjust scope accordingly.
+
+### Writing back
+
+Use the same `--write` mechanism as Step 5:
+
+```bash
+node .claude/scripts/enrich-grammar-descriptions.mjs --write < /tmp/descriptions.json
+```
+
+The `--write` script merges fields, so existing `summary`/`subUses`/`cautions`
+are preserved.
+
+### Self-check before writing
+
+After drafting all `generationSteps` arrays, verify:
+
+1. Every array's final step says "Every answer substring must appear verbatim in
+   the sentence."
+2. No step mentions `choices`, JSON, or output format.
+3. Each commitment step includes a concrete example (X→Y form).
+4. Multi-slot or hybrid topics have a separate commitment step for each variable
+   element — no element is silently merged or dropped.
+5. The answer scope is consistent with what the topic's `cautions` say the
+   learner must master.
