@@ -195,7 +195,8 @@ func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptP
         status: .reviewed(recall: 0.5, isFree: path.isFreeAnswer, halflife: path.isFreeAnswer ? 72.0 : 24.0),
         senseExtras: Array(entry.senseExtras.prefix(5)),
         committedKanji: path.committedKanji,
-        partialKanjiTemplate: path.partialKanjiTemplate
+        partialKanjiTemplate: path.partialKanjiTemplate,
+        committedReading: nil
     )
 }
 

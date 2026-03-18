@@ -64,6 +64,9 @@ struct QuizItem: Identifiable {
     /// Uncommitted kanji are replaced by kana readings; committed kanji stay as-is.
     /// e.g. "ふりかえ休日" for 振替休日 when only [休, 日] are committed. nil when N/A.
     let partialKanjiTemplate: String?
+    /// Full kana reading derived from the committed furigana segments (concat rt ?? ruby for each segment).
+    /// nil when there is no word commitment. Used for local exact-match grading on reading facets.
+    let committedReading: String?
 
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
@@ -173,18 +176,22 @@ struct QuizContext {
             // Decode committed kanji and build partial-kanji template from furigana.
             let committedKanji: [String]?
             var partialKanjiTemplate: String? = nil
+            var committedReading: String? = nil
             if let commitment = commitments[wordId], let kc = commitment.kanjiChars,
                let data = kc.data(using: .utf8),
                let decoded = try? JSONDecoder().decode([String].self, from: data) {
                 committedKanji = decoded
                 // Build template from furigana: committed kanji stay, uncommitted → kana.
+                // Also build full kana reading (rt ?? ruby for every segment).
                 if let fData = commitment.furigana.data(using: .utf8),
                    let segments = try? JSONDecoder().decode([[String: String]].self, from: fData) {
                     let committedSet = Set(decoded)
                     var template = ""
+                    var fullReading = ""
                     for seg in segments {
                         let ruby = seg["ruby"] ?? ""
                         let rt = seg["rt"]
+                        fullReading += rt ?? ruby
                         if let rt, !ruby.isEmpty, !committedSet.contains(ruby) {
                             // Uncommitted kanji → replace with kana reading
                             template += rt
@@ -204,6 +211,7 @@ struct QuizContext {
                     if !allKanjiInWord.subtracting(committedSet).isEmpty {
                         partialKanjiTemplate = template
                     }
+                    committedReading = fullReading
                 }
             } else {
                 committedKanji = nil
@@ -216,7 +224,8 @@ struct QuizContext {
                 hasKanji: hasKanji, facet: facet, status: status,
                 senseExtras: wordSenseExtras[wordId] ?? [],
                 committedKanji: committedKanji,
-                partialKanjiTemplate: partialKanjiTemplate))
+                partialKanjiTemplate: partialKanjiTemplate,
+                committedReading: committedReading))
         }
 
         items.sort { $0.recall < $1.recall }

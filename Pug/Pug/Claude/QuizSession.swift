@@ -144,26 +144,32 @@ final class QuizSession {
         let chosenLetter = letters[index]
         let correctLetter = letters[multipleChoice.correctIndex]
 
-        // Build the chat display: show question then student's selection
         let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
         let questionBubble = "\(multipleChoice.stem)\n\n\(choicesText)"
         let resultBubble = "\(chosenLetter)) \(multipleChoice.choices[index])"
-        chatMessages = [
-            (isUser: false, text: questionBubble),
-            (isUser: true, text: resultBubble)
-        ]
-
-        gradedScore = score
-        // Store full multiple choice context for system prompt (student may ask about any of the choices)
         var resultSummary = "Question: \(multipleChoice.stem)\nChoices: \(choicesText)\nStudent chose \(chosenLetter)) \(multipleChoice.choices[index]) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
         if !isCorrect {
             resultSummary += ". Correct answer: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
         }
+        applyLocalGrade(score: score, questionBubble: questionBubble, answerBubble: resultBubble,
+                        resultSummary: resultSummary, notes: "autograder", item: item)
+    }
+
+    /// Shared local-grading path used by multiple choice (tapChoice) and exact-match free-answer.
+    /// Records score, sets chat display, and prefetches next question. Does NOT fire a Claude turn —
+    /// the student initiates any follow-up chat themselves.
+    private func applyLocalGrade(score: Double, questionBubble: String, answerBubble: String,
+                                  resultSummary: String, notes: String, item: QuizItem) {
+        chatMessages = [
+            (isUser: false, text: questionBubble),
+            (isUser: true, text: answerBubble)
+        ]
+        gradedScore = score
         multipleChoiceResult = resultSummary
         phase = .chatting
 
         Task {
-            try? await recordReview(item: item, score: score, notes: "autograder")
+            try? await recordReview(item: item, score: score, notes: notes)
             // Prefetch next question now that grading is done
             let nextIndex = currentIndex + 1
             if nextIndex < items.count {
@@ -428,6 +434,21 @@ final class QuizSession {
         let text = chatInput.trimmingCharacters(in: .whitespaces)
         guard case .awaitingText(let stem) = phase, let item = currentItem, !text.isEmpty else { return }
         chatInput = ""
+
+        // For reading facets, check for an exact kana match locally before calling Claude.
+        // An exact match means the student's answer (stripped of whitespace) equals either
+        // the committed furigana reading or any kana form in the dictionary definition.
+        // When it matches, grade immediately (score 1.0) using the same path as multiple choice.
+        let isReadingFacet = item.facet == "meaning-to-reading" || item.facet == "kanji-to-reading"
+        if isReadingFacet {
+            let validReadings = Set(item.kanaTexts + [item.committedReading].compactMap { $0 })
+            if validReadings.contains(text) {
+                let resultSummary = "Question: \(stem)\nStudent answered: \(text) — Correct ✓"
+                applyLocalGrade(score: 1.0, questionBubble: stem, answerBubble: text,
+                                resultSummary: resultSummary, notes: "autograder: exact-match", item: item)
+                return
+            }
+        }
 
         chatMessages = [
             (isUser: false, text: stem),

@@ -433,7 +433,8 @@ let item = QuizItem(
     status: .reviewed(recall: 0.5, isFree: isGradeMode, halflife: 24.0),
     senseExtras: Array(entry.senseExtras.prefix(5)),
     committedKanji: nil,
-    partialKanjiTemplate: nil
+    partialKanjiTemplate: nil,
+    committedReading: nil
 )
 
 // MARK: - Open quiz.sqlite (for telemetry logging; optional)
