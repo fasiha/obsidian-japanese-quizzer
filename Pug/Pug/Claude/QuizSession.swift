@@ -457,7 +457,7 @@ final class QuizSession {
         isSendingChat = true
         phase = .chatting
 
-        let openingMsg = "Question you asked me: \(stem)\nMy answer: \(text)\nPlease grade my answer."
+        let openingMsg = "Question: \(stem)\nAnswer: \(text)"
 
         Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: true) }
     }
@@ -1094,7 +1094,8 @@ final class QuizSession {
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
         NOTES: one sentence on same message as SCORE.
         \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's answer contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent', 'prior example'). Correct kana or kanji, even perfect, do NOT qualify. Only emit if the student demonstrates the meaning of the word being tested — ignore other words they mention. Do not describe the token — just output it.\n" : "")\
-        After grading, stop — do not ask follow-up questions. The student will ask if they want to discuss further.
+        Do not emit SCORE unless the student has made a genuine answer attempt. If their message is a question, a tangential comment, or clearly not an answer attempt, engage naturally and keep waiting for an answer. When doing so, never confirm, deny, or hint at whether any sound or word they mentioned overlaps with the correct answer — treat the answer as strictly confidential until SCORE is emitted.
+        After grading, stop after emitting SCORE, unless the student's message was a question warranting an answer, in which case, engage with it after emitting SCORE.
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)
         """
