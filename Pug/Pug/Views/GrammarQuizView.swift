@@ -8,6 +8,9 @@ import SwiftUI
 struct GrammarQuizView: View {
     @State var session: GrammarAppSession
     let manifest: GrammarManifest
+    /// When set, an "×" close button appears in the toolbar and the finished view shows "Done"
+    /// instead of "Start another session". Used by the ad-hoc drill sheet in GrammarDetailSheet.
+    var onDone: (() -> Void)? = nil
     @State private var showRescaleSheet = false
     @State private var vocabExpanded = false
 
@@ -31,8 +34,15 @@ struct GrammarQuizView: View {
         .navigationTitle("Grammar Quiz")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if let onDone {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { onDone() } label: {
+                        Image(systemName: "xmark")
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
-                if session.canStartNewSession {
+                if session.canStartNewSession && onDone == nil {
                     Button("New Session") { session.refreshSession(manifest: manifest) }
                 }
             }
@@ -277,8 +287,13 @@ struct GrammarQuizView: View {
                 .foregroundStyle(.green)
             Text("Session complete!")
                 .font(.title2.bold())
-            Button("Start another session") { session.start(manifest: manifest) }
-                .buttonStyle(.bordered)
+            if let onDone {
+                Button("Done") { onDone() }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button("Start another session") { session.start(manifest: manifest) }
+                    .buttonStyle(.bordered)
+            }
         }
         .padding()
     }

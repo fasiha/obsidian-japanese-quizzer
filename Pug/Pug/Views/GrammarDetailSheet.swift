@@ -20,6 +20,7 @@ struct GrammarDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var enrolled: Bool
     @State private var isTogglingEnrollment = false
+    @State private var adHocSession: GrammarAppSession? = nil
 
     // Claude chat (reuses WordExploreSession pattern for simplicity).
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
@@ -56,6 +57,15 @@ struct GrammarDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .sheet(item: $adHocSession) { session in
+                NavigationStack {
+                    GrammarQuizView(
+                        session: session,
+                        manifest: manifest,
+                        onDone: { adHocSession = nil }
+                    )
                 }
             }
         }
@@ -158,7 +168,7 @@ struct GrammarDetailSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             Divider()
             HStack {
-                Text(enrolled ? "Currently learning" : "Not enrolled")
+                Text(enrolled ? "Currently learning" : "Not yet learning")
                     .font(.headline)
                 Spacer()
                 if isTogglingEnrollment {
@@ -169,6 +179,20 @@ struct GrammarDetailSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(enrolled ? .red : .accentColor)
+                }
+            }
+            if enrolled {
+                Divider()
+                HStack {
+                    Text("Quiz this topic now")
+                        .font(.headline)
+                    Spacer()
+                    Button("Quiz now") {
+                        let s = GrammarAppSession(client: client, db: db)
+                        s.startAdHoc(topicId: topic.prefixedId, manifest: manifest)
+                        adHocSession = s
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
         }

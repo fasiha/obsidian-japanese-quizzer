@@ -12,7 +12,8 @@ import UIKit
 #endif
 
 @Observable @MainActor
-final class GrammarAppSession {
+final class GrammarAppSession: Identifiable {
+    let id = UUID()
 
     // MARK: - Phase
 
@@ -41,6 +42,9 @@ final class GrammarAppSession {
     var uncertaintyUnlocked: Bool = false
     var preQuizRecall: Double? = nil
     var preQuizHalflife: Double? = nil
+    /// Set by startAdHoc(topicId:manifest:) to restrict the session to one topic.
+    private(set) var isAdHocDrill: Bool = false
+    private var adHocTopicId: String? = nil
     /// Vocabulary glosses for the current question's sentence, resolved after generation.
     /// Nil while the fetch is in progress; empty array if none were found.
     var assumedVocab: [VocabGloss]? = nil
@@ -78,6 +82,26 @@ final class GrammarAppSession {
         self.manifest = manifest
         items = []
         currentIndex = 0
+        phase = .loadingItems
+        Task { await loadItems() }
+    }
+
+    /// Start an on-demand single-topic drill. Creates a fresh session restricted to
+    /// items whose topicId or equivalenceGroupIds include the given topicId.
+    func startAdHoc(topicId: String, manifest: GrammarManifest) {
+        isAdHocDrill = true
+        adHocTopicId = topicId
+        self.manifest = manifest
+        items = []
+        currentIndex = 0
+        conversation = []
+        chatMessages = []
+        chatInput = ""
+        isSendingChat = false
+        gradedScore = nil
+        gradedHalflife = nil
+        gradedReviewCount = nil
+        uncertaintyUnlocked = false
         phase = .loadingItems
         Task { await loadItems() }
     }
@@ -206,7 +230,15 @@ final class GrammarAppSession {
     private func loadItems() async {
         guard let manifest else { phase = .noItems; return }
         do {
-            let candidates = try await GrammarQuizContext.build(db: db, manifest: manifest)
+            let allCandidates = try await GrammarQuizContext.build(db: db, manifest: manifest)
+            let candidates: [GrammarQuizItem]
+            if let targetId = adHocTopicId {
+                candidates = allCandidates.filter {
+                    $0.topicId == targetId || $0.equivalenceGroupIds.contains(targetId)
+                }
+            } else {
+                candidates = allCandidates
+            }
             print("[GrammarAppSession] \(candidates.count) candidate(s) after equivalence collapsing")
             if candidates.isEmpty { phase = .noItems; return }
 
@@ -300,6 +332,7 @@ final class GrammarAppSession {
 
     private func recordReview(item: GrammarQuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
+        let finalNotes = isAdHocDrill ? "ad-hoc drill | \(notes)" : notes
         let review = Review(
             reviewer: deviceName(),
             timestamp: now,
@@ -308,7 +341,7 @@ final class GrammarAppSession {
             wordText: item.titleEn,
             score: score,
             quizType: item.facet,
-            notes: notes.isEmpty ? nil : notes
+            notes: finalNotes.isEmpty ? nil : finalNotes
         )
         try await db.insert(review: review)
 

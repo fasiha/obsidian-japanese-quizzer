@@ -485,6 +485,16 @@ Tasks:
   Facet badge shows "production" / "recognition"; topic title replaces the word display.
 - [x] Wire Grammar tab into `HomeView`: `Vocab | Grammar | Quiz`.
 - [x] Load `GrammarManifest` at startup (alongside vocab corpus) and pass it through.
+- [x] Move the vocab quiz out of the tab bar and into the vocab browser toolbar (quiz
+  button always visible; `QuizView` noItems state handles the empty case). Grammar quiz
+  toolbar button likewise always visible. Tab bar now has two tabs: Vocab and Grammar.
+- [x] Ad-hoc single-topic drill from `GrammarDetailSheet`: "Quiz now" button (visible
+  when enrolled) creates a local `GrammarAppSession` via `startAdHoc(topicId:manifest:)`,
+  which restricts candidates to the tapped topic's equivalence group. Quiz appears as a
+  sheet-on-sheet with an "×" close button and "Done" on completion. Notes column is
+  prefixed with `"ad-hoc drill | "` to distinguish these reviews from scheduled ones.
+  Quizzes both production and recognition facets (proof-of-concept; facet selection
+  can be added later).
 
 **Tier 3 (ship second, optional before tier 2):**
 - [ ] Grammar quiz: tier 3 production free text with opportunistic passive grading
