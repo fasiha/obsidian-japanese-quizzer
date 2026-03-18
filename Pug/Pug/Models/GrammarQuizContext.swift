@@ -70,12 +70,12 @@ struct GrammarQuizItem: Identifiable {
 struct GrammarQuizContext {
     static let grammarFacets = ["production", "recognition"]
 
-    /// Tier-2 thresholds (production fill-in-the-blank; recognition free text).
-    static let tier2MinReviews  = 3
+    /// Tier-2 thresholds (production fill-in-the-blank; recognition free text). DISABLED FOR NOW.
+    static let tier2MinReviews  = 33333333
     static let tier2MinHalflife = 72.0      // hours
 
-    /// Tier-3 threshold (production free text only). Higher bar because open production is harder.
-    static let tier3MinReviews  = 6
+    /// Tier-3 threshold (production free text only). Higher bar because open production is harder. DISABLED FOR NOW.
+    static let tier3MinReviews  = 66666666
     static let tier3MinHalflife = 120.0     // hours
 
     // Backward-compatible alias used by existing code outside this file.
