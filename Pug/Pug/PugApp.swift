@@ -14,11 +14,13 @@ struct PugApp: App {
     }
 }
 
-/// Initialises the DB, quiz session, and vocab corpus, then hands off to HomeView.
+/// Initialises the DB, quiz session, vocab corpus, and grammar manifest, then hands off to HomeView.
 /// Falls back to an error screen if the DB can't be opened.
 struct AppRootView: View {
     @State private var preferences = UserPreferences()
     @State private var session: QuizSession? = nil
+    @State private var grammarSession: GrammarAppSession? = nil
+    @State private var grammarManifest: GrammarManifest? = nil
     @State private var corpus = VocabCorpus()
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
@@ -28,11 +30,12 @@ struct AppRootView: View {
 
     var body: some View {
         Group {
-            if let session, let db, let jmdict {
+            if let session, let grammarSession, let db, let jmdict {
                 let isConfigured = !SetupHandler.resolvedApiKey().isEmpty
                                 && VocabSync.resolvedURL() != nil
                 if isConfigured {
-                    HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict)
+                    HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict,
+                             grammarSession: grammarSession, grammarManifest: grammarManifest)
                         .environment(preferences)
                 } else {
                     ContentUnavailableView(
@@ -82,17 +85,51 @@ struct AppRootView: View {
             print("[Setup] Using model: \(model)")
             let client = AnthropicClient(apiKey: apiKey, model: model)
 
-            // Publish state so HomeView can render as soon as session is ready,
-            // while corpus.load() continues in the background.
-            db      = quizDB
-            jmdict  = toolHandler.jmdict
-            session = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
-                                  preferences: preferences)
+            // Publish core state so HomeView can render immediately.
+            db             = quizDB
+            jmdict         = toolHandler.jmdict
+            session        = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
+                                         preferences: preferences)
+            grammarSession = GrammarAppSession(client: client, db: quizDB)
 
-            // Load vocab corpus (uses cache; downloads silently if no cache and VOCAB_URL is set).
+            // Load vocab corpus and grammar manifest concurrently (both use cache).
+            async let grammarLoad = loadGrammarManifest()
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
+            grammarManifest = await grammarLoad
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Load grammar manifest: try cached first, then attempt a background sync.
+    private func loadGrammarManifest() async -> GrammarManifest? {
+        // Always load equivalences from cache (may be nil on first launch).
+        var manifest = GrammarSync.cached()
+        var equivalences = GrammarSync.cachedEquivalences()
+
+        // Attempt a network sync. Failures are non-fatal — cached data is still usable.
+        if GrammarSync.resolvedURL() != nil {
+            do {
+                manifest = try await GrammarSync.sync()
+                print("[Setup] grammar manifest synced: \(manifest?.topics.count ?? 0) topic(s)")
+            } catch {
+                print("[Setup] grammar sync failed (using cache): \(error)")
+            }
+        }
+        if GrammarSync.equivalencesURL() != nil {
+            do {
+                equivalences = try await GrammarSync.syncEquivalences()
+                print("[Setup] grammar equivalences synced: \(equivalences?.count ?? 0) group(s)")
+            } catch {
+                print("[Setup] grammar equivalences sync failed (using cache): \(error)")
+            }
+        }
+
+        // Merge description fields from equivalences into manifest.
+        if var m = manifest, let eq = equivalences {
+            GrammarSync.mergeDescriptions(into: &m, from: eq)
+            return m
+        }
+        return manifest
     }
 }

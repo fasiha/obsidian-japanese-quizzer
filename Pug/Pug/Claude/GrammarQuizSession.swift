@@ -81,24 +81,26 @@ struct GrammarMultipleChoiceQuestion: Equatable, Sendable {
     /// Example: answers ["し", "し"] with a sentence containing exactly two "し" is NOT
     /// ambiguous — we gap both. But answers ["の"] with a sentence containing two "の" IS
     /// ambiguous — we don't know which one is the grammar slot.
-    var needsDisambiguation: Bool {
-        guard let s = sentence, correctIndex < choices.count else { return false }
-        let answers = choices[correctIndex]
-        // Count how many times each fill is needed across all grammar slots
-        var neededCounts: [String: Int] = [:]
-        for fill in answers { neededCounts[fill, default: 0] += 1 }
-        // For each unique fill, check if the sentence contains more occurrences than needed
-        for (fill, needed) in neededCounts {
-            var sentenceCount = 0
-            var searchRange = s.startIndex..<s.endIndex
-            while let range = s.range(of: fill, range: searchRange) {
-                sentenceCount += 1
-                if sentenceCount > needed { return true }
-                searchRange = range.upperBound..<s.endIndex
-            }
+    var needsDisambiguation: Bool { grammarNeedsDisambiguation(self) }
+}
+
+/// Free function so `nonisolated` contexts can check disambiguation without touching the
+/// main-actor-isolated struct property directly (required by SWIFT_DEFAULT_ACTOR_ISOLATION=MainActor).
+nonisolated func grammarNeedsDisambiguation(_ question: GrammarMultipleChoiceQuestion) -> Bool {
+    guard let s = question.sentence, question.correctIndex < question.choices.count else { return false }
+    let answers = question.choices[question.correctIndex]
+    var neededCounts: [String: Int] = [:]
+    for fill in answers { neededCounts[fill, default: 0] += 1 }
+    for (fill, needed) in neededCounts {
+        var sentenceCount = 0
+        var searchRange = s.startIndex..<s.endIndex
+        while let range = s.range(of: fill, range: searchRange) {
+            sentenceCount += 1
+            if sentenceCount > needed { return true }
+            searchRange = range.upperBound..<s.endIndex
         }
-        return false
     }
+    return false
 }
 
 // MARK: - Haiku disambiguation for ambiguous gapping
@@ -111,11 +113,12 @@ nonisolated func disambiguateGaps(
     topicId: String,
     client: AnthropicClient
 ) async -> GrammarMultipleChoiceQuestion {
-    guard question.needsDisambiguation,
+    guard grammarNeedsDisambiguation(question),
           let sentence = question.sentence,
           question.correctIndex < question.choices.count
     else { return question }
 
+    let gap = "___"   // local copy — avoids reaching the @MainActor-isolated global from nonisolated context
     let answers = question.choices[question.correctIndex]
     var result = sentence
 
@@ -136,9 +139,9 @@ nonisolated func disambiguateGaps(
             var gapped = 0
             var sr = result.startIndex..<result.endIndex
             while gapped < needed, let r = result.range(of: fill, range: sr) {
-                result = result.replacingCharacters(in: r, with: grammarGapToken)
+                result = result.replacingCharacters(in: r, with: gap)
                 gapped += 1
-                sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+                sr = (result.index(r.lowerBound, offsetBy: gap.count))..<result.endIndex
             }
             continue
         }
@@ -190,7 +193,7 @@ nonisolated func disambiguateGaps(
                     while let r = result.range(of: fill, range: sr) {
                         count += 1
                         if count == occIndex {
-                            result = result.replacingCharacters(in: r, with: grammarGapToken)
+                            result = result.replacingCharacters(in: r, with: gap)
                             break
                         }
                         sr = r.upperBound..<result.endIndex
@@ -202,9 +205,9 @@ nonisolated func disambiguateGaps(
                 var gapped = 0
                 var sr = result.startIndex..<result.endIndex
                 while gapped < needed, let r = result.range(of: fill, range: sr) {
-                    result = result.replacingCharacters(in: r, with: grammarGapToken)
+                    result = result.replacingCharacters(in: r, with: gap)
                     gapped += 1
-                    sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+                    sr = (result.index(r.lowerBound, offsetBy: gap.count))..<result.endIndex
                 }
             }
         } catch {
@@ -212,9 +215,9 @@ nonisolated func disambiguateGaps(
             var gapped = 0
             var sr = result.startIndex..<result.endIndex
             while gapped < needed, let r = result.range(of: fill, range: sr) {
-                result = result.replacingCharacters(in: r, with: grammarGapToken)
+                result = result.replacingCharacters(in: r, with: gap)
                 gapped += 1
-                sr = (result.index(r.lowerBound, offsetBy: grammarGapToken.count))..<result.endIndex
+                sr = (result.index(r.lowerBound, offsetBy: gap.count))..<result.endIndex
             }
         }
     }
@@ -1236,7 +1239,7 @@ struct VocabGloss: Sendable, Equatable {
 
 /// Returns the する-stripped lookup key for a word if it ends in する and has content before it,
 /// otherwise returns nil. E.g. "練習する" → "練習", "する" → nil.
-private func suruPrefix(_ word: String) -> String? {
+nonisolated private func suruPrefix(_ word: String) -> String? {
     guard word.hasSuffix("する") else { return nil }
     let prefix = String(word.dropLast(2))
     return prefix.isEmpty ? nil : prefix
@@ -1245,7 +1248,7 @@ private func suruPrefix(_ word: String) -> String? {
 /// Returns true when the given lookup text matches a kanji or kana form in the entry that is
 /// marked `common: true`. Used to sort common entries before uncommon ones when combining
 /// senses for ambiguous words.
-private func isCommonMatch(_ raw: [String: Any], lookupText: String) -> Bool {
+nonisolated private func isCommonMatch(_ raw: [String: Any], lookupText: String) -> Bool {
     let kanjiForms = raw["kanji"] as? [[String: Any]] ?? []
     if let match = kanjiForms.first(where: { ($0["text"] as? String) == lookupText }) {
         return (match["common"] as? Bool) == true
@@ -1259,7 +1262,7 @@ private func isCommonMatch(_ raw: [String: Any], lookupText: String) -> Bool {
 
 /// Extracts all English senses from a parsed JMDict entry_json object.
 /// Sub-glosses within one sense are joined with ", "; senses are joined with "; ".
-private func glossFromEntry(_ raw: [String: Any]) -> String? {
+nonisolated private func glossFromEntry(_ raw: [String: Any]) -> String? {
     let senses = raw["sense"] as? [[String: Any]] ?? []
     let parts = senses.compactMap { sense -> String? in
         let texts = (sense["gloss"] as? [[String: Any]] ?? [])

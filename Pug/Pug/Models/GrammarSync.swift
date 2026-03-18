@@ -98,7 +98,8 @@ enum GrammarSync {
         guard let url = resolvedURL() else {
             throw GrammarSyncError.noURLConfigured
         }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        let (data, response) = try await URLSession.shared.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw GrammarSyncError.httpError(http.statusCode)
         }
@@ -149,7 +150,8 @@ enum GrammarSync {
         guard let url = equivalencesURL() else {
             throw GrammarSyncError.noURLConfigured
         }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+        let (data, response) = try await URLSession.shared.data(for: request)
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw GrammarSyncError.httpError(http.statusCode)
         }

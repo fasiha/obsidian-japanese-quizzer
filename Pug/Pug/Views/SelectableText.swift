@@ -30,6 +30,9 @@ struct SelectableText: UIViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
         let width = proposal.width ?? 390  // fallback; proposal.width is almost always set
-        return uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        // Return the full proposed width so SwiftUI doesn't shrink-wrap the view
+        // to the text's natural width, which causes it to appear half-width in an HStack.
+        return CGSize(width: width, height: fitted.height)
     }
 }

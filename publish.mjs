@@ -47,6 +47,12 @@ if (!existsSync(grammarPath)) {
   process.exit(1);
 }
 
+const grammarEquivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
+if (!existsSync(grammarEquivPath)) {
+  console.error("grammar/grammar-equivalences.json not found — run `/cluster-grammar-topics` first");
+  process.exit(1);
+}
+
 const tmpDir = mkdtempSync(path.join(tmpdir(), "gist-publish-"));
 
 function run(cmd, opts = {}) {
@@ -59,8 +65,12 @@ try {
 
   copyFileSync(vocabPath, path.join(tmpDir, "vocab.json"));
   copyFileSync(grammarPath, path.join(tmpDir, "grammar.json"));
+  // grammar-equivalences.json lives in grammar/ locally but is published flat
+  // so the Pug app can fetch it by replacing "vocab.json" with "grammar-equivalences.json"
+  // in the Gist raw URL.
+  copyFileSync(grammarEquivPath, path.join(tmpDir, "grammar-equivalences.json"));
 
-  run(`git -C "${tmpDir}" add vocab.json grammar.json`);
+  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json`);
 
   // Check if there's anything staged to commit
   const diff = execSync(`git -C "${tmpDir}" diff --cached --name-only`, {
@@ -68,7 +78,7 @@ try {
   }).trim();
 
   if (!diff) {
-    console.log("\nvocab.json is unchanged — nothing to push.");
+    console.log("\nAll files unchanged — nothing to push.");
   } else {
     const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
     run(`git -C "${tmpDir}" commit -m "Update vocab.json ${timestamp}"`);

@@ -22,7 +22,7 @@ struct VocabBrowserView: View {
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
-    @State private var showDebug = false
+
     @State private var showSettings = false
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
@@ -74,13 +74,20 @@ struct VocabBrowserView: View {
             .navigationTitle("Vocab")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
-                ToolbarItem(placement: .navigationBarTrailing) { debugMenu }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    BrowserToolbarMenu(
+                        showSettings: $showSettings,
+                        db: db,
+                        lastSyncedAt: corpus.lastSyncedAt,
+                        onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict) } }
+                    )
+                }
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
                 WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
             }
-            .sheet(isPresented: $showDebug) { DebugSheet(session: session) }
+
             .sheet(isPresented: $showSettings) { SettingsView() }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",
@@ -206,25 +213,6 @@ struct VocabBrowserView: View {
                 Text(filterLabel).font(.subheadline)
                 Image(systemName: "chevron.down").imageScale(.small)
             }
-        }
-    }
-
-    private var debugMenu: some View {
-        Menu {
-            Button("Settings") { showSettings = true }
-            Divider()
-            Button("Re-download vocab") {
-                Task { await corpus.redownload(db: db, jmdict: jmdict) }
-            }
-            if let at = corpus.lastSyncedAt {
-                let display = at.prefix(10)   // "YYYY-MM-DD" from ISO 8601
-                Text("Last synced: \(display)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Button("Debug info") { showDebug = true }
-        } label: {
-            Image(systemName: "ellipsis.circle")
         }
     }
 

@@ -78,7 +78,7 @@ final class QuizSession {
     let client: AnthropicClient
     let toolHandler: ToolHandler
     let preferences: UserPreferences
-    private let db: QuizDB
+    let db: QuizDB
     private var conversation: [AnthropicMessage] = []
     var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
 
@@ -89,14 +89,6 @@ final class QuizSession {
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
     private var prefetchTask: Task<Void, Never>? = nil
 
-
-    /// Checkpoint the WAL and return the quiz DB file URL for sharing.
-    func checkpointAndDBURL() async -> URL? {
-        try? await db.checkpointWAL()
-        return try? FileManager.default.url(
-            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            .appendingPathComponent("quiz.sqlite")
-    }
 
     init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB,
          preferences: UserPreferences) {

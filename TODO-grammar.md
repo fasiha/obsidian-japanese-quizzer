@@ -432,19 +432,6 @@ Three items that should be resolved before Phase 1B, in this order:
     Not planned for tier 1 since grading is pure logic (zero LLM tokens). Revisit
     for tiers 2/3 when free-text grading is added.
 
-- [ ] **Equivalence-group Ebisu propagation** — when a quiz updates Ebisu for one topic,
-  all other topics in the same equivalence group should receive the same update. Without
-  this, the scheduler will re-queue `bunpro:られる-Potential` after the student has already
-  demonstrated mastery via `genki:potential-verbs`.
-  Open questions to resolve:
-  - Where to wire it in: at review-write time in `GrammarQuizSession` (write one review
-    row + N Ebisu updates), or at scheduling time in `GrammarQuizContext` (read all
-    group members' Ebisu states and take the best)? Write-time propagation is simpler
-    and keeps the Ebisu states consistent; read-time merging avoids phantom review rows
-    for topics the student never explicitly studied
-  - What score to propagate: same score as the primary review (full weight), or a
-    discounted passive score (e.g. 0.9×)?
-
 ### Phase 1B — iOS Views
 
 Tier rollout order: **tier 1 → tier 3 → tier 2** (least per-topic customization to most).
@@ -456,11 +443,48 @@ per-topic field. See `TODO-grammar-tier-2.md` §"Approach D" for the full tier a
 and per-topic field designs.
 
 **Tier 1 (ship first):**
-- [ ] Grammar topic list view — filterable by source, level, enrollment status
-- [ ] GrammarDetailSheet — example sentences, chat box (Claude), mnemonic support
-  - Reuses mnemonic infrastructure with `word_type = 'grammar'`
-- [ ] Grammar quiz view — tier 1 multiple choice for both facets (production + recognition)
-- [ ] Integrate grammar items into unified quiz scheduling (alongside vocab)
+
+Architecture decisions resolved in 2026-03-17 design session:
+- Grammar gets its own tab: `Vocab | Grammar | Quiz` in `HomeView`.
+  - Grammar tab houses both the topic browser (`GrammarBrowserView`) and the grammar
+    quiz (launched from within that tab). The existing Quiz tab stays vocab-only.
+  - As a follow-up (separate task), restructure the Vocab tab the same way so both
+    sides are symmetric: a browser + a quiz reachable from one tab each.
+- Enrollment is equivalence-group-wide: enrolling any topic in a group enrolls them all
+  (all get `ebisu_models` rows). No partial enrollment is possible or desirable.
+- Equivalence-group Ebisu propagation uses **write-time copy**: on review, write one
+  `reviews` row for the quizzed topic, update its `ebisu_models` row, then `UPDATE`
+  (not insert) all sibling rows that already exist. Score propagated is the same score
+  (full weight — no discount). Phantom rows are fine; they just record reflected mastery.
+- Equivalence-group **collapsing at scheduling time**: `GrammarQuizContext.build()` groups
+  items by `(equivalenceGroupKey, facet)` and keeps one representative per group (e.g.
+  the topic with the lexicographically first ID). This prevents quizzing two topics that
+  cover the same grammar point back-to-back. Production and recognition facets of the same
+  topic remain separate candidates (different skills, may appear in the same session).
+
+Tasks:
+- [x] `GrammarAppSession` — new `@Observable @MainActor` orchestrator (parallel to
+  `QuizSession` for vocab). Loads items via `GrammarQuizContext.build()`, selects 3–5
+  from top-10 pool (after equivalence collapsing), drives phase state machine for tier 1
+  multiple choice, writes review + propagates Ebisu to equivalence siblings on answer.
+- [x] Update `GrammarQuizContext.build()` — add equivalence-group collapsing step after
+  building all items (group by `(equivalenceGroupKey, facet)`, keep one per group).
+- [x] `QuizDB` write-time Ebisu propagation helper — after updating the primary topic's
+  model, `UPDATE ebisu_models SET ... WHERE word_type='grammar' AND word_id=? AND quiz_type=?`
+  for each sibling topic ID in the equivalence group that already has a row.
+- [x] `QuizDB.enrollGrammarTopic` — enroll all topics in the equivalence group (not just
+  the tapped one). Creates `ebisu_models` rows for all sibling topic IDs × both facets.
+- [x] `GrammarBrowserView` — filterable topic list (by source, level, enrollment status);
+  "Start Grammar Quiz" button at the top that pushes into `GrammarQuizView`.
+- [x] `GrammarDetailSheet` — topic title, level/source, summary, sub-uses, cautions,
+  enrollment toggle (enrolls/unenrolls the whole equivalence group), mnemonic support
+  (`word_type = 'grammar'`), Claude chat box.
+- [x] `GrammarQuizView` — phase state machine (generating → awaitingTap → chatting →
+  finished); reuses `QuizView` helpers (score badge, chat thread, rescale sheet) where
+  possible. Tier 1 only (always multiple choice — no awaitingText phase needed yet).
+  Facet badge shows "production" / "recognition"; topic title replaces the word display.
+- [x] Wire Grammar tab into `HomeView`: `Vocab | Grammar | Quiz`.
+- [x] Load `GrammarManifest` at startup (alongside vocab corpus) and pass it through.
 
 **Tier 3 (ship second, optional before tier 2):**
 - [ ] Grammar quiz: tier 3 production free text with opportunistic passive grading

@@ -52,7 +52,7 @@ struct QuizView: View {
                 }
             }
             .sheet(isPresented: $showDebug) {
-                DebugSheet(session: session)
+                DebugSheet(db: session.db)
             }
             .sheet(isPresented: $showSettings) { SettingsView() }
             .sheet(isPresented: $showRescaleSheet) {
@@ -353,35 +353,6 @@ struct QuizView: View {
         case 0.75...: return "Good"
         case 0.5...: return "Partial"
         default:     return "Incorrect"
-        }
-    }
-}
-
-// MARK: - Debug sheet
-
-struct DebugSheet: View {
-    let session: QuizSession
-    @State private var shareURL: URL? = nil
-
-    var body: some View {
-        NavigationStack {
-            List {
-                Section("Export") {
-                    if let url = shareURL {
-                        ShareLink(item: url) {
-                            Label("Share quiz.sqlite via AirDrop / Files", systemImage: "square.and.arrow.up")
-                        }
-                    } else {
-                        Label("Preparing database…", systemImage: "hourglass")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .navigationTitle("Debug")
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .task {
-            shareURL = await session.checkpointAndDBURL()
         }
     }
 }

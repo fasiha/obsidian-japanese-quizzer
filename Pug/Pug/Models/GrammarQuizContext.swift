@@ -10,6 +10,13 @@
 import GRDB
 import Foundation
 
+extension Array where Element: Hashable {
+    func removingDuplicates() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
+    }
+}
+
 // MARK: - Extra topic entry
 
 /// A grammar topic the student already knows well, used to calibrate quiz difficulty.
@@ -164,7 +171,25 @@ struct GrammarQuizContext {
             }
         }
 
-        return items.sorted { $0.recall < $1.recall }
+        let sorted = items.sorted { $0.recall < $1.recall }
+        return collapseEquivalenceGroups(sorted)
+    }
+
+    /// Collapse items so that only one representative per (equivalenceGroupKey, facet) appears.
+    /// Items are already sorted by ascending recall; we keep the first (most urgent) representative.
+    /// Topics with no equivalence group use their own topicId as the key.
+    private static func collapseEquivalenceGroups(_ items: [GrammarQuizItem]) -> [GrammarQuizItem] {
+        var seen = Set<String>()
+        var result: [GrammarQuizItem] = []
+        for item in items {
+            // Canonical key = lexicographically first ID in the equivalence group (or self).
+            let groupKey = ([item.topicId] + item.equivalenceGroupIds).sorted().first ?? item.topicId
+            let key = "\(groupKey):\(item.facet)"
+            if seen.insert(key).inserted {
+                result.append(item)
+            }
+        }
+        return result
     }
 }
 
@@ -225,24 +250,83 @@ extension QuizDB {
         }
     }
 
-    /// Enroll a grammar topic for study — creates ebisu_models rows for both facets.
-    func enrollGrammarTopic(topicId: String, halflife: Double = 24) async throws {
-        let now   = ISO8601DateFormatter().string(from: Date())
-        let model = defaultModel(halflife: halflife)
+    /// Enroll a grammar topic and all its equivalence-group siblings for study.
+    /// Creates ebisu_models rows for every topic ID × both facets. Uses INSERT OR IGNORE
+    /// so re-enrolling an already-enrolled topic is a no-op (preserves existing models).
+    func enrollGrammarTopic(topicId: String, equivalenceGroupIds: [String] = [],
+                            halflife: Double = 24) async throws {
+        let now    = ISO8601DateFormatter().string(from: Date())
+        let model  = defaultModel(halflife: halflife)
+        // Enroll the tapped topic and every sibling in its equivalence group.
+        let allIds = ([topicId] + equivalenceGroupIds).removingDuplicates()
+        let facets = GrammarQuizContext.grammarFacets   // capture before entering Sendable closure
         try await pool.write { db in
-            for facet in GrammarQuizContext.grammarFacets {
+            for id in allIds {
+                for facet in facets {
+                    try db.execute(sql: """
+                        INSERT OR IGNORE INTO ebisu_models
+                            (word_type, word_id, quiz_type, alpha, beta, t, last_review)
+                        VALUES ('grammar', ?, ?, ?, ?, ?, ?)
+                        """, arguments: [id, facet, model.alpha, model.beta, model.t, now])
+                }
                 try db.execute(sql: """
-                    INSERT OR IGNORE INTO ebisu_models
-                        (word_type, word_id, quiz_type, alpha, beta, t, last_review)
-                    VALUES ('grammar', ?, ?, ?, ?, ?, ?)
-                    """, arguments: [topicId, facet, model.alpha, model.beta, model.t, now])
+                    INSERT OR IGNORE INTO grammar_enrollment (topic_id, status, enrolled_at)
+                    VALUES (?, 'learning', ?)
+                    """, arguments: [id, now])
             }
-            try db.execute(sql: """
-                INSERT OR IGNORE INTO grammar_enrollment (topic_id, status, enrolled_at)
-                VALUES (?, 'learning', ?)
-                """, arguments: [topicId, now])
         }
-        print("[QuizDB] enrolled grammar topic \(topicId)")
+        print("[QuizDB] enrolled grammar topic(s): \(allIds.joined(separator: ", "))")
+    }
+
+    /// Unenroll a grammar topic and all its equivalence-group siblings.
+    /// Deletes ebisu_models and grammar_enrollment rows for all topic IDs.
+    func unenrollGrammarTopic(topicId: String, equivalenceGroupIds: [String] = []) async throws {
+        let allIds = ([topicId] + equivalenceGroupIds).removingDuplicates()
+        try await pool.write { db in
+            for id in allIds {
+                try db.execute(sql: "DELETE FROM ebisu_models WHERE word_type='grammar' AND word_id=?",
+                               arguments: [id])
+                try db.execute(sql: "DELETE FROM grammar_enrollment WHERE topic_id=?",
+                               arguments: [id])
+            }
+        }
+        print("[QuizDB] unenrolled grammar topic(s): \(allIds.joined(separator: ", "))")
+    }
+
+    /// After recording a review for `topicId`, copy the updated Ebisu model to all
+    /// equivalence-group siblings that already have rows. Only updates existing rows —
+    /// never inserts — so unenrolled siblings are unaffected.
+    func propagateGrammarEbisu(from topicId: String, quizType: String,
+                               siblingIds: [String]) async throws {
+        guard !siblingIds.isEmpty else { return }
+        // Fetch the freshly-updated model for the primary topic.
+        guard let primary = try await ebisuRecord(wordType: "grammar", wordId: topicId,
+                                                  quizType: quizType) else { return }
+        let now = ISO8601DateFormatter().string(from: Date())
+        try await pool.write { db in
+            for sibId in siblingIds where sibId != topicId {
+                // UPDATE only — never insert. Row must already exist (sibling was enrolled).
+                try db.execute(sql: """
+                    UPDATE ebisu_models
+                    SET alpha=?, beta=?, t=?, last_review=?
+                    WHERE word_type='grammar' AND word_id=? AND quiz_type=?
+                    """, arguments: [primary.alpha, primary.beta, primary.t, now, sibId, quizType])
+            }
+        }
+        let updated = siblingIds.filter { $0 != topicId }
+        if !updated.isEmpty {
+            print("[QuizDB] propagated \(topicId)/\(quizType) model to: \(updated.joined(separator: ", "))")
+        }
+    }
+
+    /// Whether a grammar topic is currently enrolled (has a grammar_enrollment row).
+    func isGrammarTopicEnrolled(topicId: String) async throws -> Bool {
+        try await pool.read { db in
+            let count = try Int.fetchOne(db, sql: """
+                SELECT COUNT(*) FROM grammar_enrollment WHERE topic_id=?
+                """, arguments: [topicId]) ?? 0
+            return count > 0
+        }
     }
 }
 
