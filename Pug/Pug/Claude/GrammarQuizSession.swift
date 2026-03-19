@@ -380,7 +380,7 @@ final class GrammarQuizSession {
     ///   a free-text answer or discussing a completed multiple-choice question.
     func systemPrompt(for item: GrammarQuizItem, isGenerating: Bool,
                       preRecall: Double? = nil, preHalflife: Double? = nil,
-                      postHalflife: Double? = nil) -> String {
+                      postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
         let ebisuLine: String
         if let r = preRecall, let h = preHalflife {
             if let ph = postHalflife {
@@ -560,10 +560,14 @@ final class GrammarQuizSession {
             return header + "\n(Production tier 3 grading uses the coaching prompt.)"
         } else {
             let resultLine = multipleChoiceResult.map { "Multiple choice result: \($0)\n" } ?? ""
+            let mnemonicInstruction = mnemonicBlock.isEmpty ? "" :
+                "\n\n\(mnemonicBlock)\nYou have get_mnemonic and set_mnemonic tools." +
+                " Always call get_mnemonic before set_mnemonic" +
+                " so you can see what is already stored and merge new content rather than replacing it wholesale."
             return header + """
 
         \(resultLine)The student has already answered — scoring is handled by the app. Do NOT emit SCORE.
-        The student may ask follow-up questions or move on without chatting. If they ask, engage naturally.
+        The student may ask follow-up questions or move on without chatting. If they ask, engage naturally.\(mnemonicInstruction)
         """
         }
     }

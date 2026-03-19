@@ -294,8 +294,9 @@ extension QuizDB {
     }
 
     /// After recording a review for `topicId`, copy the updated Ebisu model to all
-    /// equivalence-group siblings that already have rows. Only updates existing rows —
-    /// never inserts — so unenrolled siblings are unaffected.
+    /// equivalence-group siblings. Inserts rows for siblings that don't have one yet
+    /// (e.g. a new grammar source added to an existing equivalence group), so the
+    /// scheduler sees them immediately without requiring a separate enrollment step.
     func propagateGrammarEbisu(from topicId: String, quizType: String,
                                siblingIds: [String]) async throws {
         guard !siblingIds.isEmpty else { return }
@@ -305,12 +306,17 @@ extension QuizDB {
         let now = ISO8601DateFormatter().string(from: Date())
         try await pool.write { db in
             for sibId in siblingIds where sibId != topicId {
-                // UPDATE only — never insert. Row must already exist (sibling was enrolled).
+                // INSERT OR REPLACE so new equivalence-group members get a row automatically.
                 try db.execute(sql: """
-                    UPDATE ebisu_models
-                    SET alpha=?, beta=?, t=?, last_review=?
-                    WHERE word_type='grammar' AND word_id=? AND quiz_type=?
-                    """, arguments: [primary.alpha, primary.beta, primary.t, now, sibId, quizType])
+                    INSERT OR REPLACE INTO ebisu_models
+                        (word_type, word_id, quiz_type, alpha, beta, t, last_review)
+                    VALUES ('grammar', ?, ?, ?, ?, ?, ?)
+                    """, arguments: [sibId, quizType, primary.alpha, primary.beta, primary.t, now])
+                // Mirror the grammar_enrollment row so the sibling appears in the browser.
+                try db.execute(sql: """
+                    INSERT OR IGNORE INTO grammar_enrollment (topic_id, status, enrolled_at)
+                    VALUES (?, 'learning', ?)
+                    """, arguments: [sibId, now])
             }
         }
         let updated = siblingIds.filter { $0 != topicId }

@@ -60,14 +60,16 @@ final class GrammarAppSession {
 
     let client: AnthropicClient
     let db: QuizDB
+    private let toolHandler: ToolHandler?
     private var manifest: GrammarManifest?
     private let itemSession: GrammarQuizSession  // single-item LLM helper
     private var conversation: [AnthropicMessage] = []
     private var currentQuestion: GrammarMultipleChoiceQuestion? = nil
 
-    init(client: AnthropicClient, db: QuizDB) {
+    init(client: AnthropicClient, db: QuizDB, toolHandler: ToolHandler? = nil) {
         self.client      = client
         self.db          = db
+        self.toolHandler = toolHandler
         self.itemSession = GrammarQuizSession(client: client, db: db)
     }
 
@@ -292,16 +294,59 @@ final class GrammarAppSession {
         chatMessages.append((isUser: true, text: text))
         conversation.append(AnthropicMessage(role: "user", content: [.text(text)]))
         do {
+            let mnemonicBlock = await fetchMnemonicBlock(for: item)
             let system = itemSession.systemPrompt(
                 for: item, isGenerating: false,
                 preRecall: preQuizRecall, preHalflife: preQuizHalflife,
-                postHalflife: gradedHalflife)
+                postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock)
+            let tools: [AnthropicTool] = toolHandler != nil ? [.getMnemonic, .setMnemonic] : []
+            // Compute allIds on the main actor before entering the @Sendable closure.
+            let allIds = ([item.topicId] + item.equivalenceGroupIds).removingDuplicates()
+            let handler = toolHandler.map { th in
+                { @Sendable (name: String, input: [String: JSONValue]) async throws -> String in
+                    // For grammar mnemonics, operate across all equivalence-group siblings so
+                    // a mnemonic saved on one sibling is visible when quizzing on any other.
+                    if name == "set_mnemonic",
+                       case .string("grammar")? = input["word_type"],
+                       case .string(let wid)? = input["word_id"],
+                       case .string(let text)? = input["mnemonic"] {
+                        // Propagate to every sibling, using the LLM's word_id as the base
+                        // but extending to all siblings (matching Ebisu propagation behaviour).
+                        let targetIds = allIds.isEmpty ? [wid] : allIds
+                        var primaryResult = #"{"ok":true}"#
+                        for (index, id) in targetIds.enumerated() {
+                            let result = try await th.handle(
+                                toolName: "set_mnemonic",
+                                input: ["word_type": .string("grammar"),
+                                        "word_id": .string(id),
+                                        "mnemonic": .string(text)])
+                            if index == 0 { primaryResult = result }
+                            // Continue propagating to siblings even if one fails.
+                        }
+                        return primaryResult
+                    }
+                    if name == "get_mnemonic",
+                       case .string("grammar")? = input["word_type"] {
+                        // Return the first sibling mnemonic found.
+                        for id in allIds {
+                            let result = try await th.handle(
+                                toolName: "get_mnemonic",
+                                input: ["word_type": .string("grammar"), "word_id": .string(id)])
+                            if !result.contains("\"mnemonic\":null") && !result.contains("\"error\"") {
+                                return result
+                            }
+                        }
+                        return #"{"mnemonic":null}"#
+                    }
+                    return try await th.handle(toolName: name, input: input)
+                }
+            }
             let (response, updatedMsgs, _) = try await client.send(
                 messages: conversation,
                 system: system,
-                tools: [],
+                tools: tools,
                 maxTokens: 512,
-                toolHandler: nil
+                toolHandler: handler
             )
             conversation = updatedMsgs
             if !response.isEmpty {
@@ -311,6 +356,22 @@ final class GrammarAppSession {
             chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }
         isSendingChat = false
+    }
+
+    // MARK: - Private: mnemonic helpers
+
+    /// Fetch the grammar mnemonic for the current item's topic.
+    private func fetchMnemonicBlock(for item: GrammarQuizItem) async -> String {
+        guard let quizDB = toolHandler?.quizDB else { return "" }
+        // Search the current topic and all equivalence-group siblings — any sibling may hold
+        // the mnemonic (e.g. saved while quizzing on a different source's topic ID).
+        let allIds = ([item.topicId] + item.equivalenceGroupIds).removingDuplicates()
+        for id in allIds {
+            if let m = try? await quizDB.mnemonic(wordType: "grammar", wordId: id) {
+                return "Mnemonic on file (use this to help the student; suggest saving a new one via set_mnemonic):\n\(m.mnemonic)"
+            }
+        }
+        return ""
     }
 
     // MARK: - Private: record review + Ebisu propagation

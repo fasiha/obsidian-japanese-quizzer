@@ -13,6 +13,7 @@ struct GrammarBrowserView: View {
     let db: QuizDB
     @State var grammarSession: GrammarAppSession
     let client: AnthropicClient
+    let toolHandler: ToolHandler?
 
     @State private var enrollmentStatus: [String: Bool] = [:]   // topicId → enrolled
     @State private var searchText = ""
@@ -24,11 +25,12 @@ struct GrammarBrowserView: View {
     @State private var lastSyncedAt: String? = nil
 
     init(manifest: GrammarManifest, db: QuizDB, grammarSession: GrammarAppSession,
-         client: AnthropicClient) {
+         client: AnthropicClient, toolHandler: ToolHandler? = nil) {
         self._manifest = State(initialValue: manifest)
         self.db = db
         self._grammarSession = State(initialValue: grammarSession)
         self.client = client
+        self.toolHandler = toolHandler
     }
 
     enum EnrollmentFilter: String, CaseIterable {
@@ -98,6 +100,7 @@ struct GrammarBrowserView: View {
                     manifest: manifest,
                     db: db,
                     client: client,
+                    toolHandler: toolHandler,
                     isEnrolled: enrollmentStatus[wrapper.id] ?? false
                 ) { nowEnrolled in
                     let groupIds = wrapper.topic.equivalenceGroup ?? []

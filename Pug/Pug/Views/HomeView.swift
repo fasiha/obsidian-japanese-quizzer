@@ -23,7 +23,8 @@ struct HomeView: View {
                     manifest: manifest,
                     db: db,
                     grammarSession: grammarSession,
-                    client: session.client
+                    client: session.client,
+                    toolHandler: session.toolHandler
                 )
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             } else {

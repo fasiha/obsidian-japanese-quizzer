@@ -35,17 +35,17 @@ extension AnthropicTool {
 
     static let getMnemonic = AnthropicTool(
         name: "get_mnemonic",
-        description: "Get the mnemonic note for a vocabulary word or a single kanji character. Returns the mnemonic text, or null if none exists.",
+        description: "Get the mnemonic note for a vocabulary word, a single kanji character, or a grammar topic. Returns the mnemonic text, or null if none exists.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([
                 "word_type": .object([
                     "type": .string("string"),
-                    "description": .string("Either 'jmdict' (vocabulary word) or 'kanji' (single kanji character).")
+                    "description": .string("Either 'jmdict' (vocabulary word), 'kanji' (single kanji character), or 'grammar' (grammar topic).")
                 ]),
                 "word_id": .object([
                     "type": .string("string"),
-                    "description": .string("The JMDict entry ID (for jmdict) or the kanji character itself (for kanji).")
+                    "description": .string("The JMDict entry ID (for jmdict), the kanji character itself (for kanji), or the topic ID (for grammar, e.g. 'genki:potential-verbs').")
                 ])
             ]),
             "required": .array([.string("word_type"), .string("word_id")])
@@ -54,17 +54,17 @@ extension AnthropicTool {
 
     static let setMnemonic = AnthropicTool(
         name: "set_mnemonic",
-        description: "Save or update a mnemonic note for a vocabulary word or single kanji character. IMPORTANT: This overwrites any existing mnemonic for the same word_type + word_id. Before calling, always check the existing mnemonic (from the system prompt or via get_mnemonic) and merge new content into it rather than replacing it wholesale. The mnemonic field should contain the complete final text you want stored.",
+        description: "Save or update a mnemonic note for a vocabulary word, single kanji character, or grammar topic. IMPORTANT: This overwrites any existing mnemonic for the same word_type + word_id. Before calling, always check the existing mnemonic (from the system prompt or via get_mnemonic) and merge new content into it rather than replacing it wholesale. The mnemonic field should contain the complete final text you want stored.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([
                 "word_type": .object([
                     "type": .string("string"),
-                    "description": .string("Either 'jmdict' (vocabulary word) or 'kanji' (single kanji character).")
+                    "description": .string("Either 'jmdict' (vocabulary word), 'kanji' (single kanji character), or 'grammar' (grammar topic).")
                 ]),
                 "word_id": .object([
                     "type": .string("string"),
-                    "description": .string("The JMDict entry ID (for jmdict) or the kanji character itself (for kanji).")
+                    "description": .string("The JMDict entry ID (for jmdict), the kanji character itself (for kanji), or the topic ID (for grammar, e.g. 'genki:potential-verbs').")
                 ]),
                 "mnemonic": .object([
                     "type": .string("string"),

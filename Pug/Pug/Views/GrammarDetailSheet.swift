@@ -13,6 +13,7 @@ struct GrammarDetailSheet: View {
     let manifest: GrammarManifest
     let db: QuizDB
     let client: AnthropicClient
+    let toolHandler: ToolHandler?
     let isEnrolled: Bool
     /// Called when enrollment changes; receives the new enrolled state.
     let onEnrollmentChange: (Bool) -> Void
@@ -22,17 +23,21 @@ struct GrammarDetailSheet: View {
     @State private var isTogglingEnrollment = false
     @State private var isTryingItOut = false
 
+    @State private var mnemonic: String? = nil
+
     // Claude chat (reuses WordExploreSession pattern for simplicity).
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
     @State private var chatInput = ""
     @State private var isSendingChat = false
 
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
+         toolHandler: ToolHandler? = nil,
          isEnrolled: Bool, onEnrollmentChange: @escaping (Bool) -> Void) {
         self.topic = topic
         self.manifest = manifest
         self.db = db
         self.client = client
+        self.toolHandler = toolHandler
         self.isEnrolled = isEnrolled
         self.onEnrollmentChange = onEnrollmentChange
         self._enrolled = State(initialValue: isEnrolled)
@@ -47,6 +52,9 @@ struct GrammarDetailSheet: View {
                         descriptionSection
                     }
                     sourcesFooter
+                    if let m = mnemonic {
+                        mnemonicSection(m)
+                    }
                     VStack(alignment: .leading, spacing: 8) {
                         enrollmentSection
                         chatSection
@@ -56,6 +64,7 @@ struct GrammarDetailSheet: View {
             }
             .navigationTitle(topic.titleEn)
             .navigationBarTitleDisplayMode(.inline)
+            .task { await loadMnemonic() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -194,6 +203,33 @@ struct GrammarDetailSheet: View {
         }
     }
 
+    // MARK: - Mnemonic
+
+    @ViewBuilder
+    private func mnemonicSection(_ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Mnemonic")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            Text(text)
+        }
+        .textSelection(.enabled)
+    }
+
+    private func loadMnemonic() async {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
+        for id in allIds {
+            if let m = try? await quizDB.mnemonic(wordType: "grammar", wordId: id) {
+                mnemonic = m.mnemonic
+                return
+            }
+        }
+    }
+
     // MARK: - Claude chat
 
     private var chatSection: some View {
@@ -321,21 +357,74 @@ struct GrammarDetailSheet: View {
         }
         system += "\nAnswer the student's question concisely and helpfully."
 
+        // Inject any saved mnemonic for this topic (re-fetch in case it was just saved).
+        let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
+        if let quizDB = toolHandler?.quizDB {
+            var freshMnemonic: String? = nil
+            for id in allIds {
+                if let m = try? await quizDB.mnemonic(wordType: "grammar", wordId: id) {
+                    freshMnemonic = m.mnemonic
+                    break
+                }
+            }
+            if let m = freshMnemonic {
+                system += "\n\nMnemonic on file: \(m)"
+                system += "\nYou have get_mnemonic and set_mnemonic tools. Always call get_mnemonic before set_mnemonic so you can see what is already stored and merge new content rather than replacing it wholesale."
+            } else {
+                system += "\n\nNo mnemonic on file yet. You have get_mnemonic and set_mnemonic tools to read and save one if it would help the student."
+            }
+        }
+
         var messages: [AnthropicMessage] = chatMessages.dropLast().map { msg in
             AnthropicMessage(role: msg.isUser ? "user" : "assistant",
                              content: [.text(msg.text)])
         }
         messages.append(AnthropicMessage(role: "user", content: [.text(userText)]))
 
+        let tools: [AnthropicTool] = toolHandler != nil ? [.getMnemonic, .setMnemonic] : []
+        let handler = toolHandler.map { th in
+            { @Sendable (name: String, input: [String: JSONValue]) async throws -> String in
+                if name == "set_mnemonic",
+                   case .string("grammar")? = input["word_type"],
+                   case .string(let wid)? = input["word_id"],
+                   case .string(let text)? = input["mnemonic"] {
+                    let targetIds = allIds.isEmpty ? [wid] : allIds
+                    var primaryResult = #"{"ok":true}"#
+                    for (index, id) in targetIds.enumerated() {
+                        let result = try await th.handle(
+                            toolName: "set_mnemonic",
+                            input: ["word_type": .string("grammar"),
+                                    "word_id": .string(id),
+                                    "mnemonic": .string(text)])
+                        if index == 0 { primaryResult = result }
+                    }
+                    return primaryResult
+                }
+                if name == "get_mnemonic",
+                   case .string("grammar")? = input["word_type"] {
+                    for id in allIds {
+                        let result = try await th.handle(
+                            toolName: "get_mnemonic",
+                            input: ["word_type": .string("grammar"), "word_id": .string(id)])
+                        if !result.contains("\"mnemonic\":null") && !result.contains("\"error\"") {
+                            return result
+                        }
+                    }
+                    return #"{"mnemonic":null}"#
+                }
+                return try await th.handle(toolName: name, input: input)
+            }
+        }
         do {
             let (response, _, _) = try await client.send(
                 messages: messages,
                 system: system,
-                tools: [],
+                tools: tools,
                 maxTokens: 512,
-                toolHandler: nil
+                toolHandler: handler
             )
             chatMessages.append((isUser: false, text: response))
+            await loadMnemonic()   // Refresh display if Claude saved a new mnemonic.
         } catch {
             chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }
