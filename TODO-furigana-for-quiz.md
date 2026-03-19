@@ -197,3 +197,42 @@ pattern from `stemView`, keeping plain `Text` until the async fetch completes.
   in App.md as future work).
 - Fuzzy/greedy substring search (the original idea): NLTagger covers the same ground
   more reliably and is already on-device, so skip the manual prefix-shrinking loop.
+- Can we use iOS local dictionary?
+
+---
+
+## Step 7 — NLTagger-based furigana (further research)
+
+After Step 2 (single-kanji fallback), conjugated verb/adjective forms will still have
+unannotated kanji because JmdictFurigana only stores dictionary forms. The recommended
+next approach is a two-pass NLTagger pipeline:
+
+### Step 7a — NLTagger tokenization (Approach C)
+
+Use `NLTagger` with `.tokenType = .word` and `NLLanguageHint = .japanese` to segment the
+sentence into clean tokens before any lookup. This fixes a correctness problem in Step 1:
+substring search can misfire when two words abut. Tokenization gives reliable span
+boundaries as a foundation for Step 7b.
+
+For each token whose span is not already annotated and whose text appears verbatim in the
+furigana table, do a direct `SELECT segs FROM furigana WHERE text=?` lookup. This gets
+hits for uninflected nouns and compound words that the VocabGloss list from Haiku missed.
+
+### Step 7b — Lemmatization + segment remapping (Approach A)
+
+For tokens that still contain unannotated kanji after Step 7a, use `.lemma` to get the
+dictionary form, look it up in the furigana table, then remap the lemma's ruby segments
+onto the surface token:
+
+- Kanji positions are stable across most conjugations (only the kana suffix changes).
+- Strip the lemma's kana suffix from the segments and apply the kanji portion to the
+  surface token's kanji prefix.
+- Fall back gracefully (no annotation) for irregular verbs where lemma and surface token
+  share no kanji prefix (e.g., する→し, くる→き, いい→よ).
+
+### Implementation risks
+
+- Segment remapping index arithmetic — unit-test with する-compounds and i-adjectives,
+  which are the most common failure cases in grammar-quiz sentences.
+- NLTagger lemmatization is imperfect on unusual or compound forms; silent fallback
+  (no annotation) is the correct behavior.
