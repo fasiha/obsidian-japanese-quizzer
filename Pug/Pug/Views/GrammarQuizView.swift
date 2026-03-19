@@ -17,6 +17,10 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
     // compiler check with nonisolated(unsafe).
     nonisolated(unsafe) private let synthesizer = AVSpeechSynthesizer()
     private(set) var isPlaying = false
+    // Counts utterances queued but not yet finished. We decrement in the delegate
+    // callback and only clear isPlaying when it reaches zero, so the button stays
+    // in "Stop audio" state during the silent gaps between utterances.
+    private var pendingUtteranceCount = 0
 
     override init() {
         super.init()
@@ -30,6 +34,7 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         try? AVAudioSession.sharedInstance().setActive(true)
         synthesizer.stopSpeaking(at: .immediate)
+        pendingUtteranceCount = sentences.count
         isPlaying = true
         for (index, text) in sentences.enumerated() {
             let utterance = AVSpeechUtterance(string: text)
@@ -44,6 +49,7 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
 
     func stop() {
         synthesizer.stopSpeaking(at: .immediate)
+        pendingUtteranceCount = 0
         isPlaying = false
     }
 
@@ -55,8 +61,11 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
                                        didFinish utterance: AVSpeechUtterance) {
         DispatchQueue.main.async { [weak self] in
-            guard let self, !self.synthesizer.isSpeaking else { return }
-            self.isPlaying = false
+            guard let self else { return }
+            self.pendingUtteranceCount -= 1
+            if self.pendingUtteranceCount <= 0 {
+                self.isPlaying = false
+            }
         }
     }
 }
