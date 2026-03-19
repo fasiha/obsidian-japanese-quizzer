@@ -40,7 +40,7 @@ struct WrittenForm: Codable {
 }
 
 /// One segment of a furigana breakdown: ruby text with optional reading annotation.
-struct FuriganaSegment: Codable {
+struct FuriganaSegment: Codable, Equatable {
     let ruby: String
     let rt: String?
 }

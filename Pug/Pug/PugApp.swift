@@ -90,7 +90,8 @@ struct AppRootView: View {
             jmdict         = toolHandler.jmdict
             session        = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
                                          preferences: preferences)
-            grammarSession = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler)
+            grammarSession = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
+                                              jmdict: toolHandler.jmdict)
 
             // Load vocab corpus and grammar manifest concurrently (both use cache).
             async let grammarLoad = loadGrammarManifest()

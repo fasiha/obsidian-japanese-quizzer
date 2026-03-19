@@ -135,15 +135,23 @@ struct GrammarQuizView: View {
                 let letters = ["A", "B", "C", "D"]
                 let cloze = question.choiceClozeTemplate()
                 let hasCloze = !cloze.prefix.isEmpty || !cloze.suffix.isEmpty
+                let glosses = session.assumedVocab  // nil while loading
                 VStack(spacing: 10) {
                     if hasCloze {
-                        // Template header: "prefix ___ suffix"
+                        // Template header: "prefix ___ suffix" — annotate with furigana when ready.
                         let template = "\(cloze.prefix)\(grammarGapToken)\(cloze.suffix)"
-                        Text(template)
-                            .font(.body)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 4)
+                        if let gs = glosses, !gs.isEmpty {
+                            SentenceFuriganaView(sentence: template, glosses: gs)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
+                        } else {
+                            Text(template)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
+                        }
                     }
                     ForEach(0..<question.choices.count, id: \.self) { i in
                         Button { session.tapChoice(i) } label: {
@@ -159,9 +167,15 @@ struct GrammarQuizView: View {
                                 let coreDisplay = core.map {
                                     "\(cloze.prefix.isEmpty ? "" : "…")\($0)\(cloze.suffix.isEmpty ? "" : "…")"
                                 }
-                                Text(coreDisplay ?? question.choiceDisplay(i))
-                                    .multilineTextAlignment(.leading)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                let labelText = coreDisplay ?? question.choiceDisplay(i)
+                                if let gs = glosses, !gs.isEmpty {
+                                    SentenceFuriganaView(sentence: labelText, glosses: gs)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                } else {
+                                    Text(labelText)
+                                        .multilineTextAlignment(.leading)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
                             }
                             .padding(12)
                             .background(Color(.secondarySystemBackground),
@@ -223,25 +237,52 @@ struct GrammarQuizView: View {
     }
 
     /// Displays the question stem and, for production questions, the gapped sentence below it.
+    /// When the vocab-assumed pass has completed and found readings, annotates the Japanese
+    /// text with furigana above identified words.
     private func stemView(question: GrammarMultipleChoiceQuestion) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SelectableText(question.stem)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.secondarySystemBackground),
-                            in: RoundedRectangle(cornerRadius: 10))
-
-            if let item = session.currentItem, item.facet == "production",
-               let gapped = question.displayGappedSentence, !gapped.isEmpty {
-                SelectableText(gapped)
+        let glosses = session.assumedVocab  // nil while loading, non-nil when ready
+        let facet = session.currentItem?.facet
+        return VStack(alignment: .leading, spacing: 8) {
+            // Recognition stem is Japanese — annotate with furigana when vocab is ready.
+            // Production stem is English — always plain.
+            if facet == "recognition", let gs = glosses, !gs.isEmpty {
+                SentenceFuriganaView(sentence: question.stem, glosses: gs)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(.tertiarySystemBackground),
+                    .background(Color(.secondarySystemBackground),
                                 in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(.separator), lineWidth: 0.5)
-                    )
+            } else {
+                SelectableText(question.stem)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.secondarySystemBackground),
+                                in: RoundedRectangle(cornerRadius: 10))
+            }
+
+            // Production: gapped Japanese sentence — annotate with furigana when vocab is ready.
+            if facet == "production",
+               let gapped = question.displayGappedSentence, !gapped.isEmpty {
+                if let gs = glosses, !gs.isEmpty {
+                    SentenceFuriganaView(sentence: gapped, glosses: gs)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.tertiarySystemBackground),
+                                    in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color(.separator), lineWidth: 0.5)
+                        )
+                } else {
+                    SelectableText(gapped)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.tertiarySystemBackground),
+                                    in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(Color(.separator), lineWidth: 0.5)
+                        )
+                }
             }
         }
     }
@@ -256,8 +297,25 @@ struct GrammarQuizView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(glosses, id: \.word) { gloss in
                         HStack(alignment: .top, spacing: 8) {
-                            Text(gloss.word)
-                                .font(.body)
+                            // Show furigana-annotated word when ruby segments are available,
+                            // otherwise fall back to plain word text.
+                            if let segs = gloss.rubySegments, segs.contains(where: { $0.rt != nil }) {
+                                HStack(spacing: 0) {
+                                    ForEach(Array(segs.enumerated()), id: \.offset) { _, seg in
+                                        if let rt = seg.rt {
+                                            VStack(spacing: 0) {
+                                                Text(rt).font(.system(size: 9)).foregroundStyle(.secondary)
+                                                Text(seg.ruby).font(.body)
+                                            }
+                                        } else {
+                                            Text(seg.ruby).font(.body)
+                                                .padding(.top, 13) // align baseline with annotated segments
+                                        }
+                                    }
+                                }
+                            } else {
+                                Text(gloss.word).font(.body)
+                            }
                             Text(gloss.gloss)
                                 .font(.body)
                                 .foregroundStyle(.secondary)

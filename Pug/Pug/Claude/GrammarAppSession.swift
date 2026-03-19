@@ -7,6 +7,7 @@
 // always LLM-generated. No free-answer path at this tier.
 
 import Foundation
+import GRDB
 #if os(iOS)
 import UIKit
 #endif
@@ -66,11 +67,13 @@ final class GrammarAppSession {
     private var conversation: [AnthropicMessage] = []
     private var currentQuestion: GrammarMultipleChoiceQuestion? = nil
 
-    init(client: AnthropicClient, db: QuizDB, toolHandler: ToolHandler? = nil) {
+    init(client: AnthropicClient, db: QuizDB, toolHandler: ToolHandler? = nil,
+         jmdict: (any DatabaseReader)? = nil) {
         self.client      = client
         self.db          = db
         self.toolHandler = toolHandler
         self.itemSession = GrammarQuizSession(client: client, db: db)
+        self.itemSession.jmdict = jmdict
     }
 
     // MARK: - Public API

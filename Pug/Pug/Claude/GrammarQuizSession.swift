@@ -1295,9 +1295,10 @@ final class GrammarQuizSession {
 
 /// A single vocabulary item with its best available English gloss.
 struct VocabGloss: Sendable, Equatable {
-    let word: String              // dictionary form (as returned by Haiku)
-    let gloss: String             // English gloss: JMDict senses if resolved, otherwise Haiku's gloss
-    let jmdictWordIds: [String]?  // JMDict entry IDs when the word matched at least one entry; nil if no match
+    let word: String                      // dictionary form (as returned by Haiku)
+    let rubySegments: [FuriganaSegment]?  // parsed ruby HTML for furigana display; nil when unavailable
+    let gloss: String                     // English gloss: JMDict senses if resolved, otherwise Haiku's gloss
+    let jmdictWordIds: [String]?          // JMDict entry IDs when the word matched at least one entry; nil if no match
 }
 
 /// Returns the する-stripped lookup key for a word if it ends in する and has content before it,
@@ -1306,6 +1307,25 @@ nonisolated private func suruPrefix(_ word: String) -> String? {
     guard word.hasSuffix("する") else { return nil }
     let prefix = String(word.dropLast(2))
     return prefix.isEmpty ? nil : prefix
+}
+
+/// Looks up pre-computed furigana segments for a (text, reading) pair from the `furigana`
+/// table in jmdict.sqlite. Returns nil when no entry exists (caller should display the word
+/// without furigana or attempt an NLTagger-based fallback).
+nonisolated func lookupFurigana(
+    text: String,
+    reading: String,
+    db: any DatabaseReader
+) -> [FuriganaSegment]? {
+    (try? db.read { dbConn -> [FuriganaSegment]? in
+        guard let segsJSON = try String.fetchOne(
+            dbConn,
+            sql: "SELECT segs FROM furigana WHERE text = ? AND reading = ?",
+            arguments: [text, reading]
+        ) else { return nil }
+        guard let data = segsJSON.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+    }) ?? nil
 }
 
 /// Returns true when the given lookup text matches a kanji or kana form in the entry that is
@@ -1395,7 +1415,8 @@ nonisolated func fetchAndResolveVocab(
     // Step 2: Batch JMDict lookup. Build the set of lookup keys (original words + する-stripped
     // alternates) so we can resolve them all in one query.
     guard let db = jmdict else {
-        return haikuWords.map { VocabGloss(word: $0.word, gloss: $0.gloss, jmdictWordIds: nil) }
+        print("[furigana] jmdict reader is nil — no furigana possible")
+        return haikuWords.map { VocabGloss(word: $0.word, rubySegments: nil, gloss: $0.gloss, jmdictWordIds: nil) }
     }
 
     // Map each original word to its alternate lookup key (する-stripped), if applicable.
@@ -1433,7 +1454,7 @@ nonisolated func fetchAndResolveVocab(
                 }
         }
     } catch {
-        return haikuWords.map { VocabGloss(word: $0.word, gloss: $0.gloss, jmdictWordIds: nil) }
+        return haikuWords.map { VocabGloss(word: $0.word, rubySegments: nil, gloss: $0.gloss, jmdictWordIds: nil) }
     }
 
     // Group entry rows by lookup text.
@@ -1451,7 +1472,8 @@ nonisolated func fetchAndResolveVocab(
                   let rows = entriesByText[alt], !rows.isEmpty {
             matchedRows = rows
         } else {
-            return VocabGloss(word: word, gloss: haikuGloss, jmdictWordIds: nil)
+            print("[furigana] no JMDict match for word=\(word)")
+            return VocabGloss(word: word, rubySegments: nil, gloss: haikuGloss, jmdictWordIds: nil)
         }
 
         // Sort common entries before uncommon ones so the most-used meaning leads.
@@ -1473,7 +1495,27 @@ nonisolated func fetchAndResolveVocab(
             return glossFromEntry(raw)
         }.joined(separator: " / ")
 
-        return VocabGloss(word: word, gloss: combinedGloss.isEmpty ? haikuGloss : combinedGloss,
+        // Extract the first kana reading from the best-matched entry to key into the
+        // furigana table. JmdictFurigana is keyed on (written form, kana reading).
+        let furiganaSegments: [FuriganaSegment]?
+        if let firstEntryData = sortedRows.first?.entryJson.data(using: .utf8),
+           let firstRaw = try? JSONSerialization.jsonObject(with: firstEntryData) as? [String: Any],
+           let kanaForms = firstRaw["kana"] as? [[String: Any]],
+           let firstKana = kanaForms.first?["text"] as? String {
+            let segs = lookupFurigana(text: lookupText, reading: firstKana, db: db)
+            if segs == nil {
+                print("[furigana] miss: text=\(lookupText) reading=\(firstKana)")
+            } else {
+                print("[furigana] hit:  text=\(lookupText) reading=\(firstKana) segs=\(segs!.count)")
+            }
+            furiganaSegments = segs
+        } else {
+            print("[furigana] no kana reading found in JMDict entry for word=\(word) lookupText=\(lookupText)")
+            furiganaSegments = nil
+        }
+
+        return VocabGloss(word: word, rubySegments: furiganaSegments,
+                          gloss: combinedGloss.isEmpty ? haikuGloss : combinedGloss,
                           jmdictWordIds: ids)
     }
 }

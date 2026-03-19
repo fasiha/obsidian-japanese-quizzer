@@ -455,6 +455,11 @@ cp wanikani/wanikani-extra-radicals.json Pug/Pug/Resources/
 # 2. Build jmdict.sqlite (DELETE journal mode set automatically by openJmdictDb())
 node .claude/scripts/check-vocab.mjs   # any script using openJmdictDb() works
 
+# 2b. Add JmdictFurigana data (one-time; idempotent — safe to re-run)
+#     Requires JmdictFurigana.json in the project root.
+#     Download from: https://github.com/Doublevil/JmdictFurigana/releases
+node .claude/scripts/add-furigana-to-jmdict.mjs
+
 # 3. Copy into the Xcode Resources folder
 cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
 ```
