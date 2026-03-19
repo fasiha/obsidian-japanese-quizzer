@@ -138,7 +138,9 @@ final class QuizSession {
 
         let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
         let questionBubble = "\(multipleChoice.stem)\n\n\(choicesText)"
-        let resultBubble = "\(chosenLetter)) \(multipleChoice.choices[index])"
+        let resultBubble = isCorrect
+            ? "✓ \(chosenLetter)) \(multipleChoice.choices[index])"
+            : "✗ Wrong: \(chosenLetter)) \(multipleChoice.choices[index])\n✓ Correct: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
         var resultSummary = "Question: \(multipleChoice.stem)\nChoices: \(choicesText)\nStudent chose \(chosenLetter)) \(multipleChoice.choices[index]) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
         if !isCorrect {
             resultSummary += ". Correct answer: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
@@ -176,14 +178,18 @@ final class QuizSession {
     func tapUncertain(score: Double) {
         guard case .awaitingTap(let multipleChoice) = phase, let item = currentItem else { return }
         let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
-        let label = score <= 0.05 ? "No idea" : "Inkling"
 
-        // Show question + student's admission, matching tapChoice's display style.
+        // Show question + student's admission. Use the actual message sent to Claude as the user bubble
+        // so the student can see that something is in flight (especially for "Inkling", where the
+        // spinner may not be immediately obvious).
+        let openingMsg = score <= 0.05
+            ? "I had no idea what this word means. Please explain it to me."
+            : "I had a vague inkling but wasn't confident. Please explain the word and what I might have been thinking of."
         let letters = ["A", "B", "C", "D"]
         let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
         chatMessages = [
             (isUser: false, text: "\(multipleChoice.stem)\n\n\(choicesText)"),
-            (isUser: true, text: label)
+            (isUser: true, text: openingMsg)
         ]
 
         gradedScore = score
@@ -200,11 +206,22 @@ final class QuizSession {
             }
         }
 
-        // Auto-fire opening turn so Claude explains the word.
-        let openingMsg = score <= 0.05
-            ? "I had no idea what this word means. Please explain it to me."
-            : "I had a vague inkling but wasn't confident. Please explain the word and what I might have been thinking of."
         Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
+    }
+
+    /// True when the student tapped a wrong multiple-choice answer and the tutor chat hasn't started yet.
+    /// Used by the view to show a "Tutor me" button.
+    var canStartTutorSession: Bool {
+        gradedScore == 0.0 && multipleChoiceResult != nil && chatMessages.count <= 2 && !isSendingChat
+    }
+
+    /// Auto-fires a chat turn asking Claude to explain the wrong answer.
+    func startTutorSession() {
+        guard canStartTutorSession, let item = currentItem else { return }
+        isSendingChat = true
+        let msg = "I got this wrong and want to understand why. Please explain what the correct answer means and what I may have been confusing it with."
+        chatMessages.append((isUser: true, text: msg))
+        Task { await doOpeningChatTurn(msg, item: item, shouldParseScore: false) }
     }
 
     // TODO: near-duplicate of WordDetailSheet.doRescale — consider extracting to QuizDB

@@ -222,12 +222,20 @@ struct QuizView: View {
                     }
                 }
 
-                // Score badge
+                // Score badge + optional "Tutor me" button for wrong multiple-choice answers
                 if let score = session.gradedScore {
-                    HStack(spacing: 8) {
-                        scoreIndicator(score)
-                        Text(scoreLabel(score))
-                            .font(.headline)
+                    HStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            scoreIndicator(score)
+                            Text(scoreLabel(score))
+                                .font(.headline)
+                        }
+                        if session.canStartTutorSession {
+                            Spacer()
+                            Button("Tutor me") { session.startTutorSession() }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
+                        }
                     }
                     .padding(.top, session.chatMessages.isEmpty ? 40 : 4)
                 }
@@ -265,7 +273,7 @@ struct QuizView: View {
                 if isGraded {
                     HStack {
                         Button("Adjust…") { showRescaleSheet = true }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.borderedProminent)
                         Spacer()
                         Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }
                             .buttonStyle(.borderedProminent)

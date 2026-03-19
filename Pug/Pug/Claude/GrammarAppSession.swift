@@ -12,8 +12,7 @@ import UIKit
 #endif
 
 @Observable @MainActor
-final class GrammarAppSession: Identifiable {
-    let id = UUID()
+final class GrammarAppSession {
 
     // MARK: - Phase
 
@@ -42,9 +41,6 @@ final class GrammarAppSession: Identifiable {
     var uncertaintyUnlocked: Bool = false
     var preQuizRecall: Double? = nil
     var preQuizHalflife: Double? = nil
-    /// Set by startAdHoc(topicId:manifest:) to restrict the session to one topic.
-    private(set) var isAdHocDrill: Bool = false
-    private var adHocTopicId: String? = nil
     /// Vocabulary glosses for the current question's sentence, resolved after generation.
     /// Nil while the fetch is in progress; empty array if none were found.
     var assumedVocab: [VocabGloss]? = nil
@@ -86,26 +82,6 @@ final class GrammarAppSession: Identifiable {
         Task { await loadItems() }
     }
 
-    /// Start an on-demand single-topic drill. Creates a fresh session restricted to
-    /// items whose topicId or equivalenceGroupIds include the given topicId.
-    func startAdHoc(topicId: String, manifest: GrammarManifest) {
-        isAdHocDrill = true
-        adHocTopicId = topicId
-        self.manifest = manifest
-        items = []
-        currentIndex = 0
-        conversation = []
-        chatMessages = []
-        chatInput = ""
-        isSendingChat = false
-        gradedScore = nil
-        gradedHalflife = nil
-        gradedReviewCount = nil
-        uncertaintyUnlocked = false
-        phase = .loadingItems
-        Task { await loadItems() }
-    }
-
     func refreshSession(manifest: GrammarManifest) {
         self.manifest = manifest
         items = []
@@ -140,7 +116,10 @@ final class GrammarAppSession: Identifiable {
             .joined(separator: "\n")
         let stemDisplay = buildStemDisplay(question: question, item: item)
         let questionBubble = "\(stemDisplay)\n\n\(choicesText)"
-        let answerBubble = "\(chosenLetter))) \(choiceDisplay)"
+        var answerBubble = "\(chosenLetter))) \(choiceDisplay)"
+        if !isCorrect {
+            answerBubble += " ✗\nCorrect: \(correctLetter))) \(correctDisplay)"
+        }
 
         var resultSummary = "Question: \(stemDisplay)\nChoices: \(choicesText)\nStudent chose \(chosenLetter))) \(choiceDisplay) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
         if !isCorrect {
@@ -165,28 +144,42 @@ final class GrammarAppSession: Identifiable {
     func tapUncertain(score: Double) {
         guard case .awaitingTap(let question) = phase, let item = currentItem else { return }
         let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
-        let label = score <= 0.05 ? "No idea" : "Inkling"
         let letters = ["A", "B", "C", "D"]
         let choicesText = (0..<question.choices.count)
             .map { "\(letters[safe: $0] ?? "?"))) \(question.choiceDisplay($0))" }
             .joined(separator: "\n")
         let stemDisplay = buildStemDisplay(question: question, item: item)
 
+        // Use the actual message sent to Claude as the user bubble so the student can see that
+        // something is in flight (especially for "Inkling", where the spinner may not be obvious).
+        let openingMsg = score <= 0.05
+            ? "I had no idea. Please explain this grammar point to me."
+            : "I had a vague sense but wasn't sure. Please explain the grammar and what I might have been thinking."
         itemSession.multipleChoiceResult = nil
         chatMessages = [
             (isUser: false, text: "\(stemDisplay)\n\n\(choicesText)"),
-            (isUser: true, text: label)
+            (isUser: true, text: openingMsg)
         ]
         gradedScore = score
         phase = .chatting
         isSendingChat = true
 
         Task { try? await recordReview(item: item, score: score, notes: noteText) }
-
-        let openingMsg = score <= 0.05
-            ? "I had no idea. Please explain this grammar point to me."
-            : "I had a vague sense but wasn't sure. Please explain the grammar and what I might have been thinking."
         Task { await doChatTurn(openingMsg, item: item) }
+    }
+
+    /// True when the student tapped a wrong multiple-choice answer and the tutor chat hasn't started yet.
+    var canStartTutorSession: Bool {
+        gradedScore == 0.0 && itemSession.multipleChoiceResult != nil && chatMessages.count <= 2 && !isSendingChat
+    }
+
+    /// Auto-fires a chat turn asking Claude to explain the wrong answer.
+    func startTutorSession() {
+        guard canStartTutorSession, let item = currentItem else { return }
+        isSendingChat = true
+        let msg = "I got this wrong and want to understand why. Please explain what the correct answer means and what I may have been confusing it with."
+        chatMessages.append((isUser: true, text: msg))
+        Task { await doChatTurn(msg, item: item) }
     }
 
     func sendChatMessage() {
@@ -230,15 +223,7 @@ final class GrammarAppSession: Identifiable {
     private func loadItems() async {
         guard let manifest else { phase = .noItems; return }
         do {
-            let allCandidates = try await GrammarQuizContext.build(db: db, manifest: manifest)
-            let candidates: [GrammarQuizItem]
-            if let targetId = adHocTopicId {
-                candidates = allCandidates.filter {
-                    $0.topicId == targetId || $0.equivalenceGroupIds.contains(targetId)
-                }
-            } else {
-                candidates = allCandidates
-            }
+            let candidates = try await GrammarQuizContext.build(db: db, manifest: manifest)
             print("[GrammarAppSession] \(candidates.count) candidate(s) after equivalence collapsing")
             if candidates.isEmpty { phase = .noItems; return }
 
@@ -332,7 +317,6 @@ final class GrammarAppSession: Identifiable {
 
     private func recordReview(item: GrammarQuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
-        let finalNotes = isAdHocDrill ? "ad-hoc drill | \(notes)" : notes
         let review = Review(
             reviewer: deviceName(),
             timestamp: now,
@@ -341,7 +325,7 @@ final class GrammarAppSession: Identifiable {
             wordText: item.titleEn,
             score: score,
             quizType: item.facet,
-            notes: finalNotes.isEmpty ? nil : finalNotes
+            notes: notes.isEmpty ? nil : notes
         )
         try await db.insert(review: review)
 

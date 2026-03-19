@@ -8,9 +8,6 @@ import SwiftUI
 struct GrammarQuizView: View {
     @State var session: GrammarAppSession
     let manifest: GrammarManifest
-    /// When set, an "×" close button appears in the toolbar and the finished view shows "Done"
-    /// instead of "Start another session". Used by the ad-hoc drill sheet in GrammarDetailSheet.
-    var onDone: (() -> Void)? = nil
     @State private var showRescaleSheet = false
     @State private var vocabExpanded = false
 
@@ -34,15 +31,8 @@ struct GrammarQuizView: View {
         .navigationTitle("Grammar Quiz")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if let onDone {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { onDone() } label: {
-                        Image(systemName: "xmark")
-                    }
-                }
-            }
             ToolbarItem(placement: .topBarTrailing) {
-                if session.canStartNewSession && onDone == nil {
+                if session.canStartNewSession {
                     Button("New Session") { session.refreshSession(manifest: manifest) }
                 }
             }
@@ -212,12 +202,20 @@ struct GrammarQuizView: View {
                     }
                 }
 
-                // Score badge
+                // Score badge + optional "Tutor me" button for wrong multiple-choice answers
                 if let score = session.gradedScore {
-                    HStack(spacing: 8) {
-                        scoreIndicator(score)
-                        Text(scoreLabel(score))
-                            .font(.headline)
+                    HStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            scoreIndicator(score)
+                            Text(scoreLabel(score))
+                                .font(.headline)
+                        }
+                        if session.canStartTutorSession {
+                            Spacer()
+                            Button("Tutor me") { session.startTutorSession() }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
+                        }
                     }
                     .padding(.top, session.chatMessages.isEmpty ? 40 : 4)
                 }
@@ -287,13 +285,8 @@ struct GrammarQuizView: View {
                 .foregroundStyle(.green)
             Text("Session complete!")
                 .font(.title2.bold())
-            if let onDone {
-                Button("Done") { onDone() }
-                    .buttonStyle(.borderedProminent)
-            } else {
-                Button("Start another session") { session.start(manifest: manifest) }
-                    .buttonStyle(.bordered)
-            }
+            Button("Start another session") { session.start(manifest: manifest) }
+                .buttonStyle(.bordered)
         }
         .padding()
     }
