@@ -15,7 +15,7 @@ import GRDB
 // MARK: - Multiple choice question
 
 /// Token used to mark the grammar gap when displaying fill-in-the-blank questions to the student.
-let grammarGapToken = "___"
+let grammarGapToken = "____"
 
 /// A grammar multiple-choice question returned by Claude.
 ///
@@ -46,6 +46,64 @@ struct GrammarMultipleChoiceQuestion: Equatable, Sendable {
     /// Flat display string for a choice (joins elements with ", " for multi-slot).
     func choiceDisplay(_ index: Int) -> String {
         choices[index].joined(separator: ", ")
+    }
+
+    /// Extracts the longest common prefix and suffix shared by all four choices,
+    /// returning `(prefix, suffix, cores)` where each core is the unique middle of that choice.
+    ///
+    /// Falls back to `(prefix: "", suffix: "", cores: all choices as-is)` when the shared
+    /// prefix and suffix together are shorter than `minimumSharedLength` characters — in
+    /// that case the cloze template header would add noise without saving space.
+    func choiceClozeTemplate(minimumSharedLength: Int = 4) -> (prefix: String, suffix: String, cores: [String]) {
+        let flat = choices.map { $0.joined(separator: ", ") }
+        guard flat.count >= 2 else {
+            return ("", "", flat)
+        }
+
+        // Build common prefix character by character across all choices.
+        var prefixEnd = flat[0].startIndex
+        outer: while prefixEnd < flat[0].endIndex {
+            let next = flat[0].index(after: prefixEnd)
+            let slice = flat[0][flat[0].startIndex..<next]
+            for other in flat.dropFirst() {
+                guard other.hasPrefix(slice) else { break outer }
+            }
+            prefixEnd = next
+        }
+        let commonPrefix = String(flat[0][flat[0].startIndex..<prefixEnd])
+
+        // Build common suffix on the reversed strings, then reverse it back.
+        let reversedFlat = flat.map { String($0.reversed()) }
+        var suffixEnd = reversedFlat[0].startIndex
+        outerSuffix: while suffixEnd < reversedFlat[0].endIndex {
+            let next = reversedFlat[0].index(after: suffixEnd)
+            let slice = reversedFlat[0][reversedFlat[0].startIndex..<next]
+            for other in reversedFlat.dropFirst() {
+                guard other.hasPrefix(slice) else { break outerSuffix }
+            }
+            // Make sure suffix does not overlap with the already-consumed prefix.
+            let consumed = commonPrefix.count + next.utf16Offset(in: reversedFlat[0])
+            if consumed > flat[0].count { break outerSuffix }
+            suffixEnd = next
+        }
+        let commonSuffix = String(String(reversedFlat[0][reversedFlat[0].startIndex..<suffixEnd]).reversed())
+
+        // Require a meaningful shared frame before showing the cloze header.
+        guard commonPrefix.count + commonSuffix.count >= minimumSharedLength else {
+            return ("", "", flat)
+        }
+
+        let cores = flat.map { choice -> String in
+            var s = choice
+            if !commonSuffix.isEmpty, let r = s.range(of: commonSuffix, options: .backwards) {
+                s = String(s[s.startIndex..<r.lowerBound])
+            }
+            if !commonPrefix.isEmpty, let r = s.range(of: commonPrefix) {
+                s = String(s[r.upperBound...])
+            }
+            return s
+        }
+        return (commonPrefix, commonSuffix, cores)
     }
 
     /// Naive gapping: replaces the first occurrence of each answer substring with `___`.

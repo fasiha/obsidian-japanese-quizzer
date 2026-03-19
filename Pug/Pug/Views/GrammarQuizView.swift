@@ -75,9 +75,21 @@ struct GrammarQuizView: View {
                 // Collapsible vocabulary hints — disabled while fetch is in progress
                 assumedVocabDisclosure
 
-                // Choice buttons
+                // Choice buttons — show a cloze template header when the choices share
+                // a meaningful common prefix and suffix (typically production-facet questions).
                 let letters = ["A", "B", "C", "D"]
+                let cloze = question.choiceClozeTemplate()
+                let hasCloze = !cloze.prefix.isEmpty || !cloze.suffix.isEmpty
                 VStack(spacing: 10) {
+                    if hasCloze {
+                        // Template header: "prefix ___ suffix"
+                        let template = "\(cloze.prefix)\(grammarGapToken)\(cloze.suffix)"
+                        Text(template)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 4)
+                    }
                     ForEach(0..<question.choices.count, id: \.self) { i in
                         Button { session.tapChoice(i) } label: {
                             HStack(spacing: 12) {
@@ -86,7 +98,13 @@ struct GrammarQuizView: View {
                                     .frame(width: 28, height: 28)
                                     .background(.tint.opacity(0.15), in: Circle())
                                     .foregroundStyle(.tint)
-                                Text(question.choiceDisplay(i))
+                                // When there is a cloze template, show only the unique core
+                                // with … on whichever sides were trimmed; otherwise full text.
+                                let core = hasCloze ? cloze.cores[safe: i] ?? question.choiceDisplay(i) : nil
+                                let coreDisplay = core.map {
+                                    "\(cloze.prefix.isEmpty ? "" : "…")\($0)\(cloze.suffix.isEmpty ? "" : "…")"
+                                }
+                                Text(coreDisplay ?? question.choiceDisplay(i))
                                     .multilineTextAlignment(.leading)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
