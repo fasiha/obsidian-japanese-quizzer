@@ -20,7 +20,7 @@ struct GrammarDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var enrolled: Bool
     @State private var isTogglingEnrollment = false
-    @State private var adHocSession: GrammarAppSession? = nil
+    @State private var isTryingItOut = false
 
     // Claude chat (reuses WordExploreSession pattern for simplicity).
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
@@ -47,8 +47,10 @@ struct GrammarDetailSheet: View {
                         descriptionSection
                     }
                     sourcesFooter
-                    enrollmentSection
-                    chatSection
+                    VStack(alignment: .leading, spacing: 8) {
+                        enrollmentSection
+                        chatSection
+                    }
                 }
                 .padding()
             }
@@ -57,15 +59,6 @@ struct GrammarDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
-                }
-            }
-            .sheet(item: $adHocSession) { session in
-                NavigationStack {
-                    GrammarQuizView(
-                        session: session,
-                        manifest: manifest,
-                        onDone: { adHocSession = nil }
-                    )
                 }
             }
         }
@@ -184,15 +177,18 @@ struct GrammarDetailSheet: View {
             if enrolled {
                 Divider()
                 HStack {
-                    Text("Quiz this topic now")
+                    Text("See an example")
                         .font(.headline)
                     Spacer()
-                    Button("Quiz now") {
-                        let s = GrammarAppSession(client: client, db: db)
-                        s.startAdHoc(topicId: topic.prefixedId, manifest: manifest)
-                        adHocSession = s
+                    if isTryingItOut {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                    Button("Try it out") {
+                        Task { await tryItOut() }
                     }
                     .buttonStyle(.borderedProminent)
+                    .disabled(isTryingItOut)
                 }
             }
         }
@@ -201,7 +197,7 @@ struct GrammarDetailSheet: View {
     // MARK: - Claude chat
 
     private var chatSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Divider()
             Text("Ask Claude about this grammar")
                 .font(.headline)
@@ -262,6 +258,43 @@ struct GrammarDetailSheet: View {
             print("[GrammarDetailSheet] enrollment toggle error: \(error)")
         }
         isTogglingEnrollment = false
+    }
+
+    private func tryItOut() async {
+        guard !isTryingItOut else { return }
+        isTryingItOut = true
+        var system = """
+        You are a Japanese grammar tutor helping a student explore the following grammar point:
+        Topic: \(topic.prefixedId) — \(topic.titleEn)
+        Level: \(topic.level) | Source: \(topic.source)
+        """
+        if let summary = topic.summary { system += "\nDescription: \(summary)" }
+        if let subUses = topic.subUses, !subUses.isEmpty {
+            system += "\nSub-uses:\n" + subUses.map { "- \($0)" }.joined(separator: "\n")
+        }
+        if let cautions = topic.cautions, !cautions.isEmpty {
+            system += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")
+        }
+        let request = """
+        Give me one example of \(topic.titleEn) in use.
+        Write one or two English sentences describing a concrete, specific scenario — \
+        something happening to a real person in a real setting. Then write the complete \
+        Japanese sentence that expresses that scenario using the target grammar. \
+        Keep it natural. The student may ask follow-up questions afterward.
+        """
+        do {
+            let (response, _, _) = try await client.send(
+                messages: [AnthropicMessage(role: "user", content: [.text(request)])],
+                system: system,
+                tools: [],
+                maxTokens: 256,
+                toolHandler: nil
+            )
+            chatMessages.append((isUser: false, text: response))
+        } catch {
+            chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
+        }
+        isTryingItOut = false
     }
 
     private func sendChatMessage() {
