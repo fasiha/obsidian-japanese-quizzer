@@ -24,7 +24,11 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
     }
 
     /// Plays `sentences` one after another (0.8 s gap between them) using the given BCP-47 language tag.
+    /// Uses the `.playback` audio session category so audio plays even when the silent switch is on,
+    /// matching the behaviour of podcast and language-learning apps.
     func play(sentences: [String], language: String) {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
         synthesizer.stopSpeaking(at: .immediate)
         isPlaying = true
         for (index, text) in sentences.enumerated() {
@@ -135,7 +139,10 @@ struct GrammarQuizView: View {
                 let letters = ["A", "B", "C", "D"]
                 let cloze = question.choiceClozeTemplate()
                 let hasCloze = !cloze.prefix.isEmpty || !cloze.suffix.isEmpty
-                let glosses = session.assumedVocab  // nil while loading
+                // Furigana only applies to production-facet choices (Japanese text).
+                // Recognition-facet choices are English — always plain text.
+                let isProduction = session.currentItem?.facet == "production"
+                let glosses = isProduction ? session.assumedVocab : nil
                 VStack(spacing: 10) {
                     if hasCloze {
                         // Template header: "prefix ___ suffix" — annotate with furigana when ready.

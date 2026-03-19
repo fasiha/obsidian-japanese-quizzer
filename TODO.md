@@ -34,9 +34,10 @@ A real multi-user system needs a proper preferences store
 - [ ] When the spinner is shown (generating question), it might be nice to show what's happening (because I think this happens when Claude is calling tools?)
 - [ ] consider adding mnemonics for KOMU or KAKARU and other prefix/suffix vocab/grammar?
 
-- [ ] prefix/suffix strip in production
-- [ ] tool use for mnemonic in grammar quizzes
+- [x] prefix/suffix strip in production
+- [x] tool use for mnemonic in grammar quizzes
 - [x] "no idea" vs "inkling" should both engage
 - [x] any time the autograder is wrong it should give you the right answer
-- [ ] furigana for grammar items
-- [ ] maybe play audio
+- [x] furigana for grammar items
+- [x] maybe play audio
+- [ ] mark sentence/quiz as favorite (to export later)

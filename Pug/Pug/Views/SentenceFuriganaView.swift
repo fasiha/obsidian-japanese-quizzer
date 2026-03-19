@@ -58,14 +58,23 @@ func sentenceFuriganaSegments(sentence: String, glosses: [VocabGloss]) -> [Furig
 /// Annotations come from the vocab-assumed pass (`[VocabGloss]`).
 /// Falls back gracefully to plain body text when no glosses are provided.
 struct SentenceFuriganaView: View {
+    let sentence: String
     let segments: [FuriganaSegment]
 
     init(sentence: String, glosses: [VocabGloss]) {
+        self.sentence = sentence
         self.segments = sentenceFuriganaSegments(sentence: sentence, glosses: glosses)
     }
 
     var body: some View {
         SentenceFuriganaFlow(segments: segments)
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = sentence
+                } label: {
+                    Label("Copy", systemImage: "doc.on.doc")
+                }
+            }
     }
 }
 
