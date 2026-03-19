@@ -561,7 +561,8 @@ final class GrammarQuizSession {
         } else {
             let resultLine = multipleChoiceResult.map { "Multiple choice result: \($0)\n" } ?? ""
             let mnemonicInstruction = mnemonicBlock.isEmpty ? "" :
-                "\n\n\(mnemonicBlock)\nYou have get_mnemonic and set_mnemonic tools." +
+                "\n\n\(mnemonicBlock)\nYou have get_mnemonic and set_mnemonic tools;" +
+                " use word_type='grammar' and word_id='\(item.topicId)'." +
                 " Always call get_mnemonic before set_mnemonic" +
                 " so you can see what is already stored and merge new content rather than replacing it wholesale."
             return header + """

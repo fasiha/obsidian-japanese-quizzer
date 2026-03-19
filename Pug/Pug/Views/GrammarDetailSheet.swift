@@ -356,6 +356,7 @@ struct GrammarDetailSheet: View {
             system += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")
         }
         system += "\nAnswer the student's question concisely and helpfully."
+        system += "\nWhen calling get_mnemonic or set_mnemonic, use word_type='grammar' and word_id='\(topic.prefixedId)'."
 
         // Inject any saved mnemonic for this topic (re-fetch in case it was just saved).
         let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()

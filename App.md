@@ -158,8 +158,8 @@ covers all facets.
 
 ```sql
 CREATE TABLE mnemonics (
-  word_type  TEXT NOT NULL,   -- 'jmdict' or 'kanji'
-  word_id    TEXT NOT NULL,   -- JMDict entry ID or kanji character
+  word_type  TEXT NOT NULL,   -- 'jmdict', 'kanji', or 'grammar'
+  word_id    TEXT NOT NULL,   -- JMDict entry ID, kanji character, or prefixed topic ID
   mnemonic   TEXT NOT NULL,
   updated_at TEXT NOT NULL,   -- ISO 8601 UTC
   PRIMARY KEY (word_type, word_id)
@@ -168,6 +168,7 @@ CREATE TABLE mnemonics (
 
 - `word_type='jmdict'` — mnemonic for a vocabulary word (same ID as `vocab_enrollment`)
 - `word_type='kanji'` — mnemonic for a single kanji character (the character itself is the `word_id`)
+- `word_type='grammar'` — mnemonic for a grammar topic (prefixed topic ID, e.g. `genki:potential-verbs`); stored once and mirrored to all equivalence-group siblings automatically
 - Kanji mnemonics don't require enrollment or Ebisu models — they're pure reference data
 
 **Claude integration:**
@@ -176,6 +177,10 @@ CREATE TABLE mnemonics (
   into the system prompt **after the user's first reply** so Claude can reference it in feedback
 - During word exploration: mnemonics shown from the start; Claude can save new ones
 - `WordDetailSheet` displays existing vocab + relevant kanji mnemonics in the info section
+- Claude understands the vocab/kanji distinction and will offer to save either type when
+  appropriate — e.g. "Would you like a separate kanji mnemonic emphasising the water+easy
+  composition, or expand the existing vocab mnemonic?" You can also ask explicitly: "save a
+  kanji mnemonic for 込" vs "save a mnemonic for this word"
 
 #### Kanji knowledge (future, separate table)
 
