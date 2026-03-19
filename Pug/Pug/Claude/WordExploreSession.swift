@@ -13,9 +13,8 @@ final class WordExploreSession {
     var messages: [(isUser: Bool, text: String)] = []
     var input: String = ""
     var isSending: Bool = false
-
-    /// Called after a `set_mnemonic` tool call succeeds, so the parent view can refresh.
-    var onMnemonicSaved: (() -> Void)?
+    /// Incremented after each turn so WordDetailSheet can reload mnemonics via .onChange.
+    var turnCount: Int = 0
 
     // MARK: - Dependencies
 
@@ -58,11 +57,9 @@ final class WordExploreSession {
                 system: prompt,
                 tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
-                toolHandler: { name, input in
+                toolHandler: { @Sendable name, input in
                     if name == "get_vocab_context" { return await MainActor.run { self.vocabContextJSON() } }
-                    let result = try await th.handle(toolName: name, input: input)
-                    if name == "set_mnemonic" { await MainActor.run { self.onMnemonicSaved?() } }
-                    return result
+                    return try await th.handle(toolName: name, input: input)
                 }
             )
             conversation = updatedConversation
@@ -78,6 +75,7 @@ final class WordExploreSession {
                     model: client.model, toolsCalled: toolsJSON, apiTurns: meta.totalTurns))
             }
             messages.append((isUser: false, text: response))
+            turnCount += 1
         } catch {
             messages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }

@@ -64,12 +64,12 @@ struct WordDetailSheet: View {
                     item: item,
                     corpus: corpus
                 )
-                exploreSession.onMnemonicSaved = { Task { await loadMnemonics() } }
                 explore = exploreSession
                 Task { await loadMnemonics() }
                 Task { await loadEbisuModels() }
                 Task { await autoCommitFirstForm() }
             }
+            .onChange(of: explore?.turnCount) { Task { await loadMnemonics() } }
             .sheet(item: $rescaleRecord) { record in
                 RescaleSheet(currentHalflife: record.t) { hours in
                     Task { await doRescale(record: record, hours: hours) }
