@@ -130,6 +130,9 @@ final class GrammarAppSession {
         if !isCorrect {
             resultSummary += ". Correct answer: \(correctLetter))) \(correctDisplay)"
         }
+        if let subUse = question.subUse {
+            resultSummary += "\nsub_use: \(subUse)"
+        }
         itemSession.multipleChoiceResult = resultSummary
 
         chatMessages = [
@@ -148,7 +151,10 @@ final class GrammarAppSession {
     /// score: 0.0 = "No idea", 0.25 = "Inkling"
     func tapUncertain(score: Double) {
         guard case .awaitingTap(let question) = phase, let item = currentItem else { return }
-        let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
+        var noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
+        if let subUse = question.subUse {
+            noteText += "\nsub_use: \(subUse)"
+        }
         let letters = ["A", "B", "C", "D"]
         let choicesText = (0..<question.choices.count)
             .map { "\(letters[safe: $0] ?? "?"))) \(question.choiceDisplay($0))" }
