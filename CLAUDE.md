@@ -65,7 +65,7 @@ Each unique combination of **facet × question format × kanji commitment level*
 
 ### Testing
 
-`TestHarness` (`Pug/TestHarness/`) exercises all paths without the simulator — see `TESTING.md` for reference word IDs and mode details (`--dump-prompts`, `--live`, `--grade`).
+See `TESTING.md` for TestHarness usage (`--dump-prompts`, `--live`, `--grade`).
 
 ---
 
@@ -100,20 +100,4 @@ Each unique combination of **facet × question format × kanji commitment level*
 
 ### Assumed vocabulary ("Show vocabulary" button)
 
-- After generating a tier-1 question, a separate async Haiku call identifies N4-unfamiliar content words in the stem sentence (nouns, verbs, adjectives, adverbs; not particles or the target grammar itself). Each word is resolved against JMDict (`findExact`); JMDict's gloss is used when available, Haiku's gloss as fallback. The "Show vocabulary" disclosure button in `GrammarQuizView` reveals these glosses. If the vocab call fails, the button simply doesn't appear.
-
-### Key files
-
-- `GrammarAppSession.swift` — `@Observable @MainActor` orchestrator (parallel to `QuizSession` for vocab); drives phase state machine, records reviews, propagates Ebisu.
-- `GrammarQuizSession.swift` — single-item LLM helper; all tier/facet system prompts and grading logic; `generateQuestionForTesting` / `gradeAnswerForTesting` entry points used by TestHarness.
-- `GrammarQuizContext.swift` — scheduling (`GrammarQuizItem`, `build()`, equivalence collapsing, `QuizDB` extensions).
-- `GrammarSync.swift` — fetches and decodes `grammar.json` + `grammar-equivalences.json`; model types `GrammarManifest`, `GrammarTopic`.
-- `GrammarBrowserView.swift` — filterable topic list (not-yet-learning / learning / all); quiz button in toolbar always visible.
-- `GrammarQuizView.swift` — phase state machine UI; supports optional `onDone` callback for sheet-on-sheet dismissal (used by ad-hoc drill).
-- `GrammarDetailSheet.swift` — topic detail: cross-reference header, descriptions (summary/sub-uses/cautions), enrollment toggle, Claude chat, and "Quiz now" ad-hoc drill button.
-- TestHarness (`Pug/TestHarness/`): `--grammar <topic_id>` mode with `--dump-prompts`, `--live`, `--facet`, `--gen-only`, `--repeat`, `--extra-grammar`, `--recent-note`.
-
-### Ad-hoc drill
-
-- "Quiz now" button in `GrammarDetailSheet` (enrolled topics only) calls `GrammarAppSession.startAdHoc(topicId:manifest:)`, which restricts candidates to the tapped topic's equivalence group. Presented as a sheet-on-sheet with an "×" close button. Notes are prefixed `"ad-hoc drill | "` in `reviews.notes`.
-
+- After generating a tier-1 question, a separate async Haiku call identifies N4-unfamiliar content words in the stem sentence. Each word is resolved against JMDict (`findExact`); JMDict's gloss is used when available, Haiku's gloss as fallback.
