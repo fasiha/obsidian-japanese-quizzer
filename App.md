@@ -309,6 +309,32 @@ the conversation warrants it.
 - **Question validation**: Removed as dead code (2026-03-11). Was broken for all facet types.
   Free-answer stems are now built app-side; multiple choice generation is direct JSON.
 
+### Grammar quiz UI refinements
+
+- **Cloze template header** (`GrammarQuizView.swift`, `GrammarQuizSession.swift`):
+  When all four production-facet choices share a meaningful common prefix and/or suffix
+  (≥ 4 characters combined), the view extracts those shared frames and displays a single
+  template line above the choices — e.g. `彼女は毎日___ています。` — while each choice
+  button shows only its unique core (e.g. `…勉強し…`). This removes visual noise and
+  makes the grammatical difference between options immediately scannable.
+  The template is computed by `choiceClozeTemplate()` on `GrammarMultipleChoiceQuestion`;
+  falls back to full-sentence buttons when choices are too diverse.
+
+- **Audio playback** (`GrammarAudioPlayer`, `GrammarQuizView.swift`):
+  A "Play audio / Stop audio" button above the uncertainty row speaks the Japanese
+  sentences aloud using `AVSpeechSynthesizer` at 85 % of the default rate.
+  - **Production facet**: plays all four choice sentences in sequence with a 0.8 s gap.
+    Choice A speaks the full sentence (giving the listener the complete frame once).
+    Choices B–D speak a trimmed snippet — the differing core plus up to 5 characters of
+    context from each side — so the listener hears the grammatical contrast without
+    sitting through the repeated prefix and suffix each time.
+    Context trimming uses `kanjiSafeTail` / `kanjiSafeHead` helpers that extend the
+    cut point outward if it falls mid-kanji-compound, so kanji words are never bisected.
+  - **Recognition facet**: speaks only the Japanese stem (one sentence).
+  - Tap once → play; tap again → stop; tap a third time → play from the beginning.
+  - Audio stops automatically when the phase changes (question answered, next question
+    loaded) or when the quiz sheet is dismissed.
+
 ### Setup / distribution
 - **Setup deep link**: `japanquiz://setup?key=sk-ant-...&vocabUrl=https://...`
   - Registered custom URL scheme in Info.plist

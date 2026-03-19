@@ -3,13 +3,66 @@
 // Parallel to QuizView for vocabulary; reuses the same visual helpers
 // (score badge, chat thread, rescale sheet).
 
+import AVFoundation
 import SwiftUI
+
+// MARK: - Speech helper
+
+/// Wraps AVSpeechSynthesizer so the quiz view can toggle playback on/off
+/// and know when playback ends naturally (to update the button state).
+@Observable
+final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
+    // AVSpeechSynthesizer is not Sendable; we confine all access to the main
+    // actor via DispatchQueue.main in the delegate callback, so opt out of the
+    // compiler check with nonisolated(unsafe).
+    nonisolated(unsafe) private let synthesizer = AVSpeechSynthesizer()
+    private(set) var isPlaying = false
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    /// Plays `sentences` one after another (0.8 s gap between them) using the given BCP-47 language tag.
+    func play(sentences: [String], language: String) {
+        synthesizer.stopSpeaking(at: .immediate)
+        isPlaying = true
+        for (index, text) in sentences.enumerated() {
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.voice = AVSpeechSynthesisVoice(language: language)
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
+            if index < sentences.count - 1 {
+                utterance.postUtteranceDelay = 0.8
+            }
+            synthesizer.speak(utterance)
+        }
+    }
+
+    func stop() {
+        synthesizer.stopSpeaking(at: .immediate)
+        isPlaying = false
+    }
+
+    /// Tap 1 → play; tap 2 → stop; tap 3 → play again.
+    func toggle(sentences: [String], language: String) {
+        if isPlaying { stop() } else { play(sentences: sentences, language: language) }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
+                                       didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.synthesizer.isSpeaking else { return }
+            self.isPlaying = false
+        }
+    }
+}
 
 struct GrammarQuizView: View {
     @State var session: GrammarAppSession
     let manifest: GrammarManifest
     @State private var showRescaleSheet = false
     @State private var vocabExpanded = false
+    @State private var audioPlayer = GrammarAudioPlayer()
 
     var body: some View {
         Group {
@@ -38,6 +91,8 @@ struct GrammarQuizView: View {
             }
         }
         .onChange(of: session.currentItem?.topicId) { vocabExpanded = false }
+        .onChange(of: session.phase) { audioPlayer.stop() }
+        .onDisappear { audioPlayer.stop() }
         .sheet(isPresented: $showRescaleSheet) {
             RescaleSheet(
                 currentHalflife: session.gradedHalflife ?? 24,
@@ -115,6 +170,29 @@ struct GrammarQuizView: View {
                         .buttonStyle(.plain)
                     }
                 }
+
+                // Audio playback button — plays Japanese sentences aloud.
+                // Production: choice A gets the full sentence; choices B-D get
+                // just the differing core with a small kanji-safe context window
+                // from the shared prefix/suffix so the listener hears each choice
+                // in minimal grammatical context without repeating the full frame.
+                // Recognition: the Japanese stem only.
+                let japaneseSentences: [String] = {
+                    if session.currentItem?.facet == "recognition" {
+                        return [question.stem]
+                    } else {
+                        return audioSentences(for: question, cloze: cloze)
+                    }
+                }()
+                Button {
+                    audioPlayer.toggle(sentences: japaneseSentences, language: "ja-JP")
+                } label: {
+                    Label(audioPlayer.isPlaying ? "Stop audio" : "Play audio",
+                          systemImage: audioPlayer.isPlaying ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                }
+                .buttonStyle(.bordered)
+                .tint(audioPlayer.isPlaying ? .secondary : .blue)
+                .frame(maxWidth: .infinity)
 
                 // Uncertainty row
                 HStack(spacing: 8) {
@@ -377,5 +455,64 @@ struct GrammarQuizView: View {
 private extension Array {
     subscript(safe index: Int) -> Element? {
         indices.contains(index) ? self[index] : nil
+    }
+}
+
+// MARK: - Audio sentence helpers
+
+/// Builds the list of Japanese strings to speak for a production-facet question.
+/// Choice A speaks the full sentence so the listener hears the complete frame once.
+/// Choices B-D speak only the differing core with a small kanji-safe context window
+/// taken from the shared prefix/suffix, avoiding bisecting a kanji compound.
+private func audioSentences(
+    for question: GrammarMultipleChoiceQuestion,
+    cloze: (prefix: String, suffix: String, cores: [String])
+) -> [String] {
+    let hasCloze = !cloze.prefix.isEmpty || !cloze.suffix.isEmpty
+    return question.choices.indices.map { i in
+        let full = question.choices[i].joined(separator: ", ")
+        guard hasCloze, i > 0, let core = cloze.cores[safe: i] else { return full }
+        let prefixCtx = kanjiSafeTail(of: cloze.prefix, maxChars: 5)
+        let suffixCtx = kanjiSafeHead(of: cloze.suffix, maxChars: 5)
+        return prefixCtx + core + suffixCtx
+    }
+}
+
+/// Returns the trailing context of `s` (up to `maxChars` characters), extended
+/// backward if the cut point falls inside a kanji compound (consecutive CJK characters).
+/// Caps total expansion at 2 × maxChars to avoid pulling in large runs.
+private func kanjiSafeTail(of s: String, maxChars: Int) -> String {
+    let chars = Array(s)
+    guard !chars.isEmpty else { return "" }
+    var start = max(0, chars.count - maxChars)
+    // If both the character at `start` and the one just before it are CJK,
+    // we landed mid-compound — walk backward to exit the kanji run.
+    let cap = max(0, chars.count - maxChars * 2)
+    while start > cap && start > 0 && chars[start].isCJK && chars[start - 1].isCJK {
+        start -= 1
+    }
+    return String(chars[start...])
+}
+
+/// Returns the leading context of `s` (up to `maxChars` characters), extended
+/// forward if the cut point falls inside a kanji compound.
+private func kanjiSafeHead(of s: String, maxChars: Int) -> String {
+    let chars = Array(s)
+    guard !chars.isEmpty else { return "" }
+    var end = min(chars.count, maxChars)
+    let cap = min(chars.count, maxChars * 2)
+    while end < cap && end < chars.count && chars[end - 1].isCJK && chars[end].isCJK {
+        end += 1
+    }
+    return String(chars[..<end])
+}
+
+private extension Character {
+    /// True for characters in the CJK Unified Ideographs block (common kanji range).
+    var isCJK: Bool {
+        guard let scalar = unicodeScalars.first else { return false }
+        return (0x4E00...0x9FFF).contains(scalar.value)
+            || (0x3400...0x4DBF).contains(scalar.value)   // CJK Extension A
+            || (0xF900...0xFAFF).contains(scalar.value)   // CJK Compatibility
     }
 }
