@@ -535,11 +535,11 @@ final class QuizDB: Sendable {
         }
     }
 
-    /// All learning words' Ebisu models, for quiz context ranking.
+    /// All learning vocab words' Ebisu models, for quiz context ranking.
+    /// Grammar words (word_type='grammar') are excluded — they are handled by GrammarQuizContext.
     func enrolledEbisuRecords() async throws -> [EbisuRecord] {
         try await pool.read { db in
-            // "Learning" = has ebisu_models rows (actively being quizzed)
-            try EbisuRecord.fetchAll(db)
+            try EbisuRecord.filter(Column("word_type") == "jmdict").fetchAll(db)
         }
     }
 
