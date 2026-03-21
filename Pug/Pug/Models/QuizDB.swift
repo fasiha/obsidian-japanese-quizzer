@@ -503,6 +503,15 @@ final class QuizDB: Sendable {
         try await pool.write { db in var r = review; try r.insert(db) }
     }
 
+    func recentReviews(limit: Int = 100) async throws -> [Review] {
+        try await pool.read { db in
+            try Review
+                .order(Column("timestamp").desc)
+                .limit(limit)
+                .fetchAll(db)
+        }
+    }
+
     func reviewCount(wordType: String, wordId: String, quizType: String) async throws -> Int {
         try await pool.read { db in
             try Review

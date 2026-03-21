@@ -35,6 +35,9 @@ struct HomeView: View {
                 )
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             }
+
+            HistoryView(db: db, client: session.client)
+                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
         }
     }
 }

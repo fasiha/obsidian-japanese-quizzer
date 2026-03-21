@@ -146,7 +146,7 @@ final class QuizSession {
             resultSummary += ". Correct answer: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
         }
         applyLocalGrade(score: score, questionBubble: questionBubble, answerBubble: resultBubble,
-                        resultSummary: resultSummary, notes: "autograder", item: item)
+                        resultSummary: resultSummary, notes: resultSummary, item: item)
     }
 
     /// Shared local-grading path used by multiple choice (tapChoice) and exact-match free-answer.
