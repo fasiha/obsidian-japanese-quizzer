@@ -1,46 +1,191 @@
-# llm-review — Japanese vocabulary review with Claude
+# llm-review — Japanese vocabulary and grammar review with Claude
 
-An Obsidian vault + Claude Code workflow for learning Japanese vocabulary from
-textbook reading passages. Stories are kept as Markdown files; Claude checks your
-vocab lists against JMDict and runs spaced-repetition quizzes.
+A [home-cooked app](https://www.robinsloan.com/notes/home-cooked-app/) for my family
+to learn Japanese from reading passages we study together. Stories live as Markdown
+files in an Obsidian vault; a SwiftUI iOS app (Pug) quizzes each family member
+individually using Claude as a conversational tutor.
+
+The quiz experience is **not** a flashcard deck. Each question is an open-ended chat
+with Claude — you can stop mid-question and ask "how does this kanji relate to 怒る?"
+or "give me a mnemonic," and Claude engages fully before circling back. The corpus is
+shared but every family member has their own learning state (spaced repetition via
+[Ebisu](https://github.com/fasiha/ebisu), ported to Swift).
+
+**Why share this repo?** To share the kanji, vocabulary, and grammar resources that can be
+combined to build opinionated Japanese learning tools. Tools that could use LLMs both *in*
+the tool itself and to *build* the tool.
 
 ---
 
-- [llm-review — Japanese vocabulary review with Claude](#llm-review--japanese-vocabulary-review-with-claude)
-  - [User guide](#user-guide)
-    - [Authoring a reading](#authoring-a-reading)
-    - [`/check-vocab`](#check-vocab)
-    - [`/quiz`](#quiz)
-  - [Setup](#setup)
-  - [Project layout](#project-layout)
-  - [Quiz database schema](#quiz-database-schema)
-  - [Future work](#future-work)
+## Setup
+
+### 0. Clone this repo
+```bash
+git clone https://github.com/fasiha/obsidian-japanese-quizzer.git
+cd obsidian-japanese-quizzer
+```
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Build jmdict.sqlite
+
+Download these files into the project root:
+- `jmdict-eng-*.json` (~50 MB) from [jmdict-simplified releases](https://github.com/scriptin/jmdict-simplified/releases)
+- `JmdictFurigana.json` from [JmdictFurigana releases](https://github.com/Doublevil/JmdictFurigana/releases)
+
+```bash
+# Build the base database
+node .claude/scripts/check-vocab.mjs
+
+# Add furigana data (idempotent — safe to re-run)
+node .claude/scripts/add-furigana-to-jmdict.mjs
+```
+
+### 3. Build kanjidic2.sqlite
+
+Download these files into the project root from [jmdict-simplified releases](https://github.com/scriptin/jmdict-simplified/releases):
+- `kanjidic2-en-*.json` (~15 MB)
+- `kradfile-*.json` (~500 KB)
+
+```bash
+node .claude/scripts/get-kanji-info.mjs 日
+```
+
+### 4. Copy databases and data to the iOS app
+
+```bash
+cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite
+cp kanjidic2.sqlite Pug/Pug/Resources/kanjidic2.sqlite
+cp wanikani/wanikani-kanji-graph.json Pug/Pug/Resources/
+cp wanikani/wanikani-extra-radicals.json Pug/Pug/Resources/
+```
+
+Both `.sqlite` files must use DELETE journal mode (the build scripts set this
+automatically). The source JSON files are gitignored and can be deleted after
+building.
+
+### Data sources
+
+The LLM component of this app is heavily constrained by real, verifiable data sources
+authored by experts. Claude generates quiz questions and grades answers, but it does
+so within the bounds of these databases — not from its own training data.
+
+| Source | What it provides | Origin |
+|---|---|---|
+| [JMDict](http://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project) | ~200k Japanese–English dictionary entries | Jim Breen's EDRDG project; we use [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) JSON |
+| [JmdictFurigana](https://github.com/Doublevil/JmdictFurigana) | Character-level ruby spans for JMDict words | Doublevil's project; handles irregular readings like 日本→にほん |
+| [KANJIDIC2](http://www.edrdg.org/wiki/index.php/KANJIDIC_Project) | Per-kanji readings, meanings, stroke counts, JLPT/grade levels | EDRDG; we use jmdict-simplified's JSON export |
+| [kradfile](http://www.edrdg.org/krad/kradinf.html) | Kanji → radical decomposition | EDRDG; used for kanji breakdowns in quiz chat |
+| [WaniKani](https://www.wanikani.com/) | Kanji → component mappings with mnemonic-friendly names | Community-extracted data in `wanikani/` |
+| [Genki](https://genki3.japantimes.co.jp/en/) | ~123 grammar topics | Scraped from [St. Olaf's Genki index](https://wp.stolaf.edu/japanese/grammar-index/) via `grammar/stolaf-genki-website.js` |
+| [Bunpro](https://bunpro.jp/) | ~943 grammar topics with JLPT levels | Scraped from bunpro.jp via `grammar/bunpro-website.js` |
+| [DBJG](https://www.amazon.com/dp/4789004546) (*A Dictionary of Basic Japanese Grammar*) | ~370 grammar topics | Manually typed from the book's index |
+| [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) | 154 linguist-curated transitive/intransitive verb pairs | Verified spine of `transitive-pairs.json` |
+| [Anki shared deck](https://ankiweb.net/shared/info/92409330) | Additional transitive/intransitive pairs | Filtered and merged into `transitive-pairs.json`, reviewed by Opus |
 
 ---
 
-## User guide
+## Quiz formats
 
-### Authoring a reading
+The app has two quiz domains: **vocabulary** and **grammar**. (Both use
+[Ebisu](https://github.com/fasiha/ebisu) spaced repetition to predict recall, but Ebisu
+can easily be replaced by any other probabilistic system.)
 
-Add `llm-review: true` frontmatter so the scripts pick up the file:
+### Vocabulary quizzes
+
+Four facets, each testing a different direction of recall:
+
+| Facet | Prompt shows | Student produces |
+|---|---|---|
+| reading-to-meaning | kana reading | English meaning |
+| meaning-to-reading | English meaning | kana reading |
+| kanji-to-reading | word with kanji shown | kana reading |
+| meaning-reading-to-kanji | English + kana | kanji written form |
+
+The last two facets only appear for words where the user has committed to learning
+specific kanji characters. Users choose a furigana form (e.g. 入り込む vs 這入り込む)
+and optionally which kanji to learn — partial commitment is supported (e.g. learning
+only 前 in 前例 means the quiz shows 前れい).
+
+**Question format progression:** All facets start as multiple choice (4 options, app-
+scored instantly). After 3+ reviews and halflife of 48+ hours, the facet graduates to
+free-answer (student types, and if they just typed the answer, the app grades locally, but
+if they typed more than just the answer, Claude grades, with a Bayesian confidence score
+0.0–1.0). Exception: meaning-reading-to-kanji is always multiple choice.
+
+**Conversational grading:** After each answer, the conversation continues freely. Claude
+has access to JMDict lookups, KANJIDIC2 and Wanikani kanji breakdowns, the student's full
+enrolled word list, and mnemonic notes. You can ask tangent questions about any word
+before moving to the next item.
+
+### Grammar quizzes
+
+Two facets, drawn from three curated sources:
+
+| Facet | Prompt shows | Student produces |
+|---|---|---|
+| production | English context sentence | Japanese using target grammar |
+| recognition | Japanese sentence | English meaning |
+
+**Data sources:** Genki (~123 topics), Bunpro (~943 topics), DBJG (~370 topics). Topics
+covering the same grammar point across sources are clustered into equivalence groups (see
+[grammar-equivalences.json](grammar/grammar-equivalences.json) and
+[cluster-grammar-topics.md](.claude/commands/cluster-grammar-topics.md)). Reviewing one
+topic in a group propagates the score to all siblings.
+
+Currently all grammar quizzes are multiple choice. Each question targets a different
+sub-use of the grammar point to ensure diversity across reviews.
+
+### Transitive-intransitive pair drills (coming soon)
+
+A dedicated quiz format for drilling verb pairs like 壊す/壊れる and 開ける/開く. The
+student sees both directions on one card — agency cues like "I ___ it" and "it ___ed"
+— and must produce both the transitive and intransitive forms. Built from 231 curated
+pairs in [transitive-pairs.json](transitive-intransitive/transitive-pairs.json),
+sourced from [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) and enriched
+with JMDict IDs. See [TODO-transitive-intransitive-pairs.md](TODO-transitive-intransitive-pairs.md)
+for design details.
+
+---
+
+## Content authoring
+
+Start writing a Markdown file in this directory. (I keep it in Obsidian and author
+content there, but you don't need to.)
+
+### Writing a reading passage
+
+Add `llm-review: true` frontmatter so the publishing scripts pick up the file. Then
+annotate your content with `<details><summary>___</summary></details>` tags. The
+publishing process recognizes two summary labels:
+
+- **Vocab** — a bulleted list of vocabulary words, matched against JMDict
+- **Grammar** — a bulleted list of grammar topic IDs from the databases in `grammar/`
+
+Other `<summary>` sections (like Translation) are ignored by the tooling.
 
 ```markdown
 ---
 llm-review: true
 ---
-```
 
-Write your reading passage as plain Markdown. Wrap translations in a
-`<details><summary>Translation</summary>…</details>` block and new vocabulary in
-a `<details><summary>Vocab</summary>` block:
+すしが作れます
+<details><summary>Translation</summary>can make sushi</details>
+<details><summary>Vocab</summary>
+- すし
+</details>
+<details><summary>Grammar</summary>- genki:potential-verbs</details>
 
-```markdown
 体中をぶあついオーバーとえりまきでつつんだ男が、旅館にやってきました。
 <details><summary>Vocab</summary>
 - 体中
 - ぶあつい
 - えりまき
-- つつむ つつむ
+- つつむ
 - 気味 きみ
 - やってくる
 </details>
@@ -49,188 +194,224 @@ He was shrouded head-to-toe in a heavy overcoat and scarf…
 </details>
 ```
 
-**Bullet format rules** — each bullet is a vocab entry. Write all its Japanese
-forms first (before any English), space-separated:
+**Vocab bullet format** — each bullet is a vocab entry. Write all Japanese forms first
+(before any English), space-separated:
 
 | Example | Meaning |
 |---|---|
 | `- 体中` | kanji only |
 | `- ぶあつい` | kana only |
-| `- 舞う まう` | kanji form then kana reading — both must point to the same JMDict entry |
-| `- ありったけ as many as possible` | kana then English gloss (English is ignored by scripts) |
-| `- ごうとう robber` | ambiguous — prefer `- 強盗 ごうとう robber` to pin the entry |
-| `- 怒鳴る どなる [kanji]` | `[kanji]` tag signals commitment to also learning the kanji form |
+| `- 舞う まう` | kanji then kana — both must match one JMDict entry |
+| `- ありったけ as many as possible` | kana then English notes (non-Japanese is ignored) |
+| `- 強盗 ごうとう robber` | add kana to disambiguate when multiple entries match |
 
-The leading Japanese tokens are what the scripts use. English notes after the
-first Latin-alphabet token are preserved for your own reference and ignored by
-the tooling.
+English text after the first Latin-alphabet token is for your reference only — scripts
+ignore it.
 
----
+**Grammar bullet format** — each bullet is a source-prefixed topic ID (e.g.
+`genki:potential-verbs`, `bunpro:られる-Potential`, `dbjg:rareru2`). Run
+`node .claude/scripts/check-grammar.mjs` to see available topic IDs.
 
-### `/check-vocab`
+### Validating content
 
-```
+```bash
+# Fast — run the Node script directly (outputs JSON report of problems)
+node .claude/scripts/check-vocab.mjs
+
+# With LLM assistance — Claude reports problems with line links and suggested fixes
 /check-vocab
 ```
 
-Validates every vocab bullet against JMDict. Claude reports bullets with 0 matches
-(unrecognised form) or 2+ matches (ambiguous), links to the exact line, and
-suggests a fix. Claude will not edit your Markdown files.
+The script checks every vocab bullet against JMDict and reports unrecognised forms
+(0 matches) and ambiguous forms (2+ matches). For most issues, the fix is obvious
+from the output. Use the `/check-vocab` Claude skill when you want help resolving
+ambiguities.
 
 ---
 
-### `/quiz`
+## Publishing pipeline
 
-```
-/quiz
-```
-
-Session-based, one-question-at-a-time spaced-repetition quiz. Claude picks 5–10
-words prioritising never-reviewed words and weak facets, asks one question per
-message, and records each answer (0.0–1.0) with per-facet tracking. Sessions
-survive interruption and resume on the next `/quiz` (even in a new Claude session).
-
-Four question types, chosen based on which facet most needs practice:
-
-| `quiz_type` | Prompt | Answer | Words |
-|---|---|---|---|
-| `reading-to-meaning` | kana reading | English meaning | all |
-| `meaning-to-reading` | English meaning | kana reading | all |
-| `kanji-to-reading` | kanji form | kana reading | `[kanji]` words only |
-| `meaning-reading-to-kanji` | English + kana | correct kanji form | `[kanji]` words only |
-
-Words with `[kanji]` in their bullet are eligible for all four question types;
-all other words get only `reading-to-meaning` and `meaning-to-reading`.
-
----
-
-## Setup
-
-Download the following files from the
-[jmdict-simplified releases](https://github.com/scriptin/jmdict-simplified/releases)
-and place them in the project root:
-
-| File | Size | Used for |
-|---|---|---|
-| `jmdict-eng-*.json` | ~50 MB | JMDict vocabulary lookup |
-| `kanjidic2-en-*.json` | ~15 MB | kanji readings, meanings, JLPT level |
-| `kradfile-*.json` | ~500 KB | kanji radical components |
-
-Then run:
+Content goes from Obsidian Markdown to the iOS app in two steps:
 
 ```bash
-# 1. Install dependencies
-npm install
+# 1. Validate + compile vocab.json and grammar.json
+node prepare-publish.mjs
 
-# 2. Build jmdict.sqlite
-node .claude/scripts/check-vocab.mjs
-
-# 3. Create the quiz database (safe to re-run)
-node .claude/scripts/init-quiz-db.mjs
-
-# 4. Build kanjidic2.sqlite
-node .claude/scripts/get-kanji-info.mjs 日
+# 2. Push to GitHub secret Gist
+GIST_ID=<your-gist-id> node publish.mjs
+# or: node publish.mjs <gist-id>
 ```
 
-After the `.sqlite` files are built, the large source JSONs are no longer needed and
-can be deleted to save space in your Obsidian vault. The `.sqlite` files are
-gitignored and the source JSONs are gitignored too.
+`prepare-publish.mjs` does:
+1. Finds all Markdown files with `llm-review: true` frontmatter
+2. Runs check-vocab validation (blocks on failures)
+3. Extracts vocab data, enriches with JmdictFurigana written forms → writes `vocab.json`
+4. Extracts grammar bullets → writes `grammar.json`
+
+`publish.mjs` pushes the output files to a GitHub secret Gist via git over SSH. The
+app fetches from the Gist's raw URL on startup.
+
+**One-time Gist setup:** Create a secret Gist at gist.github.com, note the Gist ID.
+Ensure github.com is in `~/.ssh/known_hosts`.
 
 ---
 
-## Project layout
+## App distribution
+
+Distributed to family via TestFlight (external beta). Each build expires after 90
+days — bump the build number and upload a new one periodically.
+
+**Setup deep link:** `japanquiz://setup?key=sk-ant-...&vocabUrl=https://...`
+
+Generate it with:
+
+```bash
+node make-setup-link.mjs           # reads .env, prints URL
+node make-setup-link.mjs | xargs xcrun simctl openurl booted  # test in simulator
+```
+
+Distributed via iMessage or AirDrop. Set a monthly usage cap in the Anthropic console
+to mitigate key exposure.
+
+---
+
+## Architecture overview
 
 ```
-llm-review/
-├── *.md                        reading passages (Obsidian notes, llm-review: true frontmatter)
-├── jmdict.sqlite               JMDict search database
-├── kanjidic2.sqlite            KanjiDic search database
-├── quiz.sqlite                 quiz review history
-├── package.json
-└── .claude/
-    ├── quiz-context.txt        generated by get-quiz-context.mjs (gitignored)
-    ├── quiz-session.txt        active quiz session queue (gitignored)
-    ├── commands/
-    │   ├── check-vocab.md      /check-vocab skill prompt
-    │   └── quiz.md             /quiz skill prompt
-    └── scripts/
-        ├── shared.mjs                  shared constants, DB helpers, parsing utilities
-        ├── check-vocab.mjs             checks vocab against JMDict, outputs JSON report
-        ├── get-quiz-context.mjs        writes quiz-context.txt sorted by Ebisu recall urgency; appends `free` flag when facet qualifies for free-answer (≥3 reviews AND halflife ≥48 h)
-        ├── get-word-history.mjs        full review history + Ebisu models for one word
-        ├── get-kanji-info.mjs          radicals, readings, meanings for one or more kanji
-        ├── write-quiz-session.mjs      filters quiz-context.txt into a session queue
-        ├── read-quiz-session.mjs       reads session file, exits 1 if none
-        ├── clear-quiz-session.mjs      deletes session file after quiz ends
-        ├── init-quiz-db.mjs            creates/migrates quiz.sqlite schema
-        ├── record-review.mjs           inserts review row, updates Ebisu model, removes from session
-        ├── introduce-word.mjs          initialises Ebisu models for a newly-taught word
-        ├── rescale-halflife.mjs        adjusts halflife for one facet without recording a review
-        └── backfill-ebisu-models.mjs   one-time migration: replays reviews into ebisu_models
+┌──────────────────────────────────────────────┐
+│  SwiftUI app (iOS)                           │
+│                                              │
+│  ┌─────────────┐   ┌──────────────┐          │
+│  │ quiz.sqlite │   │ jmdict.sqlite│          │
+│  │ (GRDB.swift)│   │  (bundled)   │          │
+│  └──────┬──────┘   └──────┬───────┘          │
+│         │                 │                  │
+│         └────────┬────────┘                  │
+│                  │                           │
+│           ┌──────▼───────┐                   │
+│           │ Claude API   │                   │
+│           │ (URLSession) │                   │
+│           │ + tool use   │                   │
+│           └──────────────┘                   │
+└──────────────────────────────────────────────┘
+         ▲                            ▲
+         │ periodic sync              │ one-time setup
+         │ (vocab.json,               │
+         │  grammar.json)             │
+  ┌──────┴──────┐             ┌───────┴────────┐
+  │ hosted URL  │             │  setup link    │
+  │ (Gist/S3)   │             │ japanquiz://.. │
+  └─────────────┘             └────────────────┘
+         ▲
+  ┌──────┴──────┐
+  │ publish.mjs │  (run locally)
+  └─────────────┘
+         ▲
+  ┌──────┴──────────────────┐
+  │ Obsidian Markdown files │
+  │ + prepare-publish.mjs   │
+  └─────────────────────────┘
 ```
 
 ---
 
-## Quiz database schema
+## Script catalog
 
-```sql
-CREATE TABLE reviews (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  reviewer    TEXT    NOT NULL,
-  timestamp   TEXT    NOT NULL,   -- ISO 8601 UTC
-  word_type   TEXT    NOT NULL,   -- 'jmdict'; 'grammar' planned
-  word_id     TEXT    NOT NULL,   -- JMDict entry ID
-  word_text   TEXT    NOT NULL,   -- display text from the bullet
-  score       REAL    NOT NULL,   -- 0.0 (wrong) to 1.0 (perfect)
-  quiz_type   TEXT    NOT NULL,   -- 'reading-to-meaning', 'meaning-to-reading',
-                                  --   'kanji-to-reading', 'meaning-reading-to-kanji'
-                                  -- (legacy values 'reading-kanji-to-meaning' and ''
-                                  --  may appear in older rows)
-  notes       TEXT                -- Claude's notes on the review attempt
-);
+### Database building
 
-CREATE TABLE ebisu_models (
-  word_type   TEXT    NOT NULL,   -- 'jmdict', 'grammar', etc.
-  word_id     TEXT    NOT NULL,
-  quiz_type   TEXT    NOT NULL,
-  alpha       REAL    NOT NULL,   -- Ebisu Beta distribution alpha
-  beta        REAL    NOT NULL,   -- Ebisu Beta distribution beta
-  t           REAL    NOT NULL,   -- halflife in hours
-  last_review TEXT    NOT NULL,   -- ISO 8601 UTC
-  PRIMARY KEY (word_type, word_id, quiz_type)
-);
-```
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/check-vocab.mjs` | Builds `jmdict.sqlite` (side effect of validation run) |
+| `.claude/scripts/add-furigana-to-jmdict.mjs` | Adds JmdictFurigana data to `jmdict.sqlite` |
+| `.claude/scripts/get-kanji-info.mjs` | Builds/updates `kanjidic2.sqlite` from KANJIDIC2 + kradfile JSON |
+| `grammar/generate-all-topics.mjs` | Reads three grammar TSV files → writes `grammar/all-topics.json` |
 
-```sql
-CREATE TABLE mnemonics (
-  word_type  TEXT NOT NULL,   -- 'jmdict' or 'kanji'
-  word_id    TEXT NOT NULL,   -- JMDict entry ID or kanji character
-  mnemonic   TEXT NOT NULL,
-  updated_at TEXT NOT NULL,   -- ISO 8601 UTC
-  PRIMARY KEY (word_type, word_id)
-);
-```
+### Content validation
 
-`mnemonics` stores free-form mnemonic notes for vocab words (`word_type='jmdict'`) or individual kanji characters (`word_type='kanji'`). No `quiz_type` — one mnemonic covers all facets. Claude can read and write these via `get_mnemonic`/`set_mnemonic` tools during quiz and word exploration sessions. iOS-only (not in the Node.js schema).
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/check-vocab.mjs` | Validates vocab bullets against JMDict, outputs JSON report |
+| `.claude/scripts/check-grammar.mjs` | Validates grammar bullets against Genki/Bunpro/DBJG databases |
+| `wanikani/wanikani-extra-radicals-validation.mjs` | Checks consistency between WaniKani data and kanjidic2 |
 
-`ebisu_models` stores one Bayesian memory model (via [ebisu-js](https://github.com/fasiha/ebisu.js)) per (word, facet) pair. `get-quiz-context.mjs` calls `predictRecall` to rank items by urgency; `record-review.mjs` calls `updateRecall` after each quiz. To manually correct a halflife (e.g. "this is clearly too easy, bump it to 200 h"), use `rescale-halflife.mjs --word-id ID --quiz-type FACET --halflife HOURS` — it calls `rescaleHalflife` without inserting a review row. Schema version is tracked via `PRAGMA user_version` (currently 1), set in `init-quiz-db.mjs`.
+### Publishing
 
-`model_events` is a lightweight audit log for model-level operations that don't correspond to a quiz attempt. One row per (word, facet) per operation — so introducing a `{no-kanji}` word creates two rows (one per facet), and a `{kanji-ok}` word creates four:
+| Script | Purpose |
+|---|---|
+| `prepare-publish.mjs` | Validates content, compiles `vocab.json` and `grammar.json` |
+| `publish.mjs` | Pushes compiled JSON to GitHub secret Gist via SSH |
+| `make-setup-link.mjs` | Reads `.env`, prints the `japanquiz://setup?...` deep link |
 
-```
-event column format (CSV):
-  learned,<halflife>       -- facet initialised via introduce-word.mjs
-  rescaled,<old>,<new>     -- halflife adjusted via rescale-halflife.mjs
-  buried                   -- word removed from rotation (future)
-```
+### Grammar data curation
 
-All halflives are raw numbers in hours. This table is append-only; nothing reads it during normal quiz flow.
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/add-grammar-equivalence.mjs` | Merges/splits equivalence groups in `grammar-equivalences.json` |
+| `.claude/scripts/enrich-grammar-descriptions.mjs` | Data helper for grammar description enrichment |
+| `.claude/scripts/find-new-grammar-topics.mjs` | Reports grammar topics not yet in equivalence groups |
+| `grammar/slugify-dbjg.mjs` | Converts `grammar-dbjg.md` into TSV format |
+| `grammar/bunpro-website.js` | Browser scraper: Bunpro grammar points → TSV |
+| `grammar/stolaf-genki-website.js` | Browser scraper: St. Olaf Genki grammar → TSV |
+
+### Transitive-intransitive pairs
+
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/generate-pair-drills.mjs` | Generates drill sentences for verb pairs via Claude API |
+
+### Quiz CLI (legacy, still functional)
+
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/init-quiz-db.mjs` | Creates/migrates `quiz.sqlite` schema |
+| `.claude/scripts/get-quiz-context.mjs` | Ranks quizzable items by Ebisu recall urgency |
+| `.claude/scripts/write-quiz-session.mjs` | Creates a quiz session queue from context |
+| `.claude/scripts/read-quiz-session.mjs` | Reads current session file |
+| `.claude/scripts/clear-quiz-session.mjs` | Deletes session file after quiz ends |
+| `.claude/scripts/record-review.mjs` | Records a review and updates Ebisu model |
+| `.claude/scripts/introduce-word.mjs` | Initializes Ebisu models for a new word |
+| `.claude/scripts/rescale-halflife.mjs` | Adjusts halflife without recording a review |
+| `.claude/scripts/get-word-history.mjs` | Full review history + Ebisu models for one word |
+
+### Utilities
+
+| Script | Purpose |
+|---|---|
+| `.claude/scripts/shared.mjs` | Shared constants, DB helpers, parsing utilities |
+| `.claude/scripts/telemetry-report.mjs` | Prints API usage report from `api_events` table |
+| `lookup.mjs` | Interactive JMDict lookup by word or ID |
 
 ---
 
-## Future work
+## Claude skills
 
-- Grammar points (Bunpro / Genki / DBJG) as a second `word_type`
-- `--reviewer` flag in the `/quiz` skill via `$ARGUMENTS`
-- Obsidian plugin to render `<details type="translation">` on hover
-- "Find all sentences that use this kanji" — cross-reference index
+| Skill | Description |
+|---|---|
+| `/check-vocab` | Validate all vocab bullets against JMDict |
+| `/annotate-vocab` | Annotate a Japanese sentence with vocabulary for N4-level learners |
+| `/cluster-grammar-topics` | Find new grammar topics and cluster into equivalence groups |
+| `/quiz` | CLI spaced-repetition quiz (legacy — iOS app is the primary interface) |
+
+---
+
+## Curated data files
+
+These files took significant effort to build and may be useful for other Japanese
+learning projects:
+
+| File | Description |
+|---|---|
+| [grammar-equivalences.json](grammar/grammar-equivalences.json) | ~300 equivalence groups clustering grammar topics across Genki, Bunpro, and DBJG. Each group has a `summary`, `subUses`, and `cautions` list. |
+| [grammar-bunpro.tsv](grammar/grammar-bunpro.tsv) | ~943 Bunpro grammar topics (ID, title, JLPT level, meaning). Scraped from [bunpro.jp](https://bunpro.jp/grammar_points) — re-run with `grammar/bunpro-website.js` in the browser console to update. |
+| [grammar-stolaf-genki.tsv](grammar/grammar-stolaf-genki.tsv) | ~123 Genki grammar topics. Scraped from [St. Olaf's Genki grammar index](https://wp.stolaf.edu/japanese/grammar-index/) — re-run with `grammar/stolaf-genki-website.js` in the browser console to update. |
+| [grammar-dbjg.tsv](grammar/grammar-dbjg.tsv) | ~370 DBJG grammar topics. Manually typed from the book's index (*A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui). |
+| [transitive-pairs.json](transitive-intransitive/transitive-pairs.json) | 231 curated transitive/intransitive verb pairs with JMDict IDs and example sentences |
+| [wanikani-kanji-graph.json](wanikani/wanikani-kanji-graph.json) | Kanji → WaniKani component character mappings |
+| [wanikani-extra-radicals.json](wanikani/wanikani-extra-radicals.json) | Informal descriptions for WaniKani components not in KANJIDIC2 |
+
+---
+
+## See also
+
+- [CLAUDE.md](CLAUDE.md) — detailed architecture notes for Claude (iOS quiz facets, grammar tiers, tool schemas)
+- [TESTING.md](TESTING.md) — TestHarness build instructions and modes

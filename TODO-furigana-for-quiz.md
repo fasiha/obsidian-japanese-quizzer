@@ -38,7 +38,7 @@ Write a new script `.claude/scripts/add-furigana-to-jmdict.mjs`:
 - Exits cleanly if the table already exists and is populated (idempotent via `INSERT OR IGNORE`).
 - Sets DELETE journal mode before and after (same as the rest of the tooling).
 
-Update **App.md** jmdict.sqlite setup section to include:
+Update **README.md** jmdict.sqlite setup section to include:
 
 ```sh
 # 2b. Add JmdictFurigana data (requires JmdictFurigana.json in project root)
@@ -181,7 +181,7 @@ pattern from `stemView`, keeping plain `Text` until the async fetch completes.
 | File | Change |
 |------|--------|
 | `.claude/scripts/add-furigana-to-jmdict.mjs` | **new** — one-time migration script |
-| `App.md` | document new step 2b in jmdict.sqlite setup section |
+| `README.md` | document new step 2b in jmdict.sqlite setup section |
 | `Pug/Pug/Claude/GrammarQuizSession.swift` | revert Haiku prompt; add `lookupFurigana()`; wire Step 3+4 |
 | `Pug/Pug/Models/VocabSync.swift` | no change (Equatable already added) |
 | `Pug/Pug/Views/SentenceFuriganaView.swift` | no change |
@@ -194,7 +194,7 @@ pattern from `stemView`, keeping plain `Text` until the async fetch completes.
 - Adding furigana to the vocab quiz (separate feature; vocab already gets furigana from
   `word_commitment.furigana` at publish time).
 - Suppressing furigana for kanji the user already knows (`kanji_knowledge` table — noted
-  in App.md as future work).
+  in README.md as future work).
 - Fuzzy/greedy substring search (the original idea): NLTagger covers the same ground
   more reliably and is already on-device, so skip the manual prefix-shrinking loop.
 - Can we use iOS local dictionary?

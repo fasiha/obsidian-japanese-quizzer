@@ -1,6 +1,6 @@
 // QuizDB.swift
 // GRDB-backed quiz database. Schema mirrors init-quiz-db.mjs (SCHEMA_VERSION 1)
-// with the additional vocab_enrollment table from App.md.
+// with the additional vocab_enrollment table.
 
 import GRDB
 import Foundation
