@@ -16,12 +16,14 @@ import GRDB
 
 struct VocabBrowserView: View {
     let corpus: VocabCorpus
+    let pairCorpus: TransitivePairCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
     let session: QuizSession
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
+    @State private var selectedPair: TransitivePairItem? = nil
 
     @State private var showQuiz = false
     @State private var showSettings = false
@@ -39,6 +41,20 @@ struct VocabBrowserView: View {
             || item.kanaTexts.contains { $0.localizedCaseInsensitiveContains(q) }
             || item.senseExtras.flatMap(\.glosses).contains { $0.localizedCaseInsensitiveContains(q) }
             || mnemonicMap[item.id]?.localizedCaseInsensitiveContains(q) == true
+        }
+    }
+
+    private var filteredPairs: [TransitivePairItem] {
+        let f = filter
+        let statusFiltered = pairCorpus.items.filter { f == nil || $0.matches(filter: f!) }
+        let q = searchText.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return statusFiltered }
+        return statusFiltered.filter { item in
+            let p = item.pair
+            return p.intransitive.kana.localizedCaseInsensitiveContains(q)
+                || p.transitive.kana.localizedCaseInsensitiveContains(q)
+                || p.intransitive.kanji.contains { $0.localizedCaseInsensitiveContains(q) }
+                || p.transitive.kanji.contains { $0.localizedCaseInsensitiveContains(q) }
         }
     }
 
@@ -95,6 +111,9 @@ struct VocabBrowserView: View {
             .sheet(item: $selectedItem) { item in
                 WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
             }
+            .sheet(item: $selectedPair) { pair in
+                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict)
+            }
 
             .sheet(isPresented: $showSettings) { SettingsView() }
             .navigationDestination(isPresented: $showQuiz) {
@@ -112,13 +131,25 @@ struct VocabBrowserView: View {
     // MARK: - Word list (flat — used when search is active)
 
     private var wordList: some View {
-        List(filteredItems) { item in
-            Button { selectedItem = item } label: {
-                VocabRowView(item: item)
+        let pairs = filteredPairs
+        return List {
+            ForEach(pairs) { pairItem in
+                Button { selectedPair = pairItem } label: {
+                    TransitivePairRowView(item: pairItem)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    pairSwipeButtons(for: pairItem)
+                }
             }
-            .buttonStyle(.plain)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                swipeButtons(for: item)
+            ForEach(filteredItems) { item in
+                Button { selectedItem = item } label: {
+                    VocabRowView(item: item)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    swipeButtons(for: item)
+                }
             }
         }
         .listStyle(.plain)
@@ -136,7 +167,11 @@ struct VocabBrowserView: View {
     // corpus, cache `sourceTree` as a stored property updated via .onChange(of: filteredItems).
     private var groupedWordList: some View {
         let roots = buildSourceTree(sources: activeSources, items: filteredItems)
+        let pairs = filteredPairs
         return List {
+            if !pairs.isEmpty {
+                pairsSection(pairs: pairs)
+            }
             ForEach(roots, id: \.pathKey) { node in
                 SourceSectionView(
                     node: node,
@@ -148,6 +183,78 @@ struct VocabBrowserView: View {
             }
         }
         .listStyle(.plain)
+    }
+
+    // MARK: - Transitive pairs section
+
+    @ViewBuilder
+    private func pairsSection(pairs: [TransitivePairItem]) -> some View {
+        let isExpanded = Binding(
+            get: { !collapsedSections.contains("__transitive-pairs__") },
+            set: { expanded in
+                if expanded { collapsedSections.remove("__transitive-pairs__") }
+                else { collapsedSections.insert("__transitive-pairs__") }
+            }
+        )
+        DisclosureGroup(isExpanded: isExpanded) {
+            ForEach(pairs) { pairItem in
+                Button { selectedPair = pairItem } label: {
+                    TransitivePairRowView(item: pairItem)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    pairSwipeButtons(for: pairItem)
+                }
+            }
+        } label: {
+            Text("Transitive-Intransitive Pairs")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .textCase(nil)
+        }
+    }
+
+    @ViewBuilder
+    private func pairSwipeButtons(for item: TransitivePairItem) -> some View {
+        if item.pair.isAmbiguous {
+            // No actions for ambiguous pairs
+        } else {
+            switch item.state {
+            case .unknown:
+                Button {
+                    Task { await pairCorpus.setPairLearning(pairId: item.id, db: db) }
+                } label: {
+                    Label("Learn", systemImage: "plus.circle.fill")
+                }
+                .tint(.green)
+                Button {
+                    Task { await pairCorpus.setPairKnown(pairId: item.id, db: db) }
+                } label: {
+                    Label("Know it", systemImage: "checkmark.circle")
+                }
+                .tint(.blue)
+            case .learning:
+                Button {
+                    Task { await pairCorpus.setPairKnown(pairId: item.id, db: db) }
+                } label: {
+                    Label("Know it", systemImage: "checkmark.circle")
+                }
+                .tint(.blue)
+                Button(role: .destructive) {
+                    Task { await pairCorpus.clearPair(pairId: item.id, db: db) }
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                }
+                .tint(.orange)
+            case .known:
+                Button(role: .destructive) {
+                    Task { await pairCorpus.clearPair(pairId: item.id, db: db) }
+                } label: {
+                    Label("Undo", systemImage: "arrow.uturn.backward")
+                }
+                .tint(.orange)
+            }
+        }
     }
 
     @ViewBuilder
@@ -438,6 +545,82 @@ struct VocabRowView: View {
                 .foregroundStyle(.green)
                 .clipShape(Capsule())
         } else if item.readingState == .known || item.kanjiState == .known {
+            Text("Learned")
+                .font(.caption2).fontWeight(.medium)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(.blue.opacity(0.15))
+                .foregroundStyle(.blue)
+                .clipShape(Capsule())
+        }
+    }
+}
+
+// MARK: - TransitivePairRowView
+
+struct TransitivePairRowView: View {
+    let item: TransitivePairItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .lastTextBaseline) {
+                pairFuriganaRow
+                Spacer()
+                statusBadge
+            }
+            if item.pair.isAmbiguous {
+                Text("Ambiguous")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(.vertical, 2)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private var pairFuriganaRow: some View {
+        HStack(spacing: 0) {
+            memberFurigana(item.intransitiveFurigana, member: item.pair.intransitive)
+            // Empty rt-height spacer above arrow to align with furigana text
+            VStack(spacing: 0) {
+                Text(" ").font(.system(size: 8))
+                Text(" ↔ ").font(.headline)
+            }
+            memberFurigana(item.transitiveFurigana, member: item.pair.transitive)
+        }
+    }
+
+    @ViewBuilder
+    private func memberFurigana(_ segments: [FuriganaSegment]?, member: TransitivePairMember) -> some View {
+        if let segs = segments {
+            HStack(spacing: 0) {
+                ForEach(Array(segs.enumerated()), id: \.offset) { _, seg in
+                    VStack(spacing: 0) {
+                        Text(seg.rt ?? " ").font(.system(size: 8)).foregroundStyle(.secondary)
+                        Text(seg.ruby).font(.headline)
+                    }
+                }
+            }
+        } else {
+            // Kana-only fallback — add empty rt row for vertical alignment
+            VStack(spacing: 0) {
+                Text(" ").font(.system(size: 8))
+                Text(member.kanji.first ?? member.kana)
+                    .font(.headline)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var statusBadge: some View {
+        if item.state == .learning {
+            Text("Learning")
+                .font(.caption2).fontWeight(.medium)
+                .padding(.horizontal, 6).padding(.vertical, 2)
+                .background(.green.opacity(0.15))
+                .foregroundStyle(.green)
+                .clipShape(Capsule())
+        } else if item.state == .known {
             Text("Learned")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)

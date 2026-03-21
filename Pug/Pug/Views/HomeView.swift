@@ -8,6 +8,7 @@ import GRDB
 struct HomeView: View {
     let session: QuizSession
     let corpus: VocabCorpus
+    let pairCorpus: TransitivePairCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
     let grammarSession: GrammarAppSession
@@ -15,7 +16,7 @@ struct HomeView: View {
 
     var body: some View {
         TabView {
-            VocabBrowserView(corpus: corpus, db: db, jmdict: jmdict, session: session)
+            VocabBrowserView(corpus: corpus, pairCorpus: pairCorpus, db: db, jmdict: jmdict, session: session)
                 .tabItem { Label("Vocab", systemImage: "books.vertical") }
 
             if let manifest = grammarManifest {

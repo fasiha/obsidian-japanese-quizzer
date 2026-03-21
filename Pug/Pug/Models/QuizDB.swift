@@ -552,6 +552,13 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// All enrolled transitive-pair Ebisu models.
+    func enrolledTransitivePairRecords() async throws -> [EbisuRecord] {
+        try await pool.read { db in
+            try EbisuRecord.filter(Column("word_type") == "transitive-pair").fetchAll(db)
+        }
+    }
+
     // MARK: - Word commitment
 
     func commitment(wordType: String, wordId: String) async throws -> WordCommitment? {

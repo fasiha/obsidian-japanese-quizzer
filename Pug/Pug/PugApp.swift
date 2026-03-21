@@ -22,6 +22,7 @@ struct AppRootView: View {
     @State private var grammarSession: GrammarAppSession? = nil
     @State private var grammarManifest: GrammarManifest? = nil
     @State private var corpus = VocabCorpus()
+    @State private var pairCorpus = TransitivePairCorpus()
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
     @State private var errorMessage: String? = nil
@@ -34,7 +35,8 @@ struct AppRootView: View {
                 let isConfigured = !SetupHandler.resolvedApiKey().isEmpty
                                 && VocabSync.resolvedURL() != nil
                 if isConfigured {
-                    HomeView(session: session, corpus: corpus, db: db, jmdict: jmdict,
+                    HomeView(session: session, corpus: corpus, pairCorpus: pairCorpus,
+                             db: db, jmdict: jmdict,
                              grammarSession: grammarSession, grammarManifest: grammarManifest)
                         .environment(preferences)
                 } else {
@@ -93,9 +95,11 @@ struct AppRootView: View {
             grammarSession = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
                                               jmdict: toolHandler.jmdict)
 
-            // Load vocab corpus and grammar manifest concurrently (both use cache).
+            // Load vocab corpus, pair corpus, and grammar manifest concurrently.
             async let grammarLoad = loadGrammarManifest()
+            async let pairLoad: () = pairCorpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
+            await pairLoad
             grammarManifest = await grammarLoad
         } catch {
             errorMessage = error.localizedDescription

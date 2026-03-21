@@ -53,6 +53,12 @@ if (!existsSync(grammarEquivPath)) {
   process.exit(1);
 }
 
+const transitivePairsPath = path.join(projectRoot, "transitive-intransitive", "transitive-pairs.json");
+if (!existsSync(transitivePairsPath)) {
+  console.error("transitive-intransitive/transitive-pairs.json not found");
+  process.exit(1);
+}
+
 const tmpDir = mkdtempSync(path.join(tmpdir(), "gist-publish-"));
 
 function run(cmd, opts = {}) {
@@ -69,8 +75,10 @@ try {
   // so the Pug app can fetch it by replacing "vocab.json" with "grammar-equivalences.json"
   // in the Gist raw URL.
   copyFileSync(grammarEquivPath, path.join(tmpDir, "grammar-equivalences.json"));
+  // transitive-pairs.json lives in transitive-intransitive/ locally but is published flat.
+  copyFileSync(transitivePairsPath, path.join(tmpDir, "transitive-pairs.json"));
 
-  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json`);
+  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json transitive-pairs.json`);
 
   // Check if there's anything staged to commit
   const diff = execSync(`git -C "${tmpDir}" diff --cached --name-only`, {
