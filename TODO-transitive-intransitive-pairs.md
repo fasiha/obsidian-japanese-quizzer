@@ -21,6 +21,16 @@ A dedicated pairs system that stands alone but integrates visually into the voca
 
 231 curated verb pairs in `transitive-intransitive/transitive-pairs.json`, built from [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) (154 linguist-curated pairs as the verified spine) and a filtered [Anki deck](https://ankiweb.net/shared/info/92409330) (additional pairs), enriched with JMDict IDs (verified against definitions at build time), and reviewed by Opus which classified each as VALID or AMBIGUOUS. 12 BAD_PAIRs were evicted; 18 AMBIGUOUS pairs are retained with `ambiguousReason` notes.
 
+### Data invariants
+
+1. **JMDict ID validity**: every `jmdictId` resolves to an entry in `jmdict.sqlite`.
+2. **Kanji exists in JMDict**: every string in a verb's `kanji` array is present in the JMDict entry's `kanji[].text` list.
+3. **Kana exists in JMDict**: every verb's `kana` string is present in the JMDict entry's `kana[].text` list.
+4. **Kana applies to chosen kanji**: for each verb, the JMDict kana entry's `appliesToKanji` field either is `["*"]` or explicitly includes every kanji in the verb's `kanji` array. This guarantees the kana/kanji combination is a valid reading according to JMDict, not an unrelated homophone.
+5. **One kanji per verb**: each verb has exactly one kanji form — the one that best represents the transitive/intransitive pairing (shared kanji stem with its partner, preferring common forms, filtering out irregular `iK`, rare `rK`, and search-only `sK` tagged forms).
+6. **Shared kanji stem**: for most pairs, the chosen kanji forms share at least one CJK ideograph (e.g. 上がる/上げる both share 上). Pairs where the verbs use genuinely different kanji (e.g. 治る/直す, 腫れる/晴らす) are handled via manual overrides with explanatory comments.
+7. **Manual overrides for ambiguous kanji**: 13 pairs where the algorithm can't pick the right kanji automatically (e.g. あらわれる could be 現れる or 表れる) have explicit overrides in the `OVERRIDES` table, each with a comment explaining the choice.
+
 ### JSON schema
 
 Each entry in `transitive-pairs.json`:
@@ -118,10 +128,121 @@ Add `transitive-pairs.json` to the gist publish pipeline alongside vocab.json, g
 - `quiz_type = "pair-discrimination"` (one facet per pair)
 - No schema changes — reuses existing `ebisu_models` / `learned` tables
 
-## Future steps (after enrollment UI)
+## Step 4: Implement the pair quiz card
 
-4. **Implement the pair quiz card**: two answer fields on one card with agency-cue prompts; decide on exact English cue phrasing
-5. **Wire up Ebisu scheduling**: on pair review, full Ebisu update on both individual word models if enrolled; on individual word review, passive Ebisu update on any associated pair model
+### Design decisions
+
+- **Pre-generated drills**: 3 drill sentence pairs per verb pair, baked into `transitive-pairs.json` at build time (no LLM call at quiz time)
+- **Scoring**: 1.0 (both correct), 0.5 (one correct), 0.0 (neither correct)
+- **Integration**: pairs mixed into the regular vocab quiz queue via QuizContext, not a separate quiz mode
+- **No LLM calls** for question generation or grading — only for optional post-quiz coaching ("Tutor me")
+
+### Drill data format
+
+Each pair gains a `drills` array in `transitive-pairs.json`:
+
+```json
+{
+  "intransitive": { "kana": "あく", "jmdictId": "...", "kanji": ["開く"] },
+  "transitive": { "kana": "あける", "jmdictId": "...", "kanji": ["開ける"] },
+  "examples": { ... },
+  "ambiguousReason": null,
+  "drills": [
+    {
+      "intransitive": { "en": "The door opened.", "ja": "ドアが開いた。" },
+      "transitive": { "en": "I opened the door.", "ja": "私がドアを開けた。" }
+    },
+    { ... },
+    { ... }
+  ]
+}
+```
+
+Generated via a batch Claude script that processes all unambiguous pairs, maintaining cross-pair variability by batching. Short, memorable, varied English cues; conjugated Japanese sentences for post-quiz audio playback.
+
+### Quiz card UI
+
+1. App picks one drill randomly from the 3
+2. Shows two English sentences (agency cues), e.g. "The door opened." / "I opened the door."
+3. Two input fields labeled "Dictionary form:" — student types kana, kanji, or romaji
+4. Grading: pure string match against pair's `kana`, `kanji[]`, and romaji conversion
+5. After grading, reveal:
+   - Correct/incorrect indicator per field
+   - The conjugated Japanese sentences with audio playback buttons (AVSpeechSynthesizer)
+   - Chat interface available for follow-up questions
+6. "Tutor me" button (on wrong answers) kicks off an LLM coaching turn explaining the distinction
+7. "Don't know" row: scores 0.0, reveals answers + Japanese sentences immediately
+
+### 4a. Generate drill sentences (batch script)
+
+New script `.claude/scripts/generate-pair-drills.mjs` (or similar):
+
+- Reads `transitive-pairs.json`
+- Filters to unambiguous pairs (ambiguousReason === null)
+- Batches pairs (e.g. 10–15 per LLM call) to maintain cross-pair variability
+- Prompt asks Claude to generate 3 drill pairs per verb pair: short memorable English sentences + conjugated Japanese sentences
+- Writes updated `transitive-pairs.json` with `drills` arrays added
+- Validates: every unambiguous pair has exactly 3 drills, Japanese sentences contain the expected verb
+
+### 4b. Integrate pairs into QuizContext
+
+Modify `QuizContext.build()` to include `transitive-pair` word_type:
+
+- Query `enrolledTransitivePairRecords()` (already exists in QuizDB)
+- Build `QuizItem` entries with `wordType: "transitive-pair"`, `facet: "pair-discrimination"`
+- Recall ranking works identically to vocab (same Ebisu math)
+- Pair items interleave with vocab items in the sorted queue
+
+### 4c. Extend QuizSession for pair quiz flow
+
+Add pair-specific logic to `QuizSession` (or a small helper):
+
+- Detect `wordType == "transitive-pair"` when advancing to next item
+- Load the pair's data from `TransitivePairCorpus` by `wordId`
+- Pick a random drill from the 3
+- Set phase to a new pair-specific awaiting state (two text fields instead of one)
+- On submit: string-match each field against accepted forms (kana, kanji[], romaji)
+- Compute score: both correct → 1.0, one correct → 0.5, neither → 0.0
+- Record review via existing `recordReview` with `wordType: "transitive-pair"`, `quizType: "pair-discrimination"`
+- On "Tutor me": send pair context + student answers + correct answers to LLM for coaching
+
+### 4d. PairQuizCard view
+
+New SwiftUI view (used within QuizView or as a subview):
+
+- Two labeled sections, each with: English cue sentence, text input field
+- Submit button (enabled when both fields non-empty)
+- Post-grading reveal: correct/wrong badges per field, Japanese sentences, audio buttons
+- "Don't know" row at bottom
+- "Tutor me" button (appears on wrong answers)
+- Chat interface below (reuses existing chat components)
+
+### 4e. Romaji-to-kana conversion
+
+Small utility for accepting romaji input:
+
+- Convert common romaji → hiragana (e.g. "aku" → "あく", "akeru" → "あける")
+- Used only for string matching, not display
+- Wanakana-style conversion (or a minimal subset covering verb dictionary forms)
+
+### 4f. Acceptance criteria
+
+- [ ] All unambiguous pairs have 3 drill sentence pairs in JSON
+- [ ] Pair items appear in vocab quiz queue ranked by Ebisu recall
+- [ ] Quiz card shows two English cues, two input fields
+- [ ] Grading accepts kana, kanji, or romaji; scores 1.0 / 0.5 / 0.0
+- [ ] Post-grading shows Japanese sentences with audio playback
+- [ ] "Don't know" reveals answers and scores 0.0
+- [ ] "Tutor me" triggers LLM coaching on wrong answers
+- [ ] Chat works after pair quiz just like vocab quiz
+
+### Work order
+
+4a → 4b → 4c → 4d → 4e (can be done alongside 4d)
+
+## Future steps (after pair quiz card)
+
+5. **Wire up Ebisu cross-updates**: on pair review, passive Ebisu update on both individual word models if enrolled; on individual word review, passive Ebisu update on any associated pair model
 6. **Cross-link word detail sheets**: show pair partner info (and a tap target to it) on each word's detail sheet
 
 - [ ] Consider how to add new transitive-intransitive pairs into this dataset.

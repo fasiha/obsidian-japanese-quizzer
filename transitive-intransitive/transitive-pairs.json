@@ -1,2320 +1,109 @@
 [
   {
     "intransitive": {
-      "kana": "あがる",
-      "jmdictId": "1352290",
-      "kanji": [
-        "上がる"
-      ]
-    },
-    "transitive": {
-      "kana": "あげる",
-      "jmdictId": "1352320",
-      "kanji": [
-        "上げる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "気温が上がった。 — The temperature rose.",
-      "transitive": "手を上げてください。 — Please raise your hand."
-    }
-  },
-  {
-    "intransitive": {
       "kana": "あく",
       "jmdictId": "1586270",
       "kanji": [
-        "開く",
-        "空く"
+        "開く"
       ]
     },
     "transitive": {
       "kana": "あける",
       "jmdictId": "1202450",
       "kanji": [
-        "開ける",
-        "空ける",
-        "明ける"
+        "開ける"
       ]
     },
     "ambiguousReason": null,
     "examples": {
       "intransitive": "ドアが開いた。 — The door opened.",
       "transitive": "窓を開けてください。 — Please open the window."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あそぶ",
-      "jmdictId": "1542160",
-      "kanji": [
-        "遊ぶ"
-      ]
     },
-    "transitive": {
-      "kana": "あそばす",
-      "jmdictId": "1639220",
-      "kanji": []
-    },
-    "examples": {
-      "intransitive": "子供たちは公園で遊んだ。 — The children played in the park.",
-      "transitive": "子供を外で遊ばせた。 — I let the children play outside."
-    },
-    "ambiguousReason": "あそばす has classical/dialectal transitive use (\"to amuse someone\") but is also analyzable as causative; borderline pair."
-  },
-  {
-    "intransitive": {
-      "kana": "あたたまる",
-      "jmdictId": "1586430",
-      "kanji": [
-        "温まる",
-        "暖まる"
-      ]
-    },
-    "transitive": {
-      "kana": "あたためる",
-      "jmdictId": "1586440",
-      "kanji": [
-        "温める",
-        "暖める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "部屋が温まった。 — The room warmed up.",
-      "transitive": "スープを温めた。 — I heated up the soup."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あたる",
-      "jmdictId": "1448810",
-      "kanji": [
-        "当たる"
-      ]
-    },
-    "transitive": {
-      "kana": "あてる",
-      "jmdictId": "1448860",
-      "kanji": [
-        "当てる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ボールが壁に当たった。 — The ball hit the wall.",
-      "transitive": "光を鏡に当てた。 — I shone the light on the mirror."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あつまる",
-      "jmdictId": "1333550",
-      "kanji": [
-        "集まる"
-      ]
-    },
-    "transitive": {
-      "kana": "あつめる",
-      "jmdictId": "1333560",
-      "kanji": [
-        "集める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "人が広場に集まった。 — People gathered in the plaza.",
-      "transitive": "切手を集めている。 — I collect stamps."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あまる",
-      "jmdictId": "1543910",
-      "kanji": [
-        "余る"
-      ]
-    },
-    "transitive": {
-      "kana": "あます",
-      "jmdictId": "1543860",
-      "kanji": [
-        "余す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ケーキが三つ余った。 — Three pieces of cake were left over.",
-      "transitive": "食費を余して貯金した。 — I saved on food expenses and put the rest in savings."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あらたまる",
-      "jmdictId": "1200730",
-      "kanji": [
-        "改まる"
-      ]
-    },
-    "transitive": {
-      "kana": "あらためる",
-      "jmdictId": "1200750",
-      "kanji": [
-        "改める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "年が改まった。 — The year changed (a new year began).",
-      "transitive": "悪い習慣を改めた。 — I corrected my bad habits."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "あらわれる",
-      "jmdictId": "1263510",
-      "kanji": [
-        "現れる",
-        "現われる",
-        "表れる"
-      ]
-    },
-    "transitive": {
-      "kana": "あらわす",
-      "jmdictId": "1263490",
-      "kanji": [
-        "表す",
-        "現す",
-        "表わす",
-        "現わす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "症状が現れた。 — Symptoms appeared.",
-      "transitive": "感謝の気持ちを表した。 — I expressed my gratitude."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "いきる",
-      "jmdictId": "1378520",
-      "kanji": [
-        "生きる"
-      ]
-    },
-    "transitive": {
-      "kana": "いかす",
-      "jmdictId": "1587070",
-      "kanji": [
-        "生かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "祖母は九十歳まで生きた。 — My grandmother lived to ninety.",
-      "transitive": "経験を生かして働いた。 — I put my experience to good use at work."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "いたむ",
-      "jmdictId": "1432710",
-      "kanji": [
-        "痛む",
-        "傷む"
-      ]
-    },
-    "transitive": {
-      "kana": "いためる",
-      "jmdictId": "1432720",
-      "kanji": [
-        "痛める",
-        "傷める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "足が痛む。 — My foot hurts.",
-      "transitive": "膝を傷めた。 — I injured my knee."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "いぶる",
-      "jmdictId": "1592180",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "いぶす",
-      "jmdictId": "1949270",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "薪がいぶっている。 — The firewood is smoldering.",
-      "transitive": "肉をいぶして保存した。 — I smoked the meat to preserve it."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うわる",
-      "jmdictId": "1357260",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "うえる",
-      "jmdictId": "1357250",
-      "kanji": [
-        "植える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "庭に桜が植わっている。 — Cherry trees are planted in the garden.",
-      "transitive": "庭に木を植えた。 — I planted a tree in the garden."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うかぶ",
-      "jmdictId": "1497430",
-      "kanji": [
-        "浮かぶ"
-      ]
-    },
-    "transitive": {
-      "kana": "うかべる",
-      "jmdictId": "1497360",
-      "kanji": [
-        "浮かべる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "雲が空に浮かんでいる。 — Clouds are floating in the sky.",
-      "transitive": "笑みを浮かべた。 — She showed a smile on her face."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うく",
-      "jmdictId": "1497420",
-      "kanji": [
-        "浮く"
-      ]
-    },
-    "transitive": {
-      "kana": "うかす",
-      "jmdictId": "1949280",
-      "kanji": [
-        "浮かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "木の葉が水に浮く。 — Leaves float on the water.",
-      "transitive": "タクシー代を浮かした。 — I saved on taxi fare."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うごく",
-      "jmdictId": "1451210",
-      "kanji": [
-        "動く"
-      ]
-    },
-    "transitive": {
-      "kana": "うごかす",
-      "jmdictId": "1451170",
-      "kanji": [
-        "動かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "電車が動いた。 — The train moved.",
-      "transitive": "机を動かした。 — I moved the desk."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うつる",
-      "jmdictId": "1158210",
-      "kanji": [
-        "移る"
-      ]
-    },
-    "transitive": {
-      "kana": "うつす",
-      "jmdictId": "1158160",
-      "kanji": [
-        "移す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "会社が東京に移った。 — The company moved to Tokyo.",
-      "transitive": "データを新しいパソコンに移した。 — I transferred the data to the new computer."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うまれる",
-      "jmdictId": "1378690",
-      "kanji": [
-        "生まれる"
-      ]
-    },
-    "transitive": {
-      "kana": "うむ",
-      "jmdictId": "1588410",
-      "kanji": [
-        "生む",
-        "産む"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "赤ちゃんが生まれた。 — A baby was born.",
-      "transitive": "猫が子猫を五匹産んだ。 — The cat gave birth to five kittens."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "うれる",
-      "jmdictId": "1473960",
-      "kanji": [
-        "売れる"
-      ]
-    },
-    "transitive": {
-      "kana": "うる",
-      "jmdictId": "1473950",
-      "kanji": [
-        "売る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "この本はよく売れている。 — This book sells well.",
-      "transitive": "車を売った。 — I sold the car."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おきる",
-      "jmdictId": "1223640",
-      "kanji": [
-        "起きる"
-      ]
-    },
-    "transitive": {
-      "kana": "おこす",
-      "jmdictId": "1223660",
-      "kanji": [
-        "起こす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "朝六時に起きた。 — I got up at six in the morning.",
-      "transitive": "母が私を起こした。 — My mother woke me up."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おさまる",
-      "jmdictId": "1316820",
-      "kanji": [
-        "治まる"
-      ]
-    },
-    "transitive": {
-      "kana": "おさめる",
-      "jmdictId": "1316830",
-      "kanji": [
-        "治める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "嵐が収まった。 — The storm subsided.",
-      "transitive": "争いを収めた。 — He settled the dispute."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おちる",
-      "jmdictId": "1548550",
-      "kanji": [
-        "落ちる"
-      ]
-    },
-    "transitive": {
-      "kana": "おとす",
-      "jmdictId": "1589260",
-      "kanji": [
-        "落とす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "財布が落ちた。 — The wallet fell.",
-      "transitive": "コップを落とした。 — I dropped the cup."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おどろく",
-      "jmdictId": "1238680",
-      "kanji": [
-        "驚く"
-      ]
-    },
-    "transitive": {
-      "kana": "おどろかす",
-      "jmdictId": "1238650",
-      "kanji": [
-        "驚かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "大きな音に驚いた。 — I was startled by the loud noise.",
-      "transitive": "友達を驚かした。 — I surprised my friend."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おぼれる",
-      "jmdictId": "1437560",
-      "kanji": [
-        "溺れる"
-      ]
-    },
-    "transitive": {
-      "kana": "おぼらす",
-      "jmdictId": "1949290",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "子供が川で溺れた。 — The child nearly drowned in the river.",
-      "transitive": "猫を水に溺らした。 — He drowned the cat in the water."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おりる",
-      "jmdictId": "1589500",
-      "kanji": [
-        "降りる",
-        "下りる"
-      ]
-    },
-    "transitive": {
-      "kana": "おろす",
-      "jmdictId": "1589580",
-      "kanji": [
-        "下ろす",
-        "降ろす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "バスを降りた。 — I got off the bus.",
-      "transitive": "荷物を降ろした。 — I unloaded the luggage."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おれる",
-      "jmdictId": "1385920",
-      "kanji": [
-        "折れる"
-      ]
-    },
-    "transitive": {
-      "kana": "おる",
-      "jmdictId": "1385910",
-      "kanji": [
-        "折る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "強風で枝が折れた。 — The branch broke in the strong wind.",
-      "transitive": "彼は紙を半分に折った。 — He folded the paper in half."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "おわる",
-      "jmdictId": "1589600",
-      "kanji": [
-        "終わる"
-      ]
-    },
-    "transitive": {
-      "kana": "おえる",
-      "jmdictId": "1332760",
-      "kanji": [
-        "終える"
-      ]
-    },
-    "examples": {
-      "intransitive": "会議は三時に終わった。 — The meeting ended at three o'clock.",
-      "transitive": "やっとレポートを終えた。 — I finally finished the report."
-    },
-    "ambiguousReason": "おわる is commonly used both intransitively (授業が終わる) and transitively (仕事を終わる), so marking it as purely intransitive would be misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "かえる",
-      "jmdictId": "1221270",
-      "kanji": [
-        "帰る"
-      ]
-    },
-    "transitive": {
-      "kana": "かえす",
-      "jmdictId": "1221240",
-      "kanji": [
-        "帰す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "父は夜遅く家に帰った。 — My father came home late at night.",
-      "transitive": "母は子供を家に帰した。 — The mother sent the child home."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かかる",
-      "jmdictId": "1207590",
-      "kanji": [
-        "掛かる"
-      ]
-    },
-    "transitive": {
-      "kana": "かける",
-      "jmdictId": "1207610",
-      "kanji": [
-        "掛ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "壁に絵がかかっている。 — A painting is hanging on the wall.",
-      "transitive": "壁に絵をかけた。 — I hung a painting on the wall."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かくれる",
-      "jmdictId": "1170660",
-      "kanji": [
-        "隠れる"
-      ]
-    },
-    "transitive": {
-      "kana": "かくす",
-      "jmdictId": "1170650",
-      "kanji": [
-        "隠す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫がソファの下に隠れた。 — The cat hid under the sofa.",
-      "transitive": "彼は手紙を引き出しに隠した。 — He hid the letter in the drawer."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かさなる",
-      "jmdictId": "1335800",
-      "kanji": [
-        "重なる"
-      ]
-    },
-    "transitive": {
-      "kana": "かさねる",
-      "jmdictId": "1335830",
-      "kanji": [
-        "重ねる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "不幸が重なった。 — Misfortunes piled up one after another.",
-      "transitive": "皿を重ねて棚に置いた。 — I stacked the plates and put them on the shelf."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かたづく",
-      "jmdictId": "1511770",
-      "kanji": [
-        "片付く"
-      ]
-    },
-    "transitive": {
-      "kana": "かたづける",
-      "jmdictId": "1511790",
-      "kanji": [
-        "片付ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "部屋がきれいに片付いた。 — The room was neatly tidied up.",
-      "transitive": "彼女は机の上を片付けた。 — She tidied up her desk."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かたまる",
-      "jmdictId": "1266550",
-      "kanji": [
-        "固まる"
-      ]
-    },
-    "transitive": {
-      "kana": "かためる",
-      "jmdictId": "1266570",
-      "kanji": [
-        "固める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "セメントが固まった。 — The cement hardened.",
-      "transitive": "地面を固めてから建てる。 — We build after hardening the ground."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かぶる",
-      "jmdictId": "1484330",
-      "kanji": [
-        "被る"
-      ]
-    },
-    "transitive": {
-      "kana": "かぶせる",
-      "jmdictId": "1484320",
-      "kanji": [
-        "被せる"
-      ]
-    },
-    "examples": {
-      "intransitive": "頭から水をかぶった。 — I poured water over my head.",
-      "transitive": "子供に毛布をかぶせた。 — I covered the child with a blanket."
-    },
-    "ambiguousReason": "かぶる is commonly used as a transitive verb (帽子をかぶる \"to put on a hat\"), so labeling it as the intransitive member of the pair would be misleading."
-  },
-  {
-    "intransitive": {
-      "kana": "からむ",
-      "jmdictId": "1548520",
-      "kanji": [
-        "絡む"
-      ]
-    },
-    "transitive": {
-      "kana": "からめる",
-      "jmdictId": "1949300",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "糸が絡んでほどけない。 — The thread got tangled and won't come undone.",
-      "transitive": "足にロープを絡めて転ばせた。 — He entwined the rope around the person's legs and tripped them."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かれる",
-      "jmdictId": "1267220",
-      "kanji": [
-        "枯れる"
-      ]
-    },
-    "transitive": {
-      "kana": "からす",
-      "jmdictId": "1267210",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "夏の暑さで花が枯れた。 — The flowers withered from the summer heat.",
-      "transitive": "水をやらずに木を枯らしてしまった。 — I killed the tree by not watering it."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "かわる",
-      "jmdictId": "1510790",
-      "kanji": [
-        "変わる"
-      ]
-    },
-    "transitive": {
-      "kana": "かえる",
-      "jmdictId": "1510650",
-      "kanji": [
-        "変える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "信号の色が変わった。 — The traffic light changed color.",
-      "transitive": "彼は髪の色を変えた。 — He changed his hair color."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きえる",
-      "jmdictId": "1350040",
-      "kanji": [
-        "消える"
-      ]
-    },
-    "transitive": {
-      "kana": "けす",
-      "jmdictId": "1350110",
-      "kanji": [
-        "消す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ろうそくの火が消えた。 — The candle flame went out.",
-      "transitive": "彼は電気を消した。 — He turned off the light."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きこえる",
-      "jmdictId": "1591150",
-      "kanji": [
-        "聞こえる"
-      ]
-    },
-    "transitive": {
-      "kana": "きく",
-      "jmdictId": "1591110",
-      "kanji": [
-        "聞く",
-        "聴く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "隣の部屋から音楽が聞こえる。 — I can hear music from the next room.",
-      "transitive": "彼はラジオでニュースを聞いた。 — He listened to the news on the radio."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きまる",
-      "jmdictId": "1591420",
-      "kanji": [
-        "決まる"
-      ]
-    },
-    "transitive": {
-      "kana": "きめる",
-      "jmdictId": "1254180",
-      "kanji": [
-        "決める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "会議の日程が決まった。 — The meeting schedule has been decided.",
-      "transitive": "彼は旅行の日程を決めた。 — He decided the travel schedule."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きよまる",
-      "jmdictId": "1378150",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "きよめる",
-      "jmdictId": "1378170",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "祈りによって心が清まった。 — My heart was purified through prayer.",
-      "transitive": "神主が神殿を清めた。 — The priest purified the shrine."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きれる",
-      "jmdictId": "1384860",
-      "kanji": [
-        "切れる"
-      ]
-    },
-    "transitive": {
-      "kana": "きる",
-      "jmdictId": "1384830",
-      "kanji": [
-        "切る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ロープが切れた。 — The rope snapped.",
-      "transitive": "彼はロープをナイフで切った。 — He cut the rope with a knife."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "きわまる",
-      "jmdictId": "1591960",
-      "kanji": [
-        "極まる"
-      ]
-    },
-    "transitive": {
-      "kana": "きわめる",
-      "jmdictId": "1591970",
-      "kanji": [
-        "極める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼の悲しみは極まった。 — His grief reached its extreme.",
-      "transitive": "彼は技術を極めた。 — He mastered the art to its utmost."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "くだける",
-      "jmdictId": "1295190",
-      "kanji": [
-        "砕ける"
-      ]
-    },
-    "transitive": {
-      "kana": "くだく",
-      "jmdictId": "1295170",
-      "kanji": [
-        "砕く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "岩が砕けて砂になった。 — The rock crumbled and turned to sand.",
-      "transitive": "彼は氷を細かく砕いた。 — He crushed the ice into small pieces."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "くだる",
-      "jmdictId": "1184450",
-      "kanji": [
-        "下る"
-      ]
-    },
-    "transitive": {
-      "kana": "くだす",
-      "jmdictId": "1184320",
-      "kanji": [
-        "下す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "坂道を下った。 — I went down the slope.",
-      "transitive": "裁判官が判決を下した。 — The judge handed down a verdict."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "くもる",
-      "jmdictId": "1457560",
-      "kanji": [
-        "曇る"
-      ]
-    },
-    "transitive": {
-      "kana": "くもらす",
-      "jmdictId": "2012670",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "空が曇ってきた。 — The sky has gotten cloudy.",
-      "transitive": "湯気が鏡を曇らせた。 — The steam fogged up the mirror."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "くるしむ",
-      "jmdictId": "1244350",
-      "kanji": [
-        "苦しむ"
-      ]
-    },
-    "transitive": {
-      "kana": "くるしめる",
-      "jmdictId": "1244360",
-      "kanji": [
-        "苦しめる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼は借金に苦しんでいる。 — He is suffering from debt.",
-      "transitive": "騒音が住民を苦しめている。 — The noise is tormenting the residents."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "くわわる",
-      "jmdictId": "1189980",
-      "kanji": [
-        "加わる"
-      ]
-    },
-    "transitive": {
-      "kana": "くわえる",
-      "jmdictId": "1189960",
-      "kanji": [
-        "加える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "新しいメンバーがチームに加わった。 — A new member joined the team.",
-      "transitive": "スープに塩を加えた。 — I added salt to the soup."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こえる",
-      "jmdictId": "1484260",
-      "kanji": [
-        "肥える"
-      ]
-    },
-    "transitive": {
-      "kana": "こやす",
-      "jmdictId": "1593450",
-      "kanji": [
-        "肥やす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "よく食べて太って肥えた牛だ。 — It's a well-fed, fattened cow.",
-      "transitive": "堆肥で畑を肥やした。 — I fertilized the field with compost."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こげる",
-      "jmdictId": "1350730",
-      "kanji": [
-        "焦げる"
-      ]
-    },
-    "transitive": {
-      "kana": "こがす",
-      "jmdictId": "1350710",
-      "kanji": [
-        "焦がす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "パンが焦げてしまった。 — The bread got burned.",
-      "transitive": "うっかり魚を焦がしてしまった。 — I accidentally scorched the fish."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こぼれる",
-      "jmdictId": "1557650",
-      "kanji": [
-        "零れる"
-      ]
-    },
-    "transitive": {
-      "kana": "こぼす",
-      "jmdictId": "1557640",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "コップから水がこぼれた。 — Water spilled from the cup.",
-      "transitive": "うっかりコーヒーをこぼしてしまった。 — I accidentally spilled the coffee."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こむ",
-      "jmdictId": "1593410",
-      "kanji": [
-        "込む"
-      ]
-    },
-    "transitive": {
-      "kana": "こめる",
-      "jmdictId": "1288790",
-      "kanji": [
-        "込める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "電車がとてもこんでいる。 — The train is very crowded.",
-      "transitive": "心をこめて手紙を書いた。 — I wrote the letter with all my heart."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こる",
-      "jmdictId": "1239070",
-      "kanji": [
-        "凝る"
-      ]
-    },
-    "transitive": {
-      "kana": "こらす",
-      "jmdictId": "1239010",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "肩がこって痛い。 — My shoulders are stiff and hurt.",
-      "transitive": "目をこらして遠くを見た。 — I strained my eyes to look into the distance."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ころがる",
-      "jmdictId": "1441000",
-      "kanji": [
-        "転がる"
-      ]
-    },
-    "transitive": {
-      "kana": "ころがす",
-      "jmdictId": "1440980",
-      "kanji": [
-        "転がす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ボールが坂道をころがった。 — The ball rolled down the slope.",
-      "transitive": "子供がボールをころがした。 — The child rolled the ball."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "こわれる",
-      "jmdictId": "1199900",
-      "kanji": [
-        "壊れる"
-      ]
-    },
-    "transitive": {
-      "kana": "こわす",
-      "jmdictId": "1199890",
-      "kanji": [
-        "壊す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "地震で建物がこわれた。 — The building was damaged in the earthquake.",
-      "transitive": "弟がおもちゃをこわした。 — My little brother broke the toy."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "さがる",
-      "jmdictId": "1184160",
-      "kanji": [
-        "下がる"
-      ]
-    },
-    "transitive": {
-      "kana": "さげる",
-      "jmdictId": "1184170",
-      "kanji": [
-        "下げる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "気温がさがった。 — The temperature dropped.",
-      "transitive": "エアコンの温度をさげた。 — I lowered the air conditioner temperature."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "さける",
-      "jmdictId": "1558610",
-      "kanji": [
-        "裂ける"
-      ]
-    },
-    "transitive": {
-      "kana": "さく",
-      "jmdictId": "1207730",
-      "kanji": [
-        "裂く",
-        "割く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "布がさけてしまった。 — The cloth tore.",
-      "transitive": "魚の腹をさいた。 — I cut open the fish's belly."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ささる",
-      "jmdictId": "1306390",
-      "kanji": [
-        "刺さる"
-      ]
-    },
-    "transitive": {
-      "kana": "さす",
-      "jmdictId": "1306470",
-      "kanji": [
-        "刺す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "とげが指にささった。 — A thorn got stuck in my finger.",
-      "transitive": "虫ピンで標本をさした。 — I pinned the specimen with an insect pin."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "さだまる",
-      "jmdictId": "1435370",
-      "kanji": [
-        "定まる"
-      ]
-    },
-    "transitive": {
-      "kana": "さだめる",
-      "jmdictId": "1435380",
-      "kanji": [
-        "定める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ようやく方針がさだまった。 — The policy was finally settled.",
-      "transitive": "会議で新しい規則をさだめた。 — We established new rules at the meeting."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "さめる",
-      "jmdictId": "1206070",
-      "kanji": [
-        "覚める"
-      ]
-    },
-    "transitive": {
-      "kana": "さます",
-      "jmdictId": "1206060",
-      "kanji": [
-        "覚ます"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "大きな音で目がさめた。 — I woke up from a loud noise.",
-      "transitive": "母が私を朝早くさました。 — My mother woke me up early in the morning."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "しずむ",
-      "jmdictId": "1431670",
-      "kanji": [
-        "沈む"
-      ]
-    },
-    "transitive": {
-      "kana": "しずめる",
-      "jmdictId": "1431680",
-      "kanji": [
-        "沈める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "船が海にしずんだ。 — The ship sank into the sea.",
-      "transitive": "敵の艦船をしずめた。 — They sank the enemy's warship."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "しずまる",
-      "jmdictId": "1594270",
-      "kanji": [
-        "静まる",
-        "鎮まる"
-      ]
-    },
-    "transitive": {
-      "kana": "しずめる",
-      "jmdictId": "1594280",
-      "kanji": [
-        "静める",
-        "鎮める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "騒ぎがようやくしずまった。 — The commotion finally quieted down.",
-      "transitive": "先生が生徒たちをしずめた。 — The teacher quieted the students down."
-    }
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The sliding door opened suddenly.",
+          "ja": "引き戸が急に開いた。"
+        },
+        "transitive": {
+          "en": "She opened the curtains to see why.",
+          "ja": "彼女は理由を確かめようとカーテンを開けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The shop door is open now.",
+          "ja": "店のドアが開いている。"
+        },
+        "transitive": {
+          "en": "The owner also opened the back window.",
+          "ja": "店主は裏の窓も開けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The gate opens at eight every morning.",
+          "ja": "門は毎朝八時に開く。"
+        },
+        "transitive": {
+          "en": "Please open the side door for early visitors.",
+          "ja": "早く来た人のために、横のドアを開けてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
       "kana": "しまる",
-      "jmdictId": "1280810",
-      "kanji": []
+      "jmdictId": "1436560",
+      "kanji": [
+        "締まる"
+      ]
     },
     "transitive": {
       "kana": "しめる",
-      "jmdictId": "1280820",
+      "jmdictId": "1436570",
       "kanji": [
-        "絞める"
+        "締める"
       ]
     },
     "ambiguousReason": null,
     "examples": {
       "intransitive": "ネクタイがきつくしまっている。 — The necktie is tightly constricted.",
       "transitive": "彼はネクタイをしめた。 — He tightened his necktie."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "すぎる",
-      "jmdictId": "1195970",
-      "kanji": [
-        "過ぎる"
-      ]
     },
-    "transitive": {
-      "kana": "すごす",
-      "jmdictId": "1196000",
-      "kanji": [
-        "過ごす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "時間があっという間にすぎた。 — Time passed in the blink of an eye.",
-      "transitive": "休日をのんびりすごした。 — I spent the holiday relaxing."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "すむ",
-      "jmdictId": "1295070",
-      "kanji": [
-        "済む"
-      ]
-    },
-    "transitive": {
-      "kana": "すます",
-      "jmdictId": "1295030",
-      "kanji": [
-        "済ます"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "会議はもうすんだ。 — The meeting is already over.",
-      "transitive": "宿題をすませてから遊びに行った。 — I went out to play after finishing my homework."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "せばまる",
-      "jmdictId": "1237690",
-      "kanji": [
-        "狭まる"
-      ]
-    },
-    "transitive": {
-      "kana": "せばめる",
-      "jmdictId": "1237700",
-      "kanji": [
-        "狭める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "道幅がせばまった。 — The road narrowed.",
-      "transitive": "選択肢をせばめた。 — I narrowed down the options."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "そだつ",
-      "jmdictId": "1160540",
-      "kanji": [
-        "育つ"
-      ]
-    },
-    "transitive": {
-      "kana": "そだてる",
-      "jmdictId": "1160570",
-      "kanji": [
-        "育てる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "この子は元気にそだった。 — This child grew up healthy.",
-      "transitive": "祖母が私をそだててくれた。 — My grandmother raised me."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "そまる",
-      "jmdictId": "1391100",
-      "kanji": [
-        "染まる"
-      ]
-    },
-    "transitive": {
-      "kana": "そめる",
-      "jmdictId": "1391160",
-      "kanji": [
-        "染める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "白いシャツが赤くそまった。 — The white shirt was dyed red.",
-      "transitive": "布を藍色にそめた。 — I dyed the cloth indigo."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "そむける",
-      "jmdictId": "1472690",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "そむく",
-      "jmdictId": "1472680",
-      "kanji": [
-        "背く"
-      ]
-    },
-    "examples": {
-      "intransitive": "彼女は顔をそむけた。 — She turned her face away.",
-      "transitive": "親の期待にそむいてしまった。 — I went against my parents' expectations."
-    },
-    "ambiguousReason": "Share 背 root (\"turn away\"); そむく has drifted to \"defy\" but physical metaphor still connects them. Not a clean state-change pair."
-  },
-  {
-    "intransitive": {
-      "kana": "そる",
-      "jmdictId": "1480170",
-      "kanji": [
-        "反る"
-      ]
-    },
-    "transitive": {
-      "kana": "そらす",
-      "jmdictId": "1480090",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "板が湿気でそった。 — The board warped from the moisture.",
-      "transitive": "体を後ろにそらした。 — I bent my body backward."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "そろう",
-      "jmdictId": "1406110",
-      "kanji": [
-        "揃う"
-      ]
-    },
-    "transitive": {
-      "kana": "そろえる",
-      "jmdictId": "1406120",
-      "kanji": [
-        "揃える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "メンバーが全員そろった。 — All the members have gathered.",
-      "transitive": "靴をきれいにそろえた。 — I neatly lined up the shoes."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "たおれる",
-      "jmdictId": "1445790",
-      "kanji": [
-        "倒れる"
-      ]
-    },
-    "transitive": {
-      "kana": "たおす",
-      "jmdictId": "1445770",
-      "kanji": [
-        "倒す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "強風で木がたおれた。 — The tree fell over in the strong wind.",
-      "transitive": "相撲で相手をたおした。 — He knocked down his opponent in sumo."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "たすかる",
-      "jmdictId": "1344380",
-      "kanji": [
-        "助かる"
-      ]
-    },
-    "transitive": {
-      "kana": "たすける",
-      "jmdictId": "1344410",
-      "kanji": [
-        "助ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "全員無事にたすかった。 — Everyone was safely rescued.",
-      "transitive": "溺れている人をたすけた。 — I rescued the drowning person."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "たつ",
-      "jmdictId": "1597040",
-      "kanji": [
-        "立つ"
-      ]
-    },
-    "transitive": {
-      "kana": "たてる",
-      "jmdictId": "1551530",
-      "kanji": [
-        "立てる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "煙がたった。 — Smoke rose up.",
-      "transitive": "庭に旗をたてた。 — I put up a flag in the yard."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "たまる",
-      "jmdictId": "1552650",
-      "kanji": [
-        "溜まる"
-      ]
-    },
-    "transitive": {
-      "kana": "ためる",
-      "jmdictId": "1552630",
-      "kanji": [
-        "溜める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "水たまりに水がたまった。 — Water collected in the puddle.",
-      "transitive": "毎月少しずつお金をためている。 — I save a little money every month."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ちぢむ",
-      "jmdictId": "1337560",
-      "kanji": [
-        "縮む"
-      ]
-    },
-    "transitive": {
-      "kana": "ちぢめる",
-      "jmdictId": "1337570",
-      "kanji": [
-        "縮める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "セーターが洗濯で縮んだ。 — The sweater shrank in the wash.",
-      "transitive": "彼は車間距離を縮めた。 — He shortened the distance between the cars."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ちる",
-      "jmdictId": "1303490",
-      "kanji": [
-        "散る"
-      ]
-    },
-    "transitive": {
-      "kana": "ちらす",
-      "jmdictId": "1303460",
-      "kanji": [
-        "散らす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "桜の花びらが風に散った。 — The cherry blossom petals fell in the wind.",
-      "transitive": "子供が部屋中におもちゃを散らした。 — The child scattered toys all over the room."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つかる",
-      "jmdictId": "1433670",
-      "kanji": [
-        "浸かる"
-      ]
-    },
-    "transitive": {
-      "kana": "つける",
-      "jmdictId": "1433680",
-      "kanji": [
-        "漬ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "長い間お風呂に漬かっていた。 — I was soaking in the bath for a long time.",
-      "transitive": "大根をぬか床に漬けた。 — I pickled the daikon in a rice bran bed."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つく",
-      "jmdictId": "1495740",
-      "kanji": [
-        "付く"
-      ]
-    },
-    "transitive": {
-      "kana": "つける",
-      "jmdictId": "1495770",
-      "kanji": [
-        "付ける",
-        "着ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
-      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つたわる",
-      "jmdictId": "1441900",
-      "kanji": [
-        "伝わる"
-      ]
-    },
-    "transitive": {
-      "kana": "つたえる",
-      "jmdictId": "1441870",
-      "kanji": [
-        "伝える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "その噂はすぐに町中に伝わった。 — The rumor quickly spread throughout the town.",
-      "transitive": "彼は私にそのニュースを伝えた。 — He conveyed the news to me."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つづく",
-      "jmdictId": "1405790",
-      "kanji": [
-        "続く"
-      ]
-    },
-    "transitive": {
-      "kana": "つづける",
-      "jmdictId": "1405800",
-      "kanji": [
-        "続ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "雨が三日間続いた。 — The rain continued for three days.",
-      "transitive": "彼女は十年間日記を書き続けた。 — She continued writing a diary for ten years."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つながる",
-      "jmdictId": "1251880",
-      "kanji": [
-        "繋がる"
-      ]
-    },
-    "transitive": {
-      "kana": "つなぐ",
-      "jmdictId": "1251900",
-      "kanji": [
-        "繋ぐ"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "この道は駅につながっている。 — This road is connected to the station.",
-      "transitive": "犬をリードでつないだ。 — I tied the dog with a leash."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つぶれる",
-      "jmdictId": "1433830",
-      "kanji": [
-        "潰れる"
-      ]
-    },
-    "transitive": {
-      "kana": "つぶす",
-      "jmdictId": "1433820",
-      "kanji": [
-        "潰す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "トマトが手で押したら潰れた。 — The tomato was crushed when I pressed it with my hand.",
-      "transitive": "彼は空き缶を足で潰した。 — He crushed the empty can with his foot."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "つまる",
-      "jmdictId": "1226480",
-      "kanji": [
-        "詰まる"
-      ]
-    },
-    "transitive": {
-      "kana": "つめる",
-      "jmdictId": "1226510",
-      "kanji": [
-        "詰める"
-      ]
-    },
-    "examples": {
-      "intransitive": "排水溝が詰まった。 — The drain got clogged.",
-      "transitive": "スーツケースに服を詰めた。 — I packed clothes into the suitcase."
-    },
-    "ambiguousReason": "つめる is marked both vt and vi in JMDict and is indeed used intransitively (e.g. 根を詰める → 詰める alone meaning \"to work intensely\"), though the primary pairing with つまる is still a valid transitive/intransitive pattern; marking AMBIGUOUS due to つめる's intransitive uses."
-  },
-  {
-    "intransitive": {
-      "kana": "つもる",
-      "jmdictId": "1382990",
-      "kanji": [
-        "積もる"
-      ]
-    },
-    "transitive": {
-      "kana": "つむ",
-      "jmdictId": "1382970",
-      "kanji": [
-        "積む"
-      ]
-    },
-    "examples": {
-      "intransitive": "雪が屋根に積もった。 — Snow piled up on the roof.",
-      "transitive": "トラックに荷物を積んだ。 — I loaded cargo onto the truck."
-    },
-    "ambiguousReason": "つもる is tagged both vt and vi in JMDict (vi = \"to pile up,\" vt = \"to estimate\"), making the intransitive labeling not fully clean, though the pile-up sense does form a genuine pair with つむ."
-  },
-  {
-    "intransitive": {
-      "kana": "でる",
-      "jmdictId": "1338240",
-      "kanji": [
-        "出る"
-      ]
-    },
-    "transitive": {
-      "kana": "だす",
-      "jmdictId": "1338180",
-      "kanji": [
-        "出す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫が窓から出た。 — The cat went out through the window.",
-      "transitive": "財布からお金を出した。 — I took money out of my wallet."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "とおる",
-      "jmdictId": "1433030",
-      "kanji": [
-        "通る"
-      ]
-    },
-    "transitive": {
-      "kana": "とおす",
-      "jmdictId": "1432900",
-      "kanji": [
-        "通す",
-        "徹す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "この道は公園を通る。 — This road goes through the park.",
-      "transitive": "針に糸を通した。 — I threaded the needle."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "とける",
-      "jmdictId": "1198910",
-      "kanji": [
-        "解ける"
-      ]
-    },
-    "transitive": {
-      "kana": "とかす",
-      "jmdictId": "1546040",
-      "kanji": [
-        "溶かす"
-      ]
-    },
-    "examples": {
-      "intransitive": "チョコレートが溶けた。 — The chocolate melted.",
-      "transitive": "バターをフライパンで溶かした。 — I melted butter in the frying pan."
-    },
-    "ambiguousReason": "In kana, とける/とかす is valid for the 溶 sense (melt); Opus was misled by JMDict showing the 解ける sense. Multiple kanji readings overlap in kana form."
-  },
-  {
-    "intransitive": {
-      "kana": "とどく",
-      "jmdictId": "1457200",
-      "kanji": [
-        "届く"
-      ]
-    },
-    "transitive": {
-      "kana": "とどける",
-      "jmdictId": "1457210",
-      "kanji": [
-        "届ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "荷物が無事に届いた。 — The package arrived safely.",
-      "transitive": "書類を役所に届けた。 — I submitted the documents to the government office."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "とまる",
-      "jmdictId": "1310620",
-      "kanji": [
-        "止まる",
-        "留まる"
-      ]
-    },
-    "transitive": {
-      "kana": "とめる",
-      "jmdictId": "1310670",
-      "kanji": [
-        "止める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "バスが停留所で止まった。 — The bus stopped at the bus stop.",
-      "transitive": "彼は車を駐車場に止めた。 — He parked the car in the parking lot."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "とれる",
-      "jmdictId": "1326990",
-      "kanji": [
-        "取れる"
-      ]
-    },
-    "transitive": {
-      "kana": "とる",
-      "jmdictId": "1326980",
-      "kanji": [
-        "取る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ボタンが取れた。 — The button came off.",
-      "transitive": "棚から本を取った。 — I took a book from the shelf."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "なおる",
-      "jmdictId": "1599400",
-      "kanji": [
-        "治る"
-      ]
-    },
-    "transitive": {
-      "kana": "なおす",
-      "jmdictId": "1599390",
-      "kanji": [
-        "直す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "風邪が治った。 — My cold got better.",
-      "transitive": "医者が病気を治した。 — The doctor cured the illness."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ながれる",
-      "jmdictId": "1552140",
-      "kanji": [
-        "流れる"
-      ]
-    },
-    "transitive": {
-      "kana": "ながす",
-      "jmdictId": "1552120",
-      "kanji": [
-        "流す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "川の水がゆっくり流れている。 — The river water is flowing slowly.",
-      "transitive": "トイレの水を流した。 — I flushed the toilet."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "なく",
-      "jmdictId": "1229840",
-      "kanji": [
-        "泣く"
-      ]
-    },
-    "transitive": {
-      "kana": "なかす",
-      "jmdictId": "1229645",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "赤ちゃんが大声で泣いた。 — The baby cried loudly.",
-      "transitive": "彼の言葉が彼女を泣かした。 — His words made her cry."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "なくなる",
-      "jmdictId": "1518540",
-      "kanji": [
-        "亡くなる"
-      ]
-    },
-    "transitive": {
-      "kana": "なくす",
-      "jmdictId": "1529530",
-      "kanji": [
-        "無くす"
-      ]
-    },
-    "examples": {
-      "intransitive": "祖父は去年亡くなった。 — My grandfather passed away last year.",
-      "transitive": "大切な鍵をなくしてしまった。 — I lost an important key."
-    },
-    "ambiguousReason": "なくなる as 亡くなる (\"to die\") does not form a natural transitive/intransitive pair with なくす; the actual pair is 無くなる/無くす (\"to disappear\"/\"to lose\"), and the JMDict entry shown for なくなる only lists the \"die\" sense, making this misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "なつく",
-      "jmdictId": "1200510",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "なつける",
-      "jmdictId": "1200520",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫がすっかり私になついた。 — The cat became completely attached to me.",
-      "transitive": "お菓子をあげて子供をなつけた。 — I won the child over by giving them sweets."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ならぶ",
-      "jmdictId": "1508380",
-      "kanji": [
-        "並ぶ"
-      ]
-    },
-    "transitive": {
-      "kana": "ならべる",
-      "jmdictId": "1508390",
-      "kanji": [
-        "並べる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "学生たちが校庭に並んだ。 — The students lined up in the schoolyard.",
-      "transitive": "本を棚に並べた。 — I arranged the books on the shelf."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "なる",
-      "jmdictId": "1532910",
-      "kanji": [
-        "鳴る"
-      ]
-    },
-    "transitive": {
-      "kana": "ならす",
-      "jmdictId": "1532880",
-      "kanji": [
-        "鳴らす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "遠くで雷が鳴った。 — Thunder rumbled in the distance.",
-      "transitive": "彼は大きな声で指を鳴らした。 — He snapped his fingers loudly."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "にえる",
-      "jmdictId": "1322490",
-      "kanji": [
-        "煮える"
-      ]
-    },
-    "transitive": {
-      "kana": "にる",
-      "jmdictId": "1322540",
-      "kanji": [
-        "煮る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "大根がよく煮えている。 — The daikon is well cooked.",
-      "transitive": "母が野菜を煮た。 — My mother simmered the vegetables."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "にげる",
-      "jmdictId": "1450330",
-      "kanji": [
-        "逃げる"
-      ]
-    },
-    "transitive": {
-      "kana": "にがす",
-      "jmdictId": "1450320",
-      "kanji": [
-        "逃がす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "泥棒が警察から逃げた。 — The thief ran away from the police.",
-      "transitive": "うっかり魚を逃がしてしまった。 — I accidentally let the fish get away."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "にごる",
-      "jmdictId": "1415960",
-      "kanji": [
-        "濁る"
-      ]
-    },
-    "transitive": {
-      "kana": "にごす",
-      "jmdictId": "1415930",
-      "kanji": [
-        "濁す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "雨で川の水が濁った。 — The river water became muddy from the rain.",
-      "transitive": "彼は言葉を濁して答えなかった。 — He was evasive with his words and didn't answer."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ぬける",
-      "jmdictId": "1478200",
-      "kanji": [
-        "抜ける"
-      ]
-    },
-    "transitive": {
-      "kana": "ぬく",
-      "jmdictId": "1478190",
-      "kanji": [
-        "抜く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "歯が一本抜けた。 — One tooth fell out.",
-      "transitive": "医者が親知らずを抜いた。 — The dentist pulled out the wisdom tooth."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ぬげる",
-      "jmdictId": "1416410",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "ぬぐ",
-      "jmdictId": "1416400",
-      "kanji": [
-        "脱ぐ"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "歩いているうちに靴が脱げた。 — My shoe slipped off while I was walking.",
-      "transitive": "家に入る前に靴を脱いだ。 — I took off my shoes before entering the house."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ぬれる",
-      "jmdictId": "1467620",
-      "kanji": [
-        "濡れる"
-      ]
-    },
-    "transitive": {
-      "kana": "ぬらす",
-      "jmdictId": "1467610",
-      "kanji": [
-        "濡らす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "雨に降られて服が濡れた。 — I got caught in the rain and my clothes got wet.",
-      "transitive": "タオルを水で濡らした。 — I wet the towel with water."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ねる",
-      "jmdictId": "1360010",
-      "kanji": [
-        "寝る"
-      ]
-    },
-    "transitive": {
-      "kana": "ねかす",
-      "jmdictId": "1359960",
-      "kanji": [
-        "寝かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "子供はもう寝ている。 — The child is already sleeping.",
-      "transitive": "赤ちゃんをベッドに寝かした。 — I put the baby to bed."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "のこる",
-      "jmdictId": "1304510",
-      "kanji": [
-        "残る"
-      ]
-    },
-    "transitive": {
-      "kana": "のこす",
-      "jmdictId": "1600260",
-      "kanji": [
-        "残す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ケーキが一切れ残った。 — One slice of cake remained.",
-      "transitive": "子供たちにケーキを残しておいた。 — I saved some cake for the children."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "のびる",
-      "jmdictId": "1358870",
-      "kanji": [
-        "伸びる",
-        "延びる"
-      ]
-    },
-    "transitive": {
-      "kana": "のばす",
-      "jmdictId": "1600290",
-      "kanji": [
-        "伸ばす",
-        "延ばす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "髪が肩まで伸びた。 — My hair grew down to my shoulders.",
-      "transitive": "彼女はまっすぐ手を伸ばした。 — She stretched out her hand straight."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "のる",
-      "jmdictId": "1355120",
-      "kanji": [
-        "乗る"
-      ]
-    },
-    "transitive": {
-      "kana": "のせる",
-      "jmdictId": "1600270",
-      "kanji": [
-        "乗せる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "電車に乗った。 — I got on the train.",
-      "transitive": "荷物を車に載せた。 — I loaded the luggage into the car."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "はいる",
-      "jmdictId": "1465590",
-      "kanji": [
-        "入る"
-      ]
-    },
-    "transitive": {
-      "kana": "いれる",
-      "jmdictId": "1465610",
-      "kanji": [
-        "入れる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫が部屋に入った。 — The cat entered the room.",
-      "transitive": "本を鞄に入れた。 — I put the book in the bag."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "はえる",
-      "jmdictId": "1378490",
-      "kanji": [
-        "生える"
-      ]
-    },
-    "transitive": {
-      "kana": "はやす",
-      "jmdictId": "1378760",
-      "kanji": [
-        "生やす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "庭に雑草が生えた。 — Weeds grew in the garden.",
-      "transitive": "彼はひげを生やしている。 — He is growing a beard."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "はがれる",
-      "jmdictId": "1474330",
-      "kanji": [
-        "剥がれる"
-      ]
-    },
-    "transitive": {
-      "kana": "はがす",
-      "jmdictId": "1600670",
-      "kanji": [
-        "剥がす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "壁紙が湿気で剥がれた。 — The wallpaper peeled off due to humidity.",
-      "transitive": "古いシールを剥がした。 — I peeled off the old sticker."
-    }
+    "drills": [
+      {
+        "intransitive": {
+          "en": "One end of the rope tightened in the wind.",
+          "ja": "風でロープの片端がしまった。"
+        },
+        "transitive": {
+          "en": "He quickly tightened the other end too.",
+          "ja": "彼はもう一方の端もすぐに締めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The collar is too tight.",
+          "ja": "首輪がきつくしまっている。"
+        },
+        "transitive": {
+          "en": "She loosened it, then tightened it one notch less.",
+          "ja": "彼女は一段緩めてから、もう少し軽く締めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The bag's drawstring tightened on its own.",
+          "ja": "袋の口がひとりでにしまった。"
+        },
+        "transitive": {
+          "en": "He tightened the other bag just the same way.",
+          "ja": "彼はもう一つの袋の口も同じように締めた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
@@ -2335,430 +124,1000 @@
     "examples": {
       "intransitive": "授業が始まった。 — The class began.",
       "transitive": "先生が授業を始めた。 — The teacher started the class."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The movie started while we were still talking.",
+          "ja": "まだ話しているうちに映画が始まった。"
+        },
+        "transitive": {
+          "en": "She nudged me and started fast-forwarding.",
+          "ja": "彼女は私を肘でつついて早送りを始めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The rain began just as we reached the park.",
+          "ja": "公園に着いたとたん、雨が始まった。"
+        },
+        "transitive": {
+          "en": "He quickly started a campfire to warm us up.",
+          "ja": "彼はすぐに焚き火を始めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The argument is starting again in the next room.",
+          "ja": "隣の部屋でまた口論が始まっている。"
+        },
+        "transitive": {
+          "en": "She ignored it and started cooking.",
+          "ja": "彼女は気にせず料理を始めた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "はずれる",
-      "jmdictId": "1203310",
+      "kana": "きまる",
+      "jmdictId": "1591420",
       "kanji": [
-        "外れる"
+        "決まる"
       ]
     },
     "transitive": {
-      "kana": "はずす",
-      "jmdictId": "1203270",
+      "kana": "きめる",
+      "jmdictId": "1254180",
       "kanji": [
-        "外す"
+        "決める"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "ボタンが外れた。 — The button came off.",
-      "transitive": "眼鏡を外して顔を洗った。 — I took off my glasses and washed my face."
-    }
+      "intransitive": "会議の日程が決まった。 — The meeting schedule has been decided.",
+      "transitive": "彼は旅行の日程を決めた。 — He decided the travel schedule."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The date for the party was decided.",
+          "ja": "パーティーの日が決まった。"
+        },
+        "transitive": {
+          "en": "She decided the menu right away.",
+          "ja": "彼女はすぐにメニューを決めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The new rules have been set.",
+          "ja": "新しいルールが決まっている。"
+        },
+        "transitive": {
+          "en": "Please decide your team by tomorrow.",
+          "ja": "明日までにチームを決めてください。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The finalists were finally decided.",
+          "ja": "やっと候補者が決まった。"
+        },
+        "transitive": {
+          "en": "The judges will pick the winner next.",
+          "ja": "審査員が次に優勝者を決める。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "はなれる",
-      "jmdictId": "1550840",
+      "kana": "あつまる",
+      "jmdictId": "1333550",
       "kanji": [
-        "離れる"
+        "集まる"
       ]
     },
     "transitive": {
-      "kana": "はなす",
-      "jmdictId": "1550830",
+      "kana": "あつめる",
+      "jmdictId": "1333560",
       "kanji": [
-        "離す"
+        "集める"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "船が岸から離れた。 — The ship moved away from the shore.",
-      "transitive": "二匹の犬を引き離した。 — I separated the two dogs. (Note: はなす example) 母親は子供から手を離した。 — The mother let go of the child's hand."
-    }
+      "intransitive": "人が広場に集まった。 — People gathered in the plaza.",
+      "transitive": "切手を集めている。 — I collect stamps."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Cats gathered around the fish stand.",
+          "ja": "魚屋の周りに猫が集まった。"
+        },
+        "transitive": {
+          "en": "The owner gathered the scraps onto a plate.",
+          "ja": "店主が残り物を皿に集めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Dust is gathering on the old piano.",
+          "ja": "古いピアノにほこりが集まっている。"
+        },
+        "transitive": {
+          "en": "She gathered her courage and lifted the lid.",
+          "ja": "彼女は勇気を集めて蓋を開けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Please gather in the gym by nine.",
+          "ja": "九時までに体育館に集まってください。"
+        },
+        "transitive": {
+          "en": "The teacher will gather the permission slips.",
+          "ja": "先生が同意書を集める。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "はれる",
-      "jmdictId": "1328910",
+      "kana": "とまる",
+      "jmdictId": "1310620",
       "kanji": [
-        "腫れる"
+        "止まる"
       ]
     },
     "transitive": {
-      "kana": "はらす",
-      "jmdictId": "1376450",
+      "kana": "とめる",
+      "jmdictId": "1310670",
       "kanji": [
-        "晴らす"
-      ]
-    },
-    "examples": {
-      "intransitive": "足首が腫れている。 — My ankle is swollen.",
-      "transitive": "うっぷんを晴らした。 — I vented my frustrations."
-    },
-    "ambiguousReason": "はれる (腫れる, to swell) and はらす (晴らす, to clear away/dispel) use different kanji and represent different semantic fields, so they are not a genuine intransitive/transitive pair sharing the same root meaning."
-  },
-  {
-    "intransitive": {
-      "kana": "ひえる",
-      "jmdictId": "1556630",
-      "kanji": [
-        "冷える"
-      ]
-    },
-    "transitive": {
-      "kana": "ひやす",
-      "jmdictId": "1556770",
-      "kanji": [
-        "冷やす"
+        "止める"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "ビールが冷えている。 — The beer is chilled.",
-      "transitive": "スイカを水で冷やした。 — I cooled the watermelon in water."
-    }
+      "intransitive": "バスが停留所で止まった。 — The bus stopped at the bus stop.",
+      "transitive": "彼は車を駐車場に止めた。 — He parked the car in the parking lot."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The clock stopped in the middle of the night.",
+          "ja": "時計が夜中に止まった。"
+        },
+        "transitive": {
+          "en": "She stopped all the other clocks to match it.",
+          "ja": "彼女は他の時計をすべて止めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The escalator stopped suddenly.",
+          "ja": "エスカレーターが突然止まった。"
+        },
+        "transitive": {
+          "en": "A worker stopped the second one too.",
+          "ja": "作業員がもう一台のエスカレーターも止めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The merry-go-round has stopped.",
+          "ja": "メリーゴーランドが止まっている。"
+        },
+        "transitive": {
+          "en": "Please stop the ferris wheel as well.",
+          "ja": "観覧車も止めてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ひたる",
-      "jmdictId": "1362570",
+      "kana": "かわる",
+      "jmdictId": "1510790",
       "kanji": [
-        "浸る"
+        "変わる"
       ]
     },
     "transitive": {
-      "kana": "ひたす",
-      "jmdictId": "1362560",
+      "kana": "かえる",
+      "jmdictId": "1510650",
       "kanji": [
-        "浸す"
+        "変える"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "思い出に浸った。 — I was immersed in memories.",
-      "transitive": "豆を一晩水に浸した。 — I soaked the beans in water overnight."
-    }
+      "intransitive": "信号の色が変わった。 — The traffic light changed color.",
+      "transitive": "彼は髪の色を変えた。 — He changed his hair color."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The season changed and leaves turned red.",
+          "ja": "季節が変わって葉が赤くなった。"
+        },
+        "transitive": {
+          "en": "She changed the decorations to match.",
+          "ja": "彼女はそれに合わせて飾りを変えた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The schedule is changing every week.",
+          "ja": "スケジュールが毎週変わっている。"
+        },
+        "transitive": {
+          "en": "Please change the meeting to Friday.",
+          "ja": "会議を金曜日に変えてください。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "His expression changed suddenly.",
+          "ja": "彼の表情が急に変わった。"
+        },
+        "transitive": {
+          "en": "So I changed the topic right away.",
+          "ja": "だからすぐに話題を変えた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ひろがる",
-      "jmdictId": "1602360",
+      "kana": "はいる",
+      "jmdictId": "1465590",
       "kanji": [
-        "広がる"
+        "入る"
       ]
     },
     "transitive": {
-      "kana": "ひろげる",
-      "jmdictId": "1602370",
+      "kana": "いれる",
+      "jmdictId": "1465610",
       "kanji": [
-        "広げる"
+        "入れる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "噂が町中に広がった。 — The rumor spread throughout the town.",
-      "transitive": "地図をテーブルに広げた。 — I spread the map out on the table."
-    }
+      "intransitive": "猫が部屋に入った。 — The cat entered the room.",
+      "transitive": "本を鞄に入れた。 — I put the book in the bag."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The cat slipped into the closet.",
+          "ja": "猫がクローゼットに入った。"
+        },
+        "transitive": {
+          "en": "She put her sweaters in the closet too.",
+          "ja": "彼女はセーターもクローゼットに入れた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Water is getting into the tent.",
+          "ja": "水がテントに入っている。"
+        },
+        "transitive": {
+          "en": "He stuffed towels in along the edges.",
+          "ja": "彼はタオルをテントの端に入れた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A coin rolled into the machine.",
+          "ja": "コインが機械に入った。"
+        },
+        "transitive": {
+          "en": "He put in one more just to be safe.",
+          "ja": "彼はもう一枚コインを機械に入れた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ふかまる",
-      "jmdictId": "1362660",
+      "kana": "でる",
+      "jmdictId": "1338240",
       "kanji": [
-        "深まる"
+        "出る"
       ]
     },
     "transitive": {
-      "kana": "ふかめる",
-      "jmdictId": "1362680",
+      "kana": "だす",
+      "jmdictId": "1338180",
       "kanji": [
-        "深める"
+        "出す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "秋が深まるにつれて紅葉が美しくなる。 — As autumn deepens, the fall foliage becomes more beautiful.",
-      "transitive": "両国は交流を深めた。 — The two countries deepened their exchanges."
-    }
+      "intransitive": "猫が窓から出た。 — The cat went out through the window.",
+      "transitive": "財布からお金を出した。 — I took money out of my wallet."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The dog ran out of the park.",
+          "ja": "犬が公園から出た。"
+        },
+        "transitive": {
+          "en": "The owner took the leash out of her bag.",
+          "ja": "飼い主はバッグからリードを出した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Smoke is coming out of the chimney.",
+          "ja": "煙突から煙が出ている。"
+        },
+        "transitive": {
+          "en": "He takes the firewood out of the shed.",
+          "ja": "彼は小屋から薪を出す。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The kids came out of the classroom.",
+          "ja": "子どもたちが教室から出た。"
+        },
+        "transitive": {
+          "en": "Please take your shoes out of your locker.",
+          "ja": "ロッカーから靴を出してください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ふくらむ",
-      "jmdictId": "1519990",
+      "kana": "きえる",
+      "jmdictId": "1350040",
       "kanji": [
-        "膨らむ"
+        "消える"
       ]
     },
     "transitive": {
-      "kana": "ふくらます",
-      "jmdictId": "1519970",
+      "kana": "けす",
+      "jmdictId": "1350110",
       "kanji": [
-        "膨らます"
+        "消す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "パン生地が膨らんだ。 — The bread dough swelled up.",
-      "transitive": "風船を膨らました。 — I inflated the balloon."
-    }
+      "intransitive": "ろうそくの火が消えた。 — The candle flame went out.",
+      "transitive": "彼は電気を消した。 — He turned off the light."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Half the campfire went out in the rain.",
+          "ja": "雨でキャンプファイヤーの火が半分消えた。"
+        },
+        "transitive": {
+          "en": "He quickly put out the rest.",
+          "ja": "彼は残りの火もすぐに消した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The streetlights are going out one by one.",
+          "ja": "街灯が一つずつ消えている。"
+        },
+        "transitive": {
+          "en": "The city is turning them off to save power.",
+          "ja": "市は節電のためにそれを消している。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The writing on the whiteboard is gone.",
+          "ja": "ホワイトボードの文字が消えてしまった。"
+        },
+        "transitive": {
+          "en": "Please erase the board before the next class.",
+          "ja": "次の授業の前にボードを消してください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ふえる",
-      "jmdictId": "1602440",
+      "kana": "つく",
+      "jmdictId": "1495740",
       "kanji": [
-        "増える",
-        "殖える"
+        "付く"
       ]
     },
     "transitive": {
-      "kana": "ふやす",
-      "jmdictId": "1602880",
+      "kana": "つける",
+      "jmdictId": "1495770",
       "kanji": [
-        "増やす"
+        "付ける"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "人口が増えた。 — The population increased.",
-      "transitive": "貯金を増やしたい。 — I want to increase my savings."
-    }
+      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
+      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A sticky note is stuck to my monitor.",
+          "ja": "モニターに付箋が付いている。"
+        },
+        "transitive": {
+          "en": "She stuck three more notes to the edge.",
+          "ja": "彼女はふちにメモをもう三枚付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Mud got on his jacket.",
+          "ja": "ジャケットに泥が付いた。"
+        },
+        "transitive": {
+          "en": "He stuck a patch over it.",
+          "ja": "彼はその上からワッペンを付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A price tag is attached to the cake.",
+          "ja": "ケーキに値札が付いている。"
+        },
+        "transitive": {
+          "en": "Please attach a label to the other ones too.",
+          "ja": "ほかのものにもラベルを付けてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ぶつかる",
-      "jmdictId": "1011180",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "ぶつける",
-      "jmdictId": "2742080",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "車が壁にぶつかった。 — The car crashed into the wall.",
-      "transitive": "彼は怒りを私にぶつけた。 — He vented his anger at me."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "へだたる",
-      "jmdictId": "1206340",
+      "kana": "こわれる",
+      "jmdictId": "1199900",
       "kanji": [
-        "隔たる"
+        "壊れる"
       ]
     },
     "transitive": {
-      "kana": "へだてる",
-      "jmdictId": "1206360",
+      "kana": "こわす",
+      "jmdictId": "1199890",
       "kanji": [
-        "隔てる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "二つの町は百キロ隔たっている。 — The two towns are separated by a hundred kilometers.",
-      "transitive": "カーテンで部屋を隔てた。 — I divided the room with a curtain."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "へる",
-      "jmdictId": "1263120",
-      "kanji": [
-        "減る"
-      ]
-    },
-    "transitive": {
-      "kana": "へらす",
-      "jmdictId": "1263110",
-      "kanji": [
-        "減らす"
+        "壊す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "体重が三キロ減った。 — I lost three kilograms.",
-      "transitive": "無駄な出費を減らした。 — I reduced unnecessary expenses."
-    }
+      "intransitive": "地震で建物がこわれた。 — The building was damaged in the earthquake.",
+      "transitive": "弟がおもちゃをこわした。 — My little brother broke the toy."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The old fence broke in the storm.",
+          "ja": "嵐で古いフェンスが壊れた。"
+        },
+        "transitive": {
+          "en": "So he broke down the damaged section completely.",
+          "ja": "だから彼は傷んだ部分を完全に壊した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Her phone screen cracked when it fell.",
+          "ja": "落として彼女のスマホの画面が壊れた。"
+        },
+        "transitive": {
+          "en": "Frustrated, she broke the rest of it too.",
+          "ja": "むしゃくしゃして、彼女は残りも壊した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The toy robot stopped working.",
+          "ja": "おもちゃのロボットが壊れている。"
+        },
+        "transitive": {
+          "en": "Dad broke the back cover off to fix it.",
+          "ja": "お父さんが直すために裏のカバーを壊して開けた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ほどける",
-      "jmdictId": "1198920",
+      "kana": "おちる",
+      "jmdictId": "1548550",
       "kanji": [
-        "解ける"
+        "落ちる"
       ]
     },
     "transitive": {
-      "kana": "ほどく",
-      "jmdictId": "1198900",
+      "kana": "おとす",
+      "jmdictId": "1589260",
       "kanji": [
-        "解く"
+        "落とす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "靴ひもがほどけてしまった。 — My shoelaces came untied.",
-      "transitive": "プレゼントのリボンをほどいた。 — I untied the ribbon on the present."
-    }
+      "intransitive": "財布が落ちた。 — The wallet fell.",
+      "transitive": "コップを落とした。 — I dropped the cup."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A leaf fell from the tree.",
+          "ja": "木から葉が落ちた。"
+        },
+        "transitive": {
+          "en": "He shook the branch and knocked the rest down.",
+          "ja": "彼は枝を揺らして残りの葉を落とした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Ice cream is falling off the cone.",
+          "ja": "アイスがコーンから落ちている。"
+        },
+        "transitive": {
+          "en": "She dropped her spoon too while reaching for a napkin.",
+          "ja": "彼女はナプキンを取ろうとして、スプーンも落としてしまった。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The paint on the wall is peeling off.",
+          "ja": "壁のペンキが落ちている。"
+        },
+        "transitive": {
+          "en": "He dropped his brush from the scaffolding.",
+          "ja": "彼はブラシを足場から落としてしまった。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "ほろびる",
-      "jmdictId": "1603610",
+      "kana": "あがる",
+      "jmdictId": "1352290",
       "kanji": [
-        "滅びる"
+        "上がる"
       ]
     },
     "transitive": {
-      "kana": "ほろぼす",
-      "jmdictId": "1603620",
+      "kana": "あげる",
+      "jmdictId": "1352320",
       "kanji": [
-        "滅ぼす"
+        "上げる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "その古代文明は戦争でほろびた。 — That ancient civilization was destroyed by war.",
-      "transitive": "敵国を完全にほろぼした。 — They completely destroyed the enemy nation."
-    }
+      "intransitive": "気温が上がった。 — The temperature rose.",
+      "transitive": "手を上げてください。 — Please raise your hand."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The blinds rose slowly in the morning breeze.",
+          "ja": "朝の風でブラインドがゆっくり上がった。"
+        },
+        "transitive": {
+          "en": "She raised the other blinds to let in more light.",
+          "ja": "彼女は明かりを入れるために残りのブラインドも上げた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The crowd's noise rose as the players ran out.",
+          "ja": "選手たちが走り出ると、観客の声が上がった。"
+        },
+        "transitive": {
+          "en": "The coach raised his fist to pump them up more.",
+          "ja": "コーチはさらに盛り上げるために拳を上げた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The dough has risen nicely in the bowl.",
+          "ja": "ボウルの中でパン生地がきれいに上がっている。"
+        },
+        "transitive": {
+          "en": "Now raise the oven temperature to bake it.",
+          "ja": "では焼くためにオーブンの温度を上げてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "まがる",
-      "jmdictId": "1239730",
+      "kana": "さがる",
+      "jmdictId": "1184160",
       "kanji": [
-        "曲がる"
+        "下がる"
       ]
     },
     "transitive": {
-      "kana": "まげる",
-      "jmdictId": "1239740",
+      "kana": "さげる",
+      "jmdictId": "1184170",
       "kanji": [
-        "曲げる"
+        "下げる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "道が右にまがっている。 — The road curves to the right.",
-      "transitive": "針金をまげて形を作った。 — I bent the wire to make a shape."
-    }
+      "intransitive": "気温がさがった。 — The temperature dropped.",
+      "transitive": "エアコンの温度をさげた。 — I lowered the air conditioner temperature."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The shelf sagged slightly from the wall.",
+          "ja": "棚が壁から少し下がった。"
+        },
+        "transitive": {
+          "en": "She lowered the next shelf too, just in case.",
+          "ja": "彼女は安全のために隣の棚も下げた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The river level has been dropping.",
+          "ja": "川の水位が下がっている。"
+        },
+        "transitive": {
+          "en": "Farmers lowered their irrigation intake.",
+          "ja": "農家は取水口を下げた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The mic stand dropped to the floor.",
+          "ja": "マイクスタンドが床まで下がった。"
+        },
+        "transitive": {
+          "en": "He lowered the remaining stands for the kids.",
+          "ja": "彼は子どもたちのために残りのスタンドを下げた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "まける",
-      "jmdictId": "1497980",
+      "kana": "たつ",
+      "jmdictId": "1597040",
       "kanji": [
-        "負ける"
+        "立つ"
       ]
     },
     "transitive": {
-      "kana": "まかす",
-      "jmdictId": "1497950",
+      "kana": "たてる",
+      "jmdictId": "1551530",
       "kanji": [
-        "負かす"
+        "立てる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "試合にまけてしまった。 — I lost the match.",
-      "transitive": "強い相手をまかした。 — I defeated the strong opponent."
-    }
+      "intransitive": "煙がたった。 — Smoke rose up.",
+      "transitive": "庭に旗をたてた。 — I put up a flag in the yard."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A thin column of smoke rose from the campfire.",
+          "ja": "キャンプファイヤーから細い煙が立った。"
+        },
+        "transitive": {
+          "en": "She stood a long stick upright to mark the spot.",
+          "ja": "彼女はその場所に長い棒を立てた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The old fence post is standing crookedly.",
+          "ja": "古いフェンスの柱が曲がって立っている。"
+        },
+        "transitive": {
+          "en": "He stood a new straight post beside it.",
+          "ja": "彼はその隣に新しいまっすぐな柱を立てた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A single candle stood on the dark table.",
+          "ja": "暗いテーブルの上にろうそくが一本立っている。"
+        },
+        "transitive": {
+          "en": "Please stand more candles around it.",
+          "ja": "その周りにもっとろうそくを立ててください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "まざる",
-      "jmdictId": "1603920",
+      "kana": "のる",
+      "jmdictId": "1355120",
       "kanji": [
-        "混ざる",
-        "交ざる"
+        "乗る"
       ]
     },
     "transitive": {
-      "kana": "まぜる",
-      "jmdictId": "1290310",
+      "kana": "のせる",
+      "jmdictId": "1600270",
       "kanji": [
-        "混ぜる",
-        "交ぜる"
+        "乗せる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "砂糖に塩がまざっている。 — Salt is mixed in with the sugar.",
-      "transitive": "卵と小麦粉をまぜる。 — I mix the eggs and flour."
-    }
+      "intransitive": "電車に乗った。 — I got on the train.",
+      "transitive": "荷物を車に載せた。 — I loaded the luggage into the car."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The child got on the bus.",
+          "ja": "子供がバスに乗った。"
+        },
+        "transitive": {
+          "en": "The driver let his rushing friend on too.",
+          "ja": "運転手が走ってきた友達も乗せた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "She is riding the horse.",
+          "ja": "彼女は馬に乗っている。"
+        },
+        "transitive": {
+          "en": "The instructor put a beginner on another horse.",
+          "ja": "インストラクターが初心者をもう一頭に乗せた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Please get in the taxi.",
+          "ja": "タクシーに乗ってください。"
+        },
+        "transitive": {
+          "en": "Please give the person next to you a ride too.",
+          "ja": "隣の人も乗せてあげてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "まちがう",
-      "jmdictId": "1611610",
+      "kana": "うれる",
+      "jmdictId": "1473960",
       "kanji": [
-        "間違う"
+        "売れる"
       ]
     },
     "transitive": {
-      "kana": "まちがえる",
-      "jmdictId": "1215330",
+      "kana": "うる",
+      "jmdictId": "1473950",
       "kanji": [
-        "間違える"
+        "売る"
       ]
-    },
-    "examples": {
-      "intransitive": "計算がまちがっていた。 — The calculation was wrong.",
-      "transitive": "電車をまちがえて反対方向に行った。 — I took the wrong train and went the opposite direction."
-    },
-    "ambiguousReason": "まちがう is commonly used both transitively (道をまちがう) and intransitively (答えがまちがう), making the intransitive-only label misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "まとまる",
-      "jmdictId": "1611640",
-      "kanji": [
-        "纏まる"
-      ]
-    },
-    "transitive": {
-      "kana": "まとめる",
-      "jmdictId": "1440930",
-      "kanji": []
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "話し合いがうまくまとまった。 — The discussion came together well.",
-      "transitive": "資料を一冊にまとめた。 — I compiled the materials into one volume."
-    }
+      "intransitive": "この本はよく売れている。 — This book sells well.",
+      "transitive": "車を売った。 — I sold the car."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "That painting sold right away.",
+          "ja": "あの絵はすぐに売れた。"
+        },
+        "transitive": {
+          "en": "So the artist sold the sketches too.",
+          "ja": "それで画家はスケッチも売った。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Fresh bread is selling well today.",
+          "ja": "今日は焼きたてのパンがよく売れている。"
+        },
+        "transitive": {
+          "en": "The owner decided to sell cookies too.",
+          "ja": "店長はクッキーも売ることにした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The limited-edition shoes sold out instantly.",
+          "ja": "限定の靴は一瞬で売れてしまった。"
+        },
+        "transitive": {
+          "en": "The store then sold the regular ones at a discount.",
+          "ja": "店は普通の靴を割引で売った。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "まよう",
-      "jmdictId": "1532710",
+      "kana": "うまれる",
+      "jmdictId": "1378690",
       "kanji": [
-        "迷う"
+        "生まれる"
       ]
     },
     "transitive": {
-      "kana": "まよわす",
-      "jmdictId": "1532720",
-      "kanji": []
+      "kana": "うむ",
+      "jmdictId": "1588410",
+      "kanji": [
+        "生む"
+      ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "どちらを選ぶかまよっている。 — I'm wavering over which to choose.",
-      "transitive": "甘い言葉で人をまよわす。 — He misleads people with sweet words."
-    }
+      "intransitive": "赤ちゃんが生まれた。 — A baby was born.",
+      "transitive": "猫が子猫を五匹産んだ。 — The cat gave birth to five kittens."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Twins were born at the hospital last night.",
+          "ja": "昨夜、病院で双子が生まれた。"
+        },
+        "transitive": {
+          "en": "The mother gave birth to them after eight hours.",
+          "ja": "母親は八時間かけて彼らを生んだ。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A new idea is being born in her mind.",
+          "ja": "彼女の中で新しいアイデアが生まれている。"
+        },
+        "transitive": {
+          "en": "That struggle will produce a great novel.",
+          "ja": "その苦しみが素晴らしい小説を生むだろう。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A rare white tiger was born at the zoo.",
+          "ja": "動物園で珍しい白い虎が生まれた。"
+        },
+        "transitive": {
+          "en": "The zookeepers helped the mother produce healthy cubs.",
+          "ja": "飼育員たちは母虎が元気な子を生むのを手伝った。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "おきる",
+      "jmdictId": "1223640",
+      "kanji": [
+        "起きる"
+      ]
+    },
+    "transitive": {
+      "kana": "おこす",
+      "jmdictId": "1223660",
+      "kanji": [
+        "起こす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "朝六時に起きた。 — I got up at six in the morning.",
+      "transitive": "母が私を起こした。 — My mother woke me up."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The baby woke up crying at midnight.",
+          "ja": "赤ちゃんが夜中に泣きながら起きた。"
+        },
+        "transitive": {
+          "en": "Dad gently woke the older sister too.",
+          "ja": "お父さんがお姉ちゃんも優しく起こした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "He is still not up yet.",
+          "ja": "彼はまだ起きていない。"
+        },
+        "transitive": {
+          "en": "Please wake him up before noon.",
+          "ja": "お昼までに彼を起こしてください。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The dog just won't wake up.",
+          "ja": "犬がなかなか起きない。"
+        },
+        "transitive": {
+          "en": "He clapped by its ear and finally woke it.",
+          "ja": "彼が耳元で手を叩いてやっと起こした。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "うごく",
+      "jmdictId": "1451210",
+      "kanji": [
+        "動く"
+      ]
+    },
+    "transitive": {
+      "kana": "うごかす",
+      "jmdictId": "1451170",
+      "kanji": [
+        "動かす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "電車が動いた。 — The train moved.",
+      "transitive": "机を動かした。 — I moved the desk."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The curtain moved in the breeze.",
+          "ja": "風でカーテンが動いた。"
+        },
+        "transitive": {
+          "en": "She moved the curtain aside to look outside.",
+          "ja": "彼女は外を見るためにカーテンを動かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The robot's arm is moving on its own.",
+          "ja": "ロボットの腕が勝手に動いている。"
+        },
+        "transitive": {
+          "en": "The engineer moved the other arm with a remote.",
+          "ja": "エンジニアはリモコンでもう片方の腕を動かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The heavy rock won't move at all.",
+          "ja": "重い岩が全然動かない。"
+        },
+        "transitive": {
+          "en": "Please move it with this lever.",
+          "ja": "このてこで動かしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
       "kana": "まわる",
       "jmdictId": "1604300",
       "kanji": [
-        "回る",
-        "廻る"
+        "回る"
       ]
     },
     "transitive": {
@@ -2772,114 +1131,304 @@
     "examples": {
       "intransitive": "風車がくるくるまわっている。 — The windmill is spinning round and round.",
       "transitive": "ハンドルを右にまわした。 — I turned the steering wheel to the right."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The merry-go-round is slowly spinning.",
+          "ja": "メリーゴーランドがゆっくりまわっている。"
+        },
+        "transitive": {
+          "en": "The operator spun it faster for the kids.",
+          "ja": "係員が子どもたちのために、もっと速くまわした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The revolving door turned on its own.",
+          "ja": "回転ドアが勝手にまわった。"
+        },
+        "transitive": {
+          "en": "He pushed it to turn it the other way.",
+          "ja": "彼は逆方向にまわすために押した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The globe is spinning on the desk.",
+          "ja": "地球儀が机の上でまわっている。"
+        },
+        "transitive": {
+          "en": "Please spin it and point to a country.",
+          "ja": "地球儀をまわして、国を指さしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "みえる",
-      "jmdictId": "1259140",
+      "kana": "つづく",
+      "jmdictId": "1405790",
       "kanji": [
-        "見える"
+        "続く"
       ]
     },
     "transitive": {
-      "kana": "みる",
-      "jmdictId": "1259290",
+      "kana": "つづける",
+      "jmdictId": "1405800",
       "kanji": [
-        "見る",
-        "観る"
+        "続ける"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "窓から富士山がみえる。 — Mount Fuji can be seen from the window.",
-      "transitive": "映画をみた。 — I watched a movie."
-    }
+      "intransitive": "雨が三日間続いた。 — The rain continued for three days.",
+      "transitive": "彼女は十年間日記を書き続けた。 — She continued writing a diary for ten years."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The music kept playing through the night.",
+          "ja": "音楽が一晩中続いた。"
+        },
+        "transitive": {
+          "en": "So she kept dancing until dawn.",
+          "ja": "だから彼女は夜明けまで踊り続けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The argument went on for an hour.",
+          "ja": "口論が一時間続いている。"
+        },
+        "transitive": {
+          "en": "He keeps repeating the same point.",
+          "ja": "彼は同じ主張を繰り返し続けている。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The snow continued all morning.",
+          "ja": "雪が午前中ずっと続いた。"
+        },
+        "transitive": {
+          "en": "Still, he kept shoveling the path.",
+          "ja": "それでも彼は雪かきをし続けた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "みだれる",
-      "jmdictId": "1548940",
+      "kana": "つたわる",
+      "jmdictId": "1441900",
       "kanji": [
-        "乱れる"
+        "伝わる"
       ]
     },
     "transitive": {
-      "kana": "みだす",
-      "jmdictId": "1548930",
+      "kana": "つたえる",
+      "jmdictId": "1441870",
       "kanji": [
-        "乱す"
+        "伝える"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "風で髪がみだれた。 — My hair got disheveled in the wind.",
-      "transitive": "列の順番をみださないでください。 — Please don't disturb the order of the line."
-    }
+      "intransitive": "その噂はすぐに町中に伝わった。 — The rumor quickly spread throughout the town.",
+      "transitive": "彼は私にそのニュースを伝えた。 — He conveyed the news to me."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The sad news spread through the office.",
+          "ja": "悲しい知らせがオフィス中に伝わった。"
+        },
+        "transitive": {
+          "en": "Her manager called to convey it personally.",
+          "ja": "彼女の上司は直接それを伝えるために電話をかけた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The tradition is being passed down in the village.",
+          "ja": "その伝統が村に伝わっている。"
+        },
+        "transitive": {
+          "en": "The elder conveys its meaning to the children.",
+          "ja": "長老が子供たちにその意味を伝える。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "His excitement spread to the whole crowd.",
+          "ja": "彼の興奮が観客全体に伝わった。"
+        },
+        "transitive": {
+          "en": "He grabbed the mic and shared his gratitude.",
+          "ja": "彼はマイクを握って感謝の気持ちを伝えた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "みつかる",
-      "jmdictId": "1604550",
+      "kana": "つながる",
+      "jmdictId": "1251880",
       "kanji": [
-        "見つかる"
+        "繋がる"
       ]
     },
     "transitive": {
-      "kana": "みつける",
-      "jmdictId": "1604570",
+      "kana": "つなぐ",
+      "jmdictId": "1251900",
       "kanji": [
-        "見つける",
-        "見付ける"
+        "繋ぐ"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "なくした鍵がみつかった。 — The lost key was found.",
-      "transitive": "やっといい店をみつけた。 — I finally found a good restaurant."
-    }
+      "intransitive": "この道は駅につながっている。 — This road is connected to the station.",
+      "transitive": "犬をリードでつないだ。 — I tied the dog with a leash."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The two cables are connected at the back.",
+          "ja": "二本のケーブルが後ろでつながっている。"
+        },
+        "transitive": {
+          "en": "She connected the third cable to the monitor.",
+          "ja": "彼女は三本目のケーブルをモニターにつないだ。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The dog's leash is tied to the fence.",
+          "ja": "犬のリードがフェンスにつながっている。"
+        },
+        "transitive": {
+          "en": "She tied her own dog to the next pole.",
+          "ja": "彼女は自分の犬も隣のポールにつないだ。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The garden hoses are connected end to end.",
+          "ja": "庭のホースが端から端までつながっている。"
+        },
+        "transitive": {
+          "en": "Please connect this last section to the tap.",
+          "ja": "この最後の部分を蛇口につないでください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "むく",
-      "jmdictId": "1277080",
+      "kana": "ならぶ",
+      "jmdictId": "1508380",
       "kanji": [
-        "向く"
+        "並ぶ"
       ]
     },
     "transitive": {
-      "kana": "むける",
-      "jmdictId": "1277100",
+      "kana": "ならべる",
+      "jmdictId": "1508390",
       "kanji": [
-        "向ける"
-      ]
-    },
-    "examples": {
-      "intransitive": "彼は窓の方をむいた。 — He turned toward the window.",
-      "transitive": "カメラをこちらにむけた。 — I pointed the camera this way."
-    },
-    "ambiguousReason": "むく is tagged as both vt and vi in JMDict and is commonly used transitively (e.g. 顔をむく, カメラをむく), so labeling it purely intransitive would mislead learners."
-  },
-  {
-    "intransitive": {
-      "kana": "もえる",
-      "jmdictId": "1469570",
-      "kanji": [
-        "燃える"
-      ]
-    },
-    "transitive": {
-      "kana": "もやす",
-      "jmdictId": "1582900",
-      "kanji": [
-        "燃やす"
+        "並べる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "家がもえている。 — The house is burning.",
-      "transitive": "庭でごみをもやした。 — I burned trash in the yard."
-    }
+      "intransitive": "学生たちが校庭に並んだ。 — The students lined up in the schoolyard.",
+      "transitive": "本を棚に並べた。 — I arranged the books on the shelf."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The chairs are lined up neatly by the wall.",
+          "ja": "椅子が壁沿いにきれいに並んでいる。"
+        },
+        "transitive": {
+          "en": "Please arrange the desks the same way.",
+          "ja": "机も同じように並べてください。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Shoes lined up outside the entrance.",
+          "ja": "玄関に靴が並んだ。"
+        },
+        "transitive": {
+          "en": "So she arranged everyone's umbrellas there too.",
+          "ja": "それで彼女はみんなの傘もそこに並べた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Bottles are lined up along the counter.",
+          "ja": "カウンターにボトルが並んでいる。"
+        },
+        "transitive": {
+          "en": "The bartender is arranging the glasses beside them.",
+          "ja": "バーテンダーがその隣にグラスを並べている。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "のこる",
+      "jmdictId": "1304510",
+      "kanji": [
+        "残る"
+      ]
+    },
+    "transitive": {
+      "kana": "のこす",
+      "jmdictId": "1600260",
+      "kanji": [
+        "残す"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "ケーキが一切れ残った。 — One slice of cake remained.",
+      "transitive": "子供たちにケーキを残しておいた。 — I saved some cake for the children."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A little soup remained in the pot.",
+          "ja": "鍋にスープが少し残った。"
+        },
+        "transitive": {
+          "en": "She saved it for her husband.",
+          "ja": "彼女は夫のためにそれを残しておいた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Some snow is still on the roof.",
+          "ja": "屋根の上にまだ雪が残っている。"
+        },
+        "transitive": {
+          "en": "He left the snow he knocked off in the garden.",
+          "ja": "彼は屋根から落とした雪を庭に残した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A few tickets remain before the show.",
+          "ja": "公演の前に、チケットが数枚残っている。"
+        },
+        "transitive": {
+          "en": "Please save one for your friend.",
+          "ja": "友達のためにチケットを一枚残しておいてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
@@ -2900,28 +1449,569 @@
     "examples": {
       "intransitive": "彼は家にもどった。 — He returned home.",
       "transitive": "本を棚にもどした。 — I put the book back on the shelf."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The cat came back inside from the rain.",
+          "ja": "猫が雨の中から家にもどった。"
+        },
+        "transitive": {
+          "en": "She put its wet blanket back in the basket.",
+          "ja": "彼女は濡れた毛布をかごにもどした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The shopping cart rolled back down the slope.",
+          "ja": "カートが坂道をもどっている。"
+        },
+        "transitive": {
+          "en": "He ran after it and wheeled it back to the store.",
+          "ja": "彼は走って追いかけて、カートを店にもどした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The conversation drifted back to last night's argument.",
+          "ja": "話がゆうべのけんかにもどってきた。"
+        },
+        "transitive": {
+          "en": "Please bring it back to today's topic.",
+          "ja": "話を今日のテーマにもどしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "もれる",
-      "jmdictId": "1605330",
+      "kana": "とおる",
+      "jmdictId": "1433030",
       "kanji": [
-        "漏れる"
+        "通る"
       ]
     },
     "transitive": {
-      "kana": "もらす",
-      "jmdictId": "1605320",
+      "kana": "とおす",
+      "jmdictId": "1432900",
       "kanji": [
-        "漏らす"
+        "通す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "水道管から水がもれている。 — Water is leaking from the pipe.",
-      "transitive": "うっかり秘密をもらしてしまった。 — I accidentally let the secret slip."
-    }
+      "intransitive": "この道は公園を通る。 — This road goes through the park.",
+      "transitive": "針に糸を通した。 — I threaded the needle."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The thread passed through the needle's eye.",
+          "ja": "糸が針の穴を通った。"
+        },
+        "transitive": {
+          "en": "She threaded the next needle herself.",
+          "ja": "彼女は次の針に糸を通した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A cat is passing through the gap in the fence.",
+          "ja": "猫がフェンスの隙間を通っている。"
+        },
+        "transitive": {
+          "en": "The boy is pushing a stick through the same gap.",
+          "ja": "男の子が同じ隙間に棒を通している。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Light passes through this curtain easily.",
+          "ja": "光がこのカーテンを通る。"
+        },
+        "transitive": {
+          "en": "Please pass a thin rod through the top casing.",
+          "ja": "上の折り返し部分に細い棒を通してください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "とどく",
+      "jmdictId": "1457200",
+      "kanji": [
+        "届く"
+      ]
+    },
+    "transitive": {
+      "kana": "とどける",
+      "jmdictId": "1457210",
+      "kanji": [
+        "届ける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "荷物が無事に届いた。 — The package arrived safely.",
+      "transitive": "書類を役所に届けた。 — I submitted the documents to the government office."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The birthday card finally arrived.",
+          "ja": "誕生日カードがやっと届いた。"
+        },
+        "transitive": {
+          "en": "She delivered a gift in return.",
+          "ja": "彼女はお返しにプレゼントを届けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The medicine is reaching rural villages.",
+          "ja": "薬が農村に届いている。"
+        },
+        "transitive": {
+          "en": "Volunteers are delivering food there too.",
+          "ja": "ボランティアが食料もそこに届けている。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The wrong package arrived at my door.",
+          "ja": "間違った荷物が玄関に届いた。"
+        },
+        "transitive": {
+          "en": "Please deliver it to the correct address.",
+          "ja": "正しい住所に届けてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "みつかる",
+      "jmdictId": "1604550",
+      "kanji": [
+        "見つかる"
+      ]
+    },
+    "transitive": {
+      "kana": "みつける",
+      "jmdictId": "1604570",
+      "kanji": [
+        "見つける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "なくした鍵がみつかった。 — The lost key was found.",
+      "transitive": "やっといい店をみつけた。 — I finally found a good restaurant."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "My missing wallet was finally found.",
+          "ja": "なくした財布がやっと見つかった。"
+        },
+        "transitive": {
+          "en": "She found her missing phone right beside it.",
+          "ja": "彼女はなくしたスマホをすぐそばで見つけた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A shortcut through the park was discovered.",
+          "ja": "公園を通る近道が見つかった。"
+        },
+        "transitive": {
+          "en": "Now he finds a new route every morning.",
+          "ja": "今では彼は毎朝新しいルートを見つける。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A crack in the wall has been found.",
+          "ja": "壁のひびが見つかっている。"
+        },
+        "transitive": {
+          "en": "Please find any other cracks nearby.",
+          "ja": "近くにほかのひびを見つけてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "ひろがる",
+      "jmdictId": "1602360",
+      "kanji": [
+        "広がる"
+      ]
+    },
+    "transitive": {
+      "kana": "ひろげる",
+      "jmdictId": "1602370",
+      "kanji": [
+        "広げる"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "噂が町中に広がった。 — The rumor spread throughout the town.",
+      "transitive": "地図をテーブルに広げた。 — I spread the map out on the table."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The fire spread to the next building.",
+          "ja": "火が隣のビルに広がった。"
+        },
+        "transitive": {
+          "en": "Firefighters spread sand to stop it.",
+          "ja": "消防士たちが砂を広げて食い止めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The stain is spreading across the tablecloth.",
+          "ja": "シミがテーブルクロスに広がっている。"
+        },
+        "transitive": {
+          "en": "She quickly spread a napkin over it.",
+          "ja": "彼女はすぐにナプキンをその上に広げた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The crowd spread out through the park.",
+          "ja": "人々が公園中に広がった。"
+        },
+        "transitive": {
+          "en": "The guide spread a blanket for everyone to sit on.",
+          "ja": "ガイドがみんなが座れるようにブランケットを広げた。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "すすむ",
+      "jmdictId": "1365980",
+      "kanji": [
+        "進む"
+      ]
+    },
+    "transitive": {
+      "kana": "すすめる",
+      "jmdictId": "1365990",
+      "kanji": [
+        "進める"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "工事が順調に進んでいる。 — The construction is progressing smoothly.",
+      "transitive": "会議を進めましょう。 — Let's proceed with the meeting."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The line at the counter moved forward slowly.",
+          "ja": "窓口の列がゆっくり進んでいる。"
+        },
+        "transitive": {
+          "en": "The manager opened another counter to move things along.",
+          "ja": "店長は別の窓口を開けて、列を進めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The ship moved forward in the strong current.",
+          "ja": "船が強い流れで前に進んだ。"
+        },
+        "transitive": {
+          "en": "The captain steered it further into the harbor.",
+          "ja": "船長は船をさらに港の中へ進めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The clock's hand is moving toward midnight.",
+          "ja": "時計の針が真夜中に向かって進んでいる。"
+        },
+        "transitive": {
+          "en": "She set it ahead by ten minutes just in case.",
+          "ja": "彼女は念のために針を１０分進めた。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "かたづく",
+      "jmdictId": "1511770",
+      "kanji": [
+        "片付く"
+      ]
+    },
+    "transitive": {
+      "kana": "かたづける",
+      "jmdictId": "1511790",
+      "kanji": [
+        "片付ける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "部屋がきれいに片付いた。 — The room was neatly tidied up.",
+      "transitive": "彼女は机の上を片付けた。 — She tidied up her desk."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The kitchen finally got tidied up.",
+          "ja": "台所がやっと片付いた。"
+        },
+        "transitive": {
+          "en": "Then Mom tidied up the living room too.",
+          "ja": "それからお母さんはリビングも片付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The toys are all tidied away now.",
+          "ja": "おもちゃが全部片付いている。"
+        },
+        "transitive": {
+          "en": "Please tidy up your books next.",
+          "ja": "次は本を片付けてください。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The office tidied up quickly after the move.",
+          "ja": "引っ越しの後、事務所がすぐ片付いた。"
+        },
+        "transitive": {
+          "en": "The new hire is tidying up the storage room.",
+          "ja": "新人が倉庫を片付けている。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "たすかる",
+      "jmdictId": "1344380",
+      "kanji": [
+        "助かる"
+      ]
+    },
+    "transitive": {
+      "kana": "たすける",
+      "jmdictId": "1344410",
+      "kanji": [
+        "助ける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "全員無事にたすかった。 — Everyone was safely rescued.",
+      "transitive": "溺れている人をたすけた。 — I rescued the drowning person."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The hiker was saved thanks to the rescue team.",
+          "ja": "登山者が救助隊のおかげで助かった。"
+        },
+        "transitive": {
+          "en": "They also saved his injured dog.",
+          "ja": "彼らはけがをした犬も助けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The small bird survived the storm.",
+          "ja": "小さな鳥が嵐から助かっている。"
+        },
+        "transitive": {
+          "en": "She quickly rescued the other trapped birds.",
+          "ja": "彼女は閉じ込められた鳥たちをすぐに助けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The child was safe after falling in the river.",
+          "ja": "川に落ちた子どもが助かった。"
+        },
+        "transitive": {
+          "en": "Please save the others who are still in the water.",
+          "ja": "まだ水の中にいる人たちを助けてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "あたたまる",
+      "jmdictId": "1586430",
+      "kanji": [
+        "温まる"
+      ]
+    },
+    "transitive": {
+      "kana": "あたためる",
+      "jmdictId": "1586440",
+      "kanji": [
+        "温める"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "部屋が温まった。 — The room warmed up.",
+      "transitive": "スープを温めた。 — I heated up the soup."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The bath water has warmed up.",
+          "ja": "お風呂のお湯が温まっている。"
+        },
+        "transitive": {
+          "en": "She warmed her cold feet in it.",
+          "ja": "彼女は冷たい足をお湯で温めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The leftover rice warmed up in the pot.",
+          "ja": "残りご飯が鍋の中で温まった。"
+        },
+        "transitive": {
+          "en": "He warmed the miso soup too.",
+          "ja": "彼はみそ汁も温めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The little stone warmed up in the sun.",
+          "ja": "小さな石が日差しで温まっている。"
+        },
+        "transitive": {
+          "en": "The boy warmed his hands on it.",
+          "ja": "男の子はその石で手を温めた。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "ひえる",
+      "jmdictId": "1556630",
+      "kanji": [
+        "冷える"
+      ]
+    },
+    "transitive": {
+      "kana": "ひやす",
+      "jmdictId": "1556770",
+      "kanji": [
+        "冷やす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "ビールが冷えている。 — The beer is chilled.",
+      "transitive": "スイカを水で冷やした。 — I cooled the watermelon in water."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The soup is cooling down in the bowl.",
+          "ja": "スープがお椀の中で冷えている。"
+        },
+        "transitive": {
+          "en": "She put ice beside it to cool it faster.",
+          "ja": "彼女はもっと早く冷やすために横に氷を置いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The leftover rice got cold overnight.",
+          "ja": "残りのご飯が一晩で冷えた。"
+        },
+        "transitive": {
+          "en": "He cooled the fresh batch in the fridge too.",
+          "ja": "彼は新しい分も冷蔵庫で冷やした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "After the run, his body wouldn't cool down.",
+          "ja": "走った後、なかなか体が冷えなかった。"
+        },
+        "transitive": {
+          "en": "He poured water over his head to cool off.",
+          "ja": "彼は頭から水をかぶって体を冷やした。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "かわく",
+      "jmdictId": "1209650",
+      "kanji": [
+        "乾く"
+      ]
+    },
+    "transitive": {
+      "kana": "かわかす",
+      "jmdictId": "1209630",
+      "kanji": [
+        "乾かす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "洗濯物がよく乾いた。 — The laundry dried well.",
+      "transitive": "ドライヤーで髪を乾かす。 — I dry my hair with a hair dryer."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The wet swimsuit dried quickly in the sun.",
+          "ja": "濡れた水着が日差しですぐに乾いた。"
+        },
+        "transitive": {
+          "en": "She dried her towel with a fan.",
+          "ja": "彼女はタオルを扇風機で乾かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The dog's fur is drying by the heater.",
+          "ja": "犬の毛がヒーターのそばで乾いている。"
+        },
+        "transitive": {
+          "en": "He is drying its paws with a towel.",
+          "ja": "彼はタオルで犬の足を乾かしている。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "My rain-soaked shoes finally dried overnight.",
+          "ja": "雨でびしょびしょになった靴がやっと一晩で乾いた。"
+        },
+        "transitive": {
+          "en": "Next time, take the laces out and dry them too.",
+          "ja": "次は靴ひもも外して乾かしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
@@ -2942,175 +2032,92 @@
     "examples": {
       "intransitive": "パンがこんがりやけた。 — The bread was nicely toasted.",
       "transitive": "魚をやいて食べた。 — I grilled fish and ate it."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The toast got over-toasted.",
+          "ja": "トーストがトースターの中で焼けすぎた。"
+        },
+        "transitive": {
+          "en": "She quickly toasted fresh slices instead.",
+          "ja": "彼女はすぐに新しいパンを焼いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The fish is nicely grilled now.",
+          "ja": "魚がこんがり焼けている。"
+        },
+        "transitive": {
+          "en": "Dad grilled the vegetables next.",
+          "ja": "お父さんは次に野菜を焼いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Once the cookies are baked, take them out.",
+          "ja": "クッキーがよく焼けたら、取り出してください。"
+        },
+        "transitive": {
+          "en": "Then bake the second batch too.",
+          "ja": "次のバッチも焼いてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "やすむ",
-      "jmdictId": "1227560",
+      "kana": "にえる",
+      "jmdictId": "1322490",
       "kanji": [
-        "休む"
+        "煮える"
       ]
     },
     "transitive": {
-      "kana": "やすめる",
-      "jmdictId": "1227570",
+      "kana": "にる",
+      "jmdictId": "1322540",
       "kanji": [
-        "休める"
+        "煮る"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "今日は仕事をやすんだ。 — I took the day off from work today.",
-      "transitive": "少し目をやすめてください。 — Please rest your eyes a little."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "やぶれる",
-      "jmdictId": "1471210",
-      "kanji": [
-        "破れる"
-      ]
+      "intransitive": "大根がよく煮えている。 — The daikon is well cooked.",
+      "transitive": "母が野菜を煮た。 — My mother simmered the vegetables."
     },
-    "transitive": {
-      "kana": "やぶる",
-      "jmdictId": "1471200",
-      "kanji": [
-        "破る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "紙袋がやぶれた。 — The paper bag tore.",
-      "transitive": "子供が障子をやぶった。 — The child tore the shoji screen."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "やむ",
-      "jmdictId": "1310640",
-      "kanji": [
-        "止む"
-      ]
-    },
-    "transitive": {
-      "kana": "やめる",
-      "jmdictId": "1310680",
-      "kanji": [
-        "止める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "雨がやんだ。 — The rain stopped.",
-      "transitive": "タバコをやめた。 — I quit smoking."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "ゆるむ",
-      "jmdictId": "1214430",
-      "kanji": [
-        "緩む"
-      ]
-    },
-    "transitive": {
-      "kana": "ゆるめる",
-      "jmdictId": "1214440",
-      "kanji": [
-        "緩める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ネジがゆるんでいる。 — The screw has come loose.",
-      "transitive": "ネクタイをゆるめた。 — I loosened my necktie."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "よごれる",
-      "jmdictId": "1179005",
-      "kanji": [
-        "汚れる"
-      ]
-    },
-    "transitive": {
-      "kana": "よごす",
-      "jmdictId": "1178960",
-      "kanji": [
-        "汚す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "白いシャツがよごれた。 — The white shirt got dirty.",
-      "transitive": "泥で靴をよごした。 — I got my shoes dirty with mud."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "よろこぶ",
-      "jmdictId": "1218760",
-      "kanji": [
-        "喜ぶ"
-      ]
-    },
-    "transitive": {
-      "kana": "よろこばす",
-      "jmdictId": "1612230",
-      "kanji": [
-        "喜ばす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "子供たちはプレゼントをもらってよろこんだ。 — The children were delighted to receive presents.",
-      "transitive": "サプライズで彼女をよろこばせた。 — I made her happy with a surprise."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "よわまる",
-      "jmdictId": "1324580",
-      "kanji": [
-        "弱まる"
-      ]
-    },
-    "transitive": {
-      "kana": "よわめる",
-      "jmdictId": "1324590",
-      "kanji": [
-        "弱める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "台風の勢力がよわまった。 — The typhoon's strength weakened.",
-      "transitive": "音量をよわめた。 — I turned down the volume."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "わかれる",
-      "jmdictId": "1606600",
-      "kanji": [
-        "分かれる"
-      ]
-    },
-    "transitive": {
-      "kana": "わける",
-      "jmdictId": "1503000",
-      "kanji": [
-        "分ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "道が二つにわかれている。 — The road splits in two.",
-      "transitive": "ケーキを三つにわけた。 — I divided the cake into three pieces."
-    }
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The soup is already boiling nicely.",
+          "ja": "スープがもうよく煮えている。"
+        },
+        "transitive": {
+          "en": "She simmered the dumplings in it too.",
+          "ja": "彼女はそこで餃子も煮た。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The chicken has finally cooked through.",
+          "ja": "鶏肉がやっと煮えた。"
+        },
+        "transitive": {
+          "en": "Grandma then simmered the tofu as well.",
+          "ja": "おばあちゃんは豆腐も煮た。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The potatoes are not quite cooked yet.",
+          "ja": "じゃがいもがまだ煮えていない。"
+        },
+        "transitive": {
+          "en": "Please simmer them for ten more minutes.",
+          "ja": "あと十分煮てください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
@@ -3131,595 +2138,156 @@
     "examples": {
       "intransitive": "お湯が沸いた。 — The water boiled.",
       "transitive": "お風呂を沸かす。 — I'll heat the bath."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The kettle water is boiling.",
+          "ja": "ケトルのお湯が沸いている。"
+        },
+        "transitive": {
+          "en": "She heated more water for everyone.",
+          "ja": "彼女はみんなのためにもっとお湯を沸かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The bath was finally ready.",
+          "ja": "お風呂のお湯がやっと沸いた。"
+        },
+        "transitive": {
+          "en": "Dad heated it again after it cooled.",
+          "ja": "冷めた後でお父さんがもう一度お風呂を沸かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The soup is boiling in the pot.",
+          "ja": "鍋のスープが沸いている。"
+        },
+        "transitive": {
+          "en": "Please heat some water for the noodles.",
+          "ja": "麺のためにお湯を沸かしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "わずらう",
-      "jmdictId": "2861485",
+      "kana": "もえる",
+      "jmdictId": "1469570",
       "kanji": [
-        "煩う"
+        "燃える"
       ]
     },
     "transitive": {
-      "kana": "わずらわす",
-      "jmdictId": "1481960",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼は病気のことで煩っている。 — He is worrying about his illness.",
-      "transitive": "お手を煩わせてすみません。 — I'm sorry to trouble you."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "わたる",
-      "jmdictId": "1444680",
+      "kana": "もやす",
+      "jmdictId": "1582900",
       "kanji": [
-        "渡る"
-      ]
-    },
-    "transitive": {
-      "kana": "わたす",
-      "jmdictId": "1444610",
-      "kanji": [
-        "渡す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "橋を渡って向こう岸に渡った。 — I crossed the bridge to the other side.",
-      "transitive": "彼に書類を渡した。 — I handed the documents to him."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "われる",
-      "jmdictId": "1208020",
-      "kanji": [
-        "割れる"
-      ]
-    },
-    "transitive": {
-      "kana": "わる",
-      "jmdictId": "1208000",
-      "kanji": [
-        "割る"
+        "燃やす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "コップが割れた。 — The glass broke.",
-      "transitive": "彼はコップを割った。 — He broke the glass."
-    }
+      "intransitive": "家がもえている。 — The house is burning.",
+      "transitive": "庭でごみをもやした。 — I burned trash in the yard."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The campfire is burning brightly.",
+          "ja": "キャンプファイヤーが明るく燃えている。"
+        },
+        "transitive": {
+          "en": "He burned the old letters in it.",
+          "ja": "彼はその中で古い手紙を燃やした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The pile of leaves caught and burned.",
+          "ja": "落ち葉の山が燃えた。"
+        },
+        "transitive": {
+          "en": "So she burned the rest of the pile too.",
+          "ja": "それで、彼女は残りの山も燃やした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A candle is burning on the altar.",
+          "ja": "祭壇の上でろうそくが燃えている。"
+        },
+        "transitive": {
+          "en": "The priest burned incense beside it.",
+          "ja": "神父はその横でお香を燃やした。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "丸まる",
-      "jmdictId": "2037080",
+      "kana": "ぬれる",
+      "jmdictId": "1467620",
       "kanji": [
-        "丸まる"
+        "濡れる"
       ]
     },
     "transitive": {
-      "kana": "丸める",
-      "jmdictId": "1216300",
+      "kana": "ぬらす",
+      "jmdictId": "1467610",
       "kanji": [
-        "丸める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫が丸まって寝ている。 — The cat is curled up sleeping.",
-      "transitive": "新聞紙を丸めてゴミ箱に捨てた。 — I crumpled up the newspaper and threw it in the trash."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "嵌まる",
-      "jmdictId": "1601030",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "嵌める",
-      "jmdictId": "1566420",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "パズルのピースがぴったり嵌まった。 — The puzzle piece fit perfectly.",
-      "transitive": "窓にガラスを嵌めた。 — I fitted the glass into the window frame."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "広まる",
-      "jmdictId": "1278450",
-      "kanji": [
-        "広まる"
-      ]
-    },
-    "transitive": {
-      "kana": "広める",
-      "jmdictId": "1278460",
-      "kanji": [
-        "広める"
+        "濡らす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "噂が町中に広まった。 — The rumor spread throughout the town.",
-      "transitive": "彼は自分の考えを広めようとした。 — He tried to spread his ideas."
-    }
+      "intransitive": "雨に降られて服が濡れた。 — I got caught in the rain and my clothes got wet.",
+      "transitive": "タオルを水で濡らした。 — I wet the towel with water."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "My hair got wet in the rain.",
+          "ja": "雨で髪が濡れた。"
+        },
+        "transitive": {
+          "en": "So she wetted a comb to flatten it.",
+          "ja": "だから彼女はくしを水で濡らした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The dog's fur is getting wet in the sprinkler.",
+          "ja": "犬の毛がスプリンクラーで濡れている。"
+        },
+        "transitive": {
+          "en": "He wetted a towel and wiped off the mud.",
+          "ja": "彼はタオルを濡らして泥を拭いてあげた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The bread got wet sitting on the counter.",
+          "ja": "パンが台の上で濡れてしまった。"
+        },
+        "transitive": {
+          "en": "She wetted a cloth to wipe the counter clean.",
+          "ja": "彼女は布を濡らして台を拭いた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "強まる",
-      "jmdictId": "1236130",
+      "kana": "よごれる",
+      "jmdictId": "1179005",
       "kanji": [
-        "強まる"
+        "汚れる"
       ]
     },
     "transitive": {
-      "kana": "強める",
-      "jmdictId": "1236150",
-      "kanji": [
-        "強める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "風が強まってきた。 — The wind has gotten stronger.",
-      "transitive": "警備を強める必要がある。 — We need to strengthen security."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "炒まる",
-      "jmdictId": "2037090",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "炒める",
-      "jmdictId": "1568920",
-      "kanji": [
-        "炒める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "野菜がよく炒まった。 — The vegetables got nicely stir-fried.",
-      "transitive": "野菜を強火で炒める。 — Stir-fry the vegetables over high heat."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "窄まる",
-      "jmdictId": "2036930",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "窄める",
-      "jmdictId": "1579280",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "道が先で窄まっている。 — The road narrows up ahead.",
-      "transitive": "傘を窄めて店に入った。 — I closed my umbrella and entered the shop."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "絡まる",
-      "jmdictId": "1548490",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "絡める",
-      "jmdictId": "1949300",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "糸が絡まってほどけない。 — The thread is tangled and won't come undone.",
-      "transitive": "足を絡めて相手を倒した。 — I entwined my legs around my opponent and brought him down."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "茹だる",
-      "jmdictId": "1585890",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "茹でる",
-      "jmdictId": "1571470",
-      "kanji": [
-        "茹でる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "暑さで体が茹だりそうだ。 — I feel like I'm boiling in this heat.",
-      "transitive": "卵を茹でる。 — I boil an egg."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "連なる",
-      "jmdictId": "1559240",
-      "kanji": [
-        "連なる"
-      ]
-    },
-    "transitive": {
-      "kana": "連ねる",
-      "jmdictId": "1559250",
-      "kanji": [
-        "連ねる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "山々が連なっている。 — The mountains stretch out in a row.",
-      "transitive": "名前を連ねる。 — To add one's name (to a list)."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "高まる",
-      "jmdictId": "1283220",
-      "kanji": [
-        "高まる"
-      ]
-    },
-    "transitive": {
-      "kana": "高める",
-      "jmdictId": "1283240",
-      "kanji": [
-        "高める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "緊張が高まっている。 — Tension is rising.",
-      "transitive": "技術を高める努力をしている。 — I'm making efforts to improve my skills."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "塞がる",
-      "jmdictId": "1602570",
-      "kanji": [
-        "塞がる"
-      ]
-    },
-    "transitive": {
-      "kana": "塞ぐ",
-      "jmdictId": "1602590",
-      "kanji": [
-        "塞ぐ"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "傷が塞がった。 — The wound has closed up.",
-      "transitive": "耳を塞いで聞こえないふりをした。 — I covered my ears and pretended not to hear."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "明ける",
-      "jmdictId": "1202450",
-      "kanji": [
-        "開ける",
-        "空ける",
-        "明ける"
-      ]
-    },
-    "transitive": {
-      "kana": "明かす",
-      "jmdictId": "1532220",
-      "kanji": [
-        "明かす"
-      ]
-    },
-    "examples": {
-      "intransitive": "夜が明けた。 — Dawn broke.",
-      "transitive": "秘密を明かした。 — I revealed the secret."
-    },
-    "ambiguousReason": "明ける is tagged as both transitive and intransitive in JMDict and is commonly used both ways (e.g. 夜が明ける intransitive, 穴を明ける transitive), making a clean pairing with 明かす misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "暈ける",
-      "jmdictId": "1288495",
-      "kanji": [
-        "暈ける"
-      ]
-    },
-    "transitive": {
-      "kana": "暈す",
-      "jmdictId": "1567910",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "写真の背景が暈けている。 — The background of the photo is blurred.",
-      "transitive": "背景を暈して被写体を際立たせた。 — I blurred the background to make the subject stand out."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "潤ける",
-      "jmdictId": "2856338",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "潤かす",
-      "jmdictId": "2852773",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "豆が水に浸かって潤けた。 — The beans swelled up from soaking in water.",
-      "transitive": "豆を水で潤かす。 — I soak the beans in water."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "焦れる",
-      "jmdictId": "1350790",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "焦らす",
-      "jmdictId": "1005990",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "待たされて焦れてきた。 — I got impatient from being kept waiting.",
-      "transitive": "相手を焦らして楽しんでいる。 — He's enjoying teasing the other person by keeping them in suspense."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "満ちる",
-      "jmdictId": "1604540",
-      "kanji": [
-        "満ちる"
-      ]
-    },
-    "transitive": {
-      "kana": "満たす",
-      "jmdictId": "1526670",
-      "kanji": [
-        "満たす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "潮が満ちてきた。 — The tide is coming in.",
-      "transitive": "コップに水を満たした。 — I filled the glass with water."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "和らぐ",
-      "jmdictId": "1561950",
-      "kanji": [
-        "和らぐ"
-      ]
-    },
-    "transitive": {
-      "kana": "和らげる",
-      "jmdictId": "1561960",
-      "kanji": [
-        "和らげる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "痛みが和らいだ。 — The pain subsided.",
-      "transitive": "薬で痛みを和らげた。 — I relieved the pain with medicine."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "平らぐ",
-      "jmdictId": "1506950",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "平らげる",
-      "jmdictId": "1506960",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "反乱が平らいだ。 — The rebellion was suppressed.",
-      "transitive": "料理を平らげた。 — I ate up all the food."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "空く",
-      "jmdictId": "1586270",
-      "kanji": [
-        "開く",
-        "空く"
-      ]
-    },
-    "transitive": {
-      "kana": "空ける",
-      "jmdictId": "1202450",
-      "kanji": [
-        "開ける",
-        "空ける",
-        "明ける"
-      ]
-    },
-    "examples": {
-      "intransitive": "席が空いている。 — The seat is vacant.",
-      "transitive": "席を空けてください。 — Please vacate your seat."
-    },
-    "ambiguousReason": "空ける is tagged as both transitive and intransitive in JMDict, and 空く also has transitive senses (e.g. 穴が空く vs 席を空ける), making the distinction blurry for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "窄む",
-      "jmdictId": "2010970",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "窄める",
-      "jmdictId": "1579280",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "道が窄んでいる。 — The road is narrowing.",
-      "transitive": "肩を窄めて人混みを通り抜けた。 — I hunched my shoulders and passed through the crowd."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "竦む",
-      "jmdictId": "1570220",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "竦める",
-      "jmdictId": "1570230",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "恐怖で体が竦んで動けなかった。 — I froze with fear and couldn't move.",
-      "transitive": "寒くて首を竦めた。 — I ducked my head from the cold."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "背く",
-      "jmdictId": "1472680",
-      "kanji": [
-        "背く"
-      ]
-    },
-    "transitive": {
-      "kana": "背ける",
-      "jmdictId": "1472690",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼は親の期待に背いた。 — He went against his parents' expectations.",
-      "transitive": "彼女は恥ずかしくて顔を背けた。 — She turned her face away in embarrassment."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "赤らむ",
-      "jmdictId": "1383280",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "赤らめる",
-      "jmdictId": "1383290",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼女の頬が恥ずかしさで赤らんだ。 — Her cheeks reddened with embarrassment.",
-      "transitive": "彼女は顔を赤らめて下を向いた。 — She blushed and looked down."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "刳れる",
-      "jmdictId": "2037000",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "刳る",
-      "jmdictId": "1585570",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "長年の使用で木の中が刳れてしまった。 — The inside of the wood became hollowed out from years of use.",
-      "transitive": "職人が丸太を刳って器を作った。 — The craftsman gouged out a log to make a bowl."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "捲れる",
-      "jmdictId": "1633150",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "捲る",
-      "jmdictId": "1257800",
-      "kanji": [
-        "捲る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "風でスカートが捲れた。 — Her skirt was flipped up by the wind.",
-      "transitive": "彼は袖を捲って作業を始めた。 — He rolled up his sleeves and started working."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "捻れる",
-      "jmdictId": "1600150",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "捻る",
-      "jmdictId": "1469530",
-      "kanji": [
-        "捻る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ロープが捻れてほどけなくなった。 — The rope got twisted and couldn't be undone.",
-      "transitive": "彼は蛇口を捻って水を出した。 — He turned the faucet and let the water run."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "縒れる",
-      "jmdictId": "2036980",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "撚る",
-      "jmdictId": "1469530",
-      "kanji": [
-        "捻る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "糸が縒れて使えなくなった。 — The thread got kinked and became unusable.",
-      "transitive": "職人が糸を撚って丈夫な紐を作った。 — The craftsman twisted threads to make a strong cord."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "穢れる",
-      "jmdictId": "1179000",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "穢す",
+      "kana": "よごす",
       "jmdictId": "1178960",
       "kanji": [
         "汚す"
@@ -3727,667 +2295,529 @@
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "長年の戦争で国土が穢れた。 — The land was defiled by years of war.",
-      "transitive": "神聖な場所を穢すな。 — Do not defile a sacred place."
-    }
+      "intransitive": "白いシャツがよごれた。 — The white shirt got dirty.",
+      "transitive": "泥で靴をよごした。 — I got my shoes dirty with mud."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The kitchen floor got dirty from the spill.",
+          "ja": "こぼれた液体でキッチンの床が汚れた。"
+        },
+        "transitive": {
+          "en": "The dog ran in and dirtied the whole hallway too.",
+          "ja": "犬が走り込んで、廊下全体も汚した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "His jacket is getting dirty from the fence.",
+          "ja": "彼のジャケットがフェンスで汚れている。"
+        },
+        "transitive": {
+          "en": "He wiped his hands on it and dirtied it even more.",
+          "ja": "彼は手をそれで拭いて、さらに汚した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The tablecloth got dirty during the meal.",
+          "ja": "食事中にテーブルクロスが汚れた。"
+        },
+        "transitive": {
+          "en": "The kids then dirtied the chairs as well.",
+          "ja": "子供たちは椅子も汚した。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "燻ぶる",
-      "jmdictId": "1592180",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "燻す",
-      "jmdictId": "1949270",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "炭火が燻ぶって煙が出ている。 — The charcoal is smoldering and giving off smoke.",
-      "transitive": "魚を燻して保存食にする。 — They smoke the fish to make preserved food."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "横たわる",
-      "jmdictId": "1180590",
+      "kana": "こげる",
+      "jmdictId": "1350730",
       "kanji": [
-        "横たわる"
+        "焦げる"
       ]
     },
     "transitive": {
-      "kana": "横たえる",
-      "jmdictId": "1180580",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼はソファに横たわって本を読んでいた。 — He was lying on the sofa reading a book.",
-      "transitive": "彼女は疲れた体をベッドに横たえた。 — She laid her tired body down on the bed."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "交う",
-      "jmdictId": "2037030",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "交わす",
-      "jmdictId": "1590750",
+      "kana": "こがす",
+      "jmdictId": "1350710",
       "kanji": [
-        "交わす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "人混みの中で人々が交う。 — People pass each other in the crowd.",
-      "transitive": "二人は握手を交わした。 — The two exchanged a handshake."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "癒える",
-      "jmdictId": "1538740",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "癒す",
-      "jmdictId": "1538750",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "傷が癒えるまで安静にしてください。 — Please rest until your wound heals.",
-      "transitive": "温泉に入って疲れを癒した。 — I soaked in a hot spring and healed my fatigue."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "費える",
-      "jmdictId": "1597730",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "費やす",
-      "jmdictId": "1484600",
-      "kanji": [
-        "費やす"
+        "焦がす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "貯金がすべて費えてしまった。 — All my savings were used up.",
-      "transitive": "彼は研究に多くの時間を費やした。 — He spent a lot of time on research."
-    }
+      "intransitive": "パンが焦げてしまった。 — The bread got burned.",
+      "transitive": "うっかり魚を焦がしてしまった。 — I accidentally scorched the fish."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The rice is burning at the bottom.",
+          "ja": "鍋の底のご飯が焦げている。"
+        },
+        "transitive": {
+          "en": "She turned up the heat and scorched it even more.",
+          "ja": "彼女は火を強くして、さらに焦がしてしまった。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The toast burned while she was on the phone.",
+          "ja": "彼女が電話をしている間に、パンが焦げてしまった。"
+        },
+        "transitive": {
+          "en": "She put in a new slice and burned that one too.",
+          "ja": "新しいパンを入れて、それも焦がしてしまった。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The garlic started to burn in the pan.",
+          "ja": "フライパンのニンニクが焦げ始めた。"
+        },
+        "transitive": {
+          "en": "He didn't remove it in time and scorched the whole batch.",
+          "ja": "彼は間に合わず、全部焦がしてしまった。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "来る",
-      "jmdictId": "1547720",
+      "kana": "そだつ",
+      "jmdictId": "1160540",
       "kanji": [
-        "来る"
+        "育つ"
       ]
     },
     "transitive": {
-      "kana": "来す",
-      "jmdictId": "1591260",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "春が来る。 — Spring comes.",
-      "transitive": "ストレスが病気を来す。 — Stress brings about illness."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "欠ける",
-      "jmdictId": "1253920",
+      "kana": "そだてる",
+      "jmdictId": "1160570",
       "kanji": [
-        "欠ける"
-      ]
-    },
-    "transitive": {
-      "kana": "欠く",
-      "jmdictId": "1253900",
-      "kanji": [
-        "欠く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "茶碗の縁が欠けた。 — The rim of the tea bowl chipped.",
-      "transitive": "礼儀を欠く行為は許されない。 — Behavior that lacks manners is not tolerated."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "進む",
-      "jmdictId": "1365980",
-      "kanji": [
-        "進む"
-      ]
-    },
-    "transitive": {
-      "kana": "進める",
-      "jmdictId": "1365990",
-      "kanji": [
-        "進める"
+        "育てる"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "工事が順調に進んでいる。 — The construction is progressing smoothly.",
-      "transitive": "会議を進めましょう。 — Let's proceed with the meeting."
-    }
+      "intransitive": "この子は元気にそだった。 — This child grew up healthy.",
+      "transitive": "祖母が私をそだててくれた。 — My grandmother raised me."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The seedling grew tall in the sun.",
+          "ja": "苗が日差しの中で高く育った。"
+        },
+        "transitive": {
+          "en": "She watered the others to help them grow too.",
+          "ja": "彼女は残りの苗も育てるために水をやった。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The stray kitten she took in grew strong on its own.",
+          "ja": "彼女が拾った野良の子猫が自分で元気に育った。"
+        },
+        "transitive": {
+          "en": "So she decided to raise the others too.",
+          "ja": "それで彼女は他の子猫たちも育てることにした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The child grew up without a father.",
+          "ja": "その子は父親なしで育った。"
+        },
+        "transitive": {
+          "en": "His uncle raised him like a son instead.",
+          "ja": "代わりに叔父が彼を息子のように育ててくれた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "慣れる",
-      "jmdictId": "1212670",
+      "kana": "ふえる",
+      "jmdictId": "1602440",
       "kanji": [
-        "慣れる"
+        "増える"
       ]
     },
     "transitive": {
-      "kana": "慣らす",
-      "jmdictId": "1212650",
+      "kana": "ふやす",
+      "jmdictId": "1602880",
       "kanji": [
-        "慣らす"
+        "増やす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "新しい環境に慣れるのに時間がかかった。 — It took time to get used to the new environment.",
-      "transitive": "耳を英語に慣らすためにポッドキャストを聞いている。 — I listen to podcasts to train my ears to English."
-    }
+      "intransitive": "人口が増えた。 — The population increased.",
+      "transitive": "貯金を増やしたい。 — I want to increase my savings."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The number of errors increased overnight.",
+          "ja": "エラーの数が一晩で増えた。"
+        },
+        "transitive": {
+          "en": "So the team increased the testing hours.",
+          "ja": "それでチームはテストの時間を増やした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The weeds in the garden are increasing.",
+          "ja": "庭の雑草が増えている。"
+        },
+        "transitive": {
+          "en": "She wants to increase the flower beds instead.",
+          "ja": "彼女は代わりに花壇を増やしたい。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The number of customers increased last month.",
+          "ja": "先月、お客さんの数が増えた。"
+        },
+        "transitive": {
+          "en": "Please increase the staff on weekends.",
+          "ja": "週末はスタッフを増やしてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "従う",
-      "jmdictId": "1335210",
+      "kana": "へる",
+      "jmdictId": "1263120",
       "kanji": [
-        "従う"
+        "減る"
       ]
     },
     "transitive": {
-      "kana": "従える",
-      "jmdictId": "1335220",
+      "kana": "へらす",
+      "jmdictId": "1263110",
       "kanji": [
-        "従える"
+        "減らす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "彼は上司の指示に従った。 — He obeyed his boss's instructions.",
-      "transitive": "王は大勢の家臣を従えて城に入った。 — The king entered the castle accompanied by many retainers."
-    }
+      "intransitive": "体重が三キロ減った。 — I lost three kilograms.",
+      "transitive": "無駄な出費を減らした。 — I reduced unnecessary expenses."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "His screen time decreased a lot this week.",
+          "ja": "今週、彼のスクリーンタイムがかなり減った。"
+        },
+        "transitive": {
+          "en": "His mom had cut his apps in half.",
+          "ja": "お母さんがアプリを半分減らしたのだ。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The noise in the café is finally reducing.",
+          "ja": "カフェの騒音がやっと減っている。"
+        },
+        "transitive": {
+          "en": "The staff turned down the background music.",
+          "ja": "スタッフがBGMの音量を減らした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The number of stray cats in the neighborhood has decreased.",
+          "ja": "近所の野良猫の数が減った。"
+        },
+        "transitive": {
+          "en": "The city wants to reduce them even further.",
+          "ja": "市はさらに数を減らすつもりだ。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "退く",
-      "jmdictId": "1595080",
+      "kana": "のびる",
+      "jmdictId": "1358870",
       "kanji": [
-        "退く"
+        "伸びる"
       ]
     },
     "transitive": {
-      "kana": "退ける",
-      "jmdictId": "1411260",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼は第一線から退いた。 — He withdrew from the front line.",
-      "transitive": "敵の攻撃を退けた。 — They repelled the enemy's attack."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "悩む",
-      "jmdictId": "1469870",
+      "kana": "のばす",
+      "jmdictId": "1600290",
       "kanji": [
-        "悩む"
-      ]
-    },
-    "transitive": {
-      "kana": "悩ます",
-      "jmdictId": "1469840",
-      "kanji": [
-        "悩ます"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "将来のことで悩んでいる。 — I'm worried about the future.",
-      "transitive": "その問題が彼を悩ましている。 — That problem is tormenting him."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "寄る",
-      "jmdictId": "1219680",
-      "kanji": [
-        "寄る"
-      ]
-    },
-    "transitive": {
-      "kana": "寄す",
-      "jmdictId": "2037070",
-      "kanji": []
-    },
-    "examples": {
-      "intransitive": "駅の近くのコンビニに寄った。 — I stopped by the convenience store near the station.",
-      "transitive": "波が岸に寄す。 — The waves draw near to the shore."
-    },
-    "ambiguousReason": "寄す is an archaic/literary verb rarely used in modern Japanese, and JMDict does not tag it as transitive, making it unreliable as a quiz item for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "縮まる",
-      "jmdictId": "1337540",
-      "kanji": [
-        "縮まる"
-      ]
-    },
-    "transitive": {
-      "kana": "縮める",
-      "jmdictId": "1337570",
-      "kanji": [
-        "縮める"
+        "伸ばす"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "二人の距離が縮まった。 — The distance between the two shrank.",
-      "transitive": "スカートの丈を縮めた。 — I shortened the length of the skirt."
-    }
+      "intransitive": "髪が肩まで伸びた。 — My hair grew down to my shoulders.",
+      "transitive": "彼女はまっすぐ手を伸ばした。 — She stretched out her hand straight."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The dough stretched thin in the heat.",
+          "ja": "生地が熱で薄く伸びた。"
+        },
+        "transitive": {
+          "en": "She stretched the rest of it even thinner.",
+          "ja": "彼女は残りの生地をさらに薄く伸ばした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The shadows grew long across the yard.",
+          "ja": "影が庭に長く伸びている。"
+        },
+        "transitive": {
+          "en": "He stretched his arm out to touch the fence.",
+          "ja": "彼はフェンスに触ろうと腕を伸ばした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The tree branch grew toward the window.",
+          "ja": "木の枝が窓の方へ伸びてきた。"
+        },
+        "transitive": {
+          "en": "Dad reached out to the window and grabbed it.",
+          "ja": "お父さんは窓まで手を伸ばして枝をつかんだ。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "遅れる",
-      "jmdictId": "1589040",
+      "kana": "なおる",
+      "jmdictId": "1599400",
       "kanji": [
-        "遅れる"
+        "治る"
       ]
     },
     "transitive": {
-      "kana": "遅らす",
-      "jmdictId": "1422000",
+      "kana": "なおす",
+      "jmdictId": "2856318",
       "kanji": [
-        "遅らす"
+        "治す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "電車に遅れてしまった。 — I was late for the train.",
-      "transitive": "出発を一時間遅らした。 — I delayed the departure by one hour."
-    }
+      "intransitive": "風邪が治った。 — My cold got better.",
+      "transitive": "医者が病気を治した。 — The doctor cured the illness."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "His broken arm finally healed, thanks to the doctor.",
+          "ja": "医者のおかげで、彼の折れた腕がやっと治った。"
+        },
+        "transitive": {
+          "en": "That doctor treated the other patient's arm too.",
+          "ja": "その医者は別の患者の腕も治した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Her fever went down overnight.",
+          "ja": "彼女の熱が一晩で治った。"
+        },
+        "transitive": {
+          "en": "Now she wants to cure her sister's cold.",
+          "ja": "今度は妹の風邪を治したいと思っている。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The cut on his hand is healing.",
+          "ja": "彼の手の傷が治っている。"
+        },
+        "transitive": {
+          "en": "Please treat the wound on his foot too.",
+          "ja": "彼の足の傷も治してください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "埋まる",
-      "jmdictId": "1584340",
+      "kana": "ながれる",
+      "jmdictId": "1552140",
       "kanji": [
-        "埋まる"
+        "流れる"
       ]
     },
     "transitive": {
-      "kana": "填める",
-      "jmdictId": "1524490",
+      "kana": "ながす",
+      "jmdictId": "1552120",
       "kanji": [
-        "埋める"
-      ]
-    },
-    "examples": {
-      "intransitive": "道路が雪で埋まった。 — The road was buried in snow.",
-      "transitive": "穴をセメントで填めた。 — I filled the hole with cement."
-    },
-    "ambiguousReason": "填める is a rare kanji variant of 嵌める/埋める, and while semantically plausible as a pair with 埋まる, learners would typically encounter 埋める as the standard transitive counterpart, making this pairing potentially confusing."
-  },
-  {
-    "intransitive": {
-      "kana": "懲りる",
-      "jmdictId": "1428190",
-      "kanji": [
-        "懲りる"
-      ]
-    },
-    "transitive": {
-      "kana": "懲らす",
-      "jmdictId": "1428180",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "前回の失敗に懲りて、もう二度とギャンブルはしない。 — Having learned my lesson from the last failure, I won't gamble ever again.",
-      "transitive": "悪いことをした子供を懲らす必要がある。 — It's necessary to discipline a child who has done something bad."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "揺れる",
-      "jmdictId": "1545710",
-      "kanji": [
-        "揺れる"
-      ]
-    },
-    "transitive": {
-      "kana": "揺らす",
-      "jmdictId": "1545640",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "地震で建物が大きく揺れた。 — The building shook greatly in the earthquake.",
-      "transitive": "母親が赤ちゃんのゆりかごを揺らした。 — The mother rocked the baby's cradle."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "凝る",
-      "jmdictId": "1239060",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "凝らす",
-      "jmdictId": "1239000",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "長時間座っていたので肩が凝った。 — My shoulders got stiff from sitting for a long time.",
-      "transitive": "彼女は趣向を凝らした料理を作った。 — She prepared an elaborately devised dish."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "飽きる",
-      "jmdictId": "1586250",
-      "kanji": [
-        "飽きる"
-      ]
-    },
-    "transitive": {
-      "kana": "飽かす",
-      "jmdictId": "1518280",
-      "kanji": []
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "毎日同じ料理で飽きた。 — I got tired of having the same food every day.",
-      "transitive": "金に飽かして高級品を買い集めた。 — He spent money lavishly collecting luxury goods."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "入る",
-      "jmdictId": "1465580",
-      "kanji": [
-        "入る"
-      ]
-    },
-    "transitive": {
-      "kana": "入れる",
-      "jmdictId": "1465610",
-      "kanji": [
-        "入れる"
+        "流す"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "猫が部屋に入った。 — The cat entered the room.",
-      "transitive": "荷物をかばんに入れた。 — I put the luggage into the bag."
-    }
+      "intransitive": "川の水がゆっくり流れている。 — The river water is flowing slowly.",
+      "transitive": "トイレの水を流した。 — I flushed the toilet."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The river water flowed gently.",
+          "ja": "川の水がゆっくり流れていた。"
+        },
+        "transitive": {
+          "en": "She let flower petals drift down the current.",
+          "ja": "彼女は花びらを水に流した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Blood flowed from the cut on his hand.",
+          "ja": "彼の手の傷から血が流れた。"
+        },
+        "transitive": {
+          "en": "She turned on the tap and ran water over the wound.",
+          "ja": "彼女は蛇口をひねって、傷口に水を流した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A leaf drifted slowly down the stream.",
+          "ja": "葉っぱが小川をゆっくり流れている。"
+        },
+        "transitive": {
+          "en": "The kids floated paper boats down it too.",
+          "ja": "子どもたちも紙の舟を流した。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "知れる",
-      "jmdictId": "1420490",
+      "kana": "おれる",
+      "jmdictId": "1385920",
       "kanji": [
-        "知れる"
+        "折れる"
       ]
     },
     "transitive": {
-      "kana": "知る",
-      "jmdictId": "1420470",
+      "kana": "おる",
+      "jmdictId": "1385910",
       "kanji": [
-        "知る"
-      ]
-    },
-    "examples": {
-      "intransitive": "やがて真実が知れるだろう。 — The truth will eventually become known.",
-      "transitive": "彼の名前を知っていますか。 — Do you know his name?"
-    },
-    "ambiguousReason": "知れる functions primarily as a potential/spontaneous form of 知る rather than as a standard intransitive counterpart, making the pair misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "足る",
-      "jmdictId": "1404750",
-      "kanji": [
-        "足る"
-      ]
-    },
-    "transitive": {
-      "kana": "足す",
-      "jmdictId": "1404700",
-      "kanji": [
-        "足す"
+        "折る"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "この量で足りますか。 — Is this amount sufficient?",
-      "transitive": "スープに水を足した。 — I added water to the soup."
-    }
+      "intransitive": "強風で枝が折れた。 — The branch broke in the strong wind.",
+      "transitive": "彼は紙を半分に折った。 — He folded the paper in half."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The chopstick broke during dinner.",
+          "ja": "夕食中に箸が折れた。"
+        },
+        "transitive": {
+          "en": "He broke the other one to match.",
+          "ja": "彼はもう一本も同じ長さに折った。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A tree branch is breaking in the storm.",
+          "ja": "嵐で木の枝が折れている。"
+        },
+        "transitive": {
+          "en": "The firefighter broke the branches blocking the road.",
+          "ja": "消防士が道を塞いでいる枝を折った。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The crane's leg broke in the trap.",
+          "ja": "罠で鶴の足が折れた。"
+        },
+        "transitive": {
+          "en": "The vet folded gauze to the right length.",
+          "ja": "獣医がガーゼを適切な長さに折った。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "向かう",
-      "jmdictId": "1604800",
+      "kana": "ぬける",
+      "jmdictId": "1478200",
       "kanji": [
-        "向かう"
+        "抜ける"
       ]
     },
     "transitive": {
-      "kana": "向ける",
-      "jmdictId": "1277100",
+      "kana": "ぬく",
+      "jmdictId": "1478190",
       "kanji": [
-        "向ける"
+        "抜く"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "電車は東京に向かっている。 — The train is heading toward Tokyo.",
-      "transitive": "カメラをこちらに向けてください。 — Please point the camera this way."
-    }
+      "intransitive": "歯が一本抜けた。 — One tooth fell out.",
+      "transitive": "医者が親知らずを抜いた。 — The dentist pulled out the wisdom tooth."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "An old nail came loose from the board.",
+          "ja": "古い釘が板から一本抜けた。"
+        },
+        "transitive": {
+          "en": "She pulled out all the others too.",
+          "ja": "彼女は残りの釘も全部抜いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The cork is coming out slowly.",
+          "ja": "コルクがゆっくり抜けている。"
+        },
+        "transitive": {
+          "en": "He pulled it out the rest of the way.",
+          "ja": "彼がコルクを最後まで抜いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "One hair came out in her hand.",
+          "ja": "髪が一本手に抜けた。"
+        },
+        "transitive": {
+          "en": "The stylist carefully pulled out a few more.",
+          "ja": "美容師がさらに何本か丁寧に抜いた。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "回る",
-      "jmdictId": "1342050",
-      "kanji": [
-        "巡る"
-      ]
-    },
-    "transitive": {
-      "kana": "回す",
-      "jmdictId": "1199350",
-      "kanji": [
-        "回す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "風車がくるくる回っている。 — The windmill is spinning round and round.",
-      "transitive": "彼はハンドルを右に回した。 — He turned the steering wheel to the right."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "受かる",
-      "jmdictId": "1329580",
-      "kanji": [
-        "受かる"
-      ]
-    },
-    "transitive": {
-      "kana": "受ける",
-      "jmdictId": "1329590",
-      "kanji": [
-        "受ける",
-        "請ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "大学の入試に受かった。 — I passed the university entrance exam.",
-      "transitive": "来月、日本語能力試験を受ける。 — I will take the JLPT next month."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "開く",
-      "jmdictId": "1202440",
-      "kanji": [
-        "開く"
-      ]
-    },
-    "transitive": {
-      "kana": "開ける",
-      "jmdictId": "1202450",
-      "kanji": [
-        "開ける",
-        "空ける",
-        "明ける"
-      ]
-    },
-    "examples": {
-      "intransitive": "ドアが自動的に開いた。 — The door opened automatically.",
-      "transitive": "窓を開けてください。 — Please open the window."
-    },
-    "ambiguousReason": "開く (あく/ひらく) is used both intransitively and transitively in modern Japanese, so labeling it purely intransitive is misleading for learners."
-  },
-  {
-    "intransitive": {
-      "kana": "温む",
-      "jmdictId": "1183320",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "温める",
-      "jmdictId": "1586440",
-      "kanji": [
-        "温める",
-        "暖める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "春になって水が温んできた。 — The water has become lukewarm as spring arrived.",
-      "transitive": "スープを電子レンジで温めた。 — I heated up the soup in the microwave."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "起こる",
-      "jmdictId": "1223680",
-      "kanji": [
-        "起こる"
-      ]
-    },
-    "transitive": {
-      "kana": "起こす",
-      "jmdictId": "1223660",
-      "kanji": [
-        "起こす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "昨夜、大きな地震が起こった。 — A big earthquake occurred last night.",
-      "transitive": "母が毎朝私を起こしてくれる。 — My mother wakes me up every morning."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "整う",
-      "jmdictId": "1598800",
-      "kanji": [
-        "整う"
-      ]
-    },
-    "transitive": {
-      "kana": "整える",
-      "jmdictId": "1376140",
-      "kanji": [
-        "整える"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "会議の準備が整った。 — The preparations for the meeting are in order.",
-      "transitive": "出発前に荷物を整えた。 — I arranged my luggage before departure."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "干る",
-      "jmdictId": "1212010",
-      "kanji": [
-        "干る"
-      ]
-    },
-    "transitive": {
-      "kana": "干す",
-      "jmdictId": "1603510",
-      "kanji": [
-        "干す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "夏の暑さで池の水が干た。 — The pond water dried up from the summer heat.",
-      "transitive": "洗濯物を外に干した。 — I hung the laundry outside to dry."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "混じる",
-      "jmdictId": "1603930",
-      "kanji": [
-        "混じる",
-        "交じる"
-      ]
-    },
-    "transitive": {
-      "kana": "混ぜる",
-      "jmdictId": "1290310",
-      "kanji": [
-        "混ぜる",
-        "交ぜる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "白髪が黒髪に混じっている。 — Gray hairs are mixed in with the black hair.",
-      "transitive": "卵と砂糖をよく混ぜてください。 — Please mix the eggs and sugar well."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "飛ぶ",
+      "kana": "とぶ",
       "jmdictId": "1429700",
       "kanji": [
-        "飛ぶ",
-        "跳ぶ"
+        "飛ぶ"
       ]
     },
     "transitive": {
-      "kana": "飛ばす",
+      "kana": "とばす",
       "jmdictId": "1485230",
       "kanji": [
         "飛ばす"
@@ -4397,351 +2827,144 @@
     "examples": {
       "intransitive": "鳥が空を飛んでいる。 — A bird is flying in the sky.",
       "transitive": "子供が紙飛行機を飛ばした。 — The child sent a paper airplane flying."
-    }
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A kite flew high above the park.",
+          "ja": "凧が公園の上空を飛んでいた。"
+        },
+        "transitive": {
+          "en": "The boy ran over and flew his own kite too.",
+          "ja": "男の子が走ってきて、自分の凧も飛ばした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A leaf flew off the tree in the wind.",
+          "ja": "葉っぱが風で木から飛んだ。"
+        },
+        "transitive": {
+          "en": "She picked up more leaves and tossed them into the air.",
+          "ja": "彼女は葉っぱをもっと拾って、空に飛ばした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A paper airplane flew across the classroom.",
+          "ja": "紙飛行機が教室を飛んだ。"
+        },
+        "transitive": {
+          "en": "The boy sent another one flying out the window.",
+          "ja": "男の子がもう一機を窓の外に飛ばした。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "備わる",
-      "jmdictId": "1596640",
+      "kana": "ととのう",
+      "jmdictId": "1598800",
       "kanji": [
-        "備わる",
-        "具わる"
+        "整う"
       ]
     },
     "transitive": {
-      "kana": "備える",
-      "jmdictId": "1244960",
+      "kana": "ととのえる",
+      "jmdictId": "1376140",
       "kanji": [
-        "備える"
+        "整える"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "この部屋にはエアコンが備わっている。 — This room is equipped with air conditioning.",
-      "transitive": "災害に備えて食料を備えておいた。 — I stocked up on food in preparation for a disaster."
-    }
+      "intransitive": "会議の準備が整った。 — The preparations for the meeting are in order.",
+      "transitive": "出発前に荷物を整えた。 — I arranged my luggage before departure."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Her hair is finally in order.",
+          "ja": "彼女の髪がようやく整っている。"
+        },
+        "transitive": {
+          "en": "She quickly arranged her collar too.",
+          "ja": "彼女はすぐに襟元も整えた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The flower arrangement came together nicely.",
+          "ja": "生け花の形が整った。"
+        },
+        "transitive": {
+          "en": "The teacher arranged the remaining stems carefully.",
+          "ja": "先生が残りの茎を丁寧に整えた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The campsite is now in good shape.",
+          "ja": "キャンプサイトが整っている。"
+        },
+        "transitive": {
+          "en": "Please tidy up the sleeping bags too.",
+          "ja": "寝袋も整えてください。"
+        }
+      }
+    ]
   },
   {
     "intransitive": {
-      "kana": "照る",
-      "jmdictId": "1350860",
+      "kana": "たまる",
+      "jmdictId": "1552650",
       "kanji": [
-        "照る"
+        "溜まる"
       ]
     },
     "transitive": {
-      "kana": "照らす",
-      "jmdictId": "1350840",
+      "kana": "ためる",
+      "jmdictId": "1552630",
       "kanji": [
-        "照らす"
+        "溜める"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "太陽がさんさんと照っている。 — The sun is shining brightly.",
-      "transitive": "懐中電灯で暗い道を照らした。 — I illuminated the dark road with a flashlight."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "散らかる",
-      "jmdictId": "1303430",
-      "kanji": [
-        "散らかる"
-      ]
+      "intransitive": "水たまりに水がたまった。 — Water collected in the puddle.",
+      "transitive": "毎月少しずつお金をためている。 — I save a little money every month."
     },
-    "transitive": {
-      "kana": "散らかす",
-      "jmdictId": "1303420",
-      "kanji": [
-        "散らかす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "部屋が散らかっている。 — The room is messy.",
-      "transitive": "子供がおもちゃを散らかした。 — The child scattered toys around."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "乾く",
-      "jmdictId": "1209650",
-      "kanji": [
-        "乾く"
-      ]
-    },
-    "transitive": {
-      "kana": "乾かす",
-      "jmdictId": "1209630",
-      "kanji": [
-        "乾かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "洗濯物がよく乾いた。 — The laundry dried well.",
-      "transitive": "ドライヤーで髪を乾かす。 — I dry my hair with a hair dryer."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "暮れる",
-      "jmdictId": "1514960",
-      "kanji": [
-        "暮れる"
-      ]
-    },
-    "transitive": {
-      "kana": "暮らす",
-      "jmdictId": "1514940",
-      "kanji": [
-        "暮らす"
-      ]
-    },
-    "examples": {
-      "intransitive": "日が暮れる前に帰ろう。 — Let's go home before it gets dark.",
-      "transitive": "田舎で静かに暮らしている。 — I live quietly in the countryside."
-    },
-    "ambiguousReason": "暮らす is primarily used as an intransitive verb meaning \"to live/get by\" rather than as the transitive counterpart of 暮れる; they share an etymological root but do not function as a clean transitive/intransitive pair in modern usage."
-  },
-  {
-    "intransitive": {
-      "kana": "勤まる",
-      "jmdictId": "1240800",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "勤める",
-      "jmdictId": "1240825",
-      "kanji": [
-        "勤める",
-        "務める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼には課長が勤まらない。 — He is not up to the task of section chief.",
-      "transitive": "彼女は銀行に勤めている。 — She works at a bank."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "籠もる",
-      "jmdictId": "1593430",
-      "kanji": [
-        "籠もる"
-      ]
-    },
-    "transitive": {
-      "kana": "込める",
-      "jmdictId": "1288790",
-      "kanji": [
-        "込める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "部屋に煙が籠もっている。 — Smoke is filling the room.",
-      "transitive": "心を込めて手紙を書いた。 — I wrote the letter with all my heart."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "削れる",
-      "jmdictId": "2036970",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "削る",
-      "jmdictId": "1298090",
-      "kanji": [
-        "削る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "岩が波で削れた。 — The rock was worn away by the waves.",
-      "transitive": "鉛筆をナイフで削る。 — I sharpen the pencil with a knife."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "崩れる",
-      "jmdictId": "1516270",
-      "kanji": [
-        "崩れる"
-      ]
-    },
-    "transitive": {
-      "kana": "崩す",
-      "jmdictId": "1516260",
-      "kanji": [
-        "崩す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "地震で壁が崩れた。 — The wall collapsed in the earthquake.",
-      "transitive": "古いビルを崩す。 — They tear down the old building."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "及ぶ",
-      "jmdictId": "1228170",
-      "kanji": [
-        "及ぶ"
-      ]
-    },
-    "transitive": {
-      "kana": "及ぼす",
-      "jmdictId": "1228180",
-      "kanji": [
-        "及ぼす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "被害は広い範囲に及んだ。 — The damage extended over a wide area.",
-      "transitive": "環境に悪い影響を及ぼす。 — It exerts a bad influence on the environment."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "弾ける",
-      "jmdictId": "1419380",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "弾く",
-      "jmdictId": "1419360",
-      "kanji": [
-        "弾く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "風船が弾けた。 — The balloon burst.",
-      "transitive": "指で水滴を弾いた。 — I flicked the water droplet with my finger."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "緩まる",
-      "jmdictId": "2036950",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "緩める",
-      "jmdictId": "1214440",
-      "kanji": [
-        "緩める"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ネジが緩まってきた。 — The screw has become loose.",
-      "transitive": "ネクタイを緩める。 — I loosen my necktie."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "逃れる",
-      "jmdictId": "1450440",
-      "kanji": [
-        "逃れる"
-      ]
-    },
-    "transitive": {
-      "kana": "逃す",
-      "jmdictId": "1450430",
-      "kanji": [
-        "逃す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "彼は危険から逃れた。 — He escaped from danger.",
-      "transitive": "チャンスを逃してしまった。 — I let the chance slip away."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "包まる",
-      "jmdictId": "2036960",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "包む",
-      "jmdictId": "1584060",
-      "kanji": [
-        "包む"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "毛布に包まって眠った。 — I slept wrapped up in a blanket.",
-      "transitive": "プレゼントをきれいな紙で包む。 — I wrap the present in pretty paper."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "荒れる",
-      "jmdictId": "1281490",
-      "kanji": [
-        "荒れる"
-      ]
-    },
-    "transitive": {
-      "kana": "荒らす",
-      "jmdictId": "1281480",
-      "kanji": [
-        "荒らす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "台風で海が荒れている。 — The sea is rough because of the typhoon.",
-      "transitive": "イノシシが畑を荒らした。 — A wild boar devastated the field."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "擦れる",
-      "jmdictId": "1551930",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "擦る",
-      "jmdictId": "1298910",
-      "kanji": [
-        "擦る"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "靴が擦れて足が痛い。 — My shoes rubbed and my feet hurt.",
-      "transitive": "マッチを擦って火をつけた。 — I struck a match and lit a fire."
-    }
-  },
-  {
-    "intransitive": {
-      "kana": "炊ける",
-      "jmdictId": "2036990",
-      "kanji": []
-    },
-    "transitive": {
-      "kana": "炊く",
-      "jmdictId": "1596830",
-      "kanji": [
-        "炊く"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ご飯が炊けた。 — The rice is cooked.",
-      "transitive": "毎朝ご飯を炊く。 — I cook rice every morning."
-    }
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Rainwater collected in the old bucket.",
+          "ja": "古いバケツに雨水がたまった。"
+        },
+        "transitive": {
+          "en": "So she decided to collect more for the garden.",
+          "ja": "だから彼女は庭のためにもっとためることにした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Dust has built up on the bookshelf.",
+          "ja": "本棚にほこりがたまっている。"
+        },
+        "transitive": {
+          "en": "He's been saving his energy to clean it all at once.",
+          "ja": "彼は一気に掃除するために体力をためている。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Stress piled up from the long week.",
+          "ja": "長い一週間でストレスがたまった。"
+        },
+        "transitive": {
+          "en": "He's saving up money for a hot spring trip.",
+          "ja": "温泉旅行のためにお金をためている。"
+        }
+      }
+    ]
   }
 ]
