@@ -95,6 +95,26 @@
   },
   {
     "topics": [
+      "bunpro:そう",
+      "dbjg:~sōda2",
+      "genki:so-desu-looks-like"
+    ],
+    "summary": "The suffix そう expresses a visual or sensory impression — 'looks like,' 'seems like,' or 'appears to be.' Attach it to the stem of い-adjectives (drop い: 高い→高そう), directly to な-adjective stems (元気→元気そう), and to verb stems (降る→降りそう). そうな/そうに modify nouns and verbs respectively.",
+    "subUses": [
+      "Visual impression from い-adjective: この指輪は高そうです (This ring looks expensive)",
+      "Visual impression from な-adjective: 元気そうな子供ですね (That child looks healthy)",
+      "Prediction about an upcoming event from verb stem: 雨が降りそうです (It looks like it's going to rain)",
+      "Attributive modifier with そうな: 面白そうなDVDですね (That DVD looks interesting)"
+    ],
+    "cautions": [
+      "Exception: いい becomes よさそう (not いそう) — さ is inserted before そう",
+      "Negative forms: ない always becomes なさそう (さ inserted): 食べなさそう (doesn't look like they'll eat), 高くなさそう (doesn't look expensive). Do not produce なそう",
+      "Do NOT confuse with hearsay そうだ ('I heard that'): both use そうだ but attach differently — 'looks like' attaches to the adjective/verb stem (い dropped, verb in stem form), while hearsay attaches to the plain/dictionary form. When generating sentences for this topic, only produce stem-attached そう forms",
+      "そう vs らしい: そう expresses a guess based on direct visual/sensory evidence; らしい expresses inference based on information or secondhand evidence"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:たり-たりする",
       "dbjg:~tari-~tari-suru",
       "genki:tari-tarisuru"
@@ -144,6 +164,63 @@
       "ては can appear only once when the sentence structure already conveys repetition — the doubled form is not always required",
       "Contracted forms ちゃ and じゃ are acceptable in casual speech, but must be used consistently (don't mix ては and ちゃ in the same sentence)",
       "The same ては form also appears in conditional/consequential patterns like てはいけない (must not) and ては困る (it would be a problem if). These share the literal structure 'if you do X' but are fixed expressions, not the repetitive-alternation pattern — distinguish by whether the sentence describes a recurring cycle or a one-time consequence"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:てみる",
+      "dbjg:miru",
+      "genki:temiru"
+    ],
+    "summary": "てみる attaches to the て-form of a verb and means 'do something and see how it goes' — trying an action to observe the outcome. It is often translated as 'try doing X' when the speaker has not done it before or is testing a possibility. てみる conjugates like a regular ichidan verb (てみます, てみた, てみたい).",
+    "subUses": [
+      "First-time or exploratory attempt: 空手のクラスに行ってみます (I'll try going to a karate class [to see what it's like])",
+      "Acting on a suggestion: じゃあ、食べてみます (Well then, I'll try eating it)",
+      "Expressing desire to experience something new: モンゴルに行ってみたいです (I'd like to try going to Mongolia)",
+      "Checking a result by doing: 図書館で調べてみます (I'll try looking it up at the library [and see what I find])"
+    ],
+    "cautions": [
+      "てみる focuses on the action and its observed result, not on whether success is expected. Compare with Verb[volitional]+とする, which implies attempting something that may not succeed",
+      "Past tense てみた carries an implication that the attempt was made and completed; it does not inherently signal failure or success — context determines the outcome",
+      "Do not confuse with てごらん, which is a directive form ('give it a try') used toward someone of lower status or children; てみる applies equally to self and others",
+      "In very casual speech, the final る may be dropped (食べてみ) — accept this but note it is informal"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:なら",
+      "dbjg:nara",
+      "genki:nara"
+    ],
+    "summary": "なら (short for ならば) is a conditional particle meaning 'if it is the case that X' or 'as for X.' Its defining feature is contrast and limitation: it picks out one item or situation and applies the predicate specifically to that, implying different treatment for other items. It attaches directly to nouns, な-adjective stems, plain-form verbs, and い-adjectives, optionally with の before it for nominalization.",
+    "subUses": [
+      "Limiting/contrastive topic with noun: 魚なら食べますが、肉は食べません (Fish I'll eat, but not meat)",
+      "Contrastive availability: テニスならできます (Tennis I can do [implying other things I cannot])",
+      "Responding to a condition raised by the other speaker: 宿題が難しいなら、一緒にしよう (If the homework is hard, let's do it together)",
+      "Hypothetical about a specific person or thing: 君ならできる (If it's you, you can do it — implying not everyone could)"
+    ],
+    "cautions": [
+      "なら's primary meaning is contrastive limitation ('as for X specifically') — this is why it frequently appears with が or は contrasts in the second clause (魚なら食べますが、肉は食べません). This distinguishes it from たら and ば, which are simple conditionals without the contrastive nuance",
+      "When responding to what a conversation partner just said, なら picks up that topic and comments on it: Aが高いなら、Bにしよう. This 'topic-responsive' use is natural and common, especially in speech",
+      "Attachment: なら follows nouns and な-adjective stems directly (日曜日なら, 元気なら); for verb and い-adjective phrases, both plain form + なら and plain form + のなら are used — adding の makes the nominalized clause more explicit",
+      "Do not confuse なら with the homophonous place name 奈良 (Nara, Japan) in quiz sentences"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:に-frequency",
+      "genki:frequency-of-events-over-a-period-of-time"
+    ],
+    "summary": "The particle に marks a recurring time period within which an action happens a set number of times — equivalent to English 'per' or 'every.' The structure is: (time period) に (count/duration) + verb. The period comes before に; the frequency or duration follows it.",
+    "subUses": [
+      "Count per time period: 一週間に一回スーパーに行きます (I go to the supermarket once a week)",
+      "Duration per time period: 一日に一時間日本語を勉強します (I study Japanese one hour per day)",
+      "Rate per recurring unit: 一時間に十本の電車があります (There are ten trains per hour)"
+    ],
+    "cautions": [
+      "Do not confuse に (frequency) with で (total time): 三日でこの本を読んだ means 'read the book in 3 days total (start to finish),' whereas 一日に二時間読む means '2 hours per day (recurring).' に marks a slot within a repeating cycle; で marks the total span consumed",
+      "The time period always precedes に and the count/duration follows: 一週間に三回 (three times per week) — reversing the order is unnatural",
+      "Related patterns: ごとに (every X, marking each unit individually: 二時間ごとに = every two hours) and おきに (at intervals of X: 二時間おきに = every other two hours, i.e. with a gap of two hours between)"
     ]
   },
   {

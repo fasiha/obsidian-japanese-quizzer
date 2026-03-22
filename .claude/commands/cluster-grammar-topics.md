@@ -49,9 +49,13 @@ concept (even if from different databases or with slightly different scope).
 
 Also consult the three grammar databases to find potential matches the user
 hasn't annotated yet:
-- `grammar/grammar-stolaf-genki.tsv` (Genki textbook topics)
+- `grammar/grammar-stolaf-genki.tsv` (Genki textbook topics — keys are romaji, e.g. `temiru`, `nara`)
 - `grammar/grammar-bunpro.tsv` (Bunpro topics with Japanese + English titles)
-- `grammar/grammar-dbjg.tsv` (Dictionary of Basic Japanese Grammar)
+- `grammar/grammar-dbjg.tsv` (Dictionary of Basic Japanese Grammar — keys are romaji, e.g. `miru`, `nara`)
+
+**Important:** DBJG and Genki TSV keys are romaji, not Japanese script. When searching for a topic
+like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki).
+For example, てみる → search `temiru` and `miru`; なら → search `nara`.
 
 If a new topic matches an entry in another database that ISN'T in grammar.json,
 **still add it to the equivalence group** — the work of verifying the match has

@@ -215,8 +215,7 @@ English text after the first Latin-alphabet token is for your reference only —
 ignore it.
 
 **Grammar bullet format** — each bullet is a source-prefixed topic ID (e.g.
-`genki:potential-verbs`, `bunpro:られる-Potential`, `dbjg:rareru2`). Run
-`node .claude/scripts/check-grammar.mjs` to see available topic IDs.
+`genki:potential-verbs`, `bunpro:られる-Potential`, `dbjg:rareru2`, from the TSV files in [`grammar/`](./grammar/)).
 
 ### Validating content
 
@@ -232,6 +231,26 @@ The script checks every vocab bullet against JMDict and reports unrecognised for
 (0 matches) and ambiguous forms (2+ matches). For most issues, the fix is obvious
 from the output. Use the `/check-vocab` Claude skill when you want help resolving
 ambiguities.
+
+For **grammar topic IDs**, run:
+
+```bash
+node .claude/scripts/check-grammar.mjs
+```
+
+This validates every grammar bullet in your Markdown files against the three databases
+(Genki, Bunpro, DBJG) and reports unknown or misspelled topic IDs, analogous to
+`check-vocab.mjs` for vocabulary. To browse available topic IDs, look at the TSV files in
+`grammar/`.
+
+After adding new grammar topic IDs to your Markdown files, run
+```bash
+node prepare-publish.mjs
+```
+to compile them into `grammar.json`.
+
+The above script may ask you to run the `/cluster-grammar-topics` skill in Claude code:
+this assigns gramar topics to equivalence groups and generate quiz descriptions.
 
 ---
 
