@@ -217,23 +217,58 @@ New SwiftUI view (used within QuizView or as a subview):
 - "Tutor me" button (appears on wrong answers)
 - Chat interface below (reuses existing chat components)
 
-### 4e. Romaji-to-kana conversion
+### 4e. Grading: string match fast path, LLM fallback
 
-Small utility for accepting romaji input:
+The quiz asks for dictionary forms, but students will naturally write conjugated forms (開けた, 開けて, …). Grading uses a two-phase approach:
 
-- Convert common romaji → hiragana (e.g. "aku" → "あく", "akeru" → "あける")
-- Used only for string matching, not display
-- Wanakana-style conversion (or a minimal subset covering verb dictionary forms)
+**Fast path — pure string match:**
+- Accept: kana (あける), any kanji form from the pair's `kanji` array (開ける), or a simple romaji conversion of the kana (akeru).
+- If both fields match → score 1.0 instantly, no LLM call needed.
+- If one or both fields fail the string match → proceed to LLM fallback for the failing field(s).
+
+**Slow path — LLM fallback for unmatched fields:**
+
+When the string match fails for a field, send both fields' student answers together to the LLM in a single call. The LLM grades each field independently (right verb or wrong verb — conjugation is irrelevant since the quiz tests transitive/intransitive discrimination, not conjugation).
+
+Prompt structure (modelled on the existing vocab free-answer grading prompt in `QuizSession.swift`):
+
+```
+You are grading a transitive/intransitive verb pair quiz.
+The student was shown two English cues and asked to type the dictionary form of each verb.
+
+Pair: {intransitive.kanji[0]} ({intransitive.kana}) ↔ {transitive.kanji[0]} ({transitive.kana})
+Cue for intransitive field: "{drill.intransitive.en}"
+Cue for transitive field:   "{drill.transitive.en}"
+Student's intransitive answer: "{studentIntransitive}"
+Student's transitive answer:   "{studentTransitive}"
+
+The quiz tests only whether the student knows which verb is transitive and which is intransitive — not conjugation accuracy. A conjugated form of the correct verb (e.g. 開けた for 開ける) is fully correct.
+
+Emit exactly two lines, in this order:
+SCORE_INTRANSITIVE: 1 or 0 — <one grading sentence>
+SCORE_TRANSITIVE: 1 or 0 — <one grading sentence>
+
+Use 1 if the student's answer is the correct verb (any conjugation, any kana/kanji/romaji surface), 0 if it is the wrong verb or blank. Do not emit partial credit.
+```
+
+App then computes the overall score:
+- Both 1 → 1.0
+- One 1, one 0 → 0.5
+- Both 0 → 0.0
+
+This eliminates the need for a romaji conversion utility — the LLM handles any surface form.
 
 ### 4f. Acceptance criteria
 
 - [ ] All unambiguous pairs have 3 drill sentence pairs in JSON
 - [ ] Pair items appear in vocab quiz queue ranked by Ebisu recall
 - [ ] Quiz card shows two English cues, two input fields
-- [ ] Grading accepts kana, kanji, or romaji; scores 1.0 / 0.5 / 0.0
+- [ ] Grading fast path: exact string match on kana, kanji, or romaji accepts instantly without an LLM call
+- [ ] Grading slow path: when fast path fails, LLM grades both fields in one call, accepting any conjugation of the correct verb; overall score is 1.0 / 0.5 / 0.0
 - [ ] Post-grading shows Japanese sentences with audio playback
 - [ ] "Don't know" reveals answers and scores 0.0
-- [ ] "Tutor me" triggers LLM coaching on wrong answers
+- [ ] "Tutor me" triggers LLM coaching on wrong/partial answers
+- [ ] "Tutor me" prompt passes actual student answers + per-field results so coaching is targeted (revisit `startPairTutorSession` after 4e grading is wired up)
 - [ ] Chat works after pair quiz just like vocab quiz
 
 ### Work order

@@ -318,6 +318,11 @@ struct QuizView: View {
                             Button("Tutor me") { session.startTutorSession() }
                                 .buttonStyle(.bordered)
                                 .tint(.blue)
+                        } else if session.canStartPairTutorSession {
+                            Spacer()
+                            Button("Tutor me") { session.startPairTutorSession() }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
                         }
                     }
                     .padding(.top, session.chatMessages.isEmpty ? 40 : 4)

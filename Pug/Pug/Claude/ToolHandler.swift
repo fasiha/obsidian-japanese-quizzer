@@ -9,7 +9,7 @@ import Foundation
 extension AnthropicTool {
     static let lookupJmdict = AnthropicTool(
         name: "lookup_jmdict",
-        description: "Look up one or more Japanese words (kanji or kana) in JMDict. Returns each entry's id, kanji forms, kana forms, and English meanings. Batch all words you need into a single call.",
+        description: "Look up one or more Japanese words (kanji or kana) in JMDict. Returns each entry's id, kanji forms, kana forms, and senses (each sense has English glosses and part-of-speech descriptions such as \"transitive verb\", \"intransitive verb\", \"Godan verb\", \"noun\", etc.). Batch all words you need into a single call.",
         inputSchema: [
             "type": .string("object"),
             "properties": .object([
@@ -352,13 +352,23 @@ struct ToolHandler: Sendable {
             WHERE r.text IN (\(placeholders))
             GROUP BY e.id
         """
-        let byWord: [String: String] = try await jmdict.read { db in
-            try Row.fetchAll(db, sql: sql, arguments: StatementArguments(words))
-                .reduce(into: [:]) { dict, row in
+        let (byWord, tagMap): ([String: String], [String: String]) = try await jmdict.read { db in
+            let entries = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(words))
+                .reduce(into: [String: String]()) { dict, row in
                     guard let texts = row["texts"] as? String,
                           let json  = row["entry_json"] as? String else { return }
                     for text in texts.split(separator: ",") { dict[String(text)] = json }
                 }
+            // Load abbreviation → full description map from the metadata table (e.g. "vt" → "transitive verb").
+            let tags: [String: String]
+            if let json = try? String.fetchOne(db, sql: "SELECT value_json FROM metadata WHERE key = 'tags'"),
+               let data = json.data(using: .utf8),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: String] {
+                tags = obj
+            } else {
+                tags = [:]
+            }
+            return (entries, tags)
         }
 
         // Build output array in input order.
@@ -371,13 +381,18 @@ struct ToolHandler: Sendable {
             }
             let kanjiForms = (raw["kanji"] as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
             let kanaForms  = (raw["kana"]  as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
-            let meanings   = (raw["sense"] as? [[String: Any]] ?? []).flatMap { sense -> [String] in
-                (sense["gloss"] as? [[String: Any]] ?? [])
+            // Collect per-sense data: part-of-speech tags expanded to full English descriptions,
+            // and English glosses. E.g. "vt" → "transitive verb", "vi" → "intransitive verb".
+            let senses = (raw["sense"] as? [[String: Any]] ?? []).map { sense -> [String: Any] in
+                let glosses = (sense["gloss"] as? [[String: Any]] ?? [])
                     .filter { ($0["lang"] as? String) == "eng" }
                     .compactMap { $0["text"] as? String }
+                let partsOfSpeech = (sense["partOfSpeech"] as? [String] ?? [])
+                    .map { tagMap[$0] ?? $0 }
+                return ["glosses": glosses, "partsOfSpeech": partsOfSpeech]
             }
             return ["query": word, "id": raw["id"] as? String ?? "",
-                    "kanji": kanjiForms, "kana": kanaForms, "meanings": meanings]
+                    "kanji": kanjiForms, "kana": kanaForms, "senses": senses]
         }
         let data = try JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])
         return String(data: data, encoding: .utf8) ?? "[]"

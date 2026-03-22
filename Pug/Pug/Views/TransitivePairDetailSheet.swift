@@ -280,7 +280,7 @@ struct TransitivePairDetailSheet: View {
 
         // Part of speech — deduplicated across senses
         let allPos = Array(NSOrderedSet(
-            array: senses.flatMap { ($0["partOfSpeech"] as? [String]) ?? [] }
+            array: senses.flatMap { (sense: [String: Any]) -> [String] in (sense["partOfSpeech"] as? [String]) ?? [] }
         )) as? [String] ?? []
 
         var glosses: [[String]] = []
