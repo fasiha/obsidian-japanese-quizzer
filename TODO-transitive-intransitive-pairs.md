@@ -19,7 +19,7 @@ A dedicated pairs system that stands alone but integrates visually into the voca
 
 ## Data source
 
-231 curated verb pairs in `transitive-intransitive/transitive-pairs.json`, built from [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) (154 linguist-curated pairs as the verified spine) and a filtered [Anki deck](https://ankiweb.net/shared/info/92409330) (additional pairs), enriched with JMDict IDs (verified against definitions at build time), and reviewed by Opus which classified each as VALID or AMBIGUOUS. 12 BAD_PAIRs were evicted; 18 AMBIGUOUS pairs are retained with `ambiguousReason` notes.
+~56 core verb pairs in `transitive-intransitive/transitive-pairs.json` (Opus-selected for frequency and pedagogical value from a ~230-pair candidate pool in `all-transitive-pairs.json`). The candidate pool was assembled from [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) (154 linguist-curated pairs) and a filtered [Anki deck](https://ankiweb.net/shared/info/92409330), enriched with JMDict IDs (verified against definitions at build time), and reviewed by Opus which classified each as VALID or AMBIGUOUS. 12 BAD_PAIRs were evicted; 18 AMBIGUOUS pairs are retained with `ambiguousReason` notes.
 
 ### Data invariants
 
@@ -179,10 +179,10 @@ New script `.claude/scripts/generate-pair-drills.mjs` (or similar):
 
 - Reads `transitive-pairs.json`
 - Filters to unambiguous pairs (ambiguousReason === null)
-- Batches pairs (e.g. 10–15 per LLM call) to maintain cross-pair variability
-- Prompt asks Claude to generate 3 drill pairs per verb pair: short memorable English sentences + conjugated Japanese sentences
-- Writes updated `transitive-pairs.json` with `drills` arrays added
-- Validates: every unambiguous pair has exactly 3 drills, Japanese sentences contain the expected verb
+- One LLM call per pair; generates 3 drill sets per pair, each using a **different scenario** (different nouns/settings)
+- Each drill set is a **two-sentence mini story**: the intransitive sentence sets the scene, the transitive sentence continues the same scene with someone deliberately acting — never restating the same event, never switching to an unrelated topic
+- Writes updated `transitive-pairs.json` with `drills` arrays added after each successful pair (progress is not lost on interruption)
+- Validates: every unambiguous pair has exactly 3 drills, each with `en` and `ja` for both sides
 
 ### 4b. Integrate pairs into QuizContext
 

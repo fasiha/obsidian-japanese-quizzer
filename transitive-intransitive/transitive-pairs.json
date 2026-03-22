@@ -57,6 +57,483 @@
       "kana": "しまる",
       "jmdictId": "1436560",
       "kanji": [
+        "閉まる"
+      ]
+    },
+    "transitive": {
+      "kana": "しめる",
+      "jmdictId": "1508590",
+      "kanji": [
+        "閉める"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "ドアが閉まった。 — The door closed.",
+      "transitive": "彼はドアを閉めた。 — He closed the door."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The shop curtain closed in the wind.",
+          "ja": "風でカーテンが閉まった。"
+        },
+        "transitive": {
+          "en": "She closed the window before it got worse.",
+          "ja": "彼女は窓をすぐに閉めた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The heavy gate is slowly closing.",
+          "ja": "重い門がゆっくり閉まっている。"
+        },
+        "transitive": {
+          "en": "The guard closes the other gate too.",
+          "ja": "警備員はもう一つの門も閉める。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The refrigerator door won't close properly.",
+          "ja": "冷蔵庫のドアがきちんと閉まらない。"
+        },
+        "transitive": {
+          "en": "Please close it firmly with both hands.",
+          "ja": "両手でしっかり閉めてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "はいる",
+      "jmdictId": "1465590",
+      "kanji": [
+        "入る"
+      ]
+    },
+    "transitive": {
+      "kana": "いれる",
+      "jmdictId": "1465610",
+      "kanji": [
+        "入れる"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "猫が部屋に入った。 — The cat entered the room.",
+      "transitive": "本を鞄に入れた。 — I put the book in the bag."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The cat slipped into the closet.",
+          "ja": "猫がクローゼットに入った。"
+        },
+        "transitive": {
+          "en": "She put her sweaters in the closet too.",
+          "ja": "彼女はセーターもクローゼットに入れた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Water is getting into the tent.",
+          "ja": "水がテントに入っている。"
+        },
+        "transitive": {
+          "en": "He stuffed towels in along the edges.",
+          "ja": "彼はタオルをテントの端に入れた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A coin rolled into the machine.",
+          "ja": "コインが機械に入った。"
+        },
+        "transitive": {
+          "en": "He put in one more just to be safe.",
+          "ja": "彼はもう一枚コインを機械に入れた。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "でる",
+      "jmdictId": "1338240",
+      "kanji": [
+        "出る"
+      ]
+    },
+    "transitive": {
+      "kana": "だす",
+      "jmdictId": "1338180",
+      "kanji": [
+        "出す"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "猫が窓から出た。 — The cat went out through the window.",
+      "transitive": "財布からお金を出した。 — I took money out of my wallet."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The dog ran out of the park.",
+          "ja": "犬が公園から出た。"
+        },
+        "transitive": {
+          "en": "The owner took the leash out of her bag.",
+          "ja": "飼い主はバッグからリードを出した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Smoke is coming out of the chimney.",
+          "ja": "煙突から煙が出ている。"
+        },
+        "transitive": {
+          "en": "He takes the firewood out of the shed.",
+          "ja": "彼は小屋から薪を出す。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The kids came out of the classroom.",
+          "ja": "子どもたちが教室から出た。"
+        },
+        "transitive": {
+          "en": "Please take your shoes out of your locker.",
+          "ja": "ロッカーから靴を出してください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "つく",
+      "jmdictId": "1495740",
+      "kanji": [
+        "付く"
+      ]
+    },
+    "transitive": {
+      "kana": "つける",
+      "jmdictId": "1495770",
+      "kanji": [
+        "付ける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
+      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A sticky note is stuck to my monitor.",
+          "ja": "モニターに付箋が付いている。"
+        },
+        "transitive": {
+          "en": "She stuck three more notes to the edge.",
+          "ja": "彼女はふちにメモをもう三枚付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Mud got on his jacket.",
+          "ja": "ジャケットに泥が付いた。"
+        },
+        "transitive": {
+          "en": "He stuck a patch over it.",
+          "ja": "彼はその上からワッペンを付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A price tag is attached to the cake.",
+          "ja": "ケーキに値札が付いている。"
+        },
+        "transitive": {
+          "en": "Please attach a label to the other ones too.",
+          "ja": "ほかのものにもラベルを付けてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "きえる",
+      "jmdictId": "1350040",
+      "kanji": [
+        "消える"
+      ]
+    },
+    "transitive": {
+      "kana": "けす",
+      "jmdictId": "1350110",
+      "kanji": [
+        "消す"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "ろうそくの火が消えた。 — The candle flame went out.",
+      "transitive": "彼は電気を消した。 — He turned off the light."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Half the campfire went out in the rain.",
+          "ja": "雨でキャンプファイヤーの火が半分消えた。"
+        },
+        "transitive": {
+          "en": "He quickly put out the rest.",
+          "ja": "彼は残りの火もすぐに消した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The streetlights are going out one by one.",
+          "ja": "街灯が一つずつ消えている。"
+        },
+        "transitive": {
+          "en": "The city is turning them off to save power.",
+          "ja": "市は節電のためにそれを消している。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The writing on the whiteboard is gone.",
+          "ja": "ホワイトボードの文字が消えてしまった。"
+        },
+        "transitive": {
+          "en": "Please erase the board before the next class.",
+          "ja": "次の授業の前にボードを消してください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "こわれる",
+      "jmdictId": "1199900",
+      "kanji": [
+        "壊れる"
+      ]
+    },
+    "transitive": {
+      "kana": "こわす",
+      "jmdictId": "1199890",
+      "kanji": [
+        "壊す"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "地震で建物がこわれた。 — The building was damaged in the earthquake.",
+      "transitive": "弟がおもちゃをこわした。 — My little brother broke the toy."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The old fence broke in the storm.",
+          "ja": "嵐で古いフェンスが壊れた。"
+        },
+        "transitive": {
+          "en": "So he broke down the damaged section completely.",
+          "ja": "だから彼は傷んだ部分を完全に壊した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Her phone screen cracked when it fell.",
+          "ja": "落として彼女のスマホの画面が壊れた。"
+        },
+        "transitive": {
+          "en": "Frustrated, she broke the rest of it too.",
+          "ja": "むしゃくしゃして、彼女は残りも壊した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The toy robot stopped working.",
+          "ja": "おもちゃのロボットが壊れている。"
+        },
+        "transitive": {
+          "en": "Dad broke the back cover off to fix it.",
+          "ja": "お父さんが直すために裏のカバーを壊して開けた。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "よごれる",
+      "jmdictId": "1179005",
+      "kanji": [
+        "汚れる"
+      ]
+    },
+    "transitive": {
+      "kana": "よごす",
+      "jmdictId": "1178960",
+      "kanji": [
+        "汚す"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "白いシャツがよごれた。 — The white shirt got dirty.",
+      "transitive": "泥で靴をよごした。 — I got my shoes dirty with mud."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The kitchen floor got dirty from the spill.",
+          "ja": "こぼれた液体でキッチンの床が汚れた。"
+        },
+        "transitive": {
+          "en": "The dog ran in and dirtied the whole hallway too.",
+          "ja": "犬が走り込んで、廊下全体も汚した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "His jacket is getting dirty from the fence.",
+          "ja": "彼のジャケットがフェンスで汚れている。"
+        },
+        "transitive": {
+          "en": "He wiped his hands on it and dirtied it even more.",
+          "ja": "彼は手をそれで拭いて、さらに汚した。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The tablecloth got dirty during the meal.",
+          "ja": "食事中にテーブルクロスが汚れた。"
+        },
+        "transitive": {
+          "en": "The kids then dirtied the chairs as well.",
+          "ja": "子供たちは椅子も汚した。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "おちる",
+      "jmdictId": "1548550",
+      "kanji": [
+        "落ちる"
+      ]
+    },
+    "transitive": {
+      "kana": "おとす",
+      "jmdictId": "1589260",
+      "kanji": [
+        "落とす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "財布が落ちた。 — The wallet fell.",
+      "transitive": "コップを落とした。 — I dropped the cup."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A leaf fell from the tree.",
+          "ja": "木から葉が落ちた。"
+        },
+        "transitive": {
+          "en": "He shook the branch and knocked the rest down.",
+          "ja": "彼は枝を揺らして残りの葉を落とした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Ice cream is falling off the cone.",
+          "ja": "アイスがコーンから落ちている。"
+        },
+        "transitive": {
+          "en": "She dropped her spoon too while reaching for a napkin.",
+          "ja": "彼女はナプキンを取ろうとして、スプーンも落としてしまった。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The paint on the wall is peeling off.",
+          "ja": "壁のペンキが落ちている。"
+        },
+        "transitive": {
+          "en": "He dropped his brush from the scaffolding.",
+          "ja": "彼はブラシを足場から落としてしまった。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "わく",
+      "jmdictId": "1606680",
+      "kanji": [
+        "沸く"
+      ]
+    },
+    "transitive": {
+      "kana": "わかす",
+      "jmdictId": "1501660",
+      "kanji": [
+        "沸かす"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "お湯が沸いた。 — The water boiled.",
+      "transitive": "お風呂を沸かす。 — I'll heat the bath."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "The kettle water is boiling.",
+          "ja": "ケトルのお湯が沸いている。"
+        },
+        "transitive": {
+          "en": "She heated more water for everyone.",
+          "ja": "彼女はみんなのためにもっとお湯を沸かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The bath was finally ready.",
+          "ja": "お風呂のお湯がやっと沸いた。"
+        },
+        "transitive": {
+          "en": "Dad heated it again after it cooled.",
+          "ja": "冷めた後でお父さんがもう一度お風呂を沸かした。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "The soup is boiling in the pot.",
+          "ja": "鍋のスープが沸いている。"
+        },
+        "transitive": {
+          "en": "Please heat some water for the noodles.",
+          "ja": "麺のためにお湯を沸かしてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "しまる",
+      "jmdictId": "1436560",
+      "kanji": [
         "締まる"
       ]
     },
@@ -366,324 +843,6 @@
         "transitive": {
           "en": "So I changed the topic right away.",
           "ja": "だからすぐに話題を変えた。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "はいる",
-      "jmdictId": "1465590",
-      "kanji": [
-        "入る"
-      ]
-    },
-    "transitive": {
-      "kana": "いれる",
-      "jmdictId": "1465610",
-      "kanji": [
-        "入れる"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫が部屋に入った。 — The cat entered the room.",
-      "transitive": "本を鞄に入れた。 — I put the book in the bag."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "The cat slipped into the closet.",
-          "ja": "猫がクローゼットに入った。"
-        },
-        "transitive": {
-          "en": "She put her sweaters in the closet too.",
-          "ja": "彼女はセーターもクローゼットに入れた。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "Water is getting into the tent.",
-          "ja": "水がテントに入っている。"
-        },
-        "transitive": {
-          "en": "He stuffed towels in along the edges.",
-          "ja": "彼はタオルをテントの端に入れた。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "A coin rolled into the machine.",
-          "ja": "コインが機械に入った。"
-        },
-        "transitive": {
-          "en": "He put in one more just to be safe.",
-          "ja": "彼はもう一枚コインを機械に入れた。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "でる",
-      "jmdictId": "1338240",
-      "kanji": [
-        "出る"
-      ]
-    },
-    "transitive": {
-      "kana": "だす",
-      "jmdictId": "1338180",
-      "kanji": [
-        "出す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "猫が窓から出た。 — The cat went out through the window.",
-      "transitive": "財布からお金を出した。 — I took money out of my wallet."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "The dog ran out of the park.",
-          "ja": "犬が公園から出た。"
-        },
-        "transitive": {
-          "en": "The owner took the leash out of her bag.",
-          "ja": "飼い主はバッグからリードを出した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "Smoke is coming out of the chimney.",
-          "ja": "煙突から煙が出ている。"
-        },
-        "transitive": {
-          "en": "He takes the firewood out of the shed.",
-          "ja": "彼は小屋から薪を出す。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The kids came out of the classroom.",
-          "ja": "子どもたちが教室から出た。"
-        },
-        "transitive": {
-          "en": "Please take your shoes out of your locker.",
-          "ja": "ロッカーから靴を出してください。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "きえる",
-      "jmdictId": "1350040",
-      "kanji": [
-        "消える"
-      ]
-    },
-    "transitive": {
-      "kana": "けす",
-      "jmdictId": "1350110",
-      "kanji": [
-        "消す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "ろうそくの火が消えた。 — The candle flame went out.",
-      "transitive": "彼は電気を消した。 — He turned off the light."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "Half the campfire went out in the rain.",
-          "ja": "雨でキャンプファイヤーの火が半分消えた。"
-        },
-        "transitive": {
-          "en": "He quickly put out the rest.",
-          "ja": "彼は残りの火もすぐに消した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The streetlights are going out one by one.",
-          "ja": "街灯が一つずつ消えている。"
-        },
-        "transitive": {
-          "en": "The city is turning them off to save power.",
-          "ja": "市は節電のためにそれを消している。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The writing on the whiteboard is gone.",
-          "ja": "ホワイトボードの文字が消えてしまった。"
-        },
-        "transitive": {
-          "en": "Please erase the board before the next class.",
-          "ja": "次の授業の前にボードを消してください。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "つく",
-      "jmdictId": "1495740",
-      "kanji": [
-        "付く"
-      ]
-    },
-    "transitive": {
-      "kana": "つける",
-      "jmdictId": "1495770",
-      "kanji": [
-        "付ける"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
-      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "A sticky note is stuck to my monitor.",
-          "ja": "モニターに付箋が付いている。"
-        },
-        "transitive": {
-          "en": "She stuck three more notes to the edge.",
-          "ja": "彼女はふちにメモをもう三枚付けた。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "Mud got on his jacket.",
-          "ja": "ジャケットに泥が付いた。"
-        },
-        "transitive": {
-          "en": "He stuck a patch over it.",
-          "ja": "彼はその上からワッペンを付けた。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "A price tag is attached to the cake.",
-          "ja": "ケーキに値札が付いている。"
-        },
-        "transitive": {
-          "en": "Please attach a label to the other ones too.",
-          "ja": "ほかのものにもラベルを付けてください。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "こわれる",
-      "jmdictId": "1199900",
-      "kanji": [
-        "壊れる"
-      ]
-    },
-    "transitive": {
-      "kana": "こわす",
-      "jmdictId": "1199890",
-      "kanji": [
-        "壊す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "地震で建物がこわれた。 — The building was damaged in the earthquake.",
-      "transitive": "弟がおもちゃをこわした。 — My little brother broke the toy."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "The old fence broke in the storm.",
-          "ja": "嵐で古いフェンスが壊れた。"
-        },
-        "transitive": {
-          "en": "So he broke down the damaged section completely.",
-          "ja": "だから彼は傷んだ部分を完全に壊した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "Her phone screen cracked when it fell.",
-          "ja": "落として彼女のスマホの画面が壊れた。"
-        },
-        "transitive": {
-          "en": "Frustrated, she broke the rest of it too.",
-          "ja": "むしゃくしゃして、彼女は残りも壊した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The toy robot stopped working.",
-          "ja": "おもちゃのロボットが壊れている。"
-        },
-        "transitive": {
-          "en": "Dad broke the back cover off to fix it.",
-          "ja": "お父さんが直すために裏のカバーを壊して開けた。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "おちる",
-      "jmdictId": "1548550",
-      "kanji": [
-        "落ちる"
-      ]
-    },
-    "transitive": {
-      "kana": "おとす",
-      "jmdictId": "1589260",
-      "kanji": [
-        "落とす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "財布が落ちた。 — The wallet fell.",
-      "transitive": "コップを落とした。 — I dropped the cup."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "A leaf fell from the tree.",
-          "ja": "木から葉が落ちた。"
-        },
-        "transitive": {
-          "en": "He shook the branch and knocked the rest down.",
-          "ja": "彼は枝を揺らして残りの葉を落とした。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "Ice cream is falling off the cone.",
-          "ja": "アイスがコーンから落ちている。"
-        },
-        "transitive": {
-          "en": "She dropped her spoon too while reaching for a napkin.",
-          "ja": "彼女はナプキンを取ろうとして、スプーンも落としてしまった。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The paint on the wall is peeling off.",
-          "ja": "壁のペンキが落ちている。"
-        },
-        "transitive": {
-          "en": "He dropped his brush from the scaffolding.",
-          "ja": "彼はブラシを足場から落としてしまった。"
         }
       }
     ]
@@ -2121,59 +2280,6 @@
   },
   {
     "intransitive": {
-      "kana": "わく",
-      "jmdictId": "1606680",
-      "kanji": [
-        "沸く"
-      ]
-    },
-    "transitive": {
-      "kana": "わかす",
-      "jmdictId": "1501660",
-      "kanji": [
-        "沸かす"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "お湯が沸いた。 — The water boiled.",
-      "transitive": "お風呂を沸かす。 — I'll heat the bath."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "The kettle water is boiling.",
-          "ja": "ケトルのお湯が沸いている。"
-        },
-        "transitive": {
-          "en": "She heated more water for everyone.",
-          "ja": "彼女はみんなのためにもっとお湯を沸かした。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The bath was finally ready.",
-          "ja": "お風呂のお湯がやっと沸いた。"
-        },
-        "transitive": {
-          "en": "Dad heated it again after it cooled.",
-          "ja": "冷めた後でお父さんがもう一度お風呂を沸かした。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The soup is boiling in the pot.",
-          "ja": "鍋のスープが沸いている。"
-        },
-        "transitive": {
-          "en": "Please heat some water for the noodles.",
-          "ja": "麺のためにお湯を沸かしてください。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
       "kana": "もえる",
       "jmdictId": "1469570",
       "kanji": [
@@ -2274,59 +2380,6 @@
         "transitive": {
           "en": "She wetted a cloth to wipe the counter clean.",
           "ja": "彼女は布を濡らして台を拭いた。"
-        }
-      }
-    ]
-  },
-  {
-    "intransitive": {
-      "kana": "よごれる",
-      "jmdictId": "1179005",
-      "kanji": [
-        "汚れる"
-      ]
-    },
-    "transitive": {
-      "kana": "よごす",
-      "jmdictId": "1178960",
-      "kanji": [
-        "汚す"
-      ]
-    },
-    "ambiguousReason": null,
-    "examples": {
-      "intransitive": "白いシャツがよごれた。 — The white shirt got dirty.",
-      "transitive": "泥で靴をよごした。 — I got my shoes dirty with mud."
-    },
-    "drills": [
-      {
-        "intransitive": {
-          "en": "The kitchen floor got dirty from the spill.",
-          "ja": "こぼれた液体でキッチンの床が汚れた。"
-        },
-        "transitive": {
-          "en": "The dog ran in and dirtied the whole hallway too.",
-          "ja": "犬が走り込んで、廊下全体も汚した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "His jacket is getting dirty from the fence.",
-          "ja": "彼のジャケットがフェンスで汚れている。"
-        },
-        "transitive": {
-          "en": "He wiped his hands on it and dirtied it even more.",
-          "ja": "彼は手をそれで拭いて、さらに汚した。"
-        }
-      },
-      {
-        "intransitive": {
-          "en": "The tablecloth got dirty during the meal.",
-          "ja": "食事中にテーブルクロスが汚れた。"
-        },
-        "transitive": {
-          "en": "The kids then dirtied the chairs as well.",
-          "ja": "子供たちは椅子も汚した。"
         }
       }
     ]

@@ -84,8 +84,8 @@ so within the bounds of these databases — not from its own training data.
 | [Genki](https://genki3.japantimes.co.jp/en/) | ~123 grammar topics | Scraped from [St. Olaf's Genki index](https://wp.stolaf.edu/japanese/grammar-index/) via `grammar/stolaf-genki-website.js` |
 | [Bunpro](https://bunpro.jp/) | ~943 grammar topics with JLPT levels | Scraped from bunpro.jp via `grammar/bunpro-website.js` |
 | [DBJG](https://www.amazon.com/dp/4789004546) (*A Dictionary of Basic Japanese Grammar*) | ~370 grammar topics | Manually typed from the book's index |
-| [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) | 154 linguist-curated transitive/intransitive verb pairs | Verified spine of `transitive-pairs.json` |
-| [Anki shared deck](https://ankiweb.net/shared/info/92409330) | Additional transitive/intransitive pairs | Filtered and merged into `transitive-pairs.json`, reviewed by Opus |
+| [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) | 154 linguist-curated transitive/intransitive verb pairs | Merged into `all-transitive-pairs.json` candidate pool |
+| [Anki shared deck](https://ankiweb.net/shared/info/92409330) | Additional transitive/intransitive pairs | Merged into `all-transitive-pairs.json` candidate pool; Opus downselected to ~56 core pairs in `transitive-pairs.json` |
 
 ---
 
@@ -140,15 +140,21 @@ topic in a group propagates the score to all siblings.
 Currently all grammar quizzes are multiple choice. Each question targets a different
 sub-use of the grammar point to ensure diversity across reviews.
 
-### Transitive-intransitive pair drills (coming soon)
+### Transitive-intransitive pair drills
 
 A dedicated quiz format for drilling verb pairs like 壊す/壊れる and 開ける/開く. The
 student sees both directions on one card — agency cues like "I ___ it" and "it ___ed"
-— and must produce both the transitive and intransitive forms. Built from 231 curated
-pairs in [transitive-pairs.json](transitive-intransitive/transitive-pairs.json),
-sourced from [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) and enriched
-with JMDict IDs. See [TODO-transitive-intransitive-pairs.md](TODO-transitive-intransitive-pairs.md)
-for design details.
+— and must produce both the transitive and intransitive forms.
+
+The ~56 core pairs in [transitive-pairs.json](transitive-intransitive/transitive-pairs.json)
+were hand-selected by Opus from a larger pool of ~230 candidates (kept in
+[all-transitive-pairs.json](transitive-intransitive/all-transitive-pairs.json)) for
+being common, pedagogically useful, and unambiguously transitive/intransitive in
+practice. The candidate pool itself was assembled from
+[sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) and an
+[Anki shared deck](https://ankiweb.net/shared/info/92409330), then filtered and enriched
+with JMDict IDs and drill sentences. The larger archive remains available for adding
+pairs that feel important in context.
 
 ---
 
@@ -405,7 +411,8 @@ learning projects:
 | [grammar-bunpro.tsv](grammar/grammar-bunpro.tsv) | ~943 Bunpro grammar topics (ID, title, JLPT level, meaning). Scraped from [bunpro.jp](https://bunpro.jp/grammar_points) — re-run with `grammar/bunpro-website.js` in the browser console to update. |
 | [grammar-stolaf-genki.tsv](grammar/grammar-stolaf-genki.tsv) | ~123 Genki grammar topics. Scraped from [St. Olaf's Genki grammar index](https://wp.stolaf.edu/japanese/grammar-index/) — re-run with `grammar/stolaf-genki-website.js` in the browser console to update. |
 | [grammar-dbjg.tsv](grammar/grammar-dbjg.tsv) | ~370 DBJG grammar topics. Manually typed from the book's index (*A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui). |
-| [transitive-pairs.json](transitive-intransitive/transitive-pairs.json) | 231 curated transitive/intransitive verb pairs with JMDict IDs and example sentences |
+| [transitive-pairs.json](transitive-intransitive/transitive-pairs.json) | ~56 core transitive/intransitive verb pairs selected for frequency and pedagogical value, with JMDict IDs and drill sentences |
+| [all-transitive-pairs.json](transitive-intransitive/all-transitive-pairs.json) | ~230 candidate pairs (superset of the above) assembled from sljfaq.org and an Anki deck, retained as an archive |
 | [wanikani-kanji-graph.json](wanikani/wanikani-kanji-graph.json) | Kanji → WaniKani component character mappings |
 | [wanikani-extra-radicals.json](wanikani/wanikani-extra-radicals.json) | Informal descriptions for WaniKani components not in KANJIDIC2 |
 
