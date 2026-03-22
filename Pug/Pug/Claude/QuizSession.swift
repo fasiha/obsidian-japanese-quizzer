@@ -21,12 +21,24 @@ final class QuizSession {
         let correctIndex: Int     // 0–3
     }
 
+    struct PairQuestion: Equatable {
+        let intransitiveEnglish: String
+        let transitiveEnglish: String
+        let intransitiveKana: String
+        let intransitiveKanji: [String]
+        let transitiveKana: String
+        let transitiveKanji: [String]
+        let intransitiveJapanese: String
+        let transitiveJapanese: String
+    }
+
     enum Phase: Equatable {
         case idle
         case loadingItems
         case generating              // Claude generating multiple choice question (free-answer skips this)
         case awaitingTap(MultipleChoiceQuestion) // multiple choice rendered as buttons; waiting for student tap
         case awaitingText(String)    // free-answer: app-built stem, waiting for typed input
+        case awaitingPair(PairQuestion) // pair-discrimination: two text fields, no LLM call
         case chatting                // open conversation after answer submitted
         case noItems
         case finished
@@ -53,11 +65,15 @@ final class QuizSession {
     var gradedHalflife: Double? = nil      // updated halflife after recordReview; nil until graded
     var gradedReviewCount: Int? = nil      // total reviews for this facet after recordReview; nil until graded
 
+    var pairCorpus: TransitivePairCorpus? = nil
+    var pairIntransitiveInput: String = ""
+    var pairTransitiveInput: String = ""
+
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
     var isQuizActive: Bool {
         switch phase {
-        case .generating, .awaitingTap, .awaitingText, .chatting: return true
+        case .generating, .awaitingTap, .awaitingText, .awaitingPair, .chatting: return true
         default: return false
         }
     }
@@ -209,6 +225,79 @@ final class QuizSession {
         Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
     }
 
+    /// Called when the student submits both fields of a pair-discrimination drill.
+    func submitPairAnswer() {
+        guard case .awaitingPair(let q) = phase, let item = currentItem else { return }
+        let intrAnswer = pairIntransitiveInput.trimmingCharacters(in: .whitespaces)
+        let tranAnswer = pairTransitiveInput.trimmingCharacters(in: .whitespaces)
+        guard !intrAnswer.isEmpty || !tranAnswer.isEmpty else { return }
+
+        let intrCorrect = isPairAnswerCorrect(intrAnswer, kana: q.intransitiveKana, kanji: q.intransitiveKanji)
+        let tranCorrect = isPairAnswerCorrect(tranAnswer, kana: q.transitiveKana, kanji: q.transitiveKanji)
+
+        let score: Double = intrCorrect && tranCorrect ? 1.0 : (intrCorrect || tranCorrect ? 0.5 : 0.0)
+        let intrMark = intrCorrect ? "✓" : "✗"
+        let tranMark = tranCorrect ? "✓" : "✗"
+
+        let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
+        let answerBubble: String
+        if intrCorrect && tranCorrect {
+            answerBubble = "\(intrMark) \(intrAnswer)\n\(tranMark) \(tranAnswer)"
+        } else {
+            let intrLine = intrCorrect
+                ? "\(intrMark) \(intrAnswer)"
+                : "\(intrMark) \(intrAnswer)  (correct: \(q.intransitiveKana)/\(q.intransitiveKanji.first ?? q.intransitiveKana))"
+            let tranLine = tranCorrect
+                ? "\(tranMark) \(tranAnswer)"
+                : "\(tranMark) \(tranAnswer)  (correct: \(q.transitiveKana)/\(q.transitiveKanji.first ?? q.transitiveKana))"
+            answerBubble = "\(intrLine)\n\(tranLine)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+        }
+        let notes = "pair: intr=\(intrAnswer)(\(intrCorrect ? "correct" : "wrong")) tran=\(tranAnswer)(\(tranCorrect ? "correct" : "wrong"))"
+        // Pass nil result summary so "Tutor me" button is hidden for pairs (no vocab system prompt).
+        applyPairGrade(score: score, questionBubble: questionBubble, answerBubble: answerBubble, notes: notes, item: item)
+    }
+
+    /// Called when the student taps "Don't know" on a pair-discrimination drill.
+    func tapPairDontKnow() {
+        guard case .awaitingPair(let q) = phase, let item = currentItem else { return }
+        let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
+        let answerBubble = "Intransitive: \(q.intransitiveKanji.first ?? q.intransitiveKana) (\(q.intransitiveKana))\n\(q.intransitiveJapanese)\n\nTransitive: \(q.transitiveKanji.first ?? q.transitiveKana) (\(q.transitiveKana))\n\(q.transitiveJapanese)"
+        applyPairGrade(score: 0.0, questionBubble: questionBubble, answerBubble: answerBubble, notes: "pair: don't know", item: item)
+    }
+
+    /// Grading path for pair-discrimination items.
+    /// Identical to applyLocalGrade but does not set multipleChoiceResult,
+    /// so the "Tutor me" button is not shown (the vocab quiz system prompt doesn't apply to pairs).
+    private func applyPairGrade(score: Double, questionBubble: String, answerBubble: String,
+                                 notes: String, item: QuizItem) {
+        chatMessages = [
+            (isUser: false, text: questionBubble),
+            (isUser: true, text: answerBubble)
+        ]
+        gradedScore = score
+        multipleChoiceResult = nil   // no "Tutor me" for pairs
+        phase = .chatting
+
+        Task {
+            try? await recordReview(item: item, score: score, notes: notes)
+            let nextIndex = currentIndex + 1
+            if nextIndex < items.count {
+                let nextItem = items[nextIndex]
+                prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+            }
+        }
+    }
+
+    /// Check whether a student's typed answer is correct for a pair member.
+    /// Accepts: exact kana, any kanji form, or romaji that converts to the correct kana.
+    private func isPairAnswerCorrect(_ answer: String, kana: String, kanji: [String]) -> Bool {
+        let trimmed = answer.trimmingCharacters(in: .whitespaces)
+        if trimmed == kana { return true }
+        if kanji.contains(trimmed) { return true }
+        if let converted = romajiToHiragana(trimmed.lowercased()), converted == kana { return true }
+        return false
+    }
+
     /// True when the student tapped a wrong multiple-choice answer and the tutor chat hasn't started yet.
     /// Used by the view to show a "Tutor me" button.
     var canStartTutorSession: Bool {
@@ -278,7 +367,7 @@ final class QuizSession {
         print("[QuizSession] loadItems: building quiz context")
         do {
             statusMessage = "Loading items…"
-            let candidates = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict)
+            let candidates = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus)
             allCandidates = candidates
             print("[QuizSession] loadItems: \(candidates.count) candidate(s)")
             if candidates.isEmpty { phase = .noItems; return }
@@ -399,6 +488,32 @@ final class QuizSession {
         } else {
             preQuizRecall   = nil
             preQuizHalflife = nil
+        }
+
+        // Handle transitive-pair items: pick a random drill, no LLM call needed.
+        if item.wordType == "transitive-pair" {
+            guard let pairCorpus,
+                  let pairItem = pairCorpus.items.first(where: { $0.id == item.wordId }),
+                  let drills = pairItem.pair.drills, !drills.isEmpty else {
+                print("[QuizSession] no drills for pair \(item.wordId), skipping")
+                nextQuestion()
+                return
+            }
+            let drill = drills.randomElement()!
+            let q = PairQuestion(
+                intransitiveEnglish: drill.intransitive.en,
+                transitiveEnglish: drill.transitive.en,
+                intransitiveKana: pairItem.pair.intransitive.kana,
+                intransitiveKanji: pairItem.pair.intransitive.kanji,
+                transitiveKana: pairItem.pair.transitive.kana,
+                transitiveKanji: pairItem.pair.transitive.kanji,
+                intransitiveJapanese: drill.intransitive.ja,
+                transitiveJapanese: drill.transitive.ja
+            )
+            pairIntransitiveInput = ""
+            pairTransitiveInput = ""
+            phase = .awaitingPair(q)
+            return
         }
 
         // Free-answer: construct stem app-side, no LLM call needed.

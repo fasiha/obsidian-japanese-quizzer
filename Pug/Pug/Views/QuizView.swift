@@ -20,6 +20,8 @@ struct QuizView: View {
                     awaitingTapView(multipleChoice: multipleChoice)
                 case .awaitingText(let stem):
                     awaitingTextView(stem: stem)
+                case .awaitingPair(let pairQuestion):
+                    awaitingPairView(pairQuestion: pairQuestion)
                 case .chatting:
                     chattingView
                 case .noItems:
@@ -181,6 +183,87 @@ struct QuizView: View {
                     }
                     .disabled(session.chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+
+                Button("Skip →") { session.nextQuestion() }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
+
+    // MARK: - Awaiting pair (two-field dictionary form input)
+
+    private func awaitingPairView(pairQuestion: QuizSession.PairQuestion) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Progress + facet badge
+                HStack {
+                    Text(session.progress)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    facetBadge("pair-discrimination")
+                }
+
+                // Intransitive field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(pairQuestion.intransitiveEnglish)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                    HStack {
+                        Text("Dictionary form:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("e.g. あく or 開く", text: $session.pairIntransitiveInput)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                }
+
+                // Transitive field
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(pairQuestion.transitiveEnglish)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                    HStack {
+                        Text("Dictionary form:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        TextField("e.g. あける or 開ける", text: $session.pairTransitiveInput)
+                            .textFieldStyle(.roundedBorder)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                }
+
+                // Submit button
+                Button("Submit") {
+                    session.submitPairAnswer()
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+                .disabled(
+                    session.pairIntransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty ||
+                    session.pairTransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty
+                )
+
+                // Don't know row
+                HStack(spacing: 8) {
+                    Button("Don't know?") { session.uncertaintyUnlocked = !session.uncertaintyUnlocked }
+                        .buttonStyle(.bordered)
+                        .tint(session.uncertaintyUnlocked ? .secondary : .orange)
+                    Button("Reveal answers") {
+                        session.tapPairDontKnow()
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .disabled(!session.uncertaintyUnlocked)
+                }
+                .frame(maxWidth: .infinity)
 
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)

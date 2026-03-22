@@ -10,6 +10,16 @@ import Foundation
 
 // MARK: - Codable types matching transitive-pairs.json
 
+struct TransitivePairDrillEntry: Codable {
+    let en: String
+    let ja: String
+}
+
+struct TransitivePairDrill: Codable {
+    let intransitive: TransitivePairDrillEntry
+    let transitive: TransitivePairDrillEntry
+}
+
 struct TransitivePairMember: Codable {
     let kana: String
     let jmdictId: String
@@ -26,6 +36,7 @@ struct TransitivePair: Codable, Identifiable {
     let transitive: TransitivePairMember
     let examples: TransitivePairExamples
     let ambiguousReason: String?
+    let drills: [TransitivePairDrill]?
 
     var id: String { "\(intransitive.jmdictId)-\(transitive.jmdictId)" }
     var isAmbiguous: Bool { ambiguousReason != nil }

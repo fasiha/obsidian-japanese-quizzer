@@ -52,6 +52,12 @@ struct TransitivePairDetailSheet: View {
                         example: item.pair.examples.transitive
                     )
 
+                    // Drill sentences
+                    if let drills = item.pair.drills, !drills.isEmpty {
+                        Divider()
+                        drillsSection(drills)
+                    }
+
                     // Ambiguous reason
                     if let reason = item.pair.ambiguousReason {
                         Divider()
@@ -149,6 +155,58 @@ struct TransitivePairDetailSheet: View {
                 Text(example)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    // MARK: - Drills section
+
+    @ViewBuilder
+    private func drillsSection(_ drills: [TransitivePairDrill]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Drill Sentences")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(Array(drills.enumerated()), id: \.offset) { i, drill in
+                VStack(alignment: .leading, spacing: 6) {
+                    if drills.count > 1 {
+                        Text("Pair \(i + 1)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    // Intransitive
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("自動詞")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(drill.intransitive.ja)
+                            .font(.callout)
+                        Text(drill.intransitive.en)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Transitive
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("他動詞")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                        Text(drill.transitive.ja)
+                            .font(.callout)
+                        Text(drill.transitive.en)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if i < drills.count - 1 {
+                    Divider().padding(.leading, 16)
+                }
             }
         }
         .textSelection(.enabled)

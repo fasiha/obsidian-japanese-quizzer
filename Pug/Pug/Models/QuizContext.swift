@@ -103,7 +103,8 @@ struct QuizContext {
     /// Only words with active ebisu_models are included (= "learning" facets).
     /// hasKanji is inferred from whether kanji facets exist in ebisu_models.
     /// - Parameter jmdict: Optional jmdict DB reader used to fill in word texts and forms.
-    static func build(db: QuizDB, jmdict: (any DatabaseReader)? = nil) async throws -> [QuizItem] {
+    /// - Parameter pairCorpus: Optional transitive-pair corpus; enrolled pairs are appended as pair-discrimination items.
+    static func build(db: QuizDB, jmdict: (any DatabaseReader)? = nil, pairCorpus: TransitivePairCorpus? = nil) async throws -> [QuizItem] {
         let records        = try await db.enrolledEbisuRecords()
         var wordTexts      = try await db.wordTexts()
         let reviewCounts   = try await db.reviewCounts()
@@ -226,6 +227,29 @@ struct QuizContext {
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate,
                 committedReading: committedReading))
+        }
+
+        // Include enrolled transitive-pair items.
+        if let pairCorpus {
+            let pairRecords = try await db.enrolledTransitivePairRecords()
+            var pairRecallMap: [String: (recall: Double, halflife: Double)] = [:]
+            for record in pairRecords {
+                let elapsed = max(now.timeIntervalSince(iso8601Date(record.lastReview)), 1e-6) / 3600.0
+                pairRecallMap[record.wordId] = (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
+            }
+            for pairItem in pairCorpus.items where pairItem.state == .learning {
+                guard let (recall, halflife) = pairRecallMap[pairItem.id] else { continue }
+                let status = QuizStatus.reviewed(recall: recall, isFree: false, halflife: halflife)
+                let kanjiIntr = pairItem.pair.intransitive.kanji.first ?? pairItem.pair.intransitive.kana
+                let kanjiTran = pairItem.pair.transitive.kanji.first ?? pairItem.pair.transitive.kana
+                let wordText = "\(kanjiIntr) ↔ \(kanjiTran)"
+                items.append(QuizItem(
+                    wordType: "transitive-pair", wordId: pairItem.id, wordText: wordText,
+                    writtenTexts: [], kanaTexts: [], hasKanji: false,
+                    facet: "pair-discrimination", status: status,
+                    senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil
+                ))
+            }
         }
 
         items.sort { $0.recall < $1.recall }

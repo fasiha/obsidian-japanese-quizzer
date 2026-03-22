@@ -100,6 +100,7 @@ struct AppRootView: View {
             async let pairLoad: () = pairCorpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await pairLoad
+            session!.pairCorpus = pairCorpus
             grammarManifest = await grammarLoad
         } catch {
             errorMessage = error.localizedDescription
