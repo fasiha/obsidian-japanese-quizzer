@@ -67,12 +67,16 @@ final class ReviewChatSession {
 struct ReviewDetailSheet: View {
     let review: Review
     let client: AnthropicClient
+    let db: QuizDB
     @State private var chat: ReviewChatSession
+    @State private var ebisuRecord: EbisuRecord? = nil
+    @State private var showRescaleSheet = false
     @Environment(\.dismiss) private var dismiss
 
-    init(review: Review, client: AnthropicClient) {
+    init(review: Review, client: AnthropicClient, db: QuizDB) {
         self.review = review
         self.client = client
+        self.db = db
         self._chat = State(initialValue: ReviewChatSession(client: client, review: review))
     }
 
@@ -138,9 +142,20 @@ struct ReviewDetailSheet: View {
             }
             .navigationTitle("Review")
             .navigationBarTitleDisplayMode(.inline)
+            .task { await loadEbisuRecord() }
+            .sheet(isPresented: $showRescaleSheet) {
+                RescaleSheet(currentHalflife: ebisuRecord?.t ?? 24) { hours in
+                    Task { await doRescale(hours: hours) }
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                }
+                if ebisuRecord != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Adjust…") { showRescaleSheet = true }
+                    }
                 }
             }
         }
@@ -192,6 +207,28 @@ struct ReviewDetailSheet: View {
                 .disabled(chat.input.trimmingCharacters(in: .whitespaces).isEmpty)
                 .padding(.bottom, 2)
             }
+        }
+    }
+
+    private func loadEbisuRecord() async {
+        ebisuRecord = try? await db.ebisuRecord(
+            wordType: review.wordType, wordId: review.wordId, quizType: review.quizType)
+    }
+
+    private func doRescale(hours: Double) async {
+        guard hours > 0, let current = ebisuRecord else { return }
+        do {
+            let scale = hours / current.t
+            let newModel = try rescaleHalflife(current.model, scale: scale)
+            let updated = EbisuRecord(
+                wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
+                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
+                lastReview: current.lastReview
+            )
+            try await db.upsert(record: updated)
+            ebisuRecord = updated
+        } catch {
+            print("[ReviewDetailSheet] doRescale error: \(error)")
         }
     }
 

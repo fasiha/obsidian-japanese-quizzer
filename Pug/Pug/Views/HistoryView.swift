@@ -54,7 +54,7 @@ struct HistoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task { await load() }
             .sheet(item: $selectedReview) { wrapper in
-                ReviewDetailSheet(review: wrapper.review, client: client)
+                ReviewDetailSheet(review: wrapper.review, client: client, db: db)
             }
         }
     }

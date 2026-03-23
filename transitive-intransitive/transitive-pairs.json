@@ -214,52 +214,52 @@
   {
     "intransitive": {
       "kana": "つく",
-      "jmdictId": "1495740",
+      "jmdictId": "1441400",
       "kanji": [
-        "付く"
+        "点く"
       ]
     },
     "transitive": {
       "kana": "つける",
-      "jmdictId": "1495770",
+      "jmdictId": "1610400",
       "kanji": [
-        "付ける"
+        "点ける"
       ]
     },
     "ambiguousReason": null,
     "examples": {
-      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
-      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
+      "intransitive": "電気が点いた。 — The light came on.",
+      "transitive": "電気を点けた。 — I turned on the light."
     },
     "drills": [
       {
         "intransitive": {
-          "en": "A sticky note is stuck to my monitor.",
-          "ja": "モニターに付箋が付いている。"
+          "en": "The smoke alarm light came on.",
+          "ja": "火災警報器のランプが点いた。"
         },
         "transitive": {
-          "en": "She stuck three more notes to the edge.",
-          "ja": "彼女はふちにメモをもう三枚付けた。"
+          "en": "She quickly turned on all the lights to check.",
+          "ja": "彼女はすぐに電気を全部点けて確認した。"
         }
       },
       {
         "intransitive": {
-          "en": "Mud got on his jacket.",
-          "ja": "ジャケットに泥が付いた。"
+          "en": "The street lamp is on already.",
+          "ja": "街灯がもう点いている。"
         },
         "transitive": {
-          "en": "He stuck a patch over it.",
-          "ja": "彼はその上からワッペンを付けた。"
+          "en": "So she turned on the porch light too.",
+          "ja": "だから彼女は玄関の電気も点けた。"
         }
       },
       {
         "intransitive": {
-          "en": "A price tag is attached to the cake.",
-          "ja": "ケーキに値札が付いている。"
+          "en": "The candles came on one by one.",
+          "ja": "ろうそくが一本一本点いていった。"
         },
         "transitive": {
-          "en": "Please attach a label to the other ones too.",
-          "ja": "ほかのものにもラベルを付けてください。"
+          "en": "Please turn on the last one yourself.",
+          "ja": "最後の一本はあなたが点けてください。"
         }
       }
     ]
@@ -525,6 +525,59 @@
         "transitive": {
           "en": "Please heat some water for the noodles.",
           "ja": "麺のためにお湯を沸かしてください。"
+        }
+      }
+    ]
+  },
+  {
+    "intransitive": {
+      "kana": "つく",
+      "jmdictId": "1495740",
+      "kanji": [
+        "付く"
+      ]
+    },
+    "transitive": {
+      "kana": "つける",
+      "jmdictId": "1495770",
+      "kanji": [
+        "付ける"
+      ]
+    },
+    "ambiguousReason": null,
+    "examples": {
+      "intransitive": "服にシミが付いた。 — A stain got on my clothes.",
+      "transitive": "壁にポスターを付けた。 — I attached a poster to the wall."
+    },
+    "drills": [
+      {
+        "intransitive": {
+          "en": "A sticky note is stuck to my monitor.",
+          "ja": "モニターに付箋が付いている。"
+        },
+        "transitive": {
+          "en": "She stuck three more notes to the edge.",
+          "ja": "彼女はふちにメモをもう三枚付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Mud got on his jacket.",
+          "ja": "ジャケットに泥が付いた。"
+        },
+        "transitive": {
+          "en": "He stuck a patch over it.",
+          "ja": "彼はその上からワッペンを付けた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "A price tag is attached to the cake.",
+          "ja": "ケーキに値札が付いている。"
+        },
+        "transitive": {
+          "en": "Please attach a label to the other ones too.",
+          "ja": "ほかのものにもラベルを付けてください。"
         }
       }
     ]

@@ -76,7 +76,7 @@ struct VocabBrowserView: View {
                         systemImage: "books.vertical",
                         description: Text("Download vocab via the ··· menu or set up the app URL.")
                     )
-                } else if filteredItems.isEmpty {
+                } else if filteredItems.isEmpty && filteredPairs.isEmpty {
                     if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                         ContentUnavailableView.search(text: searchText)
                     } else {
@@ -93,10 +93,13 @@ struct VocabBrowserView: View {
                 ToolbarItem(placement: .navigationBarLeading) { filterPicker }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     HStack(spacing: 4) {
-                        Button {
-                            showQuiz = true
-                        } label: {
+                        Button { startQuiz(filter: .all) } label: {
                             Label("Quiz", systemImage: "brain.head.profile")
+                        }
+                        .contextMenu {
+                            Button("Quiz all") { startQuiz(filter: .all) }
+                            Button("Quiz vocab only") { startQuiz(filter: .vocabOnly) }
+                            Button("Quiz transitive pairs only") { startQuiz(filter: .pairsOnly) }
                         }
                         BrowserToolbarMenu(
                             showSettings: $showSettings,
@@ -126,6 +129,13 @@ struct VocabBrowserView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Quiz launch
+
+    private func startQuiz(filter: QuizSession.QuizFilter) {
+        session.quizFilter = filter
+        showQuiz = true
     }
 
     // MARK: - Word list (flat — used when search is active)

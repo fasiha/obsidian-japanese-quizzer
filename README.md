@@ -156,6 +156,11 @@ practice. The candidate pool itself was assembled from
 with JMDict IDs and drill sentences. The larger archive remains available for adding
 pairs that feel important in context.
 
+Transitive-intransitive pairs are shown alongside vocab in the Vocab browser and are
+included in the default quiz. Tapping the Quiz button starts a session covering both
+vocab and pairs; long-pressing it shows a menu to quiz only vocab or only transitive
+pairs.
+
 ---
 
 ## Content authoring

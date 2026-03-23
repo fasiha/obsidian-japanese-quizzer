@@ -65,6 +65,16 @@ final class QuizSession {
     var gradedHalflife: Double? = nil      // updated halflife after recordReview; nil until graded
     var gradedReviewCount: Int? = nil      // total reviews for this facet after recordReview; nil until graded
 
+    // MARK: - Quiz filter
+
+    enum QuizFilter {
+        case all
+        case vocabOnly
+        case pairsOnly
+    }
+
+    var quizFilter: QuizFilter = .all
+
     var pairCorpus: TransitivePairCorpus? = nil
     var pairIntransitiveInput: String = ""
     var pairTransitiveInput: String = ""
@@ -553,7 +563,16 @@ final class QuizSession {
         print("[QuizSession] loadItems: building quiz context")
         do {
             statusMessage = "Loading items…"
-            let candidates = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus)
+            let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus)
+            let candidates: [QuizItem]
+            switch quizFilter {
+            case .all:
+                candidates = allBuilt
+            case .vocabOnly:
+                candidates = allBuilt.filter { $0.wordType != "transitive-pair" }
+            case .pairsOnly:
+                candidates = allBuilt.filter { $0.wordType == "transitive-pair" }
+            }
             allCandidates = candidates
             print("[QuizSession] loadItems: \(candidates.count) candidate(s)")
             if candidates.isEmpty { phase = .noItems; return }

@@ -20,6 +20,8 @@ struct TransitivePairDetailSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var intransitiveInfo: MemberInfo?
     @State private var transitiveInfo: MemberInfo?
+    @State private var ebisuModels: [EbisuRecord] = []
+    @State private var rescaleRecord: EbisuRecord? = nil
 
     /// Parsed JMDict info for one verb.
     struct MemberInfo {
@@ -76,6 +78,10 @@ struct TransitivePairDetailSheet: View {
 
                     Divider()
                     actionsSection
+                    if !ebisuModels.isEmpty {
+                        Divider()
+                        ebisuHalflivesSection
+                    }
                 }
                 .padding()
             }
@@ -86,7 +92,15 @@ struct TransitivePairDetailSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .task { await loadJMDictInfo() }
+            .task {
+                await loadJMDictInfo()
+                await loadEbisuModels()
+            }
+            .sheet(item: $rescaleRecord) { record in
+                RescaleSheet(currentHalflife: record.t) { hours in
+                    Task { await doRescale(record: record, hours: hours) }
+                }
+            }
         }
     }
 
@@ -264,6 +278,65 @@ struct TransitivePairDetailSheet: View {
             case .known:
                 await pairCorpus.setPairKnown(pairId: item.id, db: db)
             }
+        }
+    }
+
+    // MARK: - Halflives
+
+    private var ebisuHalflivesSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Halflives")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(ebisuModels) { record in
+                Button {
+                    rescaleRecord = record
+                } label: {
+                    HStack {
+                        Text(record.quizType.replacingOccurrences(of: "-", with: " ").capitalized)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                        Spacer()
+                        Text(formatDuration(record.t))
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func loadEbisuModels() async {
+        if let records = try? await db.ebisuRecords(wordType: "transitive-pair", wordId: item.id) {
+            ebisuModels = records
+        }
+    }
+
+    private func doRescale(record: EbisuRecord, hours: Double) async {
+        guard hours > 0 else { return }
+        do {
+            guard let current = try await db.ebisuRecord(
+                wordType: record.wordType, wordId: record.wordId, quizType: record.quizType) else { return }
+            let scale = hours / current.t
+            let newModel = try rescaleHalflife(current.model, scale: scale)
+            let updated = EbisuRecord(
+                wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
+                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
+                lastReview: current.lastReview
+            )
+            try await db.upsert(record: updated)
+            await loadEbisuModels()
+        } catch {
+            print("[TransitivePairDetailSheet] doRescale error: \(error)")
         }
     }
 
