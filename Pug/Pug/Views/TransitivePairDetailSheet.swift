@@ -278,6 +278,7 @@ struct TransitivePairDetailSheet: View {
             case .known:
                 await pairCorpus.setPairKnown(pairId: item.id, db: db)
             }
+            await loadEbisuModels()
         }
     }
 
