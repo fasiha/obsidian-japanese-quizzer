@@ -663,6 +663,8 @@ final class QuizSession {
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
             if let pairQuestion = pf.pairQuestion {
+                conversation = []
+                chatMessages = []
                 pairIntransitiveInput = ""
                 pairTransitiveInput = ""
                 phase = .awaitingPair(pairQuestion)
