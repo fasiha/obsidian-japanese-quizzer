@@ -115,6 +115,7 @@ final class QuizSession {
 
     // Prefetched next question: kicked off as soon as the current item is graded.
     private var prefetched: (index: Int, question: String, multipleChoice: MultipleChoiceQuestion?,
+                              pairQuestion: PairQuestion?,
                               conversation: [AnthropicMessage],
                               preRecall: Double?, preHalflife: Double?)? = nil
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
@@ -255,7 +256,7 @@ final class QuizSession {
         // Fast path: both fields matched exactly — no LLM call needed.
         if intrCorrect && tranCorrect {
             applyPairGrade(score: 1.0, questionBubble: questionBubble,
-                           answerBubble: "✓ \(intrAnswer)\n✓ \(tranAnswer)",
+                           answerBubble: "✓ \(intrAnswer)\n✓ \(tranAnswer)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)",
                            notes: "pair: intr=\(intrAnswer)(correct) tran=\(tranAnswer)(correct)",
                            item: item, pairQuestion: q,
                            answers: (intrAnswer, tranAnswer, true, true))
@@ -661,7 +662,11 @@ final class QuizSession {
             preQuizRecall   = pf.preRecall
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
-            if let multipleChoice = pf.multipleChoice {
+            if let pairQuestion = pf.pairQuestion {
+                pairIntransitiveInput = ""
+                pairTransitiveInput = ""
+                phase = .awaitingPair(pairQuestion)
+            } else if let multipleChoice = pf.multipleChoice {
                 conversation = []
                 chatMessages = []
                 multipleChoiceResult = nil
@@ -1053,9 +1058,38 @@ final class QuizSession {
             guard currentIndex <= index else { return }
             let stem = freeAnswerStem(for: item)
             prefetched = (index: index, question: stem, multipleChoice: nil,
+                          pairQuestion: nil,
                           conversation: [],
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch (free-answer, app-side) stored for index \(index): \(item.wordText)")
+            return
+        }
+
+        // Transitive-pair: pick a random drill app-side, no LLM call needed.
+        if item.wordType == "transitive-pair" {
+            guard currentIndex <= index else { return }
+            guard let pairCorpus,
+                  let pairItem = pairCorpus.items.first(where: { $0.id == item.wordId }),
+                  let drills = pairItem.pair.drills, !drills.isEmpty else {
+                print("[QuizSession] prefetch: no drills for pair \(item.wordId), skipping")
+                return
+            }
+            let drill = drills.randomElement()!
+            let q = PairQuestion(
+                intransitiveEnglish: drill.intransitive.en,
+                transitiveEnglish: drill.transitive.en,
+                intransitiveKana: pairItem.pair.intransitive.kana,
+                intransitiveKanji: pairItem.pair.intransitive.kanji,
+                transitiveKana: pairItem.pair.transitive.kana,
+                transitiveKanji: pairItem.pair.transitive.kanji,
+                intransitiveJapanese: drill.intransitive.ja,
+                transitiveJapanese: drill.transitive.ja
+            )
+            prefetched = (index: index, question: "", multipleChoice: nil,
+                          pairQuestion: q,
+                          conversation: [],
+                          preRecall: preRecall, preHalflife: preHalflife)
+            print("[QuizSession] prefetch (transitive-pair, app-side) stored for index \(index): \(item.wordText)")
             return
         }
 
@@ -1073,6 +1107,7 @@ final class QuizSession {
                 return
             }
             prefetched = (index: index, question: finalQuestion, multipleChoice: finalMultipleChoice,
+                          pairQuestion: nil,
                           conversation: finalMsgs,
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch stored for index \(index): \(item.wordText)")
