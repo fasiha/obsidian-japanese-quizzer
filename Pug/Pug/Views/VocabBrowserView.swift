@@ -120,7 +120,7 @@ struct VocabBrowserView: View {
 
             .sheet(isPresented: $showSettings) { SettingsView() }
             .navigationDestination(isPresented: $showQuiz) {
-                QuizView(session: session)
+                QuizView(session: session, corpus: corpus, pairCorpus: pairCorpus, jmdict: jmdict)
             }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",
