@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		398E4F432F580FFC00E9C276 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 398E4F422F580FFC00E9C276 /* GRDB */; };
+		39D043642F74444400210254 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = 39D043632F74444400210254 /* Markdown */; };
+		39D043692F74451A00210254 /* Markdownosaur in Frameworks */ = {isa = PBXBuildFile; productRef = 39D043682F74451A00210254 /* Markdownosaur */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,7 +71,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				39D043692F74451A00210254 /* Markdownosaur in Frameworks */,
 				398E4F432F580FFC00E9C276 /* GRDB in Frameworks */,
+				39D043642F74444400210254 /* Markdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +135,8 @@
 			name = Pug;
 			packageProductDependencies = (
 				398E4F422F580FFC00E9C276 /* GRDB */,
+				39D043632F74444400210254 /* Markdown */,
+				39D043682F74451A00210254 /* Markdownosaur */,
 			);
 			productName = Pug;
 			productReference = 39C9BEF82F580D0400857160 /* Pug.app */;
@@ -216,6 +222,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				398E4F412F580FFC00E9C276 /* XCRemoteSwiftPackageReference "GRDB" */,
+				39D043622F74444400210254 /* XCRemoteSwiftPackageReference "swift-markdown" */,
+				39D043672F74451A00210254 /* XCRemoteSwiftPackageReference "Markdownosaur" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 39C9BEF92F580D0400857160 /* Products */;
@@ -610,6 +618,22 @@
 				minimumVersion = 7.0.0;
 			};
 		};
+		39D043622F74444400210254 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swiftlang/swift-markdown";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.7.3;
+			};
+		};
+		39D043672F74451A00210254 /* XCRemoteSwiftPackageReference "Markdownosaur" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/christianselig/Markdownosaur";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -617,6 +641,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 398E4F412F580FFC00E9C276 /* XCRemoteSwiftPackageReference "GRDB" */;
 			productName = GRDB;
+		};
+		39D043632F74444400210254 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39D043622F74444400210254 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
+		};
+		39D043682F74451A00210254 /* Markdownosaur */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39D043672F74451A00210254 /* XCRemoteSwiftPackageReference "Markdownosaur" */;
+			productName = Markdownosaur;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

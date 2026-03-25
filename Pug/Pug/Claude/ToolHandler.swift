@@ -352,12 +352,17 @@ struct ToolHandler: Sendable {
             WHERE r.text IN (\(placeholders))
             GROUP BY e.id
         """
-        let (byWord, tagMap): ([String: String], [String: String]) = try await jmdict.read { db in
+        let (byWord, tagMap): ([String: [String]], [String: String]) = try await jmdict.read { db in
+            // Multiple JMDict entries can share the same kanji or kana text (e.g. 怒る is both
+            // おこる entry 1445690 and いかる entry 2859682). Collect all matching entry JSONs
+            // per queried text so none are silently dropped.
             let entries = try Row.fetchAll(db, sql: sql, arguments: StatementArguments(words))
-                .reduce(into: [String: String]()) { dict, row in
+                .reduce(into: [String: [String]]()) { dict, row in
                     guard let texts = row["texts"] as? String,
                           let json  = row["entry_json"] as? String else { return }
-                    for text in texts.split(separator: ",") { dict[String(text)] = json }
+                    for text in texts.split(separator: ",") {
+                        dict[String(text), default: []].append(json)
+                    }
                 }
             // Load abbreviation → full description map from the metadata table (e.g. "vt" → "transitive verb").
             let tags: [String: String]
@@ -371,14 +376,8 @@ struct ToolHandler: Sendable {
             return (entries, tags)
         }
 
-        // Build output array in input order.
-        let results: [Any] = words.map { word -> Any in
-            guard let json = byWord[word],
-                  let data = json.data(using: .utf8),
-                  let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else {
-                return ["query": word, "error": "word not found"]
-            }
+        // Helper: convert a raw JMDict entry JSON object into the tool-result dict.
+        let entryToDict = { (word: String, raw: [String: Any]) -> [String: Any] in
             let kanjiForms = (raw["kanji"] as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
             let kanaForms  = (raw["kana"]  as? [[String: Any]] ?? []).compactMap { $0["text"] as? String }
             // Collect per-sense data: part-of-speech tags expanded to full English descriptions,
@@ -393,6 +392,25 @@ struct ToolHandler: Sendable {
             }
             return ["query": word, "id": raw["id"] as? String ?? "",
                     "kanji": kanjiForms, "kana": kanaForms, "senses": senses]
+        }
+
+        // Build output array in input order. When a queried form matches multiple entries
+        // (e.g. 怒る for both おこる and いかる), all entries are included in the results.
+        // seenIds prevents the same JMDict entry from appearing twice when two queried words
+        // (e.g. 怒る and おこる) both resolve to the same entry.
+        var seenIds = Set<String>()
+        let results: [Any] = words.flatMap { word -> [Any] in
+            guard let jsons = byWord[word], !jsons.isEmpty else {
+                return [["query": word, "error": "word not found"]]
+            }
+            return jsons.compactMap { json -> [String: Any]? in
+                guard let data = json.data(using: .utf8),
+                      let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let id = raw["id"] as? String,
+                      seenIds.insert(id).inserted
+                else { return nil }
+                return entryToDict(word, raw)
+            }
         }
         let data = try JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])
         return String(data: data, encoding: .utf8) ?? "[]"

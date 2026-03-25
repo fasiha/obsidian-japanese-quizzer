@@ -241,7 +241,7 @@ struct AnthropicClient: Sendable {
             }
 
             if toolUses.isEmpty || response.stopReason == "end_turn" {
-                let text = accumulatedText.joined(separator: "\n")
+                let text = accumulatedText.joined(separator: "\n\n")
                 meta.totalTurns = turn
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")

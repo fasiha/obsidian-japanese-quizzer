@@ -14,6 +14,7 @@ struct QuizView: View {
     @State private var showRescaleSheet = false
     @State private var showDetailsSheet = false
     @State private var showSettings = false
+    @FocusState private var isChatFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -353,6 +354,7 @@ struct QuizView: View {
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...6)
                     .disabled(session.isSendingChat)
+                    .focused($isChatFocused)
 
                     if session.isSendingChat {
                         ProgressView()
@@ -361,6 +363,7 @@ struct QuizView: View {
                     } else {
                         Button {
                             session.sendChatMessage()
+                            isChatFocused = false
                         } label: {
                             Image(systemName: "arrow.up.circle.fill")
                                 .font(.title2)
