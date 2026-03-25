@@ -83,9 +83,10 @@ struct AppRootView: View {
             let toolHandler = try ToolHandler.makeDefault(quizDB: quizDB)
             // API key: Keychain (set via japanquiz://setup deep link) or ANTHROPIC_API_KEY env var.
             let apiKey = SetupHandler.resolvedApiKey()
-            let model  = ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
-            print("[Setup] Using model: \(model)")
-            let client = AnthropicClient(apiKey: apiKey, model: model)
+            let envModel = ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"]
+            let client = AnthropicClient(apiKey: apiKey, modelProvider: {
+                envModel ?? preferences.localModel.rawValue
+            })
 
             // Publish core state so HomeView can render immediately.
             db             = quizDB

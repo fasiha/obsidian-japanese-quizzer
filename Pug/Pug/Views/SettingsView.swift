@@ -22,6 +22,19 @@ struct SettingsView: View {
                 } footer: {
                     Text(preferences.quizStyle.description)
                 }
+
+                Section {
+                    Picker("AI model", selection: $prefs.localModel) {
+                        ForEach(LocalModel.allCases) { model in
+                            Text(model.label).tag(model)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("AI model")
+                } footer: {
+                    Text(preferences.localModel.description)
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)

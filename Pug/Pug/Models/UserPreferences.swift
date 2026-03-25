@@ -27,18 +27,47 @@ enum QuizStyle: String, CaseIterable, Identifiable {
     }
 }
 
+enum LocalModel: String, CaseIterable, Identifiable {
+    case haiku  = "claude-haiku-4-5-20251001"
+    case sonnet = "claude-sonnet-4-6"
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .haiku:  return "Haiku (fast)"
+        case .sonnet: return "Sonnet (smart)"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .haiku:  return "Faster and cheaper. Good for everyday quizzes."
+        case .sonnet: return "Slower and more expensive. Better reasoning for tricky questions."
+        }
+    }
+}
+
 @Observable
 final class UserPreferences {
     var quizStyle: QuizStyle {
         didSet { UserDefaults.standard.set(quizStyle.rawValue, forKey: Keys.quizStyle) }
     }
 
+    var localModel: LocalModel {
+        didSet { UserDefaults.standard.set(localModel.rawValue, forKey: Keys.localModel) }
+    }
+
     init() {
-        let stored = UserDefaults.standard.string(forKey: Keys.quizStyle) ?? ""
-        quizStyle = QuizStyle(rawValue: stored) ?? .varied
+        let storedStyle = UserDefaults.standard.string(forKey: Keys.quizStyle) ?? ""
+        quizStyle = QuizStyle(rawValue: storedStyle) ?? .varied
+
+        let storedModel = UserDefaults.standard.string(forKey: Keys.localModel) ?? ""
+        localModel = LocalModel(rawValue: storedModel) ?? .haiku
     }
 
     private enum Keys {
-        static let quizStyle = "quizStyle"
+        static let quizStyle  = "quizStyle"
+        static let localModel = "localModel"
     }
 }

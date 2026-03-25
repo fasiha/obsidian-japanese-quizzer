@@ -165,14 +165,21 @@ struct AnthropicResponse: Decodable, Sendable {
 /// block and sends results back until the model reaches end_turn.
 struct AnthropicClient: Sendable {
     let apiKey: String
-    let model: String
+    let modelProvider: @Sendable () -> String
+
+    var model: String { modelProvider() }
 
     private static let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private static let apiVersion = "2023-06-01"
 
     init(apiKey: String, model: String = "claude-sonnet-4-6") {
         self.apiKey = apiKey
-        self.model = model
+        self.modelProvider = { model }
+    }
+
+    init(apiKey: String, modelProvider: @escaping @Sendable () -> String) {
+        self.apiKey = apiKey
+        self.modelProvider = modelProvider
     }
 
     /// Called for each tool_use block: (toolName, toolInput) → result string.
