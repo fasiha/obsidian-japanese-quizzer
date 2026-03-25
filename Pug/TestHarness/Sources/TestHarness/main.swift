@@ -434,7 +434,8 @@ let item = QuizItem(
     senseExtras: Array(entry.senseExtras.prefix(5)),
     committedKanji: nil,
     partialKanjiTemplate: nil,
-    committedReading: nil
+    committedReading: nil,
+    enrolledSenseIndices: [0]
 )
 
 // MARK: - Open quiz.sqlite (for telemetry logging; optional)

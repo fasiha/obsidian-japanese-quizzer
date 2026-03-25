@@ -25,6 +25,24 @@ struct VocabWordEntry: Codable {
     let id: String
     let sources: [String]
     let writtenForms: [WrittenFormGroup]?  // nil for old vocab.json without furigana data
+    let llmSense: LlmSense?               // nil until prepare-publish.mjs runs sense analysis
+
+    private enum CodingKeys: String, CodingKey {
+        case id, sources, writtenForms
+        case llmSense = "llm_sense"
+    }
+}
+
+/// LLM-inferred sense data stored in vocab.json under the "llm_sense" key.
+/// Groups all inferred fields separately from factual word data.
+struct LlmSense: Codable {
+    /// Zero-based indices into the JMDict sense list for the senses the student is learning.
+    /// Empty array means Haiku had insufficient context; iOS app treats it the same as [0].
+    let senseIndices: [Int]
+
+    private enum CodingKeys: String, CodingKey {
+        case senseIndices = "sense_indices"
+    }
 }
 
 /// One reading and its associated kanji forms (from JmdictFurigana).

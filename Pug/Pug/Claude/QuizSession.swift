@@ -620,15 +620,15 @@ final class QuizSession {
     /// Build the question stem app-side for free-answer facets (no LLM needed).
     func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.kanaTexts.first ?? "?"
-        let meanings = item.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+        let meanings = item.enrolledSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
         switch item.facet {
         case "meaning-to-reading":
-            return "What is the kana reading for:\n\(meanings.isEmpty ? item.wordText : meanings)"
+            return meanings.isEmpty ? item.wordText : meanings
         case "kanji-to-reading":
             if let template = item.partialKanjiTemplate {
-                return "What is the full kana reading for: \(template)"
+                return "What is the full reading for: \(template)"
             }
-            return "What is the kana reading for: \(item.wordText)"
+            return item.wordText
         case "reading-to-meaning":
             return "What does \(kana) mean?"
         default:
@@ -1307,7 +1307,10 @@ final class QuizSession {
         // Each facet then restricts what may appear in the question *stem* — separate from what Claude knows.
         let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
         let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
-        let allMeanings = item.senseExtras.isEmpty    ? "unknown" : item.senseExtras.flatMap(\.glosses).joined(separator: "; ")
+        // Use only the senses the student is enrolled in. enrolledSenses defaults to [senseExtras[0]]
+        // when vocab.json has no llm_sense data — prevents testing obscure/distant senses by default.
+        let enrolledSenses = item.enrolledSenses
+        let allMeanings = enrolledSenses.isEmpty ? "unknown" : enrolledSenses.flatMap(\.glosses).joined(separator: "; ")
 
         // Aggregate sense-level metadata across all senses for context (deduplicated).
         let extras = item.senseExtras
@@ -1336,15 +1339,15 @@ final class QuizSession {
         switch item.facet {
         case "reading-to-meaning":
             if isGenerating {
-                facetRule = "Show kana ONLY (never kanji). Ask for English meaning. All A/B/C/D options MUST be in English."
+                facetRule = "Show kana ONLY (never kanji). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
                 wordLine = "Word: \(entryRef)."
             } else {
-                facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning)."
+                facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning). Enrolled senses: \(allMeanings)."
                 wordLine = "Word: \(entryRef)"
             }
         case "meaning-to-reading":
             if isGenerating {
-                facetRule = "Show English meaning. Ask for kana reading."
+                facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
                 // No explicit correct-answer pin here: for kana-only words with multiple readings
                 // (e.g. そっと/そうっと/そおっと/そーっと) the model seems to pick the first
                 // listed kana, which is the primary reading. That's acceptable behaviour.

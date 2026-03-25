@@ -68,6 +68,16 @@ struct QuizItem: Identifiable {
     /// nil when there is no word commitment. Used for local exact-match grading on reading facets.
     let committedReading: String?
 
+    /// Zero-based indices into senseExtras for the senses the student is learning.
+    /// Loaded from vocab.json llm_sense.sense_indices; defaults to [0] (first sense) when absent or empty.
+    /// Empty for non-jmdict word types (transitive pairs, etc.).
+    let enrolledSenseIndices: [Int]
+
+    /// The subset of senseExtras the student is actually learning.
+    var enrolledSenses: [SenseExtra] {
+        enrolledSenseIndices.compactMap { $0 < senseExtras.count ? senseExtras[$0] : nil }
+    }
+
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
     }
@@ -109,6 +119,17 @@ struct QuizContext {
         var wordTexts      = try await db.wordTexts()
         let reviewCounts   = try await db.reviewCounts()
         let commitments    = try await db.allCommitments()
+
+        // Build enrolled-senses map from cached vocab.json (llm_sense.sense_indices).
+        // Default is [0] (first JMDict sense) when the field is absent or empty —
+        // this prevents quizzes from testing distant/obscure senses the student never encountered.
+        var enrolledSensesMap: [String: [Int]] = [:]
+        if let manifest = VocabSync.cached() {
+            for entry in manifest.words {
+                let raw = entry.llmSense?.senseIndices ?? []
+                enrolledSensesMap[entry.id] = raw.isEmpty ? [0] : raw
+            }
+        }
 
         // Fetch word text, structured forms, and meanings from jmdict.
         var wordWritten:     [String: [String]] = [:]
@@ -226,7 +247,8 @@ struct QuizContext {
                 senseExtras: wordSenseExtras[wordId] ?? [],
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate,
-                committedReading: committedReading))
+                committedReading: committedReading,
+                enrolledSenseIndices: enrolledSensesMap[wordId] ?? [0]))
         }
 
         // Include enrolled transitive-pair items.
@@ -247,7 +269,8 @@ struct QuizContext {
                     wordType: "transitive-pair", wordId: pairItem.id, wordText: wordText,
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
                     facet: "pair-discrimination", status: status,
-                    senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil
+                    senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
+                    enrolledSenseIndices: []
                 ))
             }
         }

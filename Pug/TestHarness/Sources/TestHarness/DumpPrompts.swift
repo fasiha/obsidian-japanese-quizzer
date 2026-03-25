@@ -196,7 +196,8 @@ func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptP
         senseExtras: Array(entry.senseExtras.prefix(5)),
         committedKanji: path.committedKanji,
         partialKanjiTemplate: path.partialKanjiTemplate,
-        committedReading: nil
+        committedReading: nil,
+        enrolledSenseIndices: [0]
     )
 }
 
