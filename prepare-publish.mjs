@@ -25,6 +25,7 @@ import path from "path";
 import {
   findMdFiles,
   extractJapaneseTokens,
+  isJapanese,
   intersectSets,
   parseFrontmatter,
   projectRoot,
@@ -199,7 +200,53 @@ function buildFuriganaForWord(word, furiganaMap) {
   }));
 }
 
-// Like shared.extractVocabBullets but also returns 1-indexed line numbers.
+// Return the nearest preceding contiguous prose paragraph before `endIdx` in content.
+// Scans backward from `endIdx`, skipping blank lines and entire <details> blocks
+// (so intervening Grammar/Vocab blocks between the prose and the target Vocab block
+// are transparently skipped). Then collects non-blank lines that are not bullets or
+// block-level HTML tags. Inline <ruby> tags within prose lines are preserved.
+// Returns joined text, or null if no such paragraph is found.
+function extractContextBefore(content, endIdx) {
+  const lines = content.slice(0, endIdx).split("\n");
+  let i = lines.length - 1;
+  // Skip blank lines and entire <details>...</details> blocks going backward.
+  while (i >= 0) {
+    const trimmed = lines[i].trim();
+    if (trimmed === "") {
+      i--;
+      continue;
+    }
+    if (trimmed === "</details>") {
+      i--;
+      while (i >= 0 && !lines[i].trim().startsWith("<details")) i--;
+      i--;
+      continue;
+    }
+    break;
+  }
+  if (i < 0) return null;
+  // Collect contiguous prose lines. Stop at blank lines, bullet lines, or
+  // block-level <details>/<summary>/</details> lines. Inline <ruby> lines are prose.
+  const paraLines = [];
+  while (i >= 0) {
+    const trimmed = lines[i].trim();
+    if (
+      trimmed === "" ||
+      trimmed.startsWith("-") ||
+      trimmed.startsWith("<details") ||
+      trimmed.startsWith("</details") ||
+      trimmed.startsWith("<summary")
+    )
+      break;
+    paraLines.unshift(trimmed);
+    i--;
+  }
+  return paraLines.length > 0 ? paraLines.join(" ") : null;
+}
+
+// Like shared.extractVocabBullets but also returns 1-indexed line numbers,
+// bullet narration text (non-Japanese text after the Japanese tokens), and
+// the context paragraph preceding the <details> block.
 function extractVocabBullets(content) {
   const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
   const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
@@ -209,6 +256,7 @@ function extractVocabBullets(content) {
     const inner = match[1];
     if (!SUMMARY_REGEXP.test(inner)) continue;
     const openingTagLen = match[0].length - inner.length - "</details>".length;
+    const context = extractContextBefore(content, match.index);
     const innerStartLine = content
       .slice(0, match.index + openingTagLen)
       .split("\n").length;
@@ -217,7 +265,13 @@ function extractVocabBullets(content) {
       const trimmed = innerLines[i].trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
-      if (bullet) bullets.push({ bullet, line: innerStartLine + i });
+      if (!bullet) continue;
+      // Narration = text after the leading Japanese tokens
+      const parts = bullet.split(/\s+/);
+      let j = 0;
+      while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
+      const narration = parts.slice(j).join(" ").trim() || null;
+      bullets.push({ bullet, line: innerStartLine + i, context, narration });
     }
   }
   return bullets;
@@ -229,7 +283,7 @@ const mdFiles = findMdFiles(projectRoot);
 
 const errors = [];
 const stories = [];
-// Map from word id -> { id, sources: Set<title> }
+// Map from word id -> { id, sources: Set<title>, refs: Map<title, Set<lineNumber>> }
 const wordMap = new Map();
 // Map from grammar topicId -> { topicId, sources: Set<title>, sentences: [] }
 const grammarMap = new Map();
@@ -274,7 +328,7 @@ for (const filePath of mdFiles) {
   }
 
   // --- Vocab extraction ---
-  for (const { bullet, line } of extractVocabBullets(content)) {
+  for (const { bullet, line, context, narration } of extractVocabBullets(content)) {
     const tokens = extractJapaneseTokens(bullet);
     if (tokens.length === 0) continue;
 
@@ -290,10 +344,15 @@ for (const filePath of mdFiles) {
 
     const wordId = String(matchIds[0]);
 
+    const occurrence = { line, context, narration };
     if (wordMap.has(wordId)) {
-      wordMap.get(wordId).sources.add(title);
+      const entry = wordMap.get(wordId);
+      entry.sources.add(title);
+      if (!entry.refs.has(title)) entry.refs.set(title, []);
+      entry.refs.get(title).push(occurrence);
     } else {
-      wordMap.set(wordId, { id: wordId, sources: new Set([title]) });
+      const refs = new Map([[title, [occurrence]]]);
+      wordMap.set(wordId, { id: wordId, sources: new Set([title]), refs });
     }
   }
 }
@@ -312,8 +371,14 @@ const jmdictWords = idsToWords(db, wordIds);
 const jmdictById = new Map();
 for (const w of jmdictWords) jmdictById.set(w.id, w);
 
-const words = [...wordMap.values()].map(({ id, sources }) => {
-  const entry = { id, sources: [...sources] };
+const words = [...wordMap.values()].map(({ id, sources, refs }) => {
+  const references = Object.fromEntries(
+    [...refs.entries()].map(([title, occurrences]) => [
+      title,
+      occurrences.slice().sort((a, b) => a.line - b.line),
+    ]),
+  );
+  const entry = { id, sources: [...sources], references };
   const jmWord = jmdictById.get(id);
   if (jmWord) {
     entry.writtenForms = buildFuriganaForWord(jmWord, furiganaMap);

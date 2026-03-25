@@ -55,7 +55,7 @@ any data pipeline work.
 
 ---
 
-### Step 2 — Node.js: add line numbers and sentence context to extraction (TODO)
+### Step 2 — Node.js: add line numbers and sentence context to extraction (DONE)
 
 **Goal:** extend `prepare-publish.mjs` / `shared.mjs` to capture, per vocab
 token, the line number it appeared on and the context sentence/paragraph. This
@@ -73,9 +73,14 @@ future "show source sentence in WordDetailSheet" feature.
 - If no paragraph context is found and the bullet is bare, context is `null`.
 - Populate `references` in each word's vocab.json entry:
   ```json
-  "references": { "path/to/File": [42, 107] }
+  "references": {
+    "path/to/File": [
+      { "line": 42, "context": "prose paragraph before <details>", "narration": "non-Japanese text on bullet" },
+      { "line": 107, "context": null, "narration": null }
+    ]
+  }
   ```
-  `sources` (flat string array) stays unchanged for iOS compatibility.
+  `context` and `narration` are `null` when absent. `sources` (flat string array) stays unchanged for iOS compatibility.
 
 **Files to change:** `.claude/scripts/shared.mjs`, `prepare-publish.mjs`.
 
@@ -91,8 +96,9 @@ student's corpus and write `llm_sense` to vocab.json.
   `prepare-publish.mjs`.
 - Per word, collect all context paragraphs and bullet narrations across all
   source files (together, not per-file).
+- Optimization: skip if the word has only one sense (i.e., the `sense` array in the JMDict entry has only length 1).
 - Call Haiku with: written forms, all JMDict senses numbered 0-based, and the
-  collected contexts.
+  collected contexts. Note that the contexts might have <ruby> annotations so strip those.
 - Haiku returns JSON `{ "sense_indices": [0, 2] }`. Empty array is valid and
   means "insufficient context."
 - If context is null for all occurrences, skip the Haiku call and write
@@ -100,25 +106,30 @@ student's corpus and write `llm_sense` to vocab.json.
 
 **Caching (use vocab.json itself):**
 - At the start of a run, load the existing `vocab.json` if present.
-- For each word, compare the current `references` map against
-  `llm_sense.computed_from`. If identical, skip the Haiku call and carry
-  `sense_indices` forward.
-- Recompute when a **new source file** appears in `references` that is not in
-  `computed_from`. New line numbers in an already-seen file do not trigger
-  recomputation.
+- For each word, derive the current cache key: collect all non-null `context`
+  and `narration` strings from all occurrences across all files, then
+  **sort** the array (canonical form, independent of file order or line numbers).
+- Compare against `llm_sense.computed_from`. If identical, skip the Haiku call
+  and carry `sense_indices` forward.
+- Recompute when any context or narration text changes (or a new one appears).
+  File renames and line number shifts alone do not trigger recomputation.
 - Manual override: delete `llm_sense` from a word entry and re-run. A
-  `--recompute-senses` flag could bulk-clear `llm_sense` for all words in a
-  given source file.
+  `--recompute-senses` flag could bulk-clear `llm_sense` for all words.
 
 **vocab.json schema for each word entry:**
 ```json
 {
   "id": "1234567",
   "sources": ["path/to/File"],
-  "references": { "path/to/File": [42, 107] },
+  "references": {
+    "path/to/File": [
+      { "line": 42, "context": "...", "narration": null },
+      { "line": 107, "context": "...", "narration": "this 市 is same as 市川" }
+    ]
+  },
   "llm_sense": {
     "sense_indices": [0, 2],
-    "computed_from": { "path/to/File": [42, 107] }
+    "computed_from": ["context sentence 1", "narration text", "context sentence 2"]
   }
 }
 ```
