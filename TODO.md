@@ -41,3 +41,9 @@ A real multi-user system needs a proper preferences store
 - [x] furigana for grammar items
 - [x] maybe play audio
 - [ ] mark sentence/quiz as favorite (to export later)
+
+- [ ] after a vocab quiz, offer to bring up the word details sheet
+- [ ] in addition to mnemonic, have the line of the source (natural extension, see in the context of the source)
+- [ ] tag sense during publish time
+- [ ] reduce motion: don't scroll fast
+- [ ] 

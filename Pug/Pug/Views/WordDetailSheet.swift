@@ -93,6 +93,31 @@ struct WordDetailSheet: View {
                     .foregroundStyle(.tertiary)
             }
 
+            if !item.references.isEmpty {
+                infoGroup(heading: "Corpus Contexts") {
+                    ForEach(item.references.keys.sorted(), id: \.self) { source in
+                        if let refs = item.references[source] {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(source)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                ForEach(refs.indices, id: \.self) { i in
+                                    let ref = refs[i]
+                                    if let context = ref.context {
+                                        SentenceFuriganaView(htmlRuby: context)
+                                    }
+                                    if let narration = ref.narration {
+                                        Text(narration)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if vocabMnemonic != nil || !kanjiMnemonics.isEmpty {
                 infoGroup(heading: "Mnemonics") {
                     if let vm = vocabMnemonic {

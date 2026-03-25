@@ -127,18 +127,82 @@ private func singleKanjiFurigana(
     return result
 }
 
+// MARK: - HTML ruby parser
+
+/// Parses a string containing HTML `<ruby>…<rt>…</rt></ruby>` tags into `FuriganaSegment` runs.
+///
+/// - `<ruby>BASE<rt>READING</rt></ruby>` → one segment per character in BASE, with `rt` on
+///   the first character and `nil` on the rest (so the flow layout groups them naturally).
+///   Actually, the entire base is emitted as a single segment with the full `rt`, matching
+///   how `WrittenFormGroup` furigana is stored.
+/// - Text outside any `<ruby>` block is split character-by-character (so the flow layout
+///   can break between any two characters).
+/// - Unknown or malformed tags are treated as plain text.
+func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
+    var segments: [FuriganaSegment] = []
+    var remaining = html[...]
+
+    while !remaining.isEmpty {
+        if let rubyStart = remaining.range(of: "<ruby>", options: .caseInsensitive) {
+            // Emit plain text before this <ruby> tag character by character.
+            for ch in remaining[..<rubyStart.lowerBound] {
+                segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
+            }
+            remaining = remaining[rubyStart.upperBound...]
+
+            // Find the matching </ruby>.
+            guard let rubyEnd = remaining.range(of: "</ruby>", options: .caseInsensitive) else {
+                // Malformed — treat the rest as plain text.
+                for ch in remaining { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+                return segments
+            }
+            let rubyContent = remaining[..<rubyEnd.lowerBound]
+            remaining = remaining[rubyEnd.upperBound...]
+
+            // Split on <rt>…</rt> inside the ruby block.
+            if let rtStart = rubyContent.range(of: "<rt>", options: .caseInsensitive),
+               let rtEnd   = rubyContent.range(of: "</rt>", options: .caseInsensitive),
+               rtStart.upperBound <= rtEnd.lowerBound {
+                let base    = String(rubyContent[..<rtStart.lowerBound])
+                let reading = String(rubyContent[rtStart.upperBound..<rtEnd.lowerBound])
+                if !base.isEmpty {
+                    segments.append(FuriganaSegment(ruby: base, rt: reading.isEmpty ? nil : reading))
+                }
+            } else {
+                // No <rt> found inside — emit the whole block as plain text.
+                for ch in rubyContent { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+            }
+        } else {
+            // No more <ruby> tags — emit the rest character by character.
+            for ch in remaining { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+            break
+        }
+    }
+
+    return segments
+}
+
 // MARK: - View
 
 /// Renders a Japanese sentence with furigana above annotated words.
-/// Annotations come from the vocab-assumed pass (`[VocabGloss]`).
+/// Annotations come from the vocab-assumed pass (`[VocabGloss]`), or from inline
+/// HTML `<ruby>…<rt>…</rt></ruby>` tags in corpus context strings.
 /// Falls back gracefully to plain body text when no glosses are provided.
 struct SentenceFuriganaView: View {
     let sentence: String
     let segments: [FuriganaSegment]
 
+    /// Initialise from a plain sentence and a list of vocab glosses (grammar quiz / assumed-vocab path).
     init(sentence: String, glosses: [VocabGloss]) {
         self.sentence = sentence
         self.segments = sentenceFuriganaSegments(sentence: sentence, glosses: glosses)
+    }
+
+    /// Initialise from a corpus context string that may contain HTML `<ruby>` tags.
+    /// The plain-text sentence (tags stripped) is derived automatically.
+    init(htmlRuby: String) {
+        self.segments = furiganaSegmentsFromHTMLRuby(htmlRuby)
+        self.sentence = segments.map(\.ruby).joined()
     }
 
     var body: some View {

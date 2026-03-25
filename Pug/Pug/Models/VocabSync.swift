@@ -26,11 +26,21 @@ struct VocabWordEntry: Codable {
     let sources: [String]
     let writtenForms: [WrittenFormGroup]?  // nil for old vocab.json without furigana data
     let llmSense: LlmSense?               // nil until prepare-publish.mjs runs sense analysis
+    let references: [String: [VocabReference]]?  // nil for old vocab.json without reference data
 
     private enum CodingKeys: String, CodingKey {
-        case id, sources, writtenForms
+        case id, sources, writtenForms, references
         case llmSense = "llm_sense"
     }
+}
+
+/// One occurrence of a word in the source corpus, with surrounding context.
+struct VocabReference: Codable {
+    let line: Int
+    /// Prose paragraph or bullet narration preceding the word's detail block; may contain HTML ruby tags.
+    let context: String?
+    /// Non-Japanese pedagogical annotation on the word's bullet line (e.g. "[kanji]").
+    let narration: String?
 }
 
 /// LLM-inferred sense data stored in vocab.json under the "llm_sense" key.

@@ -86,35 +86,60 @@ future "show source sentence in WordDetailSheet" feature.
 
 ---
 
-### Step 3 — Node.js: LLM sense analysis in prepare-publish.mjs (TODO)
+### Step 3 — Node.js: LLM sense analysis in prepare-publish.mjs (DONE)
 
-**Goal:** for each word, ask Haiku which JMDict senses are actually used in the
-student's corpus and write `llm_sense` to vocab.json.
+**Goal:** for each word, ask Haiku which JMDict senses are relevant for quizzing
+the student, given their corpus contexts, and write `llm_sense` to vocab.json.
 
-**What to do:**
-- Add Anthropic client call (using `ANTHROPIC_API_KEY` from `.env`) to
+**What was built:**
+- Anthropic client call (using `ANTHROPIC_API_KEY` from `.env`, loaded via
+  `node --env-file=.env`; no dotenv package needed on Node 20.6+) added to
   `prepare-publish.mjs`.
 - Per word, collect all context paragraphs and bullet narrations across all
-  source files (together, not per-file).
-- Optimization: skip if the word has only one sense (i.e., the `sense` array in the JMDict entry has only length 1).
-- Call Haiku with: written forms, all JMDict senses numbered 0-based, and the
-  collected contexts. Note that the contexts might have <ruby> annotations so strip those.
-- Haiku returns JSON `{ "sense_indices": [0, 2] }`. Empty array is valid and
-  means "insufficient context."
-- If context is null for all occurrences, skip the Haiku call and write
+  source files (together, not per-file). Sorted and deduplicated — this is both
+  the cache key (`computed_from`) and the content sent to Haiku.
+- `<ruby>/<rt>/<rp>` tags stripped from context before sending; kanji base text
+  is kept (more informative than the reading for sense disambiguation).
+- Optimization: skip if the word has only one sense.
+- If all context/narration strings are null, skip the Haiku call and write
   `sense_indices: []` directly.
+- vocab.json written after each Haiku call so a crash doesn't lose prior work.
+- Reasoning log written to `/tmp/sense-reasoning-<timestamp>.log`; path printed
+  to stdout for easy reference.
+
+**Prompt design (after iteration):**
+- Framing: "Which senses are relevant for quizzing this student?" rather than
+  "Which senses did the student encounter?" — the latter invites unnecessary
+  narrowness for near-synonym senses.
+- Inclusion rule: include a sense if directly evidenced OR if it is a
+  near-synonym / shares a core meaning with an evidenced sense.
+- Reasoning allowed: Haiku thinks step by step, then ends with a fenced JSON
+  block. `max_tokens: 600`. The parser extracts the last ` ```json ``` ` block.
+- Allowing reasoning (rather than "JSON only") improved results: for 裸
+  (bare tree stump context), it correctly includes both sense 0 ("nakedness;
+  nudity") and sense 1 ("bareness; being uncovered") by recognising sense 0 as
+  the foundational sense from which sense 1 derives. The "JSON only" prompt
+  returned only sense 1.
+- Token cost: ~300–400 extra tokens per word for reasoning. At 124 multi-sense
+  words in the current corpus this is negligible. If cost ever becomes a concern,
+  switching back to "JSON only" (with `max_tokens: 64`) is the easy lever — but
+  note it may produce overly narrow results for near-synonym senses.
+
+**Flags:**
+- `--no-llm`: skip all Haiku calls; pass through any existing `llm_sense` values.
+- `--max-senses N`: analyze at most N words per run (useful for spot-checking).
+- No `--recompute-senses` flag — delete individual `llm_sense` entries manually
+  and rerun to override. Bulk recompute was considered too risky.
 
 **Caching (use vocab.json itself):**
 - At the start of a run, load the existing `vocab.json` if present.
 - For each word, derive the current cache key: collect all non-null `context`
   and `narration` strings from all occurrences across all files, then
-  **sort** the array (canonical form, independent of file order or line numbers).
+  sort and deduplicate (canonical form, independent of file order or line numbers).
 - Compare against `llm_sense.computed_from`. If identical, skip the Haiku call
   and carry `sense_indices` forward.
 - Recompute when any context or narration text changes (or a new one appears).
   File renames and line number shifts alone do not trigger recomputation.
-- Manual override: delete `llm_sense` from a word entry and re-run. A
-  `--recompute-senses` flag could bulk-clear `llm_sense` for all words.
 
 **vocab.json schema for each word entry:**
 ```json
@@ -134,7 +159,7 @@ student's corpus and write `llm_sense` to vocab.json.
 }
 ```
 
-**Files to change:** `prepare-publish.mjs` (+ `.env` for `ANTHROPIC_API_KEY`).
+**Files changed:** `prepare-publish.mjs` (+ `.env` for `ANTHROPIC_API_KEY`).
 
 ---
 

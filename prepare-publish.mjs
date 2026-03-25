@@ -20,7 +20,8 @@
  */
 
 import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync } from "fs";
+import Anthropic from "@anthropic-ai/sdk";
 import path from "path";
 import {
   findMdFiles,
@@ -277,6 +278,31 @@ function extractVocabBullets(content) {
   return bullets;
 }
 
+// --- Command-line flags ---
+// --no-llm   : skip all LLM sense-analysis calls; pass through any existing llm_sense values
+// --max-senses N : only run LLM analysis for at most N words (useful for spot-checking)
+const args = process.argv.slice(2);
+const noLlm = args.includes("--no-llm");
+const maxSensesIdx = args.indexOf("--max-senses");
+const maxSenses =
+  maxSensesIdx !== -1 ? parseInt(args[maxSensesIdx + 1], 10) : Infinity;
+
+// Define output paths early (also needed for cache loading below)
+const outPath = path.join(projectRoot, "vocab.json");
+
+// Load existing vocab.json once for llm_sense cache lookups
+const existingLlmSense = new Map(); // wordId -> llm_sense object
+if (existsSync(outPath)) {
+  try {
+    const existing = JSON.parse(readFileSync(outPath, "utf8"));
+    for (const w of existing.words ?? []) {
+      if (w.llm_sense) existingLlmSense.set(w.id, w.llm_sense);
+    }
+  } catch {
+    // Corrupt or missing vocab.json — start fresh
+  }
+}
+
 const { db } = await setup(JMDICT_DB);
 const grammarDb = loadGrammarDatabases();
 const mdFiles = findMdFiles(projectRoot);
@@ -386,13 +412,166 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   return entry;
 });
 
+// --- LLM sense analysis ---
+
+/**
+ * Strip HTML ruby markup, keeping the base text (kanji) and discarding
+ * the reading annotation. Also strips any remaining HTML tags.
+ * Example: <ruby>入り込む<rt>はいりこむ</rt></ruby> → 入り込む
+ */
+function stripRuby(text) {
+  return text
+    .replace(/<rt>[^<]*<\/rt>/g, "")
+    .replace(/<rp>[^<]*<\/rp>/g, "")
+    .replace(/<[^>]+>/g, "");
+}
+
+/**
+ * Collect the sorted, deduplicated list of non-null context and narration
+ * strings for a word across all its source files. This is the cache key
+ * (computed_from) and also the content sent to Haiku.
+ */
+function collectContextStrings(word) {
+  const seen = new Set();
+  for (const occurrences of Object.values(word.references ?? {})) {
+    for (const { context, narration } of occurrences) {
+      if (context) seen.add(stripRuby(context));
+      if (narration) seen.add(narration);
+    }
+  }
+  return [...seen].sort();
+}
+
+/**
+ * Call Haiku to determine which JMDict sense indices are relevant to quiz
+ * the student on, given their corpus contexts. Returns an array of valid
+ * 0-based sense indices and the full raw response text (for the reasoning log).
+ * Throws on API error or malformed response (caller handles abort).
+ */
+async function analyzeWordSenses(anthropic, jmWord, contextStrings) {
+  const displayForm =
+    jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text ?? "(unknown)";
+  const reading = jmWord.kana?.[0]?.text ?? "";
+
+  const senseList = jmWord.sense
+    .map((s, i) => {
+      const glosses = s.gloss.map((g) => g.text).join("; ");
+      return `${i}: ${glosses}`;
+    })
+    .join("\n");
+
+  const contextBlock = contextStrings.join("\n---\n");
+
+  const prompt =
+    `You are helping a Japanese language learner identify which dictionary senses of a word are relevant for quizzing, given their reading contexts.\n\n` +
+    `Word: ${displayForm}${reading && reading !== displayForm ? ` (${reading})` : ""}\n\n` +
+    `JMDict senses (0-indexed):\n${senseList}\n\n` +
+    `Contexts where the student encountered this word:\n${contextBlock}\n\n` +
+    `Which senses are relevant for quizzing this student on this word? ` +
+    `Include a sense if it is directly evidenced in the contexts, and also include any sense that is a near-synonym or shares a core meaning with an evidenced sense. ` +
+    `Use an empty array if the context is insufficient to determine. ` +
+    `Think step by step, then end your response with a JSON code block:\n` +
+    "```json\n{\"sense_indices\": [0, 1]}\n```";
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 600,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const fullText = response.content[0].text;
+
+  // Extract the last ```json ... ``` block from the response
+  const fenceMatches = [...fullText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  if (fenceMatches.length === 0) {
+    throw new Error(`Haiku returned no JSON code block for ${displayForm}:\n${fullText}`);
+  }
+  const jsonText = fenceMatches[fenceMatches.length - 1][1].trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(`Haiku returned non-JSON for ${displayForm}: ${jsonText}`);
+  }
+  if (!Array.isArray(parsed.sense_indices)) {
+    throw new Error(
+      `Haiku response missing sense_indices array for ${displayForm}: ${jsonText}`,
+    );
+  }
+  const validIndices = parsed.sense_indices.filter(
+    (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < jmWord.sense.length,
+  );
+  return { senseIndices: validIndices, reasoning: fullText };
+}
+
+// Run sense analysis unless --no-llm was passed
+if (!noLlm) {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  let sensesAnalyzed = 0;
+
+  // Open a reasoning log file so we can review Haiku's chain-of-thought later
+  const reasoningLogPath = `/tmp/sense-reasoning-${Date.now()}.log`;
+  const reasoningLines = [];
+  console.log(`  Sense reasoning log → ${reasoningLogPath}`);
+
+  for (const word of words) {
+    if (sensesAnalyzed >= maxSenses) break;
+
+    const jmWord = jmdictById.get(word.id);
+    // Skip words with only one sense — sense index is trivially [0]
+    if (!jmWord || jmWord.sense.length <= 1) continue;
+
+    const computedFrom = collectContextStrings(word);
+
+    // No usable context at all — write empty sense_indices without calling Haiku
+    if (computedFrom.length === 0) {
+      word.llm_sense = { sense_indices: [], computed_from: [] };
+      continue;
+    }
+
+    // Cache hit: computed_from matches existing entry
+    const cached = existingLlmSense.get(word.id);
+    if (
+      cached &&
+      JSON.stringify(cached.computed_from) === JSON.stringify(computedFrom)
+    ) {
+      word.llm_sense = cached;
+      continue;
+    }
+
+    // Cache miss: call Haiku
+    const displayForm =
+      jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text ?? word.id;
+    process.stdout.write(
+      `  Analyzing senses for ${displayForm} (${sensesAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
+    );
+    const { senseIndices, reasoning } = await analyzeWordSenses(anthropic, jmWord, computedFrom);
+    process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
+
+    reasoningLines.push(
+      `${"=".repeat(60)}\n${displayForm}  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
+    );
+    writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
+
+    word.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
+    sensesAnalyzed++;
+
+    // Write vocab.json after each call so a crash doesn't lose prior work
+    const partialOutput = {
+      generatedAt: new Date().toISOString(),
+      stories,
+      words,
+    };
+    writeFileSync(outPath, JSON.stringify(partialOutput, null, 2) + "\n");
+  }
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
   stories,
   words,
 };
 
-const outPath = path.join(projectRoot, "vocab.json");
 writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
 console.log(
   `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
