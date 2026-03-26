@@ -163,14 +163,22 @@ struct TransitivePairDetailSheet: View {
 
                     // Intransitive — left-aligned
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(drill.intransitive.ja).font(.body)
+                        if let html = drill.intransitive.jaFurigana {
+                            SentenceFuriganaView(htmlRuby: html)
+                        } else {
+                            Text(drill.intransitive.ja).font(.body)
+                        }
                         Text(drill.intransitive.en).font(.callout).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     // Transitive — right-aligned
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(drill.transitive.ja).font(.body)
+                        if let html = drill.transitive.jaFurigana {
+                            SentenceFuriganaView(htmlRuby: html, trailingAlignment: true)
+                        } else {
+                            Text(drill.transitive.ja).font(.body)
+                        }
                         Text(drill.transitive.en).font(.callout).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)

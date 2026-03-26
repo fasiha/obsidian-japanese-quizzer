@@ -191,6 +191,7 @@ func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
 struct SentenceFuriganaView: View {
     let sentence: String
     let segments: [FuriganaSegment]
+    var trailingAlignment: Bool = false
 
     /// Initialise from a plain sentence and a list of vocab glosses (grammar quiz / assumed-vocab path).
     init(sentence: String, glosses: [VocabGloss]) {
@@ -200,13 +201,14 @@ struct SentenceFuriganaView: View {
 
     /// Initialise from a corpus context string that may contain HTML `<ruby>` tags.
     /// The plain-text sentence (tags stripped) is derived automatically.
-    init(htmlRuby: String) {
+    init(htmlRuby: String, trailingAlignment: Bool = false) {
         self.segments = furiganaSegmentsFromHTMLRuby(htmlRuby)
         self.sentence = segments.map(\.ruby).joined()
+        self.trailingAlignment = trailingAlignment
     }
 
     var body: some View {
-        SentenceFuriganaFlow(segments: segments)
+        SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment)
             .contextMenu {
                 Button {
                     UIPasteboard.general.string = sentence
@@ -223,9 +225,10 @@ struct SentenceFuriganaView: View {
 /// taller than plain characters; all items in a row are bottom-aligned so baselines match.
 private struct SentenceFuriganaFlow: View {
     let segments: [FuriganaSegment]
+    var trailingAlignment: Bool = false
 
     var body: some View {
-        SentenceFuriganaLayout {
+        SentenceFuriganaLayout(trailingAlignment: trailingAlignment) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
                 if let rt = seg.rt {
                     VStack(spacing: 0) {
@@ -249,6 +252,7 @@ private struct SentenceFuriganaFlow: View {
 
 private struct SentenceFuriganaLayout: Layout {
     let spacing: CGFloat = 0
+    var trailingAlignment: Bool = false
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = computeRows(maxWidth: proposal.width ?? .infinity, subviews: subviews)
@@ -262,7 +266,9 @@ private struct SentenceFuriganaLayout: Layout {
         let rows = computeRows(maxWidth: bounds.width, subviews: subviews)
         var y = bounds.minY
         for row in rows {
-            var x = bounds.minX
+            // For trailing alignment, start each row flush with the right edge.
+            let startX = trailingAlignment ? bounds.maxX - row.width : bounds.minX
+            var x = startX
             for subview in row.subviews {
                 let size = subview.sizeThatFits(.unspecified)
                 // Bottom-align within the row so baselines match across annotated and plain items.

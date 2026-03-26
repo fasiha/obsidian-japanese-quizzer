@@ -13,6 +13,7 @@ import Foundation
 struct TransitivePairDrillEntry: Codable {
     let en: String
     let ja: String
+    let jaFurigana: String?
 }
 
 struct TransitivePairDrill: Codable {

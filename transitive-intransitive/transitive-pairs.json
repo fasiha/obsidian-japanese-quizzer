@@ -23,31 +23,37 @@
       {
         "intransitive": {
           "en": "The sliding door opened suddenly.",
-          "ja": "引き戸が急に開いた。"
+          "ja": "引き戸が急に開いた。",
+          "jaFurigana": "<ruby>引<rt>ひ</rt></ruby>き<ruby>戸<rt>ど</rt></ruby>が<ruby>急<rt>きゅう</rt></ruby>に<ruby>開<rt>ひら</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She opened the curtains to see why.",
-          "ja": "彼女は理由を確かめようとカーテンを開けた。"
+          "ja": "彼女は理由を確かめようとカーテンを開けた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>理<rt>り</rt></ruby><ruby>由<rt>ゆう</rt></ruby>を<ruby>確<rt>たし</rt></ruby>かめようとカーテンを<ruby>開<rt>あ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The shop door is open now.",
-          "ja": "店のドアが開いている。"
+          "ja": "店のドアが開いている。",
+          "jaFurigana": "<ruby>店<rt>みせ</rt></ruby>のドアが<ruby>開<rt>ひら</rt></ruby>いている。"
         },
         "transitive": {
           "en": "The owner also opened the back window.",
-          "ja": "店主は裏の窓も開けた。"
+          "ja": "店主は裏の窓も開けた。",
+          "jaFurigana": "<ruby>店<rt>てん</rt></ruby><ruby>主<rt>しゅ</rt></ruby>は<ruby>裏<rt>うら</rt></ruby>の<ruby>窓<rt>まど</rt></ruby>も<ruby>開<rt>あ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The gate opens at eight every morning.",
-          "ja": "門は毎朝八時に開く。"
+          "ja": "門は毎朝八時に開く。",
+          "jaFurigana": "<ruby>門<rt>もん</rt></ruby>は<ruby>毎<rt>まい</rt></ruby><ruby>朝<rt>あさ</rt></ruby><ruby>八<rt>はち</rt></ruby><ruby>時<rt>じ</rt></ruby>に<ruby>開<rt>ひら</rt></ruby>く。"
         },
         "transitive": {
           "en": "Please open the side door for early visitors.",
-          "ja": "早く来た人のために、横のドアを開けてください。"
+          "ja": "早く来た人のために、横のドアを開けてください。",
+          "jaFurigana": "<ruby>早<rt>はや</rt></ruby>く<ruby>来<rt>き</rt></ruby>た<ruby>人<rt>ひと</rt></ruby>のために、<ruby>横<rt>よこ</rt></ruby>のドアを<ruby>開<rt>あ</rt></ruby>けてください。"
         }
       }
     ]
@@ -76,31 +82,37 @@
       {
         "intransitive": {
           "en": "The shop curtain closed in the wind.",
-          "ja": "風でカーテンが閉まった。"
+          "ja": "風でカーテンが閉まった。",
+          "jaFurigana": "<ruby>風<rt>かぜ</rt></ruby>でカーテンが<ruby>閉<rt>し</rt></ruby>まった。"
         },
         "transitive": {
           "en": "She closed the window before it got worse.",
-          "ja": "彼女は窓をすぐに閉めた。"
+          "ja": "彼女は窓をすぐに閉めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>窓<rt>まど</rt></ruby>をすぐに<ruby>閉<rt>し</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The heavy gate is slowly closing.",
-          "ja": "重い門がゆっくり閉まっている。"
+          "ja": "重い門がゆっくり閉まっている。",
+          "jaFurigana": "<ruby>重<rt>おも</rt></ruby>い<ruby>門<rt>もん</rt></ruby>がゆっくり<ruby>閉<rt>し</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "The guard closes the other gate too.",
-          "ja": "警備員はもう一つの門も閉める。"
+          "ja": "警備員はもう一つの門も閉める。",
+          "jaFurigana": "<ruby>警<rt>けい</rt></ruby><ruby>備<rt>び</rt></ruby><ruby>員<rt>いん</rt></ruby>はもう<ruby>一<rt>ひと</rt></ruby>つの<ruby>門<rt>もん</rt></ruby>も<ruby>閉<rt>し</rt></ruby>める。"
         }
       },
       {
         "intransitive": {
           "en": "The refrigerator door won't close properly.",
-          "ja": "冷蔵庫のドアがきちんと閉まらない。"
+          "ja": "冷蔵庫のドアがきちんと閉まらない。",
+          "jaFurigana": "<ruby>冷<rt>れい</rt></ruby><ruby>蔵<rt>ぞう</rt></ruby><ruby>庫<rt>こ</rt></ruby>のドアがきちんと<ruby>閉<rt>し</rt></ruby>まらない。"
         },
         "transitive": {
           "en": "Please close it firmly with both hands.",
-          "ja": "両手でしっかり閉めてください。"
+          "ja": "両手でしっかり閉めてください。",
+          "jaFurigana": "<ruby>両<rt>りょう</rt></ruby><ruby>手<rt>て</rt></ruby>でしっかり<ruby>閉<rt>し</rt></ruby>めてください。"
         }
       }
     ]
@@ -129,31 +141,37 @@
       {
         "intransitive": {
           "en": "The cat slipped into the closet.",
-          "ja": "猫がクローゼットに入った。"
+          "ja": "猫がクローゼットに入った。",
+          "jaFurigana": "<ruby>猫<rt>ねこ</rt></ruby>がクローゼットに<ruby>入<rt>はい</rt></ruby>った。"
         },
         "transitive": {
           "en": "She put her sweaters in the closet too.",
-          "ja": "彼女はセーターもクローゼットに入れた。"
+          "ja": "彼女はセーターもクローゼットに入れた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はセーターもクローゼットに<ruby>入<rt>い</rt></ruby>れた。"
         }
       },
       {
         "intransitive": {
           "en": "Water is getting into the tent.",
-          "ja": "水がテントに入っている。"
+          "ja": "水がテントに入っている。",
+          "jaFurigana": "<ruby>水<rt>みず</rt></ruby>がテントに<ruby>入<rt>はい</rt></ruby>っている。"
         },
         "transitive": {
           "en": "He stuffed towels in along the edges.",
-          "ja": "彼はタオルをテントの端に入れた。"
+          "ja": "彼はタオルをテントの端に入れた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はタオルをテントの<ruby>端<rt>はし</rt></ruby>に<ruby>入<rt>い</rt></ruby>れた。"
         }
       },
       {
         "intransitive": {
           "en": "A coin rolled into the machine.",
-          "ja": "コインが機械に入った。"
+          "ja": "コインが機械に入った。",
+          "jaFurigana": "コインが<ruby>機<rt>き</rt></ruby><ruby>械<rt>かい</rt></ruby>に<ruby>入<rt>はい</rt></ruby>った。"
         },
         "transitive": {
           "en": "He put in one more just to be safe.",
-          "ja": "彼はもう一枚コインを機械に入れた。"
+          "ja": "彼はもう一枚コインを機械に入れた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はもう<ruby>一<rt>いち</rt></ruby><ruby>枚<rt>まい</rt></ruby>コインを<ruby>機<rt>き</rt></ruby><ruby>械<rt>かい</rt></ruby>に<ruby>入<rt>い</rt></ruby>れた。"
         }
       }
     ]
@@ -182,31 +200,37 @@
       {
         "intransitive": {
           "en": "The dog ran out of the park.",
-          "ja": "犬が公園から出た。"
+          "ja": "犬が公園から出た。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>が<ruby>公<rt>こう</rt></ruby><ruby>園<rt>えん</rt></ruby>から<ruby>出<rt>で</rt></ruby>た。"
         },
         "transitive": {
           "en": "The owner took the leash out of her bag.",
-          "ja": "飼い主はバッグからリードを出した。"
+          "ja": "飼い主はバッグからリードを出した。",
+          "jaFurigana": "<ruby>飼<rt>か</rt></ruby>い<ruby>主<rt>ぬし</rt></ruby>はバッグからリードを<ruby>出<rt>だ</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "Smoke is coming out of the chimney.",
-          "ja": "煙突から煙が出ている。"
+          "ja": "煙突から煙が出ている。",
+          "jaFurigana": "<ruby>煙<rt>えん</rt></ruby><ruby>突<rt>とつ</rt></ruby>から<ruby>煙<rt>けむり</rt></ruby>が<ruby>出<rt>で</rt></ruby>ている。"
         },
         "transitive": {
           "en": "He takes the firewood out of the shed.",
-          "ja": "彼は小屋から薪を出す。"
+          "ja": "彼は小屋から薪を出す。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>小<rt>こ</rt></ruby><ruby>屋<rt>や</rt></ruby>から<ruby>薪<rt>たきぎ</rt></ruby>を<ruby>出<rt>だ</rt></ruby>す。"
         }
       },
       {
         "intransitive": {
           "en": "The kids came out of the classroom.",
-          "ja": "子どもたちが教室から出た。"
+          "ja": "子どもたちが教室から出た。",
+          "jaFurigana": "<ruby>子<rt>こ</rt></ruby>どもたちが<ruby>教<rt>きょう</rt></ruby><ruby>室<rt>しつ</rt></ruby>から<ruby>出<rt>で</rt></ruby>た。"
         },
         "transitive": {
           "en": "Please take your shoes out of your locker.",
-          "ja": "ロッカーから靴を出してください。"
+          "ja": "ロッカーから靴を出してください。",
+          "jaFurigana": "ロッカーから<ruby>靴<rt>くつ</rt></ruby>を<ruby>出<rt>だ</rt></ruby>してください。"
         }
       }
     ]
@@ -235,31 +259,37 @@
       {
         "intransitive": {
           "en": "The smoke alarm light came on.",
-          "ja": "火災警報器のランプが点いた。"
+          "ja": "火災警報器のランプが点いた。",
+          "jaFurigana": "<ruby>火<rt>か</rt></ruby><ruby>災<rt>さい</rt></ruby><ruby>警<rt>けい</rt></ruby><ruby>報<rt>ほう</rt></ruby><ruby>器<rt>き</rt></ruby>のランプが<ruby>点<rt>つ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She quickly turned on all the lights to check.",
-          "ja": "彼女はすぐに電気を全部点けて確認した。"
+          "ja": "彼女はすぐに電気を全部点けて確認した。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はすぐに<ruby>電<rt>でん</rt></ruby><ruby>気<rt>き</rt></ruby>を<ruby>全<rt>ぜん</rt></ruby><ruby>部<rt>ぶ</rt></ruby><ruby>点<rt>つ</rt></ruby>けて<ruby>確<rt>かく</rt></ruby><ruby>認<rt>にん</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "The street lamp is on already.",
-          "ja": "街灯がもう点いている。"
+          "ja": "街灯がもう点いている。",
+          "jaFurigana": "<ruby>街<rt>がい</rt></ruby><ruby>灯<rt>とう</rt></ruby>がもう<ruby>点<rt>つ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "So she turned on the porch light too.",
-          "ja": "だから彼女は玄関の電気も点けた。"
+          "ja": "だから彼女は玄関の電気も点けた。",
+          "jaFurigana": "だから<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>玄<rt>げん</rt></ruby><ruby>関<rt>かん</rt></ruby>の<ruby>電<rt>でん</rt></ruby><ruby>気<rt>き</rt></ruby>も<ruby>点<rt>つ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The candles came on one by one.",
-          "ja": "ろうそくが一本一本点いていった。"
+          "ja": "ろうそくが一本一本点いていった。",
+          "jaFurigana": "ろうそくが<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>点<rt>つ</rt></ruby>いていった。"
         },
         "transitive": {
           "en": "Please turn on the last one yourself.",
-          "ja": "最後の一本はあなたが点けてください。"
+          "ja": "最後の一本はあなたが点けてください。",
+          "jaFurigana": "<ruby>最<rt>さい</rt></ruby><ruby>後<rt>ご</rt></ruby>の<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby>はあなたが<ruby>点<rt>つ</rt></ruby>けてください。"
         }
       }
     ]
@@ -288,31 +318,37 @@
       {
         "intransitive": {
           "en": "Half the campfire went out in the rain.",
-          "ja": "雨でキャンプファイヤーの火が半分消えた。"
+          "ja": "雨でキャンプファイヤーの火が半分消えた。",
+          "jaFurigana": "<ruby>雨<rt>あめ</rt></ruby>でキャンプファイヤーの<ruby>火<rt>ひ</rt></ruby>が<ruby>半<rt>はん</rt></ruby><ruby>分<rt>ぶん</rt></ruby><ruby>消<rt>き</rt></ruby>えた。"
         },
         "transitive": {
           "en": "He quickly put out the rest.",
-          "ja": "彼は残りの火もすぐに消した。"
+          "ja": "彼は残りの火もすぐに消した。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りの<ruby>火<rt>ひ</rt></ruby>もすぐに<ruby>消<rt>け</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "The streetlights are going out one by one.",
-          "ja": "街灯が一つずつ消えている。"
+          "ja": "街灯が一つずつ消えている。",
+          "jaFurigana": "<ruby>街<rt>がい</rt></ruby><ruby>灯<rt>とう</rt></ruby>が<ruby>一<rt>ひと</rt></ruby>つずつ<ruby>消<rt>き</rt></ruby>えている。"
         },
         "transitive": {
           "en": "The city is turning them off to save power.",
-          "ja": "市は節電のためにそれを消している。"
+          "ja": "市は節電のためにそれを消している。",
+          "jaFurigana": "<ruby>市<rt>し</rt></ruby>は<ruby>節<rt>せつ</rt></ruby><ruby>電<rt>でん</rt></ruby>のためにそれを<ruby>消<rt>け</rt></ruby>している。"
         }
       },
       {
         "intransitive": {
           "en": "The writing on the whiteboard is gone.",
-          "ja": "ホワイトボードの文字が消えてしまった。"
+          "ja": "ホワイトボードの文字が消えてしまった。",
+          "jaFurigana": "ホワイトボードの<ruby>文<rt>も</rt></ruby><ruby>字<rt>じ</rt></ruby>が<ruby>消<rt>き</rt></ruby>えてしまった。"
         },
         "transitive": {
           "en": "Please erase the board before the next class.",
-          "ja": "次の授業の前にボードを消してください。"
+          "ja": "次の授業の前にボードを消してください。",
+          "jaFurigana": "<ruby>次<rt>つぎ</rt></ruby>の<ruby>授<rt>じゅ</rt></ruby><ruby>業<rt>ぎょう</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>にボードを<ruby>消<rt>け</rt></ruby>してください。"
         }
       }
     ]
@@ -341,31 +377,37 @@
       {
         "intransitive": {
           "en": "The old fence broke in the storm.",
-          "ja": "嵐で古いフェンスが壊れた。"
+          "ja": "嵐で古いフェンスが壊れた。",
+          "jaFurigana": "<ruby>嵐<rt>あらし</rt></ruby>で<ruby>古<rt>ふる</rt></ruby>いフェンスが<ruby>壊<rt>こわ</rt></ruby>れた。"
         },
         "transitive": {
           "en": "So he broke down the damaged section completely.",
-          "ja": "だから彼は傷んだ部分を完全に壊した。"
+          "ja": "だから彼は傷んだ部分を完全に壊した。",
+          "jaFurigana": "だから<ruby>彼<rt>かれ</rt></ruby>は<ruby>傷<rt>いた</rt></ruby>んだ<ruby>部<rt>ぶ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>を<ruby>完<rt>かん</rt></ruby><ruby>全<rt>ぜん</rt></ruby>に<ruby>壊<rt>こわ</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "Her phone screen cracked when it fell.",
-          "ja": "落として彼女のスマホの画面が壊れた。"
+          "ja": "落として彼女のスマホの画面が壊れた。",
+          "jaFurigana": "<ruby>落<rt>お</rt></ruby>として<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>のスマホの<ruby>画<rt>が</rt></ruby><ruby>面<rt>めん</rt></ruby>が<ruby>壊<rt>こわ</rt></ruby>れた。"
         },
         "transitive": {
           "en": "Frustrated, she broke the rest of it too.",
-          "ja": "むしゃくしゃして、彼女は残りも壊した。"
+          "ja": "むしゃくしゃして、彼女は残りも壊した。",
+          "jaFurigana": "むしゃくしゃして、<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りも<ruby>壊<rt>こわ</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "The toy robot stopped working.",
-          "ja": "おもちゃのロボットが壊れている。"
+          "ja": "おもちゃのロボットが壊れている。",
+          "jaFurigana": "おもちゃのロボットが<ruby>壊<rt>こわ</rt></ruby>れている。"
         },
         "transitive": {
           "en": "Dad broke the back cover off to fix it.",
-          "ja": "お父さんが直すために裏のカバーを壊して開けた。"
+          "ja": "お父さんが直すために裏のカバーを壊して開けた。",
+          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんが<ruby>直<rt>なお</rt></ruby>すために<ruby>裏<rt>うら</rt></ruby>のカバーを<ruby>壊<rt>こわ</rt></ruby>して<ruby>開<rt>あ</rt></ruby>けた。"
         }
       }
     ]
@@ -394,31 +436,37 @@
       {
         "intransitive": {
           "en": "The kitchen floor got dirty from the spill.",
-          "ja": "こぼれた液体でキッチンの床が汚れた。"
+          "ja": "こぼれた液体でキッチンの床が汚れた。",
+          "jaFurigana": "こぼれた<ruby>液<rt>えき</rt></ruby><ruby>体<rt>たい</rt></ruby>でキッチンの<ruby>床<rt>ゆか</rt></ruby>が<ruby>汚<rt>よご</rt></ruby>れた。"
         },
         "transitive": {
           "en": "The dog ran in and dirtied the whole hallway too.",
-          "ja": "犬が走り込んで、廊下全体も汚した。"
+          "ja": "犬が走り込んで、廊下全体も汚した。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>が<ruby>走<rt>はし</rt></ruby>り<ruby>込<rt>こ</rt></ruby>んで、<ruby>廊<rt>ろう</rt></ruby><ruby>下<rt>か</rt></ruby><ruby>全<rt>ぜん</rt></ruby><ruby>体<rt>たい</rt></ruby>も<ruby>汚<rt>よご</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "His jacket is getting dirty from the fence.",
-          "ja": "彼のジャケットがフェンスで汚れている。"
+          "ja": "彼のジャケットがフェンスで汚れている。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>のジャケットがフェンスで<ruby>汚<rt>よご</rt></ruby>れている。"
         },
         "transitive": {
           "en": "He wiped his hands on it and dirtied it even more.",
-          "ja": "彼は手をそれで拭いて、さらに汚した。"
+          "ja": "彼は手をそれで拭いて、さらに汚した。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>手<rt>て</rt></ruby>をそれで<ruby>拭<rt>ふ</rt></ruby>いて、さらに<ruby>汚<rt>よご</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "The tablecloth got dirty during the meal.",
-          "ja": "食事中にテーブルクロスが汚れた。"
+          "ja": "食事中にテーブルクロスが汚れた。",
+          "jaFurigana": "<ruby>食<rt>しょく</rt></ruby><ruby>事<rt>じ</rt></ruby><ruby>中<rt>ちゅう</rt></ruby>にテーブルクロスが<ruby>汚<rt>よご</rt></ruby>れた。"
         },
         "transitive": {
           "en": "The kids then dirtied the chairs as well.",
-          "ja": "子供たちは椅子も汚した。"
+          "ja": "子供たちは椅子も汚した。",
+          "jaFurigana": "<ruby>子<rt>こ</rt></ruby><ruby>供<rt>ども</rt></ruby>たちは<ruby>椅<rt>い</rt></ruby><ruby>子<rt>す</rt></ruby>も<ruby>汚<rt>よご</rt></ruby>した。"
         }
       }
     ]
@@ -447,31 +495,37 @@
       {
         "intransitive": {
           "en": "A leaf fell from the tree.",
-          "ja": "木から葉が落ちた。"
+          "ja": "木から葉が落ちた。",
+          "jaFurigana": "<ruby>木<rt>き</rt></ruby>から<ruby>葉<rt>は</rt></ruby>が<ruby>落<rt>お</rt></ruby>ちた。"
         },
         "transitive": {
           "en": "He shook the branch and knocked the rest down.",
-          "ja": "彼は枝を揺らして残りの葉を落とした。"
+          "ja": "彼は枝を揺らして残りの葉を落とした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>枝<rt>えだ</rt></ruby>を<ruby>揺<rt>ゆ</rt></ruby>らして<ruby>残<rt>のこ</rt></ruby>りの<ruby>葉<rt>は</rt></ruby>を<ruby>落<rt>お</rt></ruby>とした。"
         }
       },
       {
         "intransitive": {
           "en": "Ice cream is falling off the cone.",
-          "ja": "アイスがコーンから落ちている。"
+          "ja": "アイスがコーンから落ちている。",
+          "jaFurigana": "アイスがコーンから<ruby>落<rt>お</rt></ruby>ちている。"
         },
         "transitive": {
           "en": "She dropped her spoon too while reaching for a napkin.",
-          "ja": "彼女はナプキンを取ろうとして、スプーンも落としてしまった。"
+          "ja": "彼女はナプキンを取ろうとして、スプーンも落としてしまった。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はナプキンを<ruby>取<rt>と</rt></ruby>ろうとして、スプーンも<ruby>落<rt>お</rt></ruby>としてしまった。"
         }
       },
       {
         "intransitive": {
           "en": "The paint on the wall is peeling off.",
-          "ja": "壁のペンキが落ちている。"
+          "ja": "壁のペンキが落ちている。",
+          "jaFurigana": "<ruby>壁<rt>かべ</rt></ruby>のペンキが<ruby>落<rt>お</rt></ruby>ちている。"
         },
         "transitive": {
           "en": "He dropped his brush from the scaffolding.",
-          "ja": "彼はブラシを足場から落としてしまった。"
+          "ja": "彼はブラシを足場から落としてしまった。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はブラシを<ruby>足<rt>あし</rt></ruby><ruby>場<rt>ば</rt></ruby>から<ruby>落<rt>お</rt></ruby>としてしまった。"
         }
       }
     ]
@@ -500,31 +554,37 @@
       {
         "intransitive": {
           "en": "The kettle water is boiling.",
-          "ja": "ケトルのお湯が沸いている。"
+          "ja": "ケトルのお湯が沸いている。",
+          "jaFurigana": "ケトルのお<ruby>湯<rt>ゆ</rt></ruby>が<ruby>沸<rt>わ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "She heated more water for everyone.",
-          "ja": "彼女はみんなのためにもっとお湯を沸かした。"
+          "ja": "彼女はみんなのためにもっとお湯を沸かした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はみんなのためにもっとお<ruby>湯<rt>ゆ</rt></ruby>を<ruby>沸<rt>わ</rt></ruby>かした。"
         }
       },
       {
         "intransitive": {
           "en": "The bath was finally ready.",
-          "ja": "お風呂のお湯がやっと沸いた。"
+          "ja": "お風呂のお湯がやっと沸いた。",
+          "jaFurigana": "お<ruby>風<rt>ふ</rt></ruby><ruby>呂<rt>ろ</rt></ruby>のお<ruby>湯<rt>ゆ</rt></ruby>がやっと<ruby>沸<rt>わ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "Dad heated it again after it cooled.",
-          "ja": "冷めた後でお父さんがもう一度お風呂を沸かした。"
+          "ja": "冷めた後でお父さんがもう一度お風呂を沸かした。",
+          "jaFurigana": "<ruby>冷<rt>さ</rt></ruby>めた<ruby>後<rt>あと</rt></ruby>でお<ruby>父<rt>ちち</rt></ruby>さんがもう<ruby>一<rt>いち</rt></ruby><ruby>度<rt>ど</rt></ruby>お<ruby>風<rt>ふ</rt></ruby><ruby>呂<rt>ろ</rt></ruby>を<ruby>沸<rt>わ</rt></ruby>かした。"
         }
       },
       {
         "intransitive": {
           "en": "The soup is boiling in the pot.",
-          "ja": "鍋のスープが沸いている。"
+          "ja": "鍋のスープが沸いている。",
+          "jaFurigana": "<ruby>鍋<rt>なべ</rt></ruby>のスープが<ruby>沸<rt>わ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "Please heat some water for the noodles.",
-          "ja": "麺のためにお湯を沸かしてください。"
+          "ja": "麺のためにお湯を沸かしてください。",
+          "jaFurigana": "<ruby>麺<rt>めん</rt></ruby>のためにお<ruby>湯<rt>ゆ</rt></ruby>を<ruby>沸<rt>わ</rt></ruby>かしてください。"
         }
       }
     ]
@@ -553,31 +613,37 @@
       {
         "intransitive": {
           "en": "A sticky note is stuck to my monitor.",
-          "ja": "モニターに付箋が付いている。"
+          "ja": "モニターに付箋が付いている。",
+          "jaFurigana": "モニターに<ruby>付<rt>ふ</rt></ruby><ruby>箋<rt>せん</rt></ruby>が<ruby>付<rt>つ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "She stuck three more notes to the edge.",
-          "ja": "彼女はふちにメモをもう三枚付けた。"
+          "ja": "彼女はふちにメモをもう三枚付けた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はふちにメモをもう<ruby>三<rt>さん</rt></ruby><ruby>枚<rt>まい</rt></ruby><ruby>付<rt>つ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "Mud got on his jacket.",
-          "ja": "ジャケットに泥が付いた。"
+          "ja": "ジャケットに泥が付いた。",
+          "jaFurigana": "ジャケットに<ruby>泥<rt>どろ</rt></ruby>が<ruby>付<rt>つ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "He stuck a patch over it.",
-          "ja": "彼はその上からワッペンを付けた。"
+          "ja": "彼はその上からワッペンを付けた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はその<ruby>上<rt>うえ</rt></ruby>からワッペンを<ruby>付<rt>つ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "A price tag is attached to the cake.",
-          "ja": "ケーキに値札が付いている。"
+          "ja": "ケーキに値札が付いている。",
+          "jaFurigana": "ケーキに<ruby>値<rt>ね</rt></ruby><ruby>札<rt>ふだ</rt></ruby>が<ruby>付<rt>つ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "Please attach a label to the other ones too.",
-          "ja": "ほかのものにもラベルを付けてください。"
+          "ja": "ほかのものにもラベルを付けてください。",
+          "jaFurigana": "ほかのものにもラベルを<ruby>付<rt>つ</rt></ruby>けてください。"
         }
       }
     ]
@@ -606,31 +672,37 @@
       {
         "intransitive": {
           "en": "One end of the rope tightened in the wind.",
-          "ja": "風でロープの片端がしまった。"
+          "ja": "風でロープの片端がしまった。",
+          "jaFurigana": "<ruby>風<rt>かぜ</rt></ruby>でロープの<ruby>片<rt>かた</rt></ruby><ruby>端<rt>はし</rt></ruby>がしまった。"
         },
         "transitive": {
           "en": "He quickly tightened the other end too.",
-          "ja": "彼はもう一方の端もすぐに締めた。"
+          "ja": "彼はもう一方の端もすぐに締めた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はもう<ruby>一<rt>いっ</rt></ruby><ruby>方<rt>ぽう</rt></ruby>の<ruby>端<rt>はし</rt></ruby>もすぐに<ruby>締<rt>し</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The collar is too tight.",
-          "ja": "首輪がきつくしまっている。"
+          "ja": "首輪がきつくしまっている。",
+          "jaFurigana": "<ruby>首<rt>くび</rt></ruby><ruby>輪<rt>わ</rt></ruby>がきつくしまっている。"
         },
         "transitive": {
           "en": "She loosened it, then tightened it one notch less.",
-          "ja": "彼女は一段緩めてから、もう少し軽く締めた。"
+          "ja": "彼女は一段緩めてから、もう少し軽く締めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>一<rt>いち</rt></ruby><ruby>段<rt>だん</rt></ruby><ruby>緩<rt>ゆる</rt></ruby>めてから、もう<ruby>少<rt>すこ</rt></ruby>し<ruby>軽<rt>かる</rt></ruby>く<ruby>締<rt>し</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The bag's drawstring tightened on its own.",
-          "ja": "袋の口がひとりでにしまった。"
+          "ja": "袋の口がひとりでにしまった。",
+          "jaFurigana": "<ruby>袋<rt>ふくろ</rt></ruby>の<ruby>口<rt>くち</rt></ruby>がひとりでにしまった。"
         },
         "transitive": {
           "en": "He tightened the other bag just the same way.",
-          "ja": "彼はもう一つの袋の口も同じように締めた。"
+          "ja": "彼はもう一つの袋の口も同じように締めた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はもう<ruby>一<rt>ひと</rt></ruby>つの<ruby>袋<rt>ふくろ</rt></ruby>の<ruby>口<rt>くち</rt></ruby>も<ruby>同<rt>おな</rt></ruby>じように<ruby>締<rt>し</rt></ruby>めた。"
         }
       }
     ]
@@ -659,31 +731,37 @@
       {
         "intransitive": {
           "en": "The movie started while we were still talking.",
-          "ja": "まだ話しているうちに映画が始まった。"
+          "ja": "まだ話しているうちに映画が始まった。",
+          "jaFurigana": "まだ<ruby>話<rt>はな</rt></ruby>しているうちに<ruby>映<rt>えい</rt></ruby><ruby>画<rt>が</rt></ruby>が<ruby>始<rt>はじ</rt></ruby>まった。"
         },
         "transitive": {
           "en": "She nudged me and started fast-forwarding.",
-          "ja": "彼女は私を肘でつついて早送りを始めた。"
+          "ja": "彼女は私を肘でつついて早送りを始めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>私<rt>わたくし</rt></ruby>を<ruby>肘<rt>ひじ</rt></ruby>でつついて<ruby>早<rt>はや</rt></ruby><ruby>送<rt>おく</rt></ruby>りを<ruby>始<rt>はじ</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The rain began just as we reached the park.",
-          "ja": "公園に着いたとたん、雨が始まった。"
+          "ja": "公園に着いたとたん、雨が始まった。",
+          "jaFurigana": "<ruby>公<rt>こう</rt></ruby><ruby>園<rt>えん</rt></ruby>に<ruby>着<rt>つ</rt></ruby>いたとたん、<ruby>雨<rt>あめ</rt></ruby>が<ruby>始<rt>はじ</rt></ruby>まった。"
         },
         "transitive": {
           "en": "He quickly started a campfire to warm us up.",
-          "ja": "彼はすぐに焚き火を始めた。"
+          "ja": "彼はすぐに焚き火を始めた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はすぐに<ruby>焚<rt>た</rt></ruby>き<ruby>火<rt>び</rt></ruby>を<ruby>始<rt>はじ</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The argument is starting again in the next room.",
-          "ja": "隣の部屋でまた口論が始まっている。"
+          "ja": "隣の部屋でまた口論が始まっている。",
+          "jaFurigana": "<ruby>隣<rt>となり</rt></ruby>の<ruby>部屋<rt>へや</rt></ruby>でまた<ruby>口<rt>こう</rt></ruby><ruby>論<rt>ろん</rt></ruby>が<ruby>始<rt>はじ</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "She ignored it and started cooking.",
-          "ja": "彼女は気にせず料理を始めた。"
+          "ja": "彼女は気にせず料理を始めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>気<rt>き</rt></ruby>にせず<ruby>料<rt>りょう</rt></ruby><ruby>理<rt>り</rt></ruby>を<ruby>始<rt>はじ</rt></ruby>めた。"
         }
       }
     ]
@@ -712,31 +790,37 @@
       {
         "intransitive": {
           "en": "The date for the party was decided.",
-          "ja": "パーティーの日が決まった。"
+          "ja": "パーティーの日が決まった。",
+          "jaFurigana": "パーティーの<ruby>日<rt>ひ</rt></ruby>が<ruby>決<rt>き</rt></ruby>まった。"
         },
         "transitive": {
           "en": "She decided the menu right away.",
-          "ja": "彼女はすぐにメニューを決めた。"
+          "ja": "彼女はすぐにメニューを決めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はすぐにメニューを<ruby>決<rt>き</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The new rules have been set.",
-          "ja": "新しいルールが決まっている。"
+          "ja": "新しいルールが決まっている。",
+          "jaFurigana": "<ruby>新<rt>あたら</rt></ruby>しいルールが<ruby>決<rt>き</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "Please decide your team by tomorrow.",
-          "ja": "明日までにチームを決めてください。"
+          "ja": "明日までにチームを決めてください。",
+          "jaFurigana": "<ruby>明日<rt>あす</rt></ruby>までにチームを<ruby>決<rt>き</rt></ruby>めてください。"
         }
       },
       {
         "intransitive": {
           "en": "The finalists were finally decided.",
-          "ja": "やっと候補者が決まった。"
+          "ja": "やっと候補者が決まった。",
+          "jaFurigana": "やっと<ruby>候<rt>こう</rt></ruby><ruby>補<rt>ほ</rt></ruby><ruby>者<rt>しゃ</rt></ruby>が<ruby>決<rt>き</rt></ruby>まった。"
         },
         "transitive": {
           "en": "The judges will pick the winner next.",
-          "ja": "審査員が次に優勝者を決める。"
+          "ja": "審査員が次に優勝者を決める。",
+          "jaFurigana": "<ruby>審<rt>しん</rt></ruby><ruby>査<rt>さ</rt></ruby><ruby>員<rt>いん</rt></ruby>が<ruby>次<rt>つぎ</rt></ruby>に<ruby>優<rt>ゆう</rt></ruby><ruby>勝<rt>しょう</rt></ruby><ruby>者<rt>しゃ</rt></ruby>を<ruby>決<rt>き</rt></ruby>める。"
         }
       }
     ]
@@ -765,31 +849,37 @@
       {
         "intransitive": {
           "en": "Cats gathered around the fish stand.",
-          "ja": "魚屋の周りに猫が集まった。"
+          "ja": "魚屋の周りに猫が集まった。",
+          "jaFurigana": "<ruby>魚<rt>さかな</rt></ruby><ruby>屋<rt>や</rt></ruby>の<ruby>周<rt>まわ</rt></ruby>りに<ruby>猫<rt>ねこ</rt></ruby>が<ruby>集<rt>あつ</rt></ruby>まった。"
         },
         "transitive": {
           "en": "The owner gathered the scraps onto a plate.",
-          "ja": "店主が残り物を皿に集めた。"
+          "ja": "店主が残り物を皿に集めた。",
+          "jaFurigana": "<ruby>店<rt>てん</rt></ruby><ruby>主<rt>しゅ</rt></ruby>が<ruby>残<rt>のこ</rt></ruby>り<ruby>物<rt>もの</rt></ruby>を<ruby>皿<rt>さら</rt></ruby>に<ruby>集<rt>あつ</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "Dust is gathering on the old piano.",
-          "ja": "古いピアノにほこりが集まっている。"
+          "ja": "古いピアノにほこりが集まっている。",
+          "jaFurigana": "<ruby>古<rt>ふる</rt></ruby>いピアノにほこりが<ruby>集<rt>あつ</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "She gathered her courage and lifted the lid.",
-          "ja": "彼女は勇気を集めて蓋を開けた。"
+          "ja": "彼女は勇気を集めて蓋を開けた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>勇<rt>ゆう</rt></ruby><ruby>気<rt>き</rt></ruby>を<ruby>集<rt>あつ</rt></ruby>めて<ruby>蓋<rt>ふた</rt></ruby>を<ruby>開<rt>あ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "Please gather in the gym by nine.",
-          "ja": "九時までに体育館に集まってください。"
+          "ja": "九時までに体育館に集まってください。",
+          "jaFurigana": "<ruby>九<rt>きゅう</rt></ruby><ruby>時<rt>じ</rt></ruby>までに<ruby>体<rt>たい</rt></ruby><ruby>育<rt>いく</rt></ruby><ruby>館<rt>かん</rt></ruby>に<ruby>集<rt>あつ</rt></ruby>まってください。"
         },
         "transitive": {
           "en": "The teacher will gather the permission slips.",
-          "ja": "先生が同意書を集める。"
+          "ja": "先生が同意書を集める。",
+          "jaFurigana": "<ruby>先<rt>せん</rt></ruby><ruby>生<rt>せい</rt></ruby>が<ruby>同<rt>どう</rt></ruby><ruby>意<rt>い</rt></ruby><ruby>書<rt>しょ</rt></ruby>を<ruby>集<rt>あつ</rt></ruby>める。"
         }
       }
     ]
@@ -818,31 +908,37 @@
       {
         "intransitive": {
           "en": "The clock stopped in the middle of the night.",
-          "ja": "時計が夜中に止まった。"
+          "ja": "時計が夜中に止まった。",
+          "jaFurigana": "<ruby>時計<rt>とけい</rt></ruby>が<ruby>夜<rt>よ</rt></ruby><ruby>中<rt>なか</rt></ruby>に<ruby>止<rt>と</rt></ruby>まった。"
         },
         "transitive": {
           "en": "She stopped all the other clocks to match it.",
-          "ja": "彼女は他の時計をすべて止めた。"
+          "ja": "彼女は他の時計をすべて止めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>他<rt>た</rt></ruby>の<ruby>時計<rt>とけい</rt></ruby>をすべて<ruby>止<rt>と</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The escalator stopped suddenly.",
-          "ja": "エスカレーターが突然止まった。"
+          "ja": "エスカレーターが突然止まった。",
+          "jaFurigana": "エスカレーターが<ruby>突<rt>とつ</rt></ruby><ruby>然<rt>ぜん</rt></ruby><ruby>止<rt>と</rt></ruby>まった。"
         },
         "transitive": {
           "en": "A worker stopped the second one too.",
-          "ja": "作業員がもう一台のエスカレーターも止めた。"
+          "ja": "作業員がもう一台のエスカレーターも止めた。",
+          "jaFurigana": "<ruby>作<rt>さ</rt></ruby><ruby>業<rt>ぎょう</rt></ruby><ruby>員<rt>いん</rt></ruby>がもう<ruby>一<rt>いち</rt></ruby><ruby>台<rt>だい</rt></ruby>のエスカレーターも<ruby>止<rt>と</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The merry-go-round has stopped.",
-          "ja": "メリーゴーランドが止まっている。"
+          "ja": "メリーゴーランドが止まっている。",
+          "jaFurigana": "メリーゴーランドが<ruby>止<rt>と</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "Please stop the ferris wheel as well.",
-          "ja": "観覧車も止めてください。"
+          "ja": "観覧車も止めてください。",
+          "jaFurigana": "<ruby>観<rt>かん</rt></ruby><ruby>覧<rt>らん</rt></ruby><ruby>車<rt>しゃ</rt></ruby>も<ruby>止<rt>と</rt></ruby>めてください。"
         }
       }
     ]
@@ -871,31 +967,37 @@
       {
         "intransitive": {
           "en": "The season changed and leaves turned red.",
-          "ja": "季節が変わって葉が赤くなった。"
+          "ja": "季節が変わって葉が赤くなった。",
+          "jaFurigana": "<ruby>季<rt>き</rt></ruby><ruby>節<rt>せつ</rt></ruby>が<ruby>変<rt>か</rt></ruby>わって<ruby>葉<rt>は</rt></ruby>が<ruby>赤<rt>あか</rt></ruby>くなった。"
         },
         "transitive": {
           "en": "She changed the decorations to match.",
-          "ja": "彼女はそれに合わせて飾りを変えた。"
+          "ja": "彼女はそれに合わせて飾りを変えた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はそれに<ruby>合<rt>あ</rt></ruby>わせて<ruby>飾<rt>かざ</rt></ruby>りを<ruby>変<rt>か</rt></ruby>えた。"
         }
       },
       {
         "intransitive": {
           "en": "The schedule is changing every week.",
-          "ja": "スケジュールが毎週変わっている。"
+          "ja": "スケジュールが毎週変わっている。",
+          "jaFurigana": "スケジュールが<ruby>毎<rt>まい</rt></ruby><ruby>週<rt>しゅう</rt></ruby><ruby>変<rt>か</rt></ruby>わっている。"
         },
         "transitive": {
           "en": "Please change the meeting to Friday.",
-          "ja": "会議を金曜日に変えてください。"
+          "ja": "会議を金曜日に変えてください。",
+          "jaFurigana": "<ruby>会<rt>かい</rt></ruby><ruby>議<rt>ぎ</rt></ruby>を<ruby>金<rt>きん</rt></ruby><ruby>曜<rt>よう</rt></ruby><ruby>日<rt>ひ</rt></ruby>に<ruby>変<rt>か</rt></ruby>えてください。"
         }
       },
       {
         "intransitive": {
           "en": "His expression changed suddenly.",
-          "ja": "彼の表情が急に変わった。"
+          "ja": "彼の表情が急に変わった。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>の<ruby>表<rt>ひょう</rt></ruby><ruby>情<rt>じょう</rt></ruby>が<ruby>急<rt>きゅう</rt></ruby>に<ruby>変<rt>か</rt></ruby>わった。"
         },
         "transitive": {
           "en": "So I changed the topic right away.",
-          "ja": "だからすぐに話題を変えた。"
+          "ja": "だからすぐに話題を変えた。",
+          "jaFurigana": "だからすぐに<ruby>話<rt>わ</rt></ruby><ruby>題<rt>だい</rt></ruby>を<ruby>変<rt>か</rt></ruby>えた。"
         }
       }
     ]
@@ -924,31 +1026,37 @@
       {
         "intransitive": {
           "en": "The blinds rose slowly in the morning breeze.",
-          "ja": "朝の風でブラインドがゆっくり上がった。"
+          "ja": "朝の風でブラインドがゆっくり上がった。",
+          "jaFurigana": "<ruby>朝<rt>あさ</rt></ruby>の<ruby>風<rt>かぜ</rt></ruby>でブラインドがゆっくり<ruby>上<rt>あ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "She raised the other blinds to let in more light.",
-          "ja": "彼女は明かりを入れるために残りのブラインドも上げた。"
+          "ja": "彼女は明かりを入れるために残りのブラインドも上げた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>明<rt>あ</rt></ruby>かりを<ruby>入<rt>い</rt></ruby>れるために<ruby>残<rt>のこ</rt></ruby>りのブラインドも<ruby>上<rt>あ</rt></ruby>げた。"
         }
       },
       {
         "intransitive": {
           "en": "The crowd's noise rose as the players ran out.",
-          "ja": "選手たちが走り出ると、観客の声が上がった。"
+          "ja": "選手たちが走り出ると、観客の声が上がった。",
+          "jaFurigana": "<ruby>選<rt>せん</rt></ruby><ruby>手<rt>しゅ</rt></ruby>たちが<ruby>走<rt>はし</rt></ruby>り<ruby>出<rt>で</rt></ruby>ると、<ruby>観<rt>かん</rt></ruby><ruby>客<rt>きゃく</rt></ruby>の<ruby>声<rt>こえ</rt></ruby>が<ruby>上<rt>あ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "The coach raised his fist to pump them up more.",
-          "ja": "コーチはさらに盛り上げるために拳を上げた。"
+          "ja": "コーチはさらに盛り上げるために拳を上げた。",
+          "jaFurigana": "コーチはさらに<ruby>盛<rt>も</rt></ruby>り<ruby>上<rt>あ</rt></ruby>げるために<ruby>拳<rt>こぶし</rt></ruby>を<ruby>上<rt>あ</rt></ruby>げた。"
         }
       },
       {
         "intransitive": {
           "en": "The dough has risen nicely in the bowl.",
-          "ja": "ボウルの中でパン生地がきれいに上がっている。"
+          "ja": "ボウルの中でパン生地がきれいに上がっている。",
+          "jaFurigana": "ボウルの<ruby>中<rt>なか</rt></ruby>でパン<ruby>生<rt>き</rt></ruby><ruby>地<rt>じ</rt></ruby>がきれいに<ruby>上<rt>あ</rt></ruby>がっている。"
         },
         "transitive": {
           "en": "Now raise the oven temperature to bake it.",
-          "ja": "では焼くためにオーブンの温度を上げてください。"
+          "ja": "では焼くためにオーブンの温度を上げてください。",
+          "jaFurigana": "では<ruby>焼<rt>や</rt></ruby>くためにオーブンの<ruby>温<rt>おん</rt></ruby><ruby>度<rt>ど</rt></ruby>を<ruby>上<rt>あ</rt></ruby>げてください。"
         }
       }
     ]
@@ -977,31 +1085,37 @@
       {
         "intransitive": {
           "en": "The shelf sagged slightly from the wall.",
-          "ja": "棚が壁から少し下がった。"
+          "ja": "棚が壁から少し下がった。",
+          "jaFurigana": "<ruby>棚<rt>たな</rt></ruby>が<ruby>壁<rt>かべ</rt></ruby>から<ruby>少<rt>すこ</rt></ruby>し<ruby>下<rt>さ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "She lowered the next shelf too, just in case.",
-          "ja": "彼女は安全のために隣の棚も下げた。"
+          "ja": "彼女は安全のために隣の棚も下げた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>安<rt>あん</rt></ruby><ruby>全<rt>ぜん</rt></ruby>のために<ruby>隣<rt>となり</rt></ruby>の<ruby>棚<rt>たな</rt></ruby>も<ruby>下<rt>さ</rt></ruby>げた。"
         }
       },
       {
         "intransitive": {
           "en": "The river level has been dropping.",
-          "ja": "川の水位が下がっている。"
+          "ja": "川の水位が下がっている。",
+          "jaFurigana": "<ruby>川<rt>かわ</rt></ruby>の<ruby>水<rt>すい</rt></ruby><ruby>位<rt>い</rt></ruby>が<ruby>下<rt>さ</rt></ruby>がっている。"
         },
         "transitive": {
           "en": "Farmers lowered their irrigation intake.",
-          "ja": "農家は取水口を下げた。"
+          "ja": "農家は取水口を下げた。",
+          "jaFurigana": "<ruby>農<rt>のう</rt></ruby><ruby>家<rt>か</rt></ruby>は<ruby>取<rt>しゅ</rt></ruby><ruby>水<rt>すい</rt></ruby><ruby>口<rt>くち</rt></ruby>を<ruby>下<rt>さ</rt></ruby>げた。"
         }
       },
       {
         "intransitive": {
           "en": "The mic stand dropped to the floor.",
-          "ja": "マイクスタンドが床まで下がった。"
+          "ja": "マイクスタンドが床まで下がった。",
+          "jaFurigana": "マイクスタンドが<ruby>床<rt>ゆか</rt></ruby>まで<ruby>下<rt>さ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "He lowered the remaining stands for the kids.",
-          "ja": "彼は子どもたちのために残りのスタンドを下げた。"
+          "ja": "彼は子どもたちのために残りのスタンドを下げた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>子<rt>こ</rt></ruby>どもたちのために<ruby>残<rt>のこ</rt></ruby>りのスタンドを<ruby>下<rt>さ</rt></ruby>げた。"
         }
       }
     ]
@@ -1030,31 +1144,37 @@
       {
         "intransitive": {
           "en": "A thin column of smoke rose from the campfire.",
-          "ja": "キャンプファイヤーから細い煙が立った。"
+          "ja": "キャンプファイヤーから細い煙が立った。",
+          "jaFurigana": "キャンプファイヤーから<ruby>細<rt>ほそ</rt></ruby>い<ruby>煙<rt>けむり</rt></ruby>が<ruby>立<rt>た</rt></ruby>った。"
         },
         "transitive": {
           "en": "She stood a long stick upright to mark the spot.",
-          "ja": "彼女はその場所に長い棒を立てた。"
+          "ja": "彼女はその場所に長い棒を立てた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はその<ruby>場<rt>ば</rt></ruby><ruby>所<rt>しょ</rt></ruby>に<ruby>長<rt>なが</rt></ruby>い<ruby>棒<rt>ぼう</rt></ruby>を<ruby>立<rt>た</rt></ruby>てた。"
         }
       },
       {
         "intransitive": {
           "en": "The old fence post is standing crookedly.",
-          "ja": "古いフェンスの柱が曲がって立っている。"
+          "ja": "古いフェンスの柱が曲がって立っている。",
+          "jaFurigana": "<ruby>古<rt>ふる</rt></ruby>いフェンスの<ruby>柱<rt>はしら</rt></ruby>が<ruby>曲<rt>ま</rt></ruby>がって<ruby>立<rt>た</rt></ruby>っている。"
         },
         "transitive": {
           "en": "He stood a new straight post beside it.",
-          "ja": "彼はその隣に新しいまっすぐな柱を立てた。"
+          "ja": "彼はその隣に新しいまっすぐな柱を立てた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はその<ruby>隣<rt>となり</rt></ruby>に<ruby>新<rt>あたら</rt></ruby>しいまっすぐな<ruby>柱<rt>はしら</rt></ruby>を<ruby>立<rt>た</rt></ruby>てた。"
         }
       },
       {
         "intransitive": {
           "en": "A single candle stood on the dark table.",
-          "ja": "暗いテーブルの上にろうそくが一本立っている。"
+          "ja": "暗いテーブルの上にろうそくが一本立っている。",
+          "jaFurigana": "<ruby>暗<rt>くら</rt></ruby>いテーブルの<ruby>上<rt>うえ</rt></ruby>にろうそくが<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>立<rt>た</rt></ruby>っている。"
         },
         "transitive": {
           "en": "Please stand more candles around it.",
-          "ja": "その周りにもっとろうそくを立ててください。"
+          "ja": "その周りにもっとろうそくを立ててください。",
+          "jaFurigana": "その<ruby>周<rt>まわ</rt></ruby>りにもっとろうそくを<ruby>立<rt>た</rt></ruby>ててください。"
         }
       }
     ]
@@ -1083,31 +1203,37 @@
       {
         "intransitive": {
           "en": "The child got on the bus.",
-          "ja": "子供がバスに乗った。"
+          "ja": "子供がバスに乗った。",
+          "jaFurigana": "<ruby>子<rt>こ</rt></ruby><ruby>供<rt>ども</rt></ruby>がバスに<ruby>乗<rt>の</rt></ruby>った。"
         },
         "transitive": {
           "en": "The driver let his rushing friend on too.",
-          "ja": "運転手が走ってきた友達も乗せた。"
+          "ja": "運転手が走ってきた友達も乗せた。",
+          "jaFurigana": "<ruby>運<rt>うん</rt></ruby><ruby>転<rt>てん</rt></ruby><ruby>手<rt>しゅ</rt></ruby>が<ruby>走<rt>はし</rt></ruby>ってきた<ruby>友<rt>とも</rt></ruby><ruby>達<rt>だち</rt></ruby>も<ruby>乗<rt>の</rt></ruby>せた。"
         }
       },
       {
         "intransitive": {
           "en": "She is riding the horse.",
-          "ja": "彼女は馬に乗っている。"
+          "ja": "彼女は馬に乗っている。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>馬<rt>うま</rt></ruby>に<ruby>乗<rt>の</rt></ruby>っている。"
         },
         "transitive": {
           "en": "The instructor put a beginner on another horse.",
-          "ja": "インストラクターが初心者をもう一頭に乗せた。"
+          "ja": "インストラクターが初心者をもう一頭に乗せた。",
+          "jaFurigana": "インストラクターが<ruby>初<rt>しょ</rt></ruby><ruby>心<rt>しん</rt></ruby><ruby>者<rt>しゃ</rt></ruby>をもう<ruby>一<rt>いち</rt></ruby><ruby>頭<rt>とう</rt></ruby>に<ruby>乗<rt>の</rt></ruby>せた。"
         }
       },
       {
         "intransitive": {
           "en": "Please get in the taxi.",
-          "ja": "タクシーに乗ってください。"
+          "ja": "タクシーに乗ってください。",
+          "jaFurigana": "タクシーに<ruby>乗<rt>の</rt></ruby>ってください。"
         },
         "transitive": {
           "en": "Please give the person next to you a ride too.",
-          "ja": "隣の人も乗せてあげてください。"
+          "ja": "隣の人も乗せてあげてください。",
+          "jaFurigana": "<ruby>隣<rt>となり</rt></ruby>の<ruby>人<rt>ひと</rt></ruby>も<ruby>乗<rt>の</rt></ruby>せてあげてください。"
         }
       }
     ]
@@ -1136,31 +1262,37 @@
       {
         "intransitive": {
           "en": "That painting sold right away.",
-          "ja": "あの絵はすぐに売れた。"
+          "ja": "あの絵はすぐに売れた。",
+          "jaFurigana": "あの<ruby>絵<rt>え</rt></ruby>はすぐに<ruby>売<rt>う</rt></ruby>れた。"
         },
         "transitive": {
           "en": "So the artist sold the sketches too.",
-          "ja": "それで画家はスケッチも売った。"
+          "ja": "それで画家はスケッチも売った。",
+          "jaFurigana": "それで<ruby>画<rt>が</rt></ruby><ruby>家<rt>か</rt></ruby>はスケッチも<ruby>売<rt>う</rt></ruby>った。"
         }
       },
       {
         "intransitive": {
           "en": "Fresh bread is selling well today.",
-          "ja": "今日は焼きたてのパンがよく売れている。"
+          "ja": "今日は焼きたてのパンがよく売れている。",
+          "jaFurigana": "<ruby>今日<rt>きょう</rt></ruby>は<ruby>焼<rt>や</rt></ruby>きたてのパンがよく<ruby>売<rt>う</rt></ruby>れている。"
         },
         "transitive": {
           "en": "The owner decided to sell cookies too.",
-          "ja": "店長はクッキーも売ることにした。"
+          "ja": "店長はクッキーも売ることにした。",
+          "jaFurigana": "<ruby>店<rt>てん</rt></ruby><ruby>長<rt>ちょう</rt></ruby>はクッキーも<ruby>売<rt>う</rt></ruby>ることにした。"
         }
       },
       {
         "intransitive": {
           "en": "The limited-edition shoes sold out instantly.",
-          "ja": "限定の靴は一瞬で売れてしまった。"
+          "ja": "限定の靴は一瞬で売れてしまった。",
+          "jaFurigana": "<ruby>限<rt>げん</rt></ruby><ruby>定<rt>てい</rt></ruby>の<ruby>靴<rt>くつ</rt></ruby>は<ruby>一<rt>いっ</rt></ruby><ruby>瞬<rt>しゅん</rt></ruby>で<ruby>売<rt>う</rt></ruby>れてしまった。"
         },
         "transitive": {
           "en": "The store then sold the regular ones at a discount.",
-          "ja": "店は普通の靴を割引で売った。"
+          "ja": "店は普通の靴を割引で売った。",
+          "jaFurigana": "<ruby>店<rt>みせ</rt></ruby>は<ruby>普<rt>ふ</rt></ruby><ruby>通<rt>つう</rt></ruby>の<ruby>靴<rt>くつ</rt></ruby>を<ruby>割<rt>わり</rt></ruby><ruby>引<rt>びき</rt></ruby>で<ruby>売<rt>う</rt></ruby>った。"
         }
       }
     ]
@@ -1189,31 +1321,37 @@
       {
         "intransitive": {
           "en": "Twins were born at the hospital last night.",
-          "ja": "昨夜、病院で双子が生まれた。"
+          "ja": "昨夜、病院で双子が生まれた。",
+          "jaFurigana": "<ruby>昨<rt>さく</rt></ruby><ruby>夜<rt>や</rt></ruby>、<ruby>病<rt>びょう</rt></ruby><ruby>院<rt>いん</rt></ruby>で<ruby>双<rt>ふた</rt></ruby><ruby>子<rt>ご</rt></ruby>が<ruby>生<rt>う</rt></ruby>まれた。"
         },
         "transitive": {
           "en": "The mother gave birth to them after eight hours.",
-          "ja": "母親は八時間かけて彼らを生んだ。"
+          "ja": "母親は八時間かけて彼らを生んだ。",
+          "jaFurigana": "<ruby>母<rt>はは</rt></ruby><ruby>親<rt>おや</rt></ruby>は<ruby>八<rt>はち</rt></ruby><ruby>時<rt>じ</rt></ruby><ruby>間<rt>かん</rt></ruby>かけて<ruby>彼<rt>かれ</rt></ruby>らを<ruby>生<rt>う</rt></ruby>んだ。"
         }
       },
       {
         "intransitive": {
           "en": "A new idea is being born in her mind.",
-          "ja": "彼女の中で新しいアイデアが生まれている。"
+          "ja": "彼女の中で新しいアイデアが生まれている。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>の<ruby>中<rt>なか</rt></ruby>で<ruby>新<rt>あたら</rt></ruby>しいアイデアが<ruby>生<rt>う</rt></ruby>まれている。"
         },
         "transitive": {
           "en": "That struggle will produce a great novel.",
-          "ja": "その苦しみが素晴らしい小説を生むだろう。"
+          "ja": "その苦しみが素晴らしい小説を生むだろう。",
+          "jaFurigana": "その<ruby>苦<rt>くる</rt></ruby>しみが<ruby>素<rt>す</rt></ruby><ruby>晴<rt>ば</rt></ruby>らしい<ruby>小<rt>しょう</rt></ruby><ruby>説<rt>せつ</rt></ruby>を<ruby>生<rt>う</rt></ruby>むだろう。"
         }
       },
       {
         "intransitive": {
           "en": "A rare white tiger was born at the zoo.",
-          "ja": "動物園で珍しい白い虎が生まれた。"
+          "ja": "動物園で珍しい白い虎が生まれた。",
+          "jaFurigana": "<ruby>動<rt>どう</rt></ruby><ruby>物<rt>ぶつ</rt></ruby><ruby>園<rt>えん</rt></ruby>で<ruby>珍<rt>めずら</rt></ruby>しい<ruby>白<rt>しろ</rt></ruby>い<ruby>虎<rt>とら</rt></ruby>が<ruby>生<rt>う</rt></ruby>まれた。"
         },
         "transitive": {
           "en": "The zookeepers helped the mother produce healthy cubs.",
-          "ja": "飼育員たちは母虎が元気な子を生むのを手伝った。"
+          "ja": "飼育員たちは母虎が元気な子を生むのを手伝った。",
+          "jaFurigana": "<ruby>飼<rt>し</rt></ruby><ruby>育<rt>いく</rt></ruby><ruby>員<rt>いん</rt></ruby>たちは<ruby>母<rt>はは</rt></ruby><ruby>虎<rt>とら</rt></ruby>が<ruby>元<rt>げん</rt></ruby><ruby>気<rt>き</rt></ruby>な<ruby>子<rt>こ</rt></ruby>を<ruby>生<rt>う</rt></ruby>むのを<ruby>手伝<rt>てつだ</rt></ruby>った。"
         }
       }
     ]
@@ -1242,31 +1380,37 @@
       {
         "intransitive": {
           "en": "The baby woke up crying at midnight.",
-          "ja": "赤ちゃんが夜中に泣きながら起きた。"
+          "ja": "赤ちゃんが夜中に泣きながら起きた。",
+          "jaFurigana": "<ruby>赤<rt>あか</rt></ruby>ちゃんが<ruby>夜<rt>よ</rt></ruby><ruby>中<rt>なか</rt></ruby>に<ruby>泣<rt>な</rt></ruby>きながら<ruby>起<rt>お</rt></ruby>きた。"
         },
         "transitive": {
           "en": "Dad gently woke the older sister too.",
-          "ja": "お父さんがお姉ちゃんも優しく起こした。"
+          "ja": "お父さんがお姉ちゃんも優しく起こした。",
+          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんがお<ruby>姉<rt>あね</rt></ruby>ちゃんも<ruby>優<rt>やさ</rt></ruby>しく<ruby>起<rt>お</rt></ruby>こした。"
         }
       },
       {
         "intransitive": {
           "en": "He is still not up yet.",
-          "ja": "彼はまだ起きていない。"
+          "ja": "彼はまだ起きていない。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はまだ<ruby>起<rt>お</rt></ruby>きていない。"
         },
         "transitive": {
           "en": "Please wake him up before noon.",
-          "ja": "お昼までに彼を起こしてください。"
+          "ja": "お昼までに彼を起こしてください。",
+          "jaFurigana": "お<ruby>昼<rt>ひる</rt></ruby>までに<ruby>彼<rt>かれ</rt></ruby>を<ruby>起<rt>お</rt></ruby>こしてください。"
         }
       },
       {
         "intransitive": {
           "en": "The dog just won't wake up.",
-          "ja": "犬がなかなか起きない。"
+          "ja": "犬がなかなか起きない。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>がなかなか<ruby>起<rt>お</rt></ruby>きない。"
         },
         "transitive": {
           "en": "He clapped by its ear and finally woke it.",
-          "ja": "彼が耳元で手を叩いてやっと起こした。"
+          "ja": "彼が耳元で手を叩いてやっと起こした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>が<ruby>耳<rt>みみ</rt></ruby><ruby>元<rt>もと</rt></ruby>で<ruby>手<rt>て</rt></ruby>を<ruby>叩<rt>たた</rt></ruby>いてやっと<ruby>起<rt>お</rt></ruby>こした。"
         }
       }
     ]
@@ -1295,31 +1439,37 @@
       {
         "intransitive": {
           "en": "The curtain moved in the breeze.",
-          "ja": "風でカーテンが動いた。"
+          "ja": "風でカーテンが動いた。",
+          "jaFurigana": "<ruby>風<rt>かぜ</rt></ruby>でカーテンが<ruby>動<rt>うご</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She moved the curtain aside to look outside.",
-          "ja": "彼女は外を見るためにカーテンを動かした。"
+          "ja": "彼女は外を見るためにカーテンを動かした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>外<rt>そと</rt></ruby>を<ruby>見<rt>み</rt></ruby>るためにカーテンを<ruby>動<rt>うご</rt></ruby>かした。"
         }
       },
       {
         "intransitive": {
           "en": "The robot's arm is moving on its own.",
-          "ja": "ロボットの腕が勝手に動いている。"
+          "ja": "ロボットの腕が勝手に動いている。",
+          "jaFurigana": "ロボットの<ruby>腕<rt>うで</rt></ruby>が<ruby>勝<rt>かっ</rt></ruby><ruby>手<rt>て</rt></ruby>に<ruby>動<rt>うご</rt></ruby>いている。"
         },
         "transitive": {
           "en": "The engineer moved the other arm with a remote.",
-          "ja": "エンジニアはリモコンでもう片方の腕を動かした。"
+          "ja": "エンジニアはリモコンでもう片方の腕を動かした。",
+          "jaFurigana": "エンジニアはリモコンでもう<ruby>片<rt>かた</rt></ruby><ruby>方<rt>ほう</rt></ruby>の<ruby>腕<rt>うで</rt></ruby>を<ruby>動<rt>うご</rt></ruby>かした。"
         }
       },
       {
         "intransitive": {
           "en": "The heavy rock won't move at all.",
-          "ja": "重い岩が全然動かない。"
+          "ja": "重い岩が全然動かない。",
+          "jaFurigana": "<ruby>重<rt>おも</rt></ruby>い<ruby>岩<rt>いわ</rt></ruby>が<ruby>全<rt>ぜん</rt></ruby><ruby>然<rt>ぜん</rt></ruby><ruby>動<rt>うご</rt></ruby>かない。"
         },
         "transitive": {
           "en": "Please move it with this lever.",
-          "ja": "このてこで動かしてください。"
+          "ja": "このてこで動かしてください。",
+          "jaFurigana": "このてこで<ruby>動<rt>うご</rt></ruby>かしてください。"
         }
       }
     ]
@@ -1348,31 +1498,37 @@
       {
         "intransitive": {
           "en": "The merry-go-round is slowly spinning.",
-          "ja": "メリーゴーランドがゆっくりまわっている。"
+          "ja": "メリーゴーランドがゆっくりまわっている。",
+          "jaFurigana": "メリーゴーランドがゆっくりまわっている。"
         },
         "transitive": {
           "en": "The operator spun it faster for the kids.",
-          "ja": "係員が子どもたちのために、もっと速くまわした。"
+          "ja": "係員が子どもたちのために、もっと速くまわした。",
+          "jaFurigana": "<ruby>係<rt>かかり</rt></ruby><ruby>員<rt>いん</rt></ruby>が<ruby>子<rt>こ</rt></ruby>どもたちのために、もっと<ruby>速<rt>はや</rt></ruby>くまわした。"
         }
       },
       {
         "intransitive": {
           "en": "The revolving door turned on its own.",
-          "ja": "回転ドアが勝手にまわった。"
+          "ja": "回転ドアが勝手にまわった。",
+          "jaFurigana": "<ruby>回<rt>かい</rt></ruby><ruby>転<rt>てん</rt></ruby>ドアが<ruby>勝<rt>かっ</rt></ruby><ruby>手<rt>て</rt></ruby>にまわった。"
         },
         "transitive": {
           "en": "He pushed it to turn it the other way.",
-          "ja": "彼は逆方向にまわすために押した。"
+          "ja": "彼は逆方向にまわすために押した。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>逆<rt>ぎゃく</rt></ruby><ruby>方<rt>ほう</rt></ruby><ruby>向<rt>こう</rt></ruby>にまわすために<ruby>押<rt>お</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "The globe is spinning on the desk.",
-          "ja": "地球儀が机の上でまわっている。"
+          "ja": "地球儀が机の上でまわっている。",
+          "jaFurigana": "<ruby>地<rt>ち</rt></ruby><ruby>球<rt>きゅう</rt></ruby><ruby>儀<rt>ぎ</rt></ruby>が<ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>でまわっている。"
         },
         "transitive": {
           "en": "Please spin it and point to a country.",
-          "ja": "地球儀をまわして、国を指さしてください。"
+          "ja": "地球儀をまわして、国を指さしてください。",
+          "jaFurigana": "<ruby>地<rt>ち</rt></ruby><ruby>球<rt>きゅう</rt></ruby><ruby>儀<rt>ぎ</rt></ruby>をまわして、<ruby>国<rt>くに</rt></ruby>を<ruby>指<rt>ゆび</rt></ruby>さしてください。"
         }
       }
     ]
@@ -1401,31 +1557,37 @@
       {
         "intransitive": {
           "en": "The music kept playing through the night.",
-          "ja": "音楽が一晩中続いた。"
+          "ja": "音楽が一晩中続いた。",
+          "jaFurigana": "<ruby>音<rt>おん</rt></ruby><ruby>楽<rt>がく</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby><ruby>中<rt>ちゅう</rt></ruby><ruby>続<rt>つづ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "So she kept dancing until dawn.",
-          "ja": "だから彼女は夜明けまで踊り続けた。"
+          "ja": "だから彼女は夜明けまで踊り続けた。",
+          "jaFurigana": "だから<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>夜<rt>よ</rt></ruby><ruby>明<rt>あ</rt></ruby>けまで<ruby>踊<rt>おど</rt></ruby>り<ruby>続<rt>つづ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The argument went on for an hour.",
-          "ja": "口論が一時間続いている。"
+          "ja": "口論が一時間続いている。",
+          "jaFurigana": "<ruby>口<rt>こう</rt></ruby><ruby>論<rt>ろん</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>時<rt>じ</rt></ruby><ruby>間<rt>かん</rt></ruby><ruby>続<rt>つづ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "He keeps repeating the same point.",
-          "ja": "彼は同じ主張を繰り返し続けている。"
+          "ja": "彼は同じ主張を繰り返し続けている。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>同<rt>おな</rt></ruby>じ<ruby>主<rt>しゅ</rt></ruby><ruby>張<rt>ちょう</rt></ruby>を<ruby>繰<rt>く</rt></ruby>り<ruby>返<rt>かえ</rt></ruby>し<ruby>続<rt>つづ</rt></ruby>けている。"
         }
       },
       {
         "intransitive": {
           "en": "The snow continued all morning.",
-          "ja": "雪が午前中ずっと続いた。"
+          "ja": "雪が午前中ずっと続いた。",
+          "jaFurigana": "<ruby>雪<rt>ゆき</rt></ruby>が<ruby>午<rt>ご</rt></ruby><ruby>前<rt>ぜん</rt></ruby><ruby>中<rt>ちゅう</rt></ruby>ずっと<ruby>続<rt>つづ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "Still, he kept shoveling the path.",
-          "ja": "それでも彼は雪かきをし続けた。"
+          "ja": "それでも彼は雪かきをし続けた。",
+          "jaFurigana": "それでも<ruby>彼<rt>かれ</rt></ruby>は<ruby>雪<rt>ゆき</rt></ruby>かきをし<ruby>続<rt>つづ</rt></ruby>けた。"
         }
       }
     ]
@@ -1454,31 +1616,37 @@
       {
         "intransitive": {
           "en": "The sad news spread through the office.",
-          "ja": "悲しい知らせがオフィス中に伝わった。"
+          "ja": "悲しい知らせがオフィス中に伝わった。",
+          "jaFurigana": "<ruby>悲<rt>かな</rt></ruby>しい<ruby>知<rt>し</rt></ruby>らせがオフィス<ruby>中<rt>ちゅう</rt></ruby>に<ruby>伝<rt>つた</rt></ruby>わった。"
         },
         "transitive": {
           "en": "Her manager called to convey it personally.",
-          "ja": "彼女の上司は直接それを伝えるために電話をかけた。"
+          "ja": "彼女の上司は直接それを伝えるために電話をかけた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>の<ruby>上<rt>じょう</rt></ruby><ruby>司<rt>し</rt></ruby>は<ruby>直<rt>ちょく</rt></ruby><ruby>接<rt>せつ</rt></ruby>それを<ruby>伝<rt>つた</rt></ruby>えるために<ruby>電<rt>でん</rt></ruby><ruby>話<rt>わ</rt></ruby>をかけた。"
         }
       },
       {
         "intransitive": {
           "en": "The tradition is being passed down in the village.",
-          "ja": "その伝統が村に伝わっている。"
+          "ja": "その伝統が村に伝わっている。",
+          "jaFurigana": "その<ruby>伝<rt>でん</rt></ruby><ruby>統<rt>とう</rt></ruby>が<ruby>村<rt>むら</rt></ruby>に<ruby>伝<rt>つた</rt></ruby>わっている。"
         },
         "transitive": {
           "en": "The elder conveys its meaning to the children.",
-          "ja": "長老が子供たちにその意味を伝える。"
+          "ja": "長老が子供たちにその意味を伝える。",
+          "jaFurigana": "<ruby>長<rt>ちょう</rt></ruby><ruby>老<rt>ろう</rt></ruby>が<ruby>子<rt>こ</rt></ruby><ruby>供<rt>ども</rt></ruby>たちにその<ruby>意<rt>い</rt></ruby><ruby>味<rt>み</rt></ruby>を<ruby>伝<rt>つた</rt></ruby>える。"
         }
       },
       {
         "intransitive": {
           "en": "His excitement spread to the whole crowd.",
-          "ja": "彼の興奮が観客全体に伝わった。"
+          "ja": "彼の興奮が観客全体に伝わった。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>の<ruby>興<rt>こう</rt></ruby><ruby>奮<rt>ふん</rt></ruby>が<ruby>観<rt>かん</rt></ruby><ruby>客<rt>きゃく</rt></ruby><ruby>全<rt>ぜん</rt></ruby><ruby>体<rt>たい</rt></ruby>に<ruby>伝<rt>つた</rt></ruby>わった。"
         },
         "transitive": {
           "en": "He grabbed the mic and shared his gratitude.",
-          "ja": "彼はマイクを握って感謝の気持ちを伝えた。"
+          "ja": "彼はマイクを握って感謝の気持ちを伝えた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はマイクを<ruby>握<rt>にぎ</rt></ruby>って<ruby>感<rt>かん</rt></ruby><ruby>謝<rt>しゃ</rt></ruby>の<ruby>気<rt>き</rt></ruby><ruby>持<rt>も</rt></ruby>ちを<ruby>伝<rt>つた</rt></ruby>えた。"
         }
       }
     ]
@@ -1507,31 +1675,37 @@
       {
         "intransitive": {
           "en": "The two cables are connected at the back.",
-          "ja": "二本のケーブルが後ろでつながっている。"
+          "ja": "二本のケーブルが後ろでつながっている。",
+          "jaFurigana": "<ruby>二<rt>に</rt></ruby><ruby>本<rt>ぽん</rt></ruby>のケーブルが<ruby>後<rt>うし</rt></ruby>ろでつながっている。"
         },
         "transitive": {
           "en": "She connected the third cable to the monitor.",
-          "ja": "彼女は三本目のケーブルをモニターにつないだ。"
+          "ja": "彼女は三本目のケーブルをモニターにつないだ。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>三<rt>さん</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>目<rt>め</rt></ruby>のケーブルをモニターにつないだ。"
         }
       },
       {
         "intransitive": {
           "en": "The dog's leash is tied to the fence.",
-          "ja": "犬のリードがフェンスにつながっている。"
+          "ja": "犬のリードがフェンスにつながっている。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>のリードがフェンスにつながっている。"
         },
         "transitive": {
           "en": "She tied her own dog to the next pole.",
-          "ja": "彼女は自分の犬も隣のポールにつないだ。"
+          "ja": "彼女は自分の犬も隣のポールにつないだ。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>自<rt>じ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>の<ruby>犬<rt>いぬ</rt></ruby>も<ruby>隣<rt>となり</rt></ruby>のポールにつないだ。"
         }
       },
       {
         "intransitive": {
           "en": "The garden hoses are connected end to end.",
-          "ja": "庭のホースが端から端までつながっている。"
+          "ja": "庭のホースが端から端までつながっている。",
+          "jaFurigana": "<ruby>庭<rt>にわ</rt></ruby>のホースが<ruby>端<rt>はし</rt></ruby>から<ruby>端<rt>はし</rt></ruby>までつながっている。"
         },
         "transitive": {
           "en": "Please connect this last section to the tap.",
-          "ja": "この最後の部分を蛇口につないでください。"
+          "ja": "この最後の部分を蛇口につないでください。",
+          "jaFurigana": "この<ruby>最<rt>さい</rt></ruby><ruby>後<rt>ご</rt></ruby>の<ruby>部<rt>ぶ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>を<ruby>蛇<rt>じゃ</rt></ruby><ruby>口<rt>ぐち</rt></ruby>につないでください。"
         }
       }
     ]
@@ -1560,31 +1734,37 @@
       {
         "intransitive": {
           "en": "The chairs are lined up neatly by the wall.",
-          "ja": "椅子が壁沿いにきれいに並んでいる。"
+          "ja": "椅子が壁沿いにきれいに並んでいる。",
+          "jaFurigana": "<ruby>椅<rt>い</rt></ruby><ruby>子<rt>す</rt></ruby>が<ruby>壁<rt>かべ</rt></ruby><ruby>沿<rt>ぞ</rt></ruby>いにきれいに<ruby>並<rt>なら</rt></ruby>んでいる。"
         },
         "transitive": {
           "en": "Please arrange the desks the same way.",
-          "ja": "机も同じように並べてください。"
+          "ja": "机も同じように並べてください。",
+          "jaFurigana": "<ruby>机<rt>つくえ</rt></ruby>も<ruby>同<rt>おな</rt></ruby>じように<ruby>並<rt>なら</rt></ruby>べてください。"
         }
       },
       {
         "intransitive": {
           "en": "Shoes lined up outside the entrance.",
-          "ja": "玄関に靴が並んだ。"
+          "ja": "玄関に靴が並んだ。",
+          "jaFurigana": "<ruby>玄<rt>げん</rt></ruby><ruby>関<rt>かん</rt></ruby>に<ruby>靴<rt>くつ</rt></ruby>が<ruby>並<rt>なら</rt></ruby>んだ。"
         },
         "transitive": {
           "en": "So she arranged everyone's umbrellas there too.",
-          "ja": "それで彼女はみんなの傘もそこに並べた。"
+          "ja": "それで彼女はみんなの傘もそこに並べた。",
+          "jaFurigana": "それで<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はみんなの<ruby>傘<rt>かさ</rt></ruby>もそこに<ruby>並<rt>なら</rt></ruby>べた。"
         }
       },
       {
         "intransitive": {
           "en": "Bottles are lined up along the counter.",
-          "ja": "カウンターにボトルが並んでいる。"
+          "ja": "カウンターにボトルが並んでいる。",
+          "jaFurigana": "カウンターにボトルが<ruby>並<rt>なら</rt></ruby>んでいる。"
         },
         "transitive": {
           "en": "The bartender is arranging the glasses beside them.",
-          "ja": "バーテンダーがその隣にグラスを並べている。"
+          "ja": "バーテンダーがその隣にグラスを並べている。",
+          "jaFurigana": "バーテンダーがその<ruby>隣<rt>となり</rt></ruby>にグラスを<ruby>並<rt>なら</rt></ruby>べている。"
         }
       }
     ]
@@ -1613,31 +1793,37 @@
       {
         "intransitive": {
           "en": "A little soup remained in the pot.",
-          "ja": "鍋にスープが少し残った。"
+          "ja": "鍋にスープが少し残った。",
+          "jaFurigana": "<ruby>鍋<rt>なべ</rt></ruby>にスープが<ruby>少<rt>すこ</rt></ruby>し<ruby>残<rt>のこ</rt></ruby>った。"
         },
         "transitive": {
           "en": "She saved it for her husband.",
-          "ja": "彼女は夫のためにそれを残しておいた。"
+          "ja": "彼女は夫のためにそれを残しておいた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>夫<rt>おっと</rt></ruby>のためにそれを<ruby>残<rt>のこ</rt></ruby>しておいた。"
         }
       },
       {
         "intransitive": {
           "en": "Some snow is still on the roof.",
-          "ja": "屋根の上にまだ雪が残っている。"
+          "ja": "屋根の上にまだ雪が残っている。",
+          "jaFurigana": "<ruby>屋<rt>や</rt></ruby><ruby>根<rt>ね</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>にまだ<ruby>雪<rt>ゆき</rt></ruby>が<ruby>残<rt>のこ</rt></ruby>っている。"
         },
         "transitive": {
           "en": "He left the snow he knocked off in the garden.",
-          "ja": "彼は屋根から落とした雪を庭に残した。"
+          "ja": "彼は屋根から落とした雪を庭に残した。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>屋<rt>や</rt></ruby><ruby>根<rt>ね</rt></ruby>から<ruby>落<rt>お</rt></ruby>とした<ruby>雪<rt>ゆき</rt></ruby>を<ruby>庭<rt>にわ</rt></ruby>に<ruby>残<rt>のこ</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "A few tickets remain before the show.",
-          "ja": "公演の前に、チケットが数枚残っている。"
+          "ja": "公演の前に、チケットが数枚残っている。",
+          "jaFurigana": "<ruby>公<rt>こう</rt></ruby><ruby>演<rt>えん</rt></ruby>の<ruby>前<rt>まえ</rt></ruby>に、チケットが<ruby>数<rt>すう</rt></ruby><ruby>枚<rt>まい</rt></ruby><ruby>残<rt>のこ</rt></ruby>っている。"
         },
         "transitive": {
           "en": "Please save one for your friend.",
-          "ja": "友達のためにチケットを一枚残しておいてください。"
+          "ja": "友達のためにチケットを一枚残しておいてください。",
+          "jaFurigana": "<ruby>友<rt>とも</rt></ruby><ruby>達<rt>だち</rt></ruby>のためにチケットを<ruby>一<rt>いち</rt></ruby><ruby>枚<rt>まい</rt></ruby><ruby>残<rt>のこ</rt></ruby>しておいてください。"
         }
       }
     ]
@@ -1666,31 +1852,37 @@
       {
         "intransitive": {
           "en": "The cat came back inside from the rain.",
-          "ja": "猫が雨の中から家にもどった。"
+          "ja": "猫が雨の中から家にもどった。",
+          "jaFurigana": "<ruby>猫<rt>ねこ</rt></ruby>が<ruby>雨<rt>あめ</rt></ruby>の<ruby>中<rt>なか</rt></ruby>から<ruby>家<rt>いえ</rt></ruby>にもどった。"
         },
         "transitive": {
           "en": "She put its wet blanket back in the basket.",
-          "ja": "彼女は濡れた毛布をかごにもどした。"
+          "ja": "彼女は濡れた毛布をかごにもどした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>濡<rt>ぬ</rt></ruby>れた<ruby>毛<rt>もう</rt></ruby><ruby>布<rt>ふ</rt></ruby>をかごにもどした。"
         }
       },
       {
         "intransitive": {
           "en": "The shopping cart rolled back down the slope.",
-          "ja": "カートが坂道をもどっている。"
+          "ja": "カートが坂道をもどっている。",
+          "jaFurigana": "カートが<ruby>坂<rt>さか</rt></ruby><ruby>道<rt>みち</rt></ruby>をもどっている。"
         },
         "transitive": {
           "en": "He ran after it and wheeled it back to the store.",
-          "ja": "彼は走って追いかけて、カートを店にもどした。"
+          "ja": "彼は走って追いかけて、カートを店にもどした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>走<rt>はし</rt></ruby>って<ruby>追<rt>お</rt></ruby>いかけて、カートを<ruby>店<rt>みせ</rt></ruby>にもどした。"
         }
       },
       {
         "intransitive": {
           "en": "The conversation drifted back to last night's argument.",
-          "ja": "話がゆうべのけんかにもどってきた。"
+          "ja": "話がゆうべのけんかにもどってきた。",
+          "jaFurigana": "<ruby>話<rt>はなし</rt></ruby>がゆうべのけんかにもどってきた。"
         },
         "transitive": {
           "en": "Please bring it back to today's topic.",
-          "ja": "話を今日のテーマにもどしてください。"
+          "ja": "話を今日のテーマにもどしてください。",
+          "jaFurigana": "<ruby>話<rt>はなし</rt></ruby>を<ruby>今日<rt>きょう</rt></ruby>のテーマにもどしてください。"
         }
       }
     ]
@@ -1719,31 +1911,37 @@
       {
         "intransitive": {
           "en": "The thread passed through the needle's eye.",
-          "ja": "糸が針の穴を通った。"
+          "ja": "糸が針の穴を通った。",
+          "jaFurigana": "<ruby>糸<rt>いと</rt></ruby>が<ruby>針<rt>はり</rt></ruby>の<ruby>穴<rt>あな</rt></ruby>を<ruby>通<rt>とお</rt></ruby>った。"
         },
         "transitive": {
           "en": "She threaded the next needle herself.",
-          "ja": "彼女は次の針に糸を通した。"
+          "ja": "彼女は次の針に糸を通した。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>次<rt>つぎ</rt></ruby>の<ruby>針<rt>はり</rt></ruby>に<ruby>糸<rt>いと</rt></ruby>を<ruby>通<rt>とお</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "A cat is passing through the gap in the fence.",
-          "ja": "猫がフェンスの隙間を通っている。"
+          "ja": "猫がフェンスの隙間を通っている。",
+          "jaFurigana": "<ruby>猫<rt>ねこ</rt></ruby>がフェンスの<ruby>隙<rt>すき</rt></ruby><ruby>間<rt>ま</rt></ruby>を<ruby>通<rt>とお</rt></ruby>っている。"
         },
         "transitive": {
           "en": "The boy is pushing a stick through the same gap.",
-          "ja": "男の子が同じ隙間に棒を通している。"
+          "ja": "男の子が同じ隙間に棒を通している。",
+          "jaFurigana": "<ruby>男<rt>おとこ</rt></ruby>の<ruby>子<rt>こ</rt></ruby>が<ruby>同<rt>おな</rt></ruby>じ<ruby>隙<rt>すき</rt></ruby><ruby>間<rt>ま</rt></ruby>に<ruby>棒<rt>ぼう</rt></ruby>を<ruby>通<rt>とお</rt></ruby>している。"
         }
       },
       {
         "intransitive": {
           "en": "Light passes through this curtain easily.",
-          "ja": "光がこのカーテンを通る。"
+          "ja": "光がこのカーテンを通る。",
+          "jaFurigana": "<ruby>光<rt>ひかり</rt></ruby>がこのカーテンを<ruby>通<rt>とお</rt></ruby>る。"
         },
         "transitive": {
           "en": "Please pass a thin rod through the top casing.",
-          "ja": "上の折り返し部分に細い棒を通してください。"
+          "ja": "上の折り返し部分に細い棒を通してください。",
+          "jaFurigana": "<ruby>上<rt>うえ</rt></ruby>の<ruby>折<rt>お</rt></ruby>り<ruby>返<rt>かえ</rt></ruby>し<ruby>部<rt>ぶ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>に<ruby>細<rt>ほそ</rt></ruby>い<ruby>棒<rt>ぼう</rt></ruby>を<ruby>通<rt>とお</rt></ruby>してください。"
         }
       }
     ]
@@ -1772,31 +1970,37 @@
       {
         "intransitive": {
           "en": "The birthday card finally arrived.",
-          "ja": "誕生日カードがやっと届いた。"
+          "ja": "誕生日カードがやっと届いた。",
+          "jaFurigana": "<ruby>誕<rt>たん</rt></ruby><ruby>生<rt>じょう</rt></ruby><ruby>日<rt>にち</rt></ruby>カードがやっと<ruby>届<rt>とど</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She delivered a gift in return.",
-          "ja": "彼女はお返しにプレゼントを届けた。"
+          "ja": "彼女はお返しにプレゼントを届けた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はお<ruby>返<rt>かえ</rt></ruby>しにプレゼントを<ruby>届<rt>とど</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The medicine is reaching rural villages.",
-          "ja": "薬が農村に届いている。"
+          "ja": "薬が農村に届いている。",
+          "jaFurigana": "<ruby>薬<rt>くすり</rt></ruby>が<ruby>農<rt>のう</rt></ruby><ruby>村<rt>そん</rt></ruby>に<ruby>届<rt>とど</rt></ruby>いている。"
         },
         "transitive": {
           "en": "Volunteers are delivering food there too.",
-          "ja": "ボランティアが食料もそこに届けている。"
+          "ja": "ボランティアが食料もそこに届けている。",
+          "jaFurigana": "ボランティアが<ruby>食<rt>しょく</rt></ruby><ruby>料<rt>りょう</rt></ruby>もそこに<ruby>届<rt>とど</rt></ruby>けている。"
         }
       },
       {
         "intransitive": {
           "en": "The wrong package arrived at my door.",
-          "ja": "間違った荷物が玄関に届いた。"
+          "ja": "間違った荷物が玄関に届いた。",
+          "jaFurigana": "<ruby>間<rt>ま</rt></ruby><ruby>違<rt>ちが</rt></ruby>った<ruby>荷<rt>に</rt></ruby><ruby>物<rt>もつ</rt></ruby>が<ruby>玄<rt>げん</rt></ruby><ruby>関<rt>かん</rt></ruby>に<ruby>届<rt>とど</rt></ruby>いた。"
         },
         "transitive": {
           "en": "Please deliver it to the correct address.",
-          "ja": "正しい住所に届けてください。"
+          "ja": "正しい住所に届けてください。",
+          "jaFurigana": "<ruby>正<rt>ただ</rt></ruby>しい<ruby>住<rt>じゅう</rt></ruby><ruby>所<rt>しょ</rt></ruby>に<ruby>届<rt>とど</rt></ruby>けてください。"
         }
       }
     ]
@@ -1825,31 +2029,37 @@
       {
         "intransitive": {
           "en": "My missing wallet was finally found.",
-          "ja": "なくした財布がやっと見つかった。"
+          "ja": "なくした財布がやっと見つかった。",
+          "jaFurigana": "なくした<ruby>財<rt>さい</rt></ruby><ruby>布<rt>ふ</rt></ruby>がやっと<ruby>見<rt>み</rt></ruby>つかった。"
         },
         "transitive": {
           "en": "She found her missing phone right beside it.",
-          "ja": "彼女はなくしたスマホをすぐそばで見つけた。"
+          "ja": "彼女はなくしたスマホをすぐそばで見つけた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はなくしたスマホをすぐそばで<ruby>見<rt>み</rt></ruby>つけた。"
         }
       },
       {
         "intransitive": {
           "en": "A shortcut through the park was discovered.",
-          "ja": "公園を通る近道が見つかった。"
+          "ja": "公園を通る近道が見つかった。",
+          "jaFurigana": "<ruby>公<rt>こう</rt></ruby><ruby>園<rt>えん</rt></ruby>を<ruby>通<rt>とお</rt></ruby>る<ruby>近<rt>ちか</rt></ruby><ruby>道<rt>みち</rt></ruby>が<ruby>見<rt>み</rt></ruby>つかった。"
         },
         "transitive": {
           "en": "Now he finds a new route every morning.",
-          "ja": "今では彼は毎朝新しいルートを見つける。"
+          "ja": "今では彼は毎朝新しいルートを見つける。",
+          "jaFurigana": "<ruby>今<rt>いま</rt></ruby>では<ruby>彼<rt>かれ</rt></ruby>は<ruby>毎<rt>まい</rt></ruby><ruby>朝<rt>あさ</rt></ruby><ruby>新<rt>あたら</rt></ruby>しいルートを<ruby>見<rt>み</rt></ruby>つける。"
         }
       },
       {
         "intransitive": {
           "en": "A crack in the wall has been found.",
-          "ja": "壁のひびが見つかっている。"
+          "ja": "壁のひびが見つかっている。",
+          "jaFurigana": "<ruby>壁<rt>かべ</rt></ruby>のひびが<ruby>見<rt>み</rt></ruby>つかっている。"
         },
         "transitive": {
           "en": "Please find any other cracks nearby.",
-          "ja": "近くにほかのひびを見つけてください。"
+          "ja": "近くにほかのひびを見つけてください。",
+          "jaFurigana": "<ruby>近<rt>ちか</rt></ruby>くにほかのひびを<ruby>見<rt>み</rt></ruby>つけてください。"
         }
       }
     ]
@@ -1878,31 +2088,37 @@
       {
         "intransitive": {
           "en": "The fire spread to the next building.",
-          "ja": "火が隣のビルに広がった。"
+          "ja": "火が隣のビルに広がった。",
+          "jaFurigana": "<ruby>火<rt>ひ</rt></ruby>が<ruby>隣<rt>となり</rt></ruby>のビルに<ruby>広<rt>ひろ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "Firefighters spread sand to stop it.",
-          "ja": "消防士たちが砂を広げて食い止めた。"
+          "ja": "消防士たちが砂を広げて食い止めた。",
+          "jaFurigana": "<ruby>消<rt>しょう</rt></ruby><ruby>防<rt>ぼう</rt></ruby><ruby>士<rt>し</rt></ruby>たちが<ruby>砂<rt>すな</rt></ruby>を<ruby>広<rt>ひろ</rt></ruby>げて<ruby>食<rt>く</rt></ruby>い<ruby>止<rt>と</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The stain is spreading across the tablecloth.",
-          "ja": "シミがテーブルクロスに広がっている。"
+          "ja": "シミがテーブルクロスに広がっている。",
+          "jaFurigana": "シミがテーブルクロスに<ruby>広<rt>ひろ</rt></ruby>がっている。"
         },
         "transitive": {
           "en": "She quickly spread a napkin over it.",
-          "ja": "彼女はすぐにナプキンをその上に広げた。"
+          "ja": "彼女はすぐにナプキンをその上に広げた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はすぐにナプキンをその<ruby>上<rt>うえ</rt></ruby>に<ruby>広<rt>ひろ</rt></ruby>げた。"
         }
       },
       {
         "intransitive": {
           "en": "The crowd spread out through the park.",
-          "ja": "人々が公園中に広がった。"
+          "ja": "人々が公園中に広がった。",
+          "jaFurigana": "<ruby>人<rt>ひと</rt></ruby><ruby>々<rt>びと</rt></ruby>が<ruby>公<rt>こう</rt></ruby><ruby>園<rt>えん</rt></ruby><ruby>中<rt>ちゅう</rt></ruby>に<ruby>広<rt>ひろ</rt></ruby>がった。"
         },
         "transitive": {
           "en": "The guide spread a blanket for everyone to sit on.",
-          "ja": "ガイドがみんなが座れるようにブランケットを広げた。"
+          "ja": "ガイドがみんなが座れるようにブランケットを広げた。",
+          "jaFurigana": "ガイドがみんなが<ruby>座<rt>すわ</rt></ruby>れるようにブランケットを<ruby>広<rt>ひろ</rt></ruby>げた。"
         }
       }
     ]
@@ -1931,31 +2147,37 @@
       {
         "intransitive": {
           "en": "The line at the counter moved forward slowly.",
-          "ja": "窓口の列がゆっくり進んでいる。"
+          "ja": "窓口の列がゆっくり進んでいる。",
+          "jaFurigana": "<ruby>窓<rt>まど</rt></ruby><ruby>口<rt>ぐち</rt></ruby>の<ruby>列<rt>れつ</rt></ruby>がゆっくり<ruby>進<rt>すす</rt></ruby>んでいる。"
         },
         "transitive": {
           "en": "The manager opened another counter to move things along.",
-          "ja": "店長は別の窓口を開けて、列を進めた。"
+          "ja": "店長は別の窓口を開けて、列を進めた。",
+          "jaFurigana": "<ruby>店<rt>てん</rt></ruby><ruby>長<rt>ちょう</rt></ruby>は<ruby>別<rt>べつ</rt></ruby>の<ruby>窓<rt>まど</rt></ruby><ruby>口<rt>ぐち</rt></ruby>を<ruby>開<rt>あ</rt></ruby>けて、<ruby>列<rt>れつ</rt></ruby>を<ruby>進<rt>すす</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The ship moved forward in the strong current.",
-          "ja": "船が強い流れで前に進んだ。"
+          "ja": "船が強い流れで前に進んだ。",
+          "jaFurigana": "<ruby>船<rt>ふね</rt></ruby>が<ruby>強<rt>つよ</rt></ruby>い<ruby>流<rt>なが</rt></ruby>れで<ruby>前<rt>まえ</rt></ruby>に<ruby>進<rt>すす</rt></ruby>んだ。"
         },
         "transitive": {
           "en": "The captain steered it further into the harbor.",
-          "ja": "船長は船をさらに港の中へ進めた。"
+          "ja": "船長は船をさらに港の中へ進めた。",
+          "jaFurigana": "<ruby>船<rt>せん</rt></ruby><ruby>長<rt>ちょう</rt></ruby>は<ruby>船<rt>ふね</rt></ruby>をさらに<ruby>港<rt>みなと</rt></ruby>の<ruby>中<rt>なか</rt></ruby>へ<ruby>進<rt>すす</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The clock's hand is moving toward midnight.",
-          "ja": "時計の針が真夜中に向かって進んでいる。"
+          "ja": "時計の針が真夜中に向かって進んでいる。",
+          "jaFurigana": "<ruby>時計<rt>とけい</rt></ruby>の<ruby>針<rt>はり</rt></ruby>が<ruby>真<rt>ま</rt></ruby><ruby>夜<rt>よ</rt></ruby><ruby>中<rt>なか</rt></ruby>に<ruby>向<rt>む</rt></ruby>かって<ruby>進<rt>すす</rt></ruby>んでいる。"
         },
         "transitive": {
           "en": "She set it ahead by ten minutes just in case.",
-          "ja": "彼女は念のために針を１０分進めた。"
+          "ja": "彼女は念のために針を１０分進めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>念<rt>ねん</rt></ruby>のために<ruby>針<rt>はり</rt></ruby>を１０<ruby>分<rt>ふん</rt></ruby><ruby>進<rt>すす</rt></ruby>めた。"
         }
       }
     ]
@@ -1984,31 +2206,37 @@
       {
         "intransitive": {
           "en": "The kitchen finally got tidied up.",
-          "ja": "台所がやっと片付いた。"
+          "ja": "台所がやっと片付いた。",
+          "jaFurigana": "<ruby>台<rt>だい</rt></ruby><ruby>所<rt>どころ</rt></ruby>がやっと<ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "Then Mom tidied up the living room too.",
-          "ja": "それからお母さんはリビングも片付けた。"
+          "ja": "それからお母さんはリビングも片付けた。",
+          "jaFurigana": "それからお<ruby>母<rt>はは</rt></ruby>さんはリビングも<ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The toys are all tidied away now.",
-          "ja": "おもちゃが全部片付いている。"
+          "ja": "おもちゃが全部片付いている。",
+          "jaFurigana": "おもちゃが<ruby>全<rt>ぜん</rt></ruby><ruby>部<rt>ぶ</rt></ruby><ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "Please tidy up your books next.",
-          "ja": "次は本を片付けてください。"
+          "ja": "次は本を片付けてください。",
+          "jaFurigana": "<ruby>次<rt>つぎ</rt></ruby>は<ruby>本<rt>ほん</rt></ruby>を<ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>けてください。"
         }
       },
       {
         "intransitive": {
           "en": "The office tidied up quickly after the move.",
-          "ja": "引っ越しの後、事務所がすぐ片付いた。"
+          "ja": "引っ越しの後、事務所がすぐ片付いた。",
+          "jaFurigana": "<ruby>引<rt>ひ</rt></ruby>っ<ruby>越<rt>こ</rt></ruby>しの<ruby>後<rt>あと</rt></ruby>、<ruby>事<rt>じ</rt></ruby><ruby>務<rt>む</rt></ruby><ruby>所<rt>しょ</rt></ruby>がすぐ<ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "The new hire is tidying up the storage room.",
-          "ja": "新人が倉庫を片付けている。"
+          "ja": "新人が倉庫を片付けている。",
+          "jaFurigana": "<ruby>新<rt>しん</rt></ruby><ruby>人<rt>じん</rt></ruby>が<ruby>倉<rt>そう</rt></ruby><ruby>庫<rt>こ</rt></ruby>を<ruby>片<rt>かた</rt></ruby><ruby>付<rt>づ</rt></ruby>けている。"
         }
       }
     ]
@@ -2037,31 +2265,37 @@
       {
         "intransitive": {
           "en": "The hiker was saved thanks to the rescue team.",
-          "ja": "登山者が救助隊のおかげで助かった。"
+          "ja": "登山者が救助隊のおかげで助かった。",
+          "jaFurigana": "<ruby>登<rt>と</rt></ruby><ruby>山<rt>ざん</rt></ruby><ruby>者<rt>しゃ</rt></ruby>が<ruby>救<rt>きゅう</rt></ruby><ruby>助<rt>じょ</rt></ruby><ruby>隊<rt>たい</rt></ruby>のおかげで<ruby>助<rt>たす</rt></ruby>かった。"
         },
         "transitive": {
           "en": "They also saved his injured dog.",
-          "ja": "彼らはけがをした犬も助けた。"
+          "ja": "彼らはけがをした犬も助けた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>らはけがをした<ruby>犬<rt>いぬ</rt></ruby>も<ruby>助<rt>たす</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The small bird survived the storm.",
-          "ja": "小さな鳥が嵐から助かっている。"
+          "ja": "小さな鳥が嵐から助かっている。",
+          "jaFurigana": "<ruby>小<rt>ちい</rt></ruby>さな<ruby>鳥<rt>とり</rt></ruby>が<ruby>嵐<rt>あらし</rt></ruby>から<ruby>助<rt>たす</rt></ruby>かっている。"
         },
         "transitive": {
           "en": "She quickly rescued the other trapped birds.",
-          "ja": "彼女は閉じ込められた鳥たちをすぐに助けた。"
+          "ja": "彼女は閉じ込められた鳥たちをすぐに助けた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>閉<rt>と</rt></ruby>じ<ruby>込<rt>こ</rt></ruby>められた<ruby>鳥<rt>とり</rt></ruby>たちをすぐに<ruby>助<rt>たす</rt></ruby>けた。"
         }
       },
       {
         "intransitive": {
           "en": "The child was safe after falling in the river.",
-          "ja": "川に落ちた子どもが助かった。"
+          "ja": "川に落ちた子どもが助かった。",
+          "jaFurigana": "<ruby>川<rt>かわ</rt></ruby>に<ruby>落<rt>お</rt></ruby>ちた<ruby>子<rt>こ</rt></ruby>どもが<ruby>助<rt>たす</rt></ruby>かった。"
         },
         "transitive": {
           "en": "Please save the others who are still in the water.",
-          "ja": "まだ水の中にいる人たちを助けてください。"
+          "ja": "まだ水の中にいる人たちを助けてください。",
+          "jaFurigana": "まだ<ruby>水<rt>みず</rt></ruby>の<ruby>中<rt>なか</rt></ruby>にいる<ruby>人<rt>ひと</rt></ruby>たちを<ruby>助<rt>たす</rt></ruby>けてください。"
         }
       }
     ]
@@ -2090,31 +2324,37 @@
       {
         "intransitive": {
           "en": "The bath water has warmed up.",
-          "ja": "お風呂のお湯が温まっている。"
+          "ja": "お風呂のお湯が温まっている。",
+          "jaFurigana": "お<ruby>風<rt>ふ</rt></ruby><ruby>呂<rt>ろ</rt></ruby>のお<ruby>湯<rt>ゆ</rt></ruby>が<ruby>温<rt>あたた</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "She warmed her cold feet in it.",
-          "ja": "彼女は冷たい足をお湯で温めた。"
+          "ja": "彼女は冷たい足をお湯で温めた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>冷<rt>つめ</rt></ruby>たい<ruby>足<rt>あし</rt></ruby>をお<ruby>湯<rt>ゆ</rt></ruby>で<ruby>温<rt>あたた</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The leftover rice warmed up in the pot.",
-          "ja": "残りご飯が鍋の中で温まった。"
+          "ja": "残りご飯が鍋の中で温まった。",
+          "jaFurigana": "<ruby>残<rt>のこ</rt></ruby>りご<ruby>飯<rt>はん</rt></ruby>が<ruby>鍋<rt>なべ</rt></ruby>の<ruby>中<rt>なか</rt></ruby>で<ruby>温<rt>あたた</rt></ruby>まった。"
         },
         "transitive": {
           "en": "He warmed the miso soup too.",
-          "ja": "彼はみそ汁も温めた。"
+          "ja": "彼はみそ汁も温めた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はみそ<ruby>汁<rt>しる</rt></ruby>も<ruby>温<rt>あたた</rt></ruby>めた。"
         }
       },
       {
         "intransitive": {
           "en": "The little stone warmed up in the sun.",
-          "ja": "小さな石が日差しで温まっている。"
+          "ja": "小さな石が日差しで温まっている。",
+          "jaFurigana": "<ruby>小<rt>ちい</rt></ruby>さな<ruby>石<rt>いし</rt></ruby>が<ruby>日<rt>ひ</rt></ruby><ruby>差<rt>ざ</rt></ruby>しで<ruby>温<rt>あたた</rt></ruby>まっている。"
         },
         "transitive": {
           "en": "The boy warmed his hands on it.",
-          "ja": "男の子はその石で手を温めた。"
+          "ja": "男の子はその石で手を温めた。",
+          "jaFurigana": "<ruby>男<rt>おとこ</rt></ruby>の<ruby>子<rt>こ</rt></ruby>はその<ruby>石<rt>いし</rt></ruby>で<ruby>手<rt>て</rt></ruby>を<ruby>温<rt>あたた</rt></ruby>めた。"
         }
       }
     ]
@@ -2143,31 +2383,37 @@
       {
         "intransitive": {
           "en": "The soup is cooling down in the bowl.",
-          "ja": "スープがお椀の中で冷えている。"
+          "ja": "スープがお椀の中で冷えている。",
+          "jaFurigana": "スープがお<ruby>椀<rt>わん</rt></ruby>の<ruby>中<rt>なか</rt></ruby>で<ruby>冷<rt>ひ</rt></ruby>えている。"
         },
         "transitive": {
           "en": "She put ice beside it to cool it faster.",
-          "ja": "彼女はもっと早く冷やすために横に氷を置いた。"
+          "ja": "彼女はもっと早く冷やすために横に氷を置いた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はもっと<ruby>早<rt>はや</rt></ruby>く<ruby>冷<rt>ひ</rt></ruby>やすために<ruby>横<rt>よこ</rt></ruby>に<ruby>氷<rt>こおり</rt></ruby>を<ruby>置<rt>お</rt></ruby>いた。"
         }
       },
       {
         "intransitive": {
           "en": "The leftover rice got cold overnight.",
-          "ja": "残りのご飯が一晩で冷えた。"
+          "ja": "残りのご飯が一晩で冷えた。",
+          "jaFurigana": "<ruby>残<rt>のこ</rt></ruby>りのご<ruby>飯<rt>はん</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby>で<ruby>冷<rt>ひ</rt></ruby>えた。"
         },
         "transitive": {
           "en": "He cooled the fresh batch in the fridge too.",
-          "ja": "彼は新しい分も冷蔵庫で冷やした。"
+          "ja": "彼は新しい分も冷蔵庫で冷やした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>新<rt>あたら</rt></ruby>しい<ruby>分<rt>ぶん</rt></ruby>も<ruby>冷<rt>れい</rt></ruby><ruby>蔵<rt>ぞう</rt></ruby><ruby>庫<rt>こ</rt></ruby>で<ruby>冷<rt>ひ</rt></ruby>やした。"
         }
       },
       {
         "intransitive": {
           "en": "After the run, his body wouldn't cool down.",
-          "ja": "走った後、なかなか体が冷えなかった。"
+          "ja": "走った後、なかなか体が冷えなかった。",
+          "jaFurigana": "<ruby>走<rt>はし</rt></ruby>った<ruby>後<rt>あと</rt></ruby>、なかなか<ruby>体<rt>からだ</rt></ruby>が<ruby>冷<rt>ひ</rt></ruby>えなかった。"
         },
         "transitive": {
           "en": "He poured water over his head to cool off.",
-          "ja": "彼は頭から水をかぶって体を冷やした。"
+          "ja": "彼は頭から水をかぶって体を冷やした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>頭<rt>あたま</rt></ruby>から<ruby>水<rt>みず</rt></ruby>をかぶって<ruby>体<rt>からだ</rt></ruby>を<ruby>冷<rt>ひ</rt></ruby>やした。"
         }
       }
     ]
@@ -2196,31 +2442,37 @@
       {
         "intransitive": {
           "en": "The wet swimsuit dried quickly in the sun.",
-          "ja": "濡れた水着が日差しですぐに乾いた。"
+          "ja": "濡れた水着が日差しですぐに乾いた。",
+          "jaFurigana": "<ruby>濡<rt>ぬ</rt></ruby>れた<ruby>水<rt>みず</rt></ruby><ruby>着<rt>ぎ</rt></ruby>が<ruby>日<rt>ひ</rt></ruby><ruby>差<rt>ざ</rt></ruby>しですぐに<ruby>乾<rt>かわ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She dried her towel with a fan.",
-          "ja": "彼女はタオルを扇風機で乾かした。"
+          "ja": "彼女はタオルを扇風機で乾かした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はタオルを<ruby>扇風<rt>せんぷう</rt></ruby><ruby>機<rt>き</rt></ruby>で<ruby>乾<rt>かわ</rt></ruby>かした。"
         }
       },
       {
         "intransitive": {
           "en": "The dog's fur is drying by the heater.",
-          "ja": "犬の毛がヒーターのそばで乾いている。"
+          "ja": "犬の毛がヒーターのそばで乾いている。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>の<ruby>毛<rt>け</rt></ruby>がヒーターのそばで<ruby>乾<rt>かわ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "He is drying its paws with a towel.",
-          "ja": "彼はタオルで犬の足を乾かしている。"
+          "ja": "彼はタオルで犬の足を乾かしている。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はタオルで<ruby>犬<rt>いぬ</rt></ruby>の<ruby>足<rt>あし</rt></ruby>を<ruby>乾<rt>かわ</rt></ruby>かしている。"
         }
       },
       {
         "intransitive": {
           "en": "My rain-soaked shoes finally dried overnight.",
-          "ja": "雨でびしょびしょになった靴がやっと一晩で乾いた。"
+          "ja": "雨でびしょびしょになった靴がやっと一晩で乾いた。",
+          "jaFurigana": "<ruby>雨<rt>あめ</rt></ruby>でびしょびしょになった<ruby>靴<rt>くつ</rt></ruby>がやっと<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby>で<ruby>乾<rt>かわ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "Next time, take the laces out and dry them too.",
-          "ja": "次は靴ひもも外して乾かしてください。"
+          "ja": "次は靴ひもも外して乾かしてください。",
+          "jaFurigana": "<ruby>次<rt>つぎ</rt></ruby>は<ruby>靴<rt>くつ</rt></ruby>ひもも<ruby>外<rt>はず</rt></ruby>して<ruby>乾<rt>かわ</rt></ruby>かしてください。"
         }
       }
     ]
@@ -2249,31 +2501,37 @@
       {
         "intransitive": {
           "en": "The toast got over-toasted.",
-          "ja": "トーストがトースターの中で焼けすぎた。"
+          "ja": "トーストがトースターの中で焼けすぎた。",
+          "jaFurigana": "トーストがトースターの<ruby>中<rt>なか</rt></ruby>で<ruby>焼<rt>や</rt></ruby>けすぎた。"
         },
         "transitive": {
           "en": "She quickly toasted fresh slices instead.",
-          "ja": "彼女はすぐに新しいパンを焼いた。"
+          "ja": "彼女はすぐに新しいパンを焼いた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はすぐに<ruby>新<rt>あたら</rt></ruby>しいパンを<ruby>焼<rt>や</rt></ruby>いた。"
         }
       },
       {
         "intransitive": {
           "en": "The fish is nicely grilled now.",
-          "ja": "魚がこんがり焼けている。"
+          "ja": "魚がこんがり焼けている。",
+          "jaFurigana": "<ruby>魚<rt>さかな</rt></ruby>がこんがり<ruby>焼<rt>や</rt></ruby>けている。"
         },
         "transitive": {
           "en": "Dad grilled the vegetables next.",
-          "ja": "お父さんは次に野菜を焼いた。"
+          "ja": "お父さんは次に野菜を焼いた。",
+          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんは<ruby>次<rt>つぎ</rt></ruby>に<ruby>野<rt>や</rt></ruby><ruby>菜<rt>さい</rt></ruby>を<ruby>焼<rt>や</rt></ruby>いた。"
         }
       },
       {
         "intransitive": {
           "en": "Once the cookies are baked, take them out.",
-          "ja": "クッキーがよく焼けたら、取り出してください。"
+          "ja": "クッキーがよく焼けたら、取り出してください。",
+          "jaFurigana": "クッキーがよく<ruby>焼<rt>や</rt></ruby>けたら、<ruby>取<rt>と</rt></ruby>り<ruby>出<rt>だ</rt></ruby>してください。"
         },
         "transitive": {
           "en": "Then bake the second batch too.",
-          "ja": "次のバッチも焼いてください。"
+          "ja": "次のバッチも焼いてください。",
+          "jaFurigana": "<ruby>次<rt>つぎ</rt></ruby>のバッチも<ruby>焼<rt>や</rt></ruby>いてください。"
         }
       }
     ]
@@ -2302,31 +2560,37 @@
       {
         "intransitive": {
           "en": "The soup is already boiling nicely.",
-          "ja": "スープがもうよく煮えている。"
+          "ja": "スープがもうよく煮えている。",
+          "jaFurigana": "スープがもうよく<ruby>煮<rt>に</rt></ruby>えている。"
         },
         "transitive": {
           "en": "She simmered the dumplings in it too.",
-          "ja": "彼女はそこで餃子も煮た。"
+          "ja": "彼女はそこで餃子も煮た。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はそこで<ruby>餃子<rt>ぎょうざ</rt></ruby>も<ruby>煮<rt>に</rt></ruby>た。"
         }
       },
       {
         "intransitive": {
           "en": "The chicken has finally cooked through.",
-          "ja": "鶏肉がやっと煮えた。"
+          "ja": "鶏肉がやっと煮えた。",
+          "jaFurigana": "<ruby>鶏<rt>けい</rt></ruby><ruby>肉<rt>にく</rt></ruby>がやっと<ruby>煮<rt>に</rt></ruby>えた。"
         },
         "transitive": {
           "en": "Grandma then simmered the tofu as well.",
-          "ja": "おばあちゃんは豆腐も煮た。"
+          "ja": "おばあちゃんは豆腐も煮た。",
+          "jaFurigana": "おばあちゃんは<ruby>豆<rt>とう</rt></ruby><ruby>腐<rt>ふ</rt></ruby>も<ruby>煮<rt>に</rt></ruby>た。"
         }
       },
       {
         "intransitive": {
           "en": "The potatoes are not quite cooked yet.",
-          "ja": "じゃがいもがまだ煮えていない。"
+          "ja": "じゃがいもがまだ煮えていない。",
+          "jaFurigana": "じゃがいもがまだ<ruby>煮<rt>に</rt></ruby>えていない。"
         },
         "transitive": {
           "en": "Please simmer them for ten more minutes.",
-          "ja": "あと十分煮てください。"
+          "ja": "あと十分煮てください。",
+          "jaFurigana": "あと<ruby>十<rt>じゅう</rt></ruby><ruby>分<rt>ぶん</rt></ruby><ruby>煮<rt>に</rt></ruby>てください。"
         }
       }
     ]
@@ -2355,31 +2619,37 @@
       {
         "intransitive": {
           "en": "The campfire is burning brightly.",
-          "ja": "キャンプファイヤーが明るく燃えている。"
+          "ja": "キャンプファイヤーが明るく燃えている。",
+          "jaFurigana": "キャンプファイヤーが<ruby>明<rt>あか</rt></ruby>るく<ruby>燃<rt>も</rt></ruby>えている。"
         },
         "transitive": {
           "en": "He burned the old letters in it.",
-          "ja": "彼はその中で古い手紙を燃やした。"
+          "ja": "彼はその中で古い手紙を燃やした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はその<ruby>中<rt>なか</rt></ruby>で<ruby>古<rt>ふる</rt></ruby>い<ruby>手<rt>て</rt></ruby><ruby>紙<rt>がみ</rt></ruby>を<ruby>燃<rt>も</rt></ruby>やした。"
         }
       },
       {
         "intransitive": {
           "en": "The pile of leaves caught and burned.",
-          "ja": "落ち葉の山が燃えた。"
+          "ja": "落ち葉の山が燃えた。",
+          "jaFurigana": "<ruby>落<rt>お</rt></ruby>ち<ruby>葉<rt>ば</rt></ruby>の<ruby>山<rt>やま</rt></ruby>が<ruby>燃<rt>も</rt></ruby>えた。"
         },
         "transitive": {
           "en": "So she burned the rest of the pile too.",
-          "ja": "それで、彼女は残りの山も燃やした。"
+          "ja": "それで、彼女は残りの山も燃やした。",
+          "jaFurigana": "それで、<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りの<ruby>山<rt>やま</rt></ruby>も<ruby>燃<rt>も</rt></ruby>やした。"
         }
       },
       {
         "intransitive": {
           "en": "A candle is burning on the altar.",
-          "ja": "祭壇の上でろうそくが燃えている。"
+          "ja": "祭壇の上でろうそくが燃えている。",
+          "jaFurigana": "<ruby>祭<rt>さい</rt></ruby><ruby>壇<rt>だん</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>でろうそくが<ruby>燃<rt>も</rt></ruby>えている。"
         },
         "transitive": {
           "en": "The priest burned incense beside it.",
-          "ja": "神父はその横でお香を燃やした。"
+          "ja": "神父はその横でお香を燃やした。",
+          "jaFurigana": "<ruby>神<rt>しん</rt></ruby><ruby>父<rt>ぷ</rt></ruby>はその<ruby>横<rt>よこ</rt></ruby>でお<ruby>香<rt>かおり</rt></ruby>を<ruby>燃<rt>も</rt></ruby>やした。"
         }
       }
     ]
@@ -2408,31 +2678,37 @@
       {
         "intransitive": {
           "en": "My hair got wet in the rain.",
-          "ja": "雨で髪が濡れた。"
+          "ja": "雨で髪が濡れた。",
+          "jaFurigana": "<ruby>雨<rt>あめ</rt></ruby>で<ruby>髪<rt>かみ</rt></ruby>が<ruby>濡<rt>ぬ</rt></ruby>れた。"
         },
         "transitive": {
           "en": "So she wetted a comb to flatten it.",
-          "ja": "だから彼女はくしを水で濡らした。"
+          "ja": "だから彼女はくしを水で濡らした。",
+          "jaFurigana": "だから<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はくしを<ruby>水<rt>みず</rt></ruby>で<ruby>濡<rt>ぬ</rt></ruby>らした。"
         }
       },
       {
         "intransitive": {
           "en": "The dog's fur is getting wet in the sprinkler.",
-          "ja": "犬の毛がスプリンクラーで濡れている。"
+          "ja": "犬の毛がスプリンクラーで濡れている。",
+          "jaFurigana": "<ruby>犬<rt>いぬ</rt></ruby>の<ruby>毛<rt>け</rt></ruby>がスプリンクラーで<ruby>濡<rt>ぬ</rt></ruby>れている。"
         },
         "transitive": {
           "en": "He wetted a towel and wiped off the mud.",
-          "ja": "彼はタオルを濡らして泥を拭いてあげた。"
+          "ja": "彼はタオルを濡らして泥を拭いてあげた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はタオルを<ruby>濡<rt>ぬ</rt></ruby>らして<ruby>泥<rt>どろ</rt></ruby>を<ruby>拭<rt>ふ</rt></ruby>いてあげた。"
         }
       },
       {
         "intransitive": {
           "en": "The bread got wet sitting on the counter.",
-          "ja": "パンが台の上で濡れてしまった。"
+          "ja": "パンが台の上で濡れてしまった。",
+          "jaFurigana": "パンが<ruby>台<rt>だい</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>で<ruby>濡<rt>ぬ</rt></ruby>れてしまった。"
         },
         "transitive": {
           "en": "She wetted a cloth to wipe the counter clean.",
-          "ja": "彼女は布を濡らして台を拭いた。"
+          "ja": "彼女は布を濡らして台を拭いた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>布<rt>ぬの</rt></ruby>を<ruby>濡<rt>ぬ</rt></ruby>らして<ruby>台<rt>だい</rt></ruby>を<ruby>拭<rt>ふ</rt></ruby>いた。"
         }
       }
     ]
@@ -2461,31 +2737,37 @@
       {
         "intransitive": {
           "en": "The rice is burning at the bottom.",
-          "ja": "鍋の底のご飯が焦げている。"
+          "ja": "鍋の底のご飯が焦げている。",
+          "jaFurigana": "<ruby>鍋<rt>なべ</rt></ruby>の<ruby>底<rt>そこ</rt></ruby>のご<ruby>飯<rt>はん</rt></ruby>が<ruby>焦<rt>こ</rt></ruby>げている。"
         },
         "transitive": {
           "en": "She turned up the heat and scorched it even more.",
-          "ja": "彼女は火を強くして、さらに焦がしてしまった。"
+          "ja": "彼女は火を強くして、さらに焦がしてしまった。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>火<rt>ひ</rt></ruby>を<ruby>強<rt>つよ</rt></ruby>くして、さらに<ruby>焦<rt>こ</rt></ruby>がしてしまった。"
         }
       },
       {
         "intransitive": {
           "en": "The toast burned while she was on the phone.",
-          "ja": "彼女が電話をしている間に、パンが焦げてしまった。"
+          "ja": "彼女が電話をしている間に、パンが焦げてしまった。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>が<ruby>電<rt>でん</rt></ruby><ruby>話<rt>わ</rt></ruby>をしている<ruby>間<rt>あいだ</rt></ruby>に、パンが<ruby>焦<rt>こ</rt></ruby>げてしまった。"
         },
         "transitive": {
           "en": "She put in a new slice and burned that one too.",
-          "ja": "新しいパンを入れて、それも焦がしてしまった。"
+          "ja": "新しいパンを入れて、それも焦がしてしまった。",
+          "jaFurigana": "<ruby>新<rt>あたら</rt></ruby>しいパンを<ruby>入<rt>い</rt></ruby>れて、それも<ruby>焦<rt>こ</rt></ruby>がしてしまった。"
         }
       },
       {
         "intransitive": {
           "en": "The garlic started to burn in the pan.",
-          "ja": "フライパンのニンニクが焦げ始めた。"
+          "ja": "フライパンのニンニクが焦げ始めた。",
+          "jaFurigana": "フライパンのニンニクが<ruby>焦<rt>こ</rt></ruby>げ<ruby>始<rt>はじ</rt></ruby>めた。"
         },
         "transitive": {
           "en": "He didn't remove it in time and scorched the whole batch.",
-          "ja": "彼は間に合わず、全部焦がしてしまった。"
+          "ja": "彼は間に合わず、全部焦がしてしまった。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>間<rt>ま</rt></ruby>に<ruby>合<rt>あ</rt></ruby>わず、<ruby>全<rt>ぜん</rt></ruby><ruby>部<rt>ぶ</rt></ruby><ruby>焦<rt>こ</rt></ruby>がしてしまった。"
         }
       }
     ]
@@ -2514,31 +2796,37 @@
       {
         "intransitive": {
           "en": "The seedling grew tall in the sun.",
-          "ja": "苗が日差しの中で高く育った。"
+          "ja": "苗が日差しの中で高く育った。",
+          "jaFurigana": "<ruby>苗<rt>なえ</rt></ruby>が<ruby>日<rt>ひ</rt></ruby><ruby>差<rt>ざ</rt></ruby>しの<ruby>中<rt>なか</rt></ruby>で<ruby>高<rt>たか</rt></ruby>く<ruby>育<rt>そだ</rt></ruby>った。"
         },
         "transitive": {
           "en": "She watered the others to help them grow too.",
-          "ja": "彼女は残りの苗も育てるために水をやった。"
+          "ja": "彼女は残りの苗も育てるために水をやった。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りの<ruby>苗<rt>なえ</rt></ruby>も<ruby>育<rt>そだ</rt></ruby>てるために<ruby>水<rt>みず</rt></ruby>をやった。"
         }
       },
       {
         "intransitive": {
           "en": "The stray kitten she took in grew strong on its own.",
-          "ja": "彼女が拾った野良の子猫が自分で元気に育った。"
+          "ja": "彼女が拾った野良の子猫が自分で元気に育った。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>が<ruby>拾<rt>ひろ</rt></ruby>った<ruby>野<rt>の</rt></ruby><ruby>良<rt>ら</rt></ruby>の<ruby>子<rt>こ</rt></ruby><ruby>猫<rt>ねこ</rt></ruby>が<ruby>自<rt>じ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>で<ruby>元<rt>げん</rt></ruby><ruby>気<rt>き</rt></ruby>に<ruby>育<rt>そだ</rt></ruby>った。"
         },
         "transitive": {
           "en": "So she decided to raise the others too.",
-          "ja": "それで彼女は他の子猫たちも育てることにした。"
+          "ja": "それで彼女は他の子猫たちも育てることにした。",
+          "jaFurigana": "それで<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>他<rt>た</rt></ruby>の<ruby>子<rt>こ</rt></ruby><ruby>猫<rt>ねこ</rt></ruby>たちも<ruby>育<rt>そだ</rt></ruby>てることにした。"
         }
       },
       {
         "intransitive": {
           "en": "The child grew up without a father.",
-          "ja": "その子は父親なしで育った。"
+          "ja": "その子は父親なしで育った。",
+          "jaFurigana": "その<ruby>子<rt>こ</rt></ruby>は<ruby>父<rt>ちち</rt></ruby><ruby>親<rt>おや</rt></ruby>なしで<ruby>育<rt>そだ</rt></ruby>った。"
         },
         "transitive": {
           "en": "His uncle raised him like a son instead.",
-          "ja": "代わりに叔父が彼を息子のように育ててくれた。"
+          "ja": "代わりに叔父が彼を息子のように育ててくれた。",
+          "jaFurigana": "<ruby>代<rt>か</rt></ruby>わりに<ruby>叔父<rt>おじ</rt></ruby>が<ruby>彼<rt>かれ</rt></ruby>を<ruby>息子<rt>むすこ</rt></ruby>のように<ruby>育<rt>そだ</rt></ruby>ててくれた。"
         }
       }
     ]
@@ -2567,31 +2855,37 @@
       {
         "intransitive": {
           "en": "The number of errors increased overnight.",
-          "ja": "エラーの数が一晩で増えた。"
+          "ja": "エラーの数が一晩で増えた。",
+          "jaFurigana": "エラーの<ruby>数<rt>かず</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby>で<ruby>増<rt>ふ</rt></ruby>えた。"
         },
         "transitive": {
           "en": "So the team increased the testing hours.",
-          "ja": "それでチームはテストの時間を増やした。"
+          "ja": "それでチームはテストの時間を増やした。",
+          "jaFurigana": "それでチームはテストの<ruby>時<rt>じ</rt></ruby><ruby>間<rt>かん</rt></ruby>を<ruby>増<rt>ふ</rt></ruby>やした。"
         }
       },
       {
         "intransitive": {
           "en": "The weeds in the garden are increasing.",
-          "ja": "庭の雑草が増えている。"
+          "ja": "庭の雑草が増えている。",
+          "jaFurigana": "<ruby>庭<rt>にわ</rt></ruby>の<ruby>雑<rt>ざっ</rt></ruby><ruby>草<rt>そう</rt></ruby>が<ruby>増<rt>ふ</rt></ruby>えている。"
         },
         "transitive": {
           "en": "She wants to increase the flower beds instead.",
-          "ja": "彼女は代わりに花壇を増やしたい。"
+          "ja": "彼女は代わりに花壇を増やしたい。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>代<rt>か</rt></ruby>わりに<ruby>花<rt>か</rt></ruby><ruby>壇<rt>だん</rt></ruby>を<ruby>増<rt>ふ</rt></ruby>やしたい。"
         }
       },
       {
         "intransitive": {
           "en": "The number of customers increased last month.",
-          "ja": "先月、お客さんの数が増えた。"
+          "ja": "先月、お客さんの数が増えた。",
+          "jaFurigana": "<ruby>先<rt>せん</rt></ruby><ruby>月<rt>げつ</rt></ruby>、お<ruby>客<rt>きゃく</rt></ruby>さんの<ruby>数<rt>かず</rt></ruby>が<ruby>増<rt>ふ</rt></ruby>えた。"
         },
         "transitive": {
           "en": "Please increase the staff on weekends.",
-          "ja": "週末はスタッフを増やしてください。"
+          "ja": "週末はスタッフを増やしてください。",
+          "jaFurigana": "<ruby>週<rt>しゅう</rt></ruby><ruby>末<rt>まつ</rt></ruby>はスタッフを<ruby>増<rt>ふ</rt></ruby>やしてください。"
         }
       }
     ]
@@ -2620,31 +2914,37 @@
       {
         "intransitive": {
           "en": "His screen time decreased a lot this week.",
-          "ja": "今週、彼のスクリーンタイムがかなり減った。"
+          "ja": "今週、彼のスクリーンタイムがかなり減った。",
+          "jaFurigana": "<ruby>今<rt>こん</rt></ruby><ruby>週<rt>しゅう</rt></ruby>、<ruby>彼<rt>かれ</rt></ruby>のスクリーンタイムがかなり<ruby>減<rt>へ</rt></ruby>った。"
         },
         "transitive": {
           "en": "His mom had cut his apps in half.",
-          "ja": "お母さんがアプリを半分減らしたのだ。"
+          "ja": "お母さんがアプリを半分減らしたのだ。",
+          "jaFurigana": "お<ruby>母<rt>はは</rt></ruby>さんがアプリを<ruby>半<rt>はん</rt></ruby><ruby>分<rt>ぶん</rt></ruby><ruby>減<rt>へ</rt></ruby>らしたのだ。"
         }
       },
       {
         "intransitive": {
           "en": "The noise in the café is finally reducing.",
-          "ja": "カフェの騒音がやっと減っている。"
+          "ja": "カフェの騒音がやっと減っている。",
+          "jaFurigana": "カフェの<ruby>騒<rt>そう</rt></ruby><ruby>音<rt>おん</rt></ruby>がやっと<ruby>減<rt>へ</rt></ruby>っている。"
         },
         "transitive": {
           "en": "The staff turned down the background music.",
-          "ja": "スタッフがBGMの音量を減らした。"
+          "ja": "スタッフがBGMの音量を減らした。",
+          "jaFurigana": "スタッフがBGMの<ruby>音<rt>おん</rt></ruby><ruby>量<rt>りょう</rt></ruby>を<ruby>減<rt>へ</rt></ruby>らした。"
         }
       },
       {
         "intransitive": {
           "en": "The number of stray cats in the neighborhood has decreased.",
-          "ja": "近所の野良猫の数が減った。"
+          "ja": "近所の野良猫の数が減った。",
+          "jaFurigana": "<ruby>近<rt>きん</rt></ruby><ruby>所<rt>じょ</rt></ruby>の<ruby>野良猫<rt>のらねこ</rt></ruby>の<ruby>数<rt>かず</rt></ruby>が<ruby>減<rt>へ</rt></ruby>った。"
         },
         "transitive": {
           "en": "The city wants to reduce them even further.",
-          "ja": "市はさらに数を減らすつもりだ。"
+          "ja": "市はさらに数を減らすつもりだ。",
+          "jaFurigana": "<ruby>市<rt>し</rt></ruby>はさらに<ruby>数<rt>かず</rt></ruby>を<ruby>減<rt>へ</rt></ruby>らすつもりだ。"
         }
       }
     ]
@@ -2673,31 +2973,37 @@
       {
         "intransitive": {
           "en": "The dough stretched thin in the heat.",
-          "ja": "生地が熱で薄く伸びた。"
+          "ja": "生地が熱で薄く伸びた。",
+          "jaFurigana": "<ruby>生<rt>き</rt></ruby><ruby>地<rt>じ</rt></ruby>が<ruby>熱<rt>ねつ</rt></ruby>で<ruby>薄<rt>うす</rt></ruby>く<ruby>伸<rt>の</rt></ruby>びた。"
         },
         "transitive": {
           "en": "She stretched the rest of it even thinner.",
-          "ja": "彼女は残りの生地をさらに薄く伸ばした。"
+          "ja": "彼女は残りの生地をさらに薄く伸ばした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りの<ruby>生<rt>き</rt></ruby><ruby>地<rt>じ</rt></ruby>をさらに<ruby>薄<rt>うす</rt></ruby>く<ruby>伸<rt>の</rt></ruby>ばした。"
         }
       },
       {
         "intransitive": {
           "en": "The shadows grew long across the yard.",
-          "ja": "影が庭に長く伸びている。"
+          "ja": "影が庭に長く伸びている。",
+          "jaFurigana": "<ruby>影<rt>かげ</rt></ruby>が<ruby>庭<rt>にわ</rt></ruby>に<ruby>長<rt>なが</rt></ruby>く<ruby>伸<rt>の</rt></ruby>びている。"
         },
         "transitive": {
           "en": "He stretched his arm out to touch the fence.",
-          "ja": "彼はフェンスに触ろうと腕を伸ばした。"
+          "ja": "彼はフェンスに触ろうと腕を伸ばした。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はフェンスに<ruby>触<rt>さわ</rt></ruby>ろうと<ruby>腕<rt>うで</rt></ruby>を<ruby>伸<rt>の</rt></ruby>ばした。"
         }
       },
       {
         "intransitive": {
           "en": "The tree branch grew toward the window.",
-          "ja": "木の枝が窓の方へ伸びてきた。"
+          "ja": "木の枝が窓の方へ伸びてきた。",
+          "jaFurigana": "<ruby>木<rt>き</rt></ruby>の<ruby>枝<rt>えだ</rt></ruby>が<ruby>窓<rt>まど</rt></ruby>の<ruby>方<rt>ほう</rt></ruby>へ<ruby>伸<rt>の</rt></ruby>びてきた。"
         },
         "transitive": {
           "en": "Dad reached out to the window and grabbed it.",
-          "ja": "お父さんは窓まで手を伸ばして枝をつかんだ。"
+          "ja": "お父さんは窓まで手を伸ばして枝をつかんだ。",
+          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんは<ruby>窓<rt>まど</rt></ruby>まで<ruby>手<rt>て</rt></ruby>を<ruby>伸<rt>の</rt></ruby>ばして<ruby>枝<rt>えだ</rt></ruby>をつかんだ。"
         }
       }
     ]
@@ -2726,31 +3032,37 @@
       {
         "intransitive": {
           "en": "His broken arm finally healed, thanks to the doctor.",
-          "ja": "医者のおかげで、彼の折れた腕がやっと治った。"
+          "ja": "医者のおかげで、彼の折れた腕がやっと治った。",
+          "jaFurigana": "<ruby>医<rt>い</rt></ruby><ruby>者<rt>しゃ</rt></ruby>のおかげで、<ruby>彼<rt>かれ</rt></ruby>の<ruby>折<rt>お</rt></ruby>れた<ruby>腕<rt>うで</rt></ruby>がやっと<ruby>治<rt>なお</rt></ruby>った。"
         },
         "transitive": {
           "en": "That doctor treated the other patient's arm too.",
-          "ja": "その医者は別の患者の腕も治した。"
+          "ja": "その医者は別の患者の腕も治した。",
+          "jaFurigana": "その<ruby>医<rt>い</rt></ruby><ruby>者<rt>しゃ</rt></ruby>は<ruby>別<rt>べつ</rt></ruby>の<ruby>患<rt>かん</rt></ruby><ruby>者<rt>じゃ</rt></ruby>の<ruby>腕<rt>うで</rt></ruby>も<ruby>治<rt>なお</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "Her fever went down overnight.",
-          "ja": "彼女の熱が一晩で治った。"
+          "ja": "彼女の熱が一晩で治った。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>の<ruby>熱<rt>ねつ</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby>で<ruby>治<rt>なお</rt></ruby>った。"
         },
         "transitive": {
           "en": "Now she wants to cure her sister's cold.",
-          "ja": "今度は妹の風邪を治したいと思っている。"
+          "ja": "今度は妹の風邪を治したいと思っている。",
+          "jaFurigana": "<ruby>今<rt>こん</rt></ruby><ruby>度<rt>ど</rt></ruby>は<ruby>妹<rt>いもうと</rt></ruby>の<ruby>風邪<rt>かぜ</rt></ruby>を<ruby>治<rt>なお</rt></ruby>したいと<ruby>思<rt>おも</rt></ruby>っている。"
         }
       },
       {
         "intransitive": {
           "en": "The cut on his hand is healing.",
-          "ja": "彼の手の傷が治っている。"
+          "ja": "彼の手の傷が治っている。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>の<ruby>手<rt>て</rt></ruby>の<ruby>傷<rt>きず</rt></ruby>が<ruby>治<rt>なお</rt></ruby>っている。"
         },
         "transitive": {
           "en": "Please treat the wound on his foot too.",
-          "ja": "彼の足の傷も治してください。"
+          "ja": "彼の足の傷も治してください。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>の<ruby>足<rt>あし</rt></ruby>の<ruby>傷<rt>きず</rt></ruby>も<ruby>治<rt>なお</rt></ruby>してください。"
         }
       }
     ]
@@ -2779,31 +3091,37 @@
       {
         "intransitive": {
           "en": "The river water flowed gently.",
-          "ja": "川の水がゆっくり流れていた。"
+          "ja": "川の水がゆっくり流れていた。",
+          "jaFurigana": "<ruby>川<rt>かわ</rt></ruby>の<ruby>水<rt>みず</rt></ruby>がゆっくり<ruby>流<rt>なが</rt></ruby>れていた。"
         },
         "transitive": {
           "en": "She let flower petals drift down the current.",
-          "ja": "彼女は花びらを水に流した。"
+          "ja": "彼女は花びらを水に流した。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>花<rt>はな</rt></ruby>びらを<ruby>水<rt>みず</rt></ruby>に<ruby>流<rt>なが</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "Blood flowed from the cut on his hand.",
-          "ja": "彼の手の傷から血が流れた。"
+          "ja": "彼の手の傷から血が流れた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>の<ruby>手<rt>て</rt></ruby>の<ruby>傷<rt>きず</rt></ruby>から<ruby>血<rt>ち</rt></ruby>が<ruby>流<rt>なが</rt></ruby>れた。"
         },
         "transitive": {
           "en": "She turned on the tap and ran water over the wound.",
-          "ja": "彼女は蛇口をひねって、傷口に水を流した。"
+          "ja": "彼女は蛇口をひねって、傷口に水を流した。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>蛇<rt>じゃ</rt></ruby><ruby>口<rt>ぐち</rt></ruby>をひねって、<ruby>傷<rt>きず</rt></ruby><ruby>口<rt>ぐち</rt></ruby>に<ruby>水<rt>みず</rt></ruby>を<ruby>流<rt>なが</rt></ruby>した。"
         }
       },
       {
         "intransitive": {
           "en": "A leaf drifted slowly down the stream.",
-          "ja": "葉っぱが小川をゆっくり流れている。"
+          "ja": "葉っぱが小川をゆっくり流れている。",
+          "jaFurigana": "<ruby>葉<rt>は</rt></ruby>っぱが<ruby>小<rt>お</rt></ruby><ruby>川<rt>がわ</rt></ruby>をゆっくり<ruby>流<rt>なが</rt></ruby>れている。"
         },
         "transitive": {
           "en": "The kids floated paper boats down it too.",
-          "ja": "子どもたちも紙の舟を流した。"
+          "ja": "子どもたちも紙の舟を流した。",
+          "jaFurigana": "<ruby>子<rt>こ</rt></ruby>どもたちも<ruby>紙<rt>かみ</rt></ruby>の<ruby>舟<rt>ふね</rt></ruby>を<ruby>流<rt>なが</rt></ruby>した。"
         }
       }
     ]
@@ -2832,31 +3150,37 @@
       {
         "intransitive": {
           "en": "The chopstick broke during dinner.",
-          "ja": "夕食中に箸が折れた。"
+          "ja": "夕食中に箸が折れた。",
+          "jaFurigana": "<ruby>夕<rt>ゆう</rt></ruby><ruby>食<rt>しょく</rt></ruby><ruby>中<rt>ちゅう</rt></ruby>に<ruby>箸<rt>はし</rt></ruby>が<ruby>折<rt>お</rt></ruby>れた。"
         },
         "transitive": {
           "en": "He broke the other one to match.",
-          "ja": "彼はもう一本も同じ長さに折った。"
+          "ja": "彼はもう一本も同じ長さに折った。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>はもう<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby>も<ruby>同<rt>おな</rt></ruby>じ<ruby>長<rt>なが</rt></ruby>さに<ruby>折<rt>お</rt></ruby>った。"
         }
       },
       {
         "intransitive": {
           "en": "A tree branch is breaking in the storm.",
-          "ja": "嵐で木の枝が折れている。"
+          "ja": "嵐で木の枝が折れている。",
+          "jaFurigana": "<ruby>嵐<rt>あらし</rt></ruby>で<ruby>木<rt>き</rt></ruby>の<ruby>枝<rt>えだ</rt></ruby>が<ruby>折<rt>お</rt></ruby>れている。"
         },
         "transitive": {
           "en": "The firefighter broke the branches blocking the road.",
-          "ja": "消防士が道を塞いでいる枝を折った。"
+          "ja": "消防士が道を塞いでいる枝を折った。",
+          "jaFurigana": "<ruby>消<rt>しょう</rt></ruby><ruby>防<rt>ぼう</rt></ruby><ruby>士<rt>し</rt></ruby>が<ruby>道<rt>みち</rt></ruby>を<ruby>塞<rt>ふさ</rt></ruby>いでいる<ruby>枝<rt>えだ</rt></ruby>を<ruby>折<rt>お</rt></ruby>った。"
         }
       },
       {
         "intransitive": {
           "en": "The crane's leg broke in the trap.",
-          "ja": "罠で鶴の足が折れた。"
+          "ja": "罠で鶴の足が折れた。",
+          "jaFurigana": "<ruby>罠<rt>わな</rt></ruby>で<ruby>鶴<rt>つる</rt></ruby>の<ruby>足<rt>あし</rt></ruby>が<ruby>折<rt>お</rt></ruby>れた。"
         },
         "transitive": {
           "en": "The vet folded gauze to the right length.",
-          "ja": "獣医がガーゼを適切な長さに折った。"
+          "ja": "獣医がガーゼを適切な長さに折った。",
+          "jaFurigana": "<ruby>獣<rt>じゅう</rt></ruby><ruby>医<rt>い</rt></ruby>がガーゼを<ruby>適<rt>てき</rt></ruby><ruby>切<rt>せつ</rt></ruby>な<ruby>長<rt>なが</rt></ruby>さに<ruby>折<rt>お</rt></ruby>った。"
         }
       }
     ]
@@ -2885,31 +3209,37 @@
       {
         "intransitive": {
           "en": "An old nail came loose from the board.",
-          "ja": "古い釘が板から一本抜けた。"
+          "ja": "古い釘が板から一本抜けた。",
+          "jaFurigana": "<ruby>古<rt>ふる</rt></ruby>い<ruby>釘<rt>くぎ</rt></ruby>が<ruby>板<rt>いた</rt></ruby>から<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>抜<rt>ぬ</rt></ruby>けた。"
         },
         "transitive": {
           "en": "She pulled out all the others too.",
-          "ja": "彼女は残りの釘も全部抜いた。"
+          "ja": "彼女は残りの釘も全部抜いた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>残<rt>のこ</rt></ruby>りの<ruby>釘<rt>くぎ</rt></ruby>も<ruby>全<rt>ぜん</rt></ruby><ruby>部<rt>ぶ</rt></ruby><ruby>抜<rt>ぬ</rt></ruby>いた。"
         }
       },
       {
         "intransitive": {
           "en": "The cork is coming out slowly.",
-          "ja": "コルクがゆっくり抜けている。"
+          "ja": "コルクがゆっくり抜けている。",
+          "jaFurigana": "コルクがゆっくり<ruby>抜<rt>ぬ</rt></ruby>けている。"
         },
         "transitive": {
           "en": "He pulled it out the rest of the way.",
-          "ja": "彼がコルクを最後まで抜いた。"
+          "ja": "彼がコルクを最後まで抜いた。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>がコルクを<ruby>最<rt>さい</rt></ruby><ruby>後<rt>ご</rt></ruby>まで<ruby>抜<rt>ぬ</rt></ruby>いた。"
         }
       },
       {
         "intransitive": {
           "en": "One hair came out in her hand.",
-          "ja": "髪が一本手に抜けた。"
+          "ja": "髪が一本手に抜けた。",
+          "jaFurigana": "<ruby>髪<rt>かみ</rt></ruby>が<ruby>一<rt>いち</rt></ruby><ruby>本<rt>ぽん</rt></ruby><ruby>手<rt>て</rt></ruby>に<ruby>抜<rt>ぬ</rt></ruby>けた。"
         },
         "transitive": {
           "en": "The stylist carefully pulled out a few more.",
-          "ja": "美容師がさらに何本か丁寧に抜いた。"
+          "ja": "美容師がさらに何本か丁寧に抜いた。",
+          "jaFurigana": "<ruby>美<rt>び</rt></ruby><ruby>容<rt>よう</rt></ruby><ruby>師<rt>し</rt></ruby>がさらに<ruby>何<rt>なん</rt></ruby><ruby>本<rt>ぽん</rt></ruby>か<ruby>丁<rt>てい</rt></ruby><ruby>寧<rt>ねい</rt></ruby>に<ruby>抜<rt>ぬ</rt></ruby>いた。"
         }
       }
     ]
@@ -2938,31 +3268,37 @@
       {
         "intransitive": {
           "en": "A kite flew high above the park.",
-          "ja": "凧が公園の上空を飛んでいた。"
+          "ja": "凧が公園の上空を飛んでいた。",
+          "jaFurigana": "<ruby>凧<rt>たこ</rt></ruby>が<ruby>公<rt>こう</rt></ruby><ruby>園<rt>えん</rt></ruby>の<ruby>上<rt>じょう</rt></ruby><ruby>空<rt>くう</rt></ruby>を<ruby>飛<rt>と</rt></ruby>んでいた。"
         },
         "transitive": {
           "en": "The boy ran over and flew his own kite too.",
-          "ja": "男の子が走ってきて、自分の凧も飛ばした。"
+          "ja": "男の子が走ってきて、自分の凧も飛ばした。",
+          "jaFurigana": "<ruby>男<rt>おとこ</rt></ruby>の<ruby>子<rt>こ</rt></ruby>が<ruby>走<rt>はし</rt></ruby>ってきて、<ruby>自<rt>じ</rt></ruby><ruby>分<rt>ぶん</rt></ruby>の<ruby>凧<rt>たこ</rt></ruby>も<ruby>飛<rt>と</rt></ruby>ばした。"
         }
       },
       {
         "intransitive": {
           "en": "A leaf flew off the tree in the wind.",
-          "ja": "葉っぱが風で木から飛んだ。"
+          "ja": "葉っぱが風で木から飛んだ。",
+          "jaFurigana": "<ruby>葉<rt>は</rt></ruby>っぱが<ruby>風<rt>かぜ</rt></ruby>で<ruby>木<rt>き</rt></ruby>から<ruby>飛<rt>と</rt></ruby>んだ。"
         },
         "transitive": {
           "en": "She picked up more leaves and tossed them into the air.",
-          "ja": "彼女は葉っぱをもっと拾って、空に飛ばした。"
+          "ja": "彼女は葉っぱをもっと拾って、空に飛ばした。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>葉<rt>は</rt></ruby>っぱをもっと<ruby>拾<rt>ひろ</rt></ruby>って、<ruby>空<rt>そら</rt></ruby>に<ruby>飛<rt>と</rt></ruby>ばした。"
         }
       },
       {
         "intransitive": {
           "en": "A paper airplane flew across the classroom.",
-          "ja": "紙飛行機が教室を飛んだ。"
+          "ja": "紙飛行機が教室を飛んだ。",
+          "jaFurigana": "<ruby>紙<rt>かみ</rt></ruby><ruby>飛<rt>ひ</rt></ruby><ruby>行<rt>こう</rt></ruby><ruby>機<rt>き</rt></ruby>が<ruby>教<rt>きょう</rt></ruby><ruby>室<rt>しつ</rt></ruby>を<ruby>飛<rt>と</rt></ruby>んだ。"
         },
         "transitive": {
           "en": "The boy sent another one flying out the window.",
-          "ja": "男の子がもう一機を窓の外に飛ばした。"
+          "ja": "男の子がもう一機を窓の外に飛ばした。",
+          "jaFurigana": "<ruby>男<rt>おとこ</rt></ruby>の<ruby>子<rt>こ</rt></ruby>がもう<ruby>一<rt>いち</rt></ruby><ruby>機<rt>き</rt></ruby>を<ruby>窓<rt>まど</rt></ruby>の<ruby>外<rt>そと</rt></ruby>に<ruby>飛<rt>と</rt></ruby>ばした。"
         }
       }
     ]
@@ -2991,31 +3327,37 @@
       {
         "intransitive": {
           "en": "Her hair is finally in order.",
-          "ja": "彼女の髪がようやく整っている。"
+          "ja": "彼女の髪がようやく整っている。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>の<ruby>髪<rt>かみ</rt></ruby>がようやく<ruby>整<rt>ととの</rt></ruby>っている。"
         },
         "transitive": {
           "en": "She quickly arranged her collar too.",
-          "ja": "彼女はすぐに襟元も整えた。"
+          "ja": "彼女はすぐに襟元も整えた。",
+          "jaFurigana": "<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>はすぐに<ruby>襟<rt>えり</rt></ruby><ruby>元<rt>もと</rt></ruby>も<ruby>整<rt>ととの</rt></ruby>えた。"
         }
       },
       {
         "intransitive": {
           "en": "The flower arrangement came together nicely.",
-          "ja": "生け花の形が整った。"
+          "ja": "生け花の形が整った。",
+          "jaFurigana": "<ruby>生<rt>い</rt></ruby>け<ruby>花<rt>ばな</rt></ruby>の<ruby>形<rt>かたち</rt></ruby>が<ruby>整<rt>ととの</rt></ruby>った。"
         },
         "transitive": {
           "en": "The teacher arranged the remaining stems carefully.",
-          "ja": "先生が残りの茎を丁寧に整えた。"
+          "ja": "先生が残りの茎を丁寧に整えた。",
+          "jaFurigana": "<ruby>先<rt>せん</rt></ruby><ruby>生<rt>せい</rt></ruby>が<ruby>残<rt>のこ</rt></ruby>りの<ruby>茎<rt>くき</rt></ruby>を<ruby>丁<rt>てい</rt></ruby><ruby>寧<rt>ねい</rt></ruby>に<ruby>整<rt>ととの</rt></ruby>えた。"
         }
       },
       {
         "intransitive": {
           "en": "The campsite is now in good shape.",
-          "ja": "キャンプサイトが整っている。"
+          "ja": "キャンプサイトが整っている。",
+          "jaFurigana": "キャンプサイトが<ruby>整<rt>ととの</rt></ruby>っている。"
         },
         "transitive": {
           "en": "Please tidy up the sleeping bags too.",
-          "ja": "寝袋も整えてください。"
+          "ja": "寝袋も整えてください。",
+          "jaFurigana": "<ruby>寝<rt>ね</rt></ruby><ruby>袋<rt>ぶくろ</rt></ruby>も<ruby>整<rt>ととの</rt></ruby>えてください。"
         }
       }
     ]
@@ -3044,31 +3386,37 @@
       {
         "intransitive": {
           "en": "Rainwater collected in the old bucket.",
-          "ja": "古いバケツに雨水がたまった。"
+          "ja": "古いバケツに雨水がたまった。",
+          "jaFurigana": "<ruby>古<rt>ふる</rt></ruby>いバケツに<ruby>雨<rt>あま</rt></ruby><ruby>水<rt>みず</rt></ruby>がたまった。"
         },
         "transitive": {
           "en": "So she decided to collect more for the garden.",
-          "ja": "だから彼女は庭のためにもっとためることにした。"
+          "ja": "だから彼女は庭のためにもっとためることにした。",
+          "jaFurigana": "だから<ruby>彼<rt>かの</rt></ruby><ruby>女<rt>じょ</rt></ruby>は<ruby>庭<rt>にわ</rt></ruby>のためにもっとためることにした。"
         }
       },
       {
         "intransitive": {
           "en": "Dust has built up on the bookshelf.",
-          "ja": "本棚にほこりがたまっている。"
+          "ja": "本棚にほこりがたまっている。",
+          "jaFurigana": "<ruby>本<rt>ほん</rt></ruby><ruby>棚<rt>だな</rt></ruby>にほこりがたまっている。"
         },
         "transitive": {
           "en": "He's been saving his energy to clean it all at once.",
-          "ja": "彼は一気に掃除するために体力をためている。"
+          "ja": "彼は一気に掃除するために体力をためている。",
+          "jaFurigana": "<ruby>彼<rt>かれ</rt></ruby>は<ruby>一<rt>いっ</rt></ruby><ruby>気<rt>き</rt></ruby>に<ruby>掃<rt>そう</rt></ruby><ruby>除<rt>じ</rt></ruby>するために<ruby>体<rt>たい</rt></ruby><ruby>力<rt>りょく</rt></ruby>をためている。"
         }
       },
       {
         "intransitive": {
           "en": "Stress piled up from the long week.",
-          "ja": "長い一週間でストレスがたまった。"
+          "ja": "長い一週間でストレスがたまった。",
+          "jaFurigana": "<ruby>長<rt>なが</rt></ruby>い<ruby>一<rt>いち</rt></ruby><ruby>週<rt>しゅう</rt></ruby><ruby>間<rt>かん</rt></ruby>でストレスがたまった。"
         },
         "transitive": {
           "en": "He's saving up money for a hot spring trip.",
-          "ja": "温泉旅行のためにお金をためている。"
+          "ja": "温泉旅行のためにお金をためている。",
+          "jaFurigana": "<ruby>温<rt>おん</rt></ruby><ruby>泉<rt>せん</rt></ruby><ruby>旅<rt>りょ</rt></ruby><ruby>行<rt>こう</rt></ruby>のためにお<ruby>金<rt>かね</rt></ruby>をためている。"
         }
       }
     ]
