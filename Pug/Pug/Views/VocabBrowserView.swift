@@ -118,7 +118,7 @@ struct VocabBrowserView: View {
                 TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict, client: session.client)
             }
 
-            .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showSettings) { SettingsView(db: db) }
             .navigationDestination(isPresented: $showQuiz) {
                 QuizView(session: session, corpus: corpus, pairCorpus: pairCorpus, jmdict: jmdict)
             }

@@ -10,7 +10,6 @@ struct QuizView: View {
     let corpus: VocabCorpus
     let pairCorpus: TransitivePairCorpus
     let jmdict: any DatabaseReader
-    @State private var showDebug = false
     @State private var showRescaleSheet = false
     @State private var showDetailsSheet = false
     @State private var showSettings = false
@@ -47,7 +46,6 @@ struct QuizView: View {
                         if session.canStartNewSession {
                             Button("New Session") { session.refreshSession() }
                         }
-                        Button("Debug info") { showDebug = true }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
@@ -59,10 +57,7 @@ struct QuizView: View {
                 default: break
                 }
             }
-            .sheet(isPresented: $showDebug) {
-                DebugSheet(db: session.db)
-            }
-            .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showSettings) { SettingsView(db: session.db) }
             .sheet(isPresented: $showRescaleSheet) {
                 RescaleSheet(currentHalflife: session.gradedHalflife ?? 24, reviewCount: session.gradedReviewCount) { hours in
                     Task { await session.rescaleCurrentFacet(hours: hours) }

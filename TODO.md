@@ -49,4 +49,4 @@ A real multi-user system needs a proper preferences store
 - [ ] should grammar examples have a different alternative to `<details>`?
 - [x] fast swipe -> "learn" should be fast, just learn reading. Replace "known" with "learn reading+Kanji". Default to the first furigana. Don't bring up the details view. Same concept with grammar: swipe-learn should be fast.
 - [ ] translation table and display
-- [ ] move debug/share sqlite to settings
+- [x] move debug/share sqlite to settings

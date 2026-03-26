@@ -4,7 +4,9 @@
 import SwiftUI
 
 struct SettingsView: View {
+    var db: QuizDB? = nil
     @Environment(UserPreferences.self) private var preferences
+    @State private var shareURL: URL? = nil
 
     var body: some View {
         @Bindable var prefs = preferences
@@ -35,9 +37,29 @@ struct SettingsView: View {
                 } footer: {
                     Text(preferences.localModel.description)
                 }
+
+                if db != nil {
+                    Section("Export") {
+                        if let url = shareURL {
+                            ShareLink(item: url) {
+                                Label("Share quiz.sqlite via AirDrop / Files", systemImage: "square.and.arrow.up")
+                            }
+                        } else {
+                            Label("Preparing database…", systemImage: "hourglass")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+        }
+        .task {
+            guard let db else { return }
+            try? await db.checkpointWAL()
+            shareURL = try? FileManager.default.url(
+                for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+                .appendingPathComponent("quiz.sqlite")
         }
     }
 }

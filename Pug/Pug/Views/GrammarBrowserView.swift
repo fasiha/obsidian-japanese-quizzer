@@ -114,7 +114,7 @@ struct GrammarBrowserView: View {
                     for id in allIds { enrollmentStatus[id] = nowEnrolled }
                 }
             }
-            .sheet(isPresented: $showSettings) { SettingsView() }
+            .sheet(isPresented: $showSettings) { SettingsView(db: db) }
             .navigationDestination(isPresented: $showQuiz) {
                 GrammarQuizView(session: grammarSession, manifest: manifest)
             }
