@@ -226,7 +226,17 @@ struct GrammarDetailSheet: View {
                             ForEach(refs.indices, id: \.self) { i in
                                 let ref = refs[i]
                                 if let context = ref.context {
-                                    SentenceFuriganaView(htmlRuby: context)
+                                    if let entry = corpusEntries.first(where: { $0.title == source }) {
+                                        Button {
+                                            readerTarget = ReaderTarget(entry: entry, lineNumber: ref.line)
+                                        } label: {
+                                            SentenceFuriganaView(htmlRuby: context)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                        .buttonStyle(.plain)
+                                    } else {
+                                        SentenceFuriganaView(htmlRuby: context)
+                                    }
                                 }
                                 if let narration = ref.narration {
                                     Text(narration)

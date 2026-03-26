@@ -40,16 +40,34 @@ struct DocumentReaderView: View {
     @State private var vocabMap: [Int: [String]] = [:]
     @State private var grammarMap: [Int: [String]] = [:]
     @State private var chipFurigana: [String: [FuriganaSegment]] = [:]  // wordId → segments
+    @State private var highlightedLine: Int? = nil
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(renderedLines, id: \.lineNumber) { line in
-                    lineView(line)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(renderedLines, id: \.lineNumber) { line in
+                        lineView(line)
+                            .id(line.lineNumber)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+            }
+            .onChange(of: renderedLines.isEmpty) { isEmpty in
+                guard !isEmpty, let target = scrollToLine else { return }
+                let animate = !UIAccessibility.isReduceMotionEnabled
+                if animate {
+                    withAnimation(.easeInOut) { proxy.scrollTo(target, anchor: .center) }
+                } else {
+                    proxy.scrollTo(target, anchor: .center)
+                }
+                highlightedLine = target
+                Task {
+                    try? await Task.sleep(for: .seconds(1.5))
+                    highlightedLine = nil
                 }
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
         }
         .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
         .navigationBarTitleDisplayMode(.inline)
@@ -101,6 +119,11 @@ struct DocumentReaderView: View {
         VStack(alignment: .leading, spacing: 2) {
             MarkdownLineView(text: line.text)
                 .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    (highlightedLine == line.lineNumber ? Color.yellow.opacity(0.35) : Color.clear)
+                        .animation(.easeOut(duration: 0.6), value: highlightedLine)
+                )
 
             if hasAnnotations {
                 let isExpanded = Binding(
