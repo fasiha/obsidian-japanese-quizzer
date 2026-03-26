@@ -3,9 +3,8 @@
 //
 // Row tap: opens WordDetailSheet for full detail + actions.
 // Swipe actions (shortcuts for common actions without opening the sheet):
-//   Not yet learned: "Learn" (green) | "Know it" (blue)
-//   Learning:        "Know it" (blue) | "Undo" (orange)
-//   Known:           "Undo" (orange)
+//   Not yet learned: "Learn word" (green) | "Learn kanji" (purple, only if word has kanji forms)
+//   Learning / Known: no swipe — use WordDetailSheet for deliberate changes
 //
 // Toolbar:
 //   Leading: filter picker (Not yet learned / Learning / Learned / All)
@@ -106,7 +105,7 @@ struct VocabBrowserView: View {
                             db: db,
                             client: session.client,
                             lastSyncedAt: corpus.lastSyncedAt,
-                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict); try? await CorpusSync.download() } }
+                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict); _ = try? await CorpusSync.download() } }
                         )
                     }
                 }
@@ -227,86 +226,43 @@ struct VocabBrowserView: View {
 
     @ViewBuilder
     private func pairSwipeButtons(for item: TransitivePairItem) -> some View {
-        if item.pair.isAmbiguous {
-            // No actions for ambiguous pairs
-        } else {
-            switch item.state {
-            case .unknown:
-                Button {
-                    Task { await pairCorpus.setPairLearning(pairId: item.id, db: db) }
-                } label: {
-                    Label("Learn", systemImage: "plus.circle.fill")
-                }
-                .tint(.green)
-                Button {
-                    Task { await pairCorpus.setPairKnown(pairId: item.id, db: db) }
-                } label: {
-                    Label("Know it", systemImage: "checkmark.circle")
-                }
-                .tint(.blue)
-            case .learning:
-                Button {
-                    Task { await pairCorpus.setPairKnown(pairId: item.id, db: db) }
-                } label: {
-                    Label("Know it", systemImage: "checkmark.circle")
-                }
-                .tint(.blue)
-                Button(role: .destructive) {
-                    Task { await pairCorpus.clearPair(pairId: item.id, db: db) }
-                } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                }
-                .tint(.orange)
-            case .known:
-                Button(role: .destructive) {
-                    Task { await pairCorpus.clearPair(pairId: item.id, db: db) }
-                } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward")
-                }
-                .tint(.orange)
+        if !item.pair.isAmbiguous && item.state == .unknown {
+            Button {
+                Task { await pairCorpus.setPairLearning(pairId: item.id, db: db) }
+            } label: {
+                Label("Learn", systemImage: "plus.circle.fill")
             }
+            .tint(.green)
         }
     }
 
     @ViewBuilder
     private func swipeButtons(for item: VocabItem) -> some View {
-        // Quick actions: "Learn" opens detail sheet (furigana picker), "Know it" marks all known
+        // Only show swipe actions for fully unknown words.
+        // Learning / known words require deliberate action via WordDetailSheet.
         if item.readingState == .unknown && item.kanjiState == .unknown {
-            // Fully unknown
+            // "Learn word" is declared first so it appears closest to the swipe edge.
             Button {
-                selectedItem = item   // open sheet for furigana picker
+                Task { await corpus.setReadingState(.learning, wordId: item.id, db: db) }
             } label: {
-                Label("Learn", systemImage: "plus.circle.fill")
+                Label("Learn word", systemImage: "plus.circle.fill")
             }
             .tint(.green)
-            Button {
-                Task { await corpus.markAllKnown(wordId: item.id, db: db) }
-            } label: {
-                Label("Know it", systemImage: "checkmark.circle")
+            // "Learn kanji" only makes sense when the word has actual kanji forms.
+            let firstForm = item.writtenForms.flatMap(\.forms).first
+            if !item.isKanaOnly, let form = firstForm, !form.furigana.extractKanji().isEmpty {
+                Button {
+                    Task {
+                        // setReadingState ensures commitment (furigana) exists first.
+                        await corpus.setReadingState(.learning, wordId: item.id, db: db)
+                        await corpus.setKanjiState(.learning, wordId: item.id,
+                                                   kanjiChars: form.furigana.extractKanji(), db: db)
+                    }
+                } label: {
+                    Label("Learn kanji", systemImage: "character.book.closed.fill")
+                }
+                .tint(.purple)
             }
-            .tint(.blue)
-        } else if item.readingState == .learning || item.kanjiState == .learning {
-            // At least one facet learning
-            Button {
-                Task { await corpus.markAllKnown(wordId: item.id, db: db) }
-            } label: {
-                Label("Know it", systemImage: "checkmark.circle")
-            }
-            .tint(.blue)
-            Button(role: .destructive) {
-                Task { await corpus.clearAll(wordId: item.id, db: db) }
-            } label: {
-                Label("Undo", systemImage: "arrow.uturn.backward")
-            }
-            .tint(.orange)
-        } else {
-            // All known (or some mix of known/unknown with none learning)
-            Button {
-                Task { await corpus.clearAll(wordId: item.id, db: db) }
-            } label: {
-                Label("Undo", systemImage: "arrow.uturn.backward")
-            }
-            .tint(.orange)
         }
     }
 

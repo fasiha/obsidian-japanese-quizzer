@@ -73,6 +73,25 @@ struct FuriganaSegment: Codable, Equatable {
     let rt: String?
 }
 
+extension Array where Element == FuriganaSegment {
+    /// Returns the distinct kanji characters (CJK Unified Ideographs) from segments that have a
+    /// reading annotation (rt != nil). Order is preserved; duplicates are removed.
+    func extractKanji() -> [String] {
+        var result: [String] = []
+        for seg in self where seg.rt != nil {
+            for ch in seg.ruby.unicodeScalars {
+                if ch.value >= 0x4E00 && ch.value <= 0x9FFF ||
+                   ch.value >= 0x3400 && ch.value <= 0x4DBF ||
+                   ch.value >= 0xF900 && ch.value <= 0xFAFF {
+                    let s = String(ch)
+                    if !result.contains(s) { result.append(s) }
+                }
+            }
+        }
+        return result
+    }
+}
+
 // MARK: - Sync helpers
 
 enum VocabSync {

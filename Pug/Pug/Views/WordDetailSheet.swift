@@ -602,7 +602,7 @@ struct WordDetailSheet: View {
             // If kanji is being learned, reset kanji_chars to all kanji in the new form
             // so we don't inherit stale chars from the previously committed form.
             if item.kanjiState == .learning {
-                let newKanji = extractKanjiFrom(form.furigana)
+                let newKanji = form.furigana.extractKanji()
                 await corpus.setKanjiState(.learning, wordId: item.id, kanjiChars: newKanji, db: db)
                 await loadEbisuModels()
             }
@@ -648,22 +648,7 @@ struct WordDetailSheet: View {
               let data = json.data(using: .utf8),
               let segments = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
         else { return [] }
-        return extractKanjiFrom(segments)
-    }
-
-    private func extractKanjiFrom(_ segments: [FuriganaSegment]) -> [String] {
-        var result: [String] = []
-        for seg in segments where seg.rt != nil {
-            for ch in seg.ruby.unicodeScalars {
-                if ch.value >= 0x4E00 && ch.value <= 0x9FFF ||
-                   ch.value >= 0x3400 && ch.value <= 0x4DBF ||
-                   ch.value >= 0xF900 && ch.value <= 0xFAFF {
-                    let s = String(ch)
-                    if !result.contains(s) { result.append(s) }
-                }
-            }
-        }
-        return result
+        return segments.extractKanji()
     }
 
     private func markAllKnown() {

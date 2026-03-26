@@ -2,6 +2,11 @@
 // Grammar topic browser: filterable list with enrollment toggle.
 // Housed in the Grammar tab alongside GrammarQuizView.
 //
+// Row tap: opens GrammarDetailSheet for full detail + enrollment toggle.
+// Swipe actions:
+//   Not yet learning: "Learn" (green) — enroll without opening the sheet
+//   Learning: no swipe — use GrammarDetailSheet for deliberate changes
+//
 // Toolbar:
 //   Leading: filter menu (Not yet learning / Learning / All)
 //   Trailing: quiz button (when enrolled topics exist) + ··· menu (Settings, Re-download, last synced)
@@ -127,6 +132,9 @@ struct GrammarBrowserView: View {
                 topicRow(topic)
             }
             .buttonStyle(.plain)
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                grammarSwipeButtons(for: topic)
+            }
         }
         .listStyle(.plain)
         .overlay {
@@ -189,6 +197,31 @@ struct GrammarBrowserView: View {
         }
         .contentShape(Rectangle())
         .padding(.vertical, 2)
+    }
+
+    // MARK: - Swipe actions
+
+    @ViewBuilder
+    private func grammarSwipeButtons(for topic: GrammarTopic) -> some View {
+        if enrollmentStatus[topic.prefixedId] != true {
+            Button {
+                Task { await enrollTopic(topic) }
+            } label: {
+                Label("Learn", systemImage: "plus.circle.fill")
+            }
+            .tint(.green)
+        }
+    }
+
+    private func enrollTopic(_ topic: GrammarTopic) async {
+        let groupIds = topic.equivalenceGroup ?? []
+        do {
+            try await db.enrollGrammarTopic(topicId: topic.prefixedId, equivalenceGroupIds: groupIds)
+            let allIds = [topic.prefixedId] + groupIds
+            for id in allIds { enrollmentStatus[id] = true }
+        } catch {
+            print("[GrammarBrowserView] enroll failed for \(topic.prefixedId): \(error)")
+        }
     }
 
     // MARK: - Toolbar items
@@ -255,7 +288,7 @@ struct GrammarBrowserView: View {
         } catch {
             print("[GrammarBrowserView] redownload failed: \(error)")
         }
-        try? await CorpusSync.download()
+        _ = try? await CorpusSync.download()
     }
 }
 
