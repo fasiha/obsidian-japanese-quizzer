@@ -88,6 +88,7 @@ struct GrammarBrowserView: View {
                         BrowserToolbarMenu(
                             showSettings: $showSettings,
                             db: db,
+                            client: client,
                             lastSyncedAt: lastSyncedAt,
                             onRedownload: { Task { await redownloadGrammar() } }
                         )

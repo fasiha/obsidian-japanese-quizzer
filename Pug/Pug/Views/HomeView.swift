@@ -1,6 +1,7 @@
 // HomeView.swift
-// Root navigation: Vocab tab | Grammar tab.
+// Root navigation: Vocab tab | Grammar tab | Reader tab.
 // Vocab quiz is launched from the Vocab browser toolbar; grammar quiz from the Grammar browser toolbar.
+// History is accessible via the ··· menu in either browser toolbar.
 
 import SwiftUI
 import GRDB
@@ -38,8 +39,12 @@ struct HomeView: View {
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             }
 
-            HistoryView(db: db, client: session.client)
-                .tabItem { Label("History", systemImage: "clock.arrow.circlepath") }
+            ContentUnavailableView(
+                "Reader",
+                systemImage: "book.pages",
+                description: Text("Document reader coming soon.")
+            )
+            .tabItem { Label("Reader", systemImage: "book.pages") }
         }
     }
 }

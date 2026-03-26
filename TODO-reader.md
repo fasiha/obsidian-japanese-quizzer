@@ -103,11 +103,11 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 
 ### Phase 3 — iOS navigation: move History, add Reader tab
 
-- [ ] In `HomeView.swift`: remove the History `TabView` tab; add a Reader tab
+- [x] In `HomeView.swift`: remove the History `TabView` tab; add a Reader tab
   (showing `DocumentBrowserView`).
-- [ ] In `BrowserToolbarMenu.swift`: add a "History" button that opens
+- [x] In `BrowserToolbarMenu.swift`: add a "History" button that opens
   `HistoryView` as a sheet. Thread `client` through (`db` already present).
-- [ ] Update `VocabBrowserView` and `GrammarBrowserView` call sites to pass
+- [x] Update `VocabBrowserView` and `GrammarBrowserView` call sites to pass
   `client` into `BrowserToolbarMenu`.
 
 ### Phase 4 — DocumentBrowserView

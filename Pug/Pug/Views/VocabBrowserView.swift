@@ -104,6 +104,7 @@ struct VocabBrowserView: View {
                         BrowserToolbarMenu(
                             showSettings: $showSettings,
                             db: db,
+                            client: session.client,
                             lastSyncedAt: corpus.lastSyncedAt,
                             onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict); try? await CorpusSync.download() } }
                         )
