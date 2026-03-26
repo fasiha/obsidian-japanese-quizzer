@@ -569,6 +569,7 @@ struct VocabRowView: View {
 
 struct TransitivePairRowView: View {
     let item: TransitivePairItem
+    @ScaledMetric(relativeTo: .headline) private var furiganaSize: CGFloat = 10
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -593,7 +594,7 @@ struct TransitivePairRowView: View {
             memberFurigana(item.intransitiveFurigana, member: item.pair.intransitive)
             // Empty rt-height spacer above arrow to align with furigana text
             VStack(spacing: 0) {
-                Text(" ").font(.system(size: 8))
+                Text(" ").font(.system(size: furiganaSize))
                 Text(" ↔ ").font(.headline)
             }
             memberFurigana(item.transitiveFurigana, member: item.pair.transitive)
@@ -606,7 +607,7 @@ struct TransitivePairRowView: View {
             HStack(spacing: 0) {
                 ForEach(Array(segs.enumerated()), id: \.offset) { _, seg in
                     VStack(spacing: 0) {
-                        Text(seg.rt ?? " ").font(.system(size: 8)).foregroundStyle(.secondary)
+                        Text(seg.rt ?? " ").font(.system(size: furiganaSize)).foregroundStyle(.secondary)
                         Text(seg.ruby).font(.headline)
                     }
                 }
@@ -614,7 +615,7 @@ struct TransitivePairRowView: View {
         } else {
             // Kana-only fallback — add empty rt row for vertical alignment
             VStack(spacing: 0) {
-                Text(" ").font(.system(size: 8))
+                Text(" ").font(.system(size: furiganaSize))
                 Text(member.kanji.first ?? member.kana)
                     .font(.headline)
             }
