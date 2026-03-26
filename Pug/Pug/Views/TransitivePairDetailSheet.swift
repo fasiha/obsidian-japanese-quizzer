@@ -1,7 +1,7 @@
 // TransitivePairDetailSheet.swift
 // Detail sheet for a transitive-intransitive verb pair.
 // Shows both verbs with furigana, part of speech, glosses, example sentences,
-// ambiguous reason, and Learn/Know/Undo controls styled like WordDetailSheet.
+// ambiguous reason, Learn/Know/Undo controls, and a Claude chat box.
 
 import SwiftUI
 import GRDB
@@ -11,6 +11,7 @@ struct TransitivePairDetailSheet: View {
     let pairCorpus: TransitivePairCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
+    let client: AnthropicClient
 
     /// Live item looked up from corpus — updates reactively when pairCorpus.items changes.
     private var item: TransitivePairItem {
@@ -23,6 +24,12 @@ struct TransitivePairDetailSheet: View {
     @State private var ebisuModels: [EbisuRecord] = []
     @State private var rescaleRecord: EbisuRecord? = nil
 
+    // Claude chat state
+    @State private var chatMessages: [(isUser: Bool, text: String)] = []
+    @State private var chatInput = ""
+    @State private var isSendingChat = false
+    @State private var chatConversation: [AnthropicMessage] = []
+
     /// Parsed JMDict info for one verb.
     struct MemberInfo {
         let partOfSpeech: [String]
@@ -34,6 +41,22 @@ struct TransitivePairDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    // Pattern rules hint
+                    if let hint = pairPatternHint {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Pattern")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.secondary)
+                                .textCase(.uppercase)
+                                .tracking(0.5)
+                            Text(hint)
+                                .font(.callout)
+                                .foregroundStyle(.teal)
+                        }
+                        Divider()
+                    }
+
                     // Intransitive verb
                     verbSection(
                         heading: "Intransitive (自動詞)",
@@ -82,9 +105,12 @@ struct TransitivePairDetailSheet: View {
                         Divider()
                         ebisuHalflivesSection
                     }
+                    Divider()
+                    chatSection
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Verb Pair")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -102,6 +128,127 @@ struct TransitivePairDetailSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: - Pattern hint
+
+    /// Returns a human-readable description of the transitive/intransitive pattern that
+    /// applies to this pair, if any. Rules checked in priority order:
+    ///   1. まる/める ending → intransitive/transitive
+    ///   2. す ending on transitive → always transitive
+    ///   3. れる ending on intransitive (the はいる/いれる exception won't trigger this)
+    private var pairPatternHint: String? {
+        let intr = item.pair.intransitive.kana
+        let tr   = item.pair.transitive.kana
+
+        // Rule 1: まる/める pair
+        if intr.hasSuffix("まる") && tr.hasSuffix("める") {
+            return "まる/める pattern: \(intr) is intransitive, \(tr) is transitive."
+        }
+
+        // Rule 2: す is always transitive
+        if tr.hasSuffix("す") {
+            return "す ending: \(tr) is reliably transitive."
+        }
+
+        // Rule 3: れる on the intransitive side is almost always intransitive.
+        // (The only known exception, はいる/いれる, won't trigger this because
+        // はいる doesn't end in れる.)
+        if intr.hasSuffix("れる") {
+            return "れる ending: \(intr) is (almost always) intransitive."
+        }
+
+        return nil
+    }
+
+    // MARK: - Claude chat
+
+    private var chatSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Ask Claude")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, msg in
+                HStack(alignment: .top) {
+                    if msg.isUser { Spacer(minLength: 40) }
+                    SelectableText(msg.text)
+                        .padding(10)
+                        .background(
+                            msg.isUser
+                                ? Color.accentColor.opacity(0.15)
+                                : Color(.secondarySystemBackground),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                    if !msg.isUser { Spacer(minLength: 40) }
+                }
+            }
+
+            HStack(alignment: .bottom, spacing: 8) {
+                TextField("Ask about this pair…", text: $chatInput, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+                    .disabled(isSendingChat)
+                if isSendingChat {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(.bottom, 6)
+                } else {
+                    Button {
+                        sendChatMessage()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                    }
+                    .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .padding(.bottom, 2)
+                }
+            }
+        }
+    }
+
+    private func sendChatMessage() {
+        let text = chatInput.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !isSendingChat else { return }
+        chatInput = ""
+        chatMessages.append((isUser: true, text: text))
+        isSendingChat = true
+        Task { await doChat(userText: text) }
+    }
+
+    private func doChat(userText: String) async {
+        let intr = item.pair.intransitive
+        let tr   = item.pair.transitive
+        let intrWord = intr.kanji.first ?? intr.kana
+        let trWord   = tr.kanji.first ?? tr.kana
+        let system = """
+        Japanese tutor — free exploration (no quizzing/scoring).
+        The student is looking at a transitive-intransitive verb pair:
+        Intransitive (自動詞): \(intrWord) (\(intr.kana))
+        Transitive (他動詞): \(trWord) (\(tr.kana))
+        Be concise. Answer the student's question about this verb pair.
+        """
+
+        chatConversation.append(AnthropicMessage(role: "user", content: [.text(userText)]))
+
+        do {
+            let (response, updatedConversation, _) = try await client.send(
+                messages: chatConversation,
+                system: system,
+                tools: [],
+                maxTokens: 512,
+                toolHandler: nil
+            )
+            chatConversation = updatedConversation
+            chatMessages.append((isUser: false, text: response))
+        } catch {
+            chatConversation.removeLast()
+            chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
+        }
+        isSendingChat = false
     }
 
     // MARK: - Verb section

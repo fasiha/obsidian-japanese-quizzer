@@ -115,7 +115,7 @@ struct VocabBrowserView: View {
                 WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
             }
             .sheet(item: $selectedPair) { pair in
-                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict)
+                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict, client: session.client)
             }
 
             .sheet(isPresented: $showSettings) { SettingsView() }
