@@ -215,7 +215,7 @@ struct GrammarDetailSheet: View {
             }
         if !allRefs.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Corpus Contexts")
+                Text("Usage Examples")
                     .font(.headline)
                 ForEach(allRefs.keys.sorted(), id: \.self) { source in
                     if let refs = allRefs[source] {

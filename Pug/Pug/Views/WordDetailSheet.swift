@@ -108,7 +108,7 @@ struct WordDetailSheet: View {
             }
 
             if !item.references.isEmpty {
-                infoGroup(heading: "Corpus Contexts") {
+                infoGroup(heading: "Usage Examples", hint: "tap to open in reader") {
                     ForEach(item.references.keys.sorted(), id: \.self) { source in
                         if let refs = item.references[source] {
                             VStack(alignment: .leading, spacing: 4) {
@@ -260,14 +260,22 @@ struct WordDetailSheet: View {
     }
 
     @ViewBuilder
-    private func infoGroup<Content: View>(heading: String, @ViewBuilder content: () -> Content) -> some View {
+    private func infoGroup<Content: View>(heading: String, hint: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(heading)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
+            HStack(alignment: .firstTextBaseline) {
+                Text(heading)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                if let hint {
+                    Spacer()
+                    Label(hint, systemImage: "arrow.up.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
             content()
         }
     }
