@@ -44,6 +44,7 @@ struct HomeView: View {
                 corpus: corpus,
                 grammarManifest: grammarManifest,
                 db: db,
+                jmdict: jmdict,
                 session: session
             ) {
                 corpusEntries = try await CorpusSync.download()

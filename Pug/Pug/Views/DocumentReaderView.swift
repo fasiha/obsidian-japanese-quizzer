@@ -16,6 +16,7 @@
 //   grammarMap: lineNumber → [prefixedId]  (grammar topics annotated on that line)
 
 import SwiftUI
+import GRDB
 import Markdown
 import Markdownosaur
 
@@ -25,15 +26,17 @@ struct DocumentReaderView: View {
     let grammarManifest: GrammarManifest?
     let db: QuizDB
     let session: QuizSession
+    let jmdict: any DatabaseReader
 
     @State private var selectedWord: VocabItem? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
     @State private var expandedLines: Set<Int> = []
     @State private var enrolledTopicIds: Set<String> = []
-    // Parsed once on appear to avoid re-parsing on every render.
+    // All of the following are computed once in .task to avoid re-work on every render.
     @State private var renderedLines: [(lineNumber: Int, text: String)] = []
     @State private var vocabMap: [Int: [String]] = [:]
     @State private var grammarMap: [Int: [String]] = [:]
+    @State private var chipFurigana: [String: [FuriganaSegment]] = [:]  // wordId → segments
 
     var body: some View {
         ScrollView {
@@ -72,6 +75,7 @@ struct DocumentReaderView: View {
             renderedLines = parseLines(entry.markdown)
             vocabMap = buildVocabMap()
             grammarMap = buildGrammarMap()
+            chipFurigana = buildChipFurigana()
             if let records = try? await db.enrolledGrammarRecords() {
                 enrolledTopicIds = Set(records.map(\.wordId))
             }
@@ -135,9 +139,15 @@ struct DocumentReaderView: View {
         Button {
             selectedWord = item
         } label: {
-            HStack(spacing: 6) {
-                Text(item.wordText)
-                    .font(.subheadline).fontWeight(.medium)
+            HStack(spacing: 8) {
+                // Word with furigana if available, plain text otherwise.
+                if let segs = chipFurigana[item.id] {
+                    SentenceFuriganaView(segments: segs, textStyle: .subheadline)
+                        .fontWeight(.medium)
+                } else {
+                    Text(item.wordText)
+                        .font(.subheadline).fontWeight(.medium)
+                }
                 if let gloss = item.senseExtras.first?.glosses.first {
                     Text(gloss)
                         .font(.caption)
@@ -215,6 +225,35 @@ struct DocumentReaderView: View {
         return map
     }
 
+    /// Looks up furigana segments for each vocab word that appears in this document.
+    /// Uses the committed furigana from word_commitment when available, then falls back to
+    /// lookupFurigana(text:reading:db:) against the jmdict.sqlite furigana table.
+    /// Words with no kanji (kana-only) are excluded — no furigana needed.
+    private func buildChipFurigana() -> [String: [FuriganaSegment]] {
+        var map: [String: [FuriganaSegment]] = [:]
+        for item in corpus.items {
+            guard item.references[entry.title] != nil else { continue }
+            // Kana-only words need no furigana.
+            guard !item.writtenTexts.isEmpty else { continue }
+
+            // Prefer the committed furigana form if it exists and decodes cleanly.
+            if let furiganaJSON = item.commitment?.furigana,
+               let data = furiganaJSON.data(using: .utf8),
+               let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: data),
+               segs.contains(where: { $0.rt != nil }) {
+                map[item.id] = segs
+                continue
+            }
+
+            // Fall back to the jmdict furigana table using the first kanji form + first kana reading.
+            if let text = item.writtenTexts.first, let reading = item.kanaTexts.first,
+               let segs = lookupFurigana(text: text, reading: reading, db: jmdict) {
+                map[item.id] = segs
+            }
+        }
+        return map
+    }
+
     /// Maps each 1-based line number to the grammar topic prefixed IDs annotated on that line.
     private func buildGrammarMap() -> [Int: [String]] {
         guard let manifest = grammarManifest else { return [:] }
@@ -283,16 +322,23 @@ struct IdentifiableGrammarTopic: Identifiable {
 
 // MARK: - MarkdownLineView
 
-/// Renders a single Markdown line as an AttributedString using Markdownosaur.
+/// Renders a single Markdown line at reader size (title3).
+///
+/// Lines containing HTML `<ruby>` tags are rendered via SentenceFuriganaView so
+/// the furigana appears above the kanji. All other lines go through Markdownosaur
+/// (which handles bold, italic, code, etc.) with fonts rebased to title3 size.
 /// Empty lines render as a small spacer to preserve paragraph rhythm.
 struct MarkdownLineView: View {
     let text: String
 
-    @ScaledMetric(relativeTo: .body) private var emptyLineHeight: CGFloat = 8
+    @ScaledMetric(relativeTo: .title3) private var emptyLineHeight: CGFloat = 10
 
     var body: some View {
-        if text.trimmingCharacters(in: .whitespaces).isEmpty {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty {
             Spacer().frame(height: emptyLineHeight)
+        } else if trimmed.contains("<ruby>") {
+            SentenceFuriganaView(htmlRuby: trimmed, textStyle: .title3)
         } else if let attributed = rendered {
             Text(attributed)
                 .textSelection(.enabled)
@@ -300,6 +346,7 @@ struct MarkdownLineView: View {
         } else {
             // Fallback: plain text when Markdownosaur conversion fails
             Text(text)
+                .font(.title3)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -308,7 +355,19 @@ struct MarkdownLineView: View {
     private var rendered: AttributedString? {
         var parser = Markdownosaur()
         let document = Document(parsing: text)
-        let nsAttr = parser.attributedString(from: document)
+        let nsAttr = NSMutableAttributedString(attributedString: parser.attributedString(from: document))
+        // Rebase all fonts to title3 size, preserving bold/italic traits.
+        // This mirrors the rebasing SelectableText does for body size.
+        let target = UIFont.preferredFont(forTextStyle: .title3)
+        let full = NSRange(location: 0, length: nsAttr.length)
+        var updates: [(NSRange, UIFont)] = []
+        nsAttr.enumerateAttribute(.font, in: full) { value, range, _ in
+            let traits = (value as? UIFont)?.fontDescriptor.symbolicTraits ?? []
+            let descriptor = target.fontDescriptor.withSymbolicTraits(traits) ?? target.fontDescriptor
+            updates.append((range, UIFont(descriptor: descriptor, size: target.pointSize)))
+        }
+        for (range, font) in updates { nsAttr.addAttribute(.font, value: font, range: range) }
+        nsAttr.addAttribute(.foregroundColor, value: UIColor.label, range: full)
         return try? AttributedString(nsAttr, including: \.uiKit)
     }
 }

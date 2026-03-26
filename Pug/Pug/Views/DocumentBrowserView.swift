@@ -9,12 +9,14 @@
 // includes a Download button that triggers CorpusSync.
 
 import SwiftUI
+import GRDB
 
 struct DocumentBrowserView: View {
     let entries: [CorpusEntry]
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
     let db: QuizDB
+    let jmdict: any DatabaseReader
     let session: QuizSession
     let onDownload: () async throws -> Void
 
@@ -83,6 +85,7 @@ struct DocumentBrowserView: View {
                     corpus: corpus,
                     grammarManifest: grammarManifest,
                     db: db,
+                    jmdict: jmdict,
                     session: session
                 )
             }
@@ -158,6 +161,7 @@ struct CorpusSectionView: View {
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
     let db: QuizDB
+    let jmdict: any DatabaseReader
     let session: QuizSession
 
     private var isExpanded: Binding<Bool> {
@@ -181,6 +185,7 @@ struct CorpusSectionView: View {
                         corpus: corpus,
                         grammarManifest: grammarManifest,
                         db: db,
+                        jmdict: jmdict,
                         session: session
                     )
                 }
@@ -198,7 +203,8 @@ struct CorpusSectionView: View {
                     corpus: corpus,
                     grammarManifest: grammarManifest,
                     db: db,
-                    session: session
+                    session: session,
+                    jmdict: jmdict
                 )
             } label: {
                 CorpusEntryRowView(entry: entry)

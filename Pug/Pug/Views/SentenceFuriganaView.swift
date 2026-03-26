@@ -193,22 +193,35 @@ struct SentenceFuriganaView: View {
     let segments: [FuriganaSegment]
     var trailingAlignment: Bool = false
 
+    let textStyle: Font.TextStyle
+
     /// Initialise from a plain sentence and a list of vocab glosses (grammar quiz / assumed-vocab path).
-    init(sentence: String, glosses: [VocabGloss]) {
+    init(sentence: String, glosses: [VocabGloss], textStyle: Font.TextStyle = .body) {
         self.sentence = sentence
         self.segments = sentenceFuriganaSegments(sentence: sentence, glosses: glosses)
+        self.textStyle = textStyle
     }
 
     /// Initialise from a corpus context string that may contain HTML `<ruby>` tags.
     /// The plain-text sentence (tags stripped) is derived automatically.
-    init(htmlRuby: String, trailingAlignment: Bool = false) {
+    init(htmlRuby: String, trailingAlignment: Bool = false, textStyle: Font.TextStyle = .body) {
         self.segments = furiganaSegmentsFromHTMLRuby(htmlRuby)
         self.sentence = segments.map(\.ruby).joined()
         self.trailingAlignment = trailingAlignment
+        self.textStyle = textStyle
+    }
+
+    /// Initialise directly from pre-computed furigana segments (e.g. from writtenForms or
+    /// from the jmdict.sqlite furigana table). The plain-text sentence is derived automatically.
+    init(segments: [FuriganaSegment], textStyle: Font.TextStyle = .body) {
+        self.segments = segments
+        self.sentence = segments.map(\.ruby).joined()
+        self.trailingAlignment = false
+        self.textStyle = textStyle
     }
 
     var body: some View {
-        SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment)
+        SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment, textStyle: textStyle)
             .contextMenu {
                 Button {
                     UIPasteboard.general.string = sentence
@@ -226,6 +239,21 @@ struct SentenceFuriganaView: View {
 private struct SentenceFuriganaFlow: View {
     let segments: [FuriganaSegment]
     var trailingAlignment: Bool = false
+    var textStyle: Font.TextStyle = .body
+
+    // Furigana reading is shown at roughly 60% of the base text size.
+    // ScaledMetric ties the furigana size to the same Dynamic Type axis as the base font.
+    @ScaledMetric private var furiganaSize: CGFloat = 10
+
+    private var scaledFuriganaSize: CGFloat {
+        // body baseline is 10pt furigana; scale proportionally for other text styles.
+        switch textStyle {
+        case .title:  return furiganaSize * 1.8
+        case .title2: return furiganaSize * 1.5
+        case .title3: return furiganaSize * 1.2
+        default:      return furiganaSize
+        }
+    }
 
     var body: some View {
         SentenceFuriganaLayout(trailingAlignment: trailingAlignment) {
@@ -233,16 +261,16 @@ private struct SentenceFuriganaFlow: View {
                 if let rt = seg.rt {
                     VStack(spacing: 0) {
                         Text(rt)
-                            .font(.system(size: 10))
+                            .font(.system(size: scaledFuriganaSize))
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                         Text(seg.ruby)
-                            .font(.body)
+                            .font(.system(textStyle))
                     }
                     .fixedSize()
                 } else {
                     Text(seg.ruby)
-                        .font(.body)
+                        .font(.system(textStyle))
                         .fixedSize()
                 }
             }
