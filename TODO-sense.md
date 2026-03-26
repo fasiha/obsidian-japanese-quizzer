@@ -163,7 +163,46 @@ the student, given their corpus contexts, and write `llm_sense` to vocab.json.
 
 ---
 
-### Step 4 — iOS app: in-app sense enrollment (FUTURE)
+### Step 4 — iOS app: highlight enrolled senses in WordDetailSheet (FUTURE)
+
+**Goal:** in the word detail sheet, make it visually clear which JMDict senses
+the student is currently being quizzed on (the `llm_sense.sense_indices` set),
+so they can see at a glance whether the automatic selection matches their
+expectations before or after a quiz session.
+
+**Motivation:** right now the sense analysis runs silently in the pipeline and
+there is no way for the student to know which senses were selected without
+reading vocab.json by hand. Surfacing this in the UI closes the feedback loop.
+
+**Design decisions:**
+
+- *Visual treatment:* dim non-enrolled senses to ~40% opacity (matching the
+  pattern used for non-selected furigana forms elsewhere in the sheet). No extra
+  icon needed — the contrast is explanation enough.
+
+- *When `llm_sense` is absent or `sense_indices` is empty:* show no dimming at
+  all. The selection was not evidence-based, so treating sense 0 as special
+  would be misleading.
+
+- *Explanatory label:* wrap the sense list in an `infoGroup` with heading
+  "Senses used in quizzes" when `llm_sense` is present with non-empty indices.
+  This makes the feature approachable to learners who would otherwise have no
+  idea why some senses look faded.
+
+**Implementation sketch (not yet agreed):**
+
+1. Add `enrolledSenseIndices: [Int]` to `VocabItem`; populate from
+   `entry.llmSense?.senseIndices ?? []` in `VocabCorpus.load()`.
+2. In `senseExtrasSection`, pass the index alongside `SenseExtra` (already uses
+   `enumerated`). For each sense, check `enrolledSenseIndices.contains(index)`.
+3. Apply chosen visual treatment.
+
+No DB changes required — `enrolledSenseIndices` comes from vocab.json, same
+source as `QuizContext`.
+
+---
+
+### Step 5 — iOS app: in-app sense enrollment (FUTURE)
 
 After a quiz or in WordDetailSheet, show all JMDict senses with checkboxes. The
 student ticks which senses they are learning. Store in a new
@@ -193,7 +232,7 @@ One-time cost, clean pipeline separation, no quiz session latency.
 Adds latency to every quiz session, re-derives the same information on every
 call. The source sentences are fixed once the Markdown file exists.
 
-### Option 4 — In-app sense enrollment (future; Step 4 above)
+### Option 4 — In-app sense enrollment (future; Step 5 above)
 Escape hatch for when the student wants to expand/narrow the auto-selected
 senses. Analogy to grammar sub-uses, but implemented as explicit enrollment in
 `word_commitment` rather than notes-column tracking.

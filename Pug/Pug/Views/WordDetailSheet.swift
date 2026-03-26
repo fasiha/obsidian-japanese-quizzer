@@ -177,6 +177,10 @@ struct WordDetailSheet: View {
 
     /// Per-sense display: each sense's glosses followed immediately by its own metadata.
     /// This keeps usage notes, cross-references, and tags tied to the definition they apply to.
+    ///
+    /// When the word has enrolled senses (from llm_sense.sense_indices), the list is wrapped
+    /// in a labeled group and non-enrolled senses are dimmed to show the student which senses
+    /// the quiz is using.
     @ViewBuilder
     private var senseExtrasSection: some View {
         // Part of speech is shared across senses (JMDict convention: repeated on each sense,
@@ -188,7 +192,10 @@ struct WordDetailSheet: View {
                 .foregroundStyle(.secondary)
         }
 
-        ForEach(Array(item.senseExtras.enumerated()), id: \.offset) { _, sense in
+        let enrolled = item.enrolledSenseIndices
+        let useLabel = !enrolled.isEmpty
+
+        let senseList = ForEach(Array(item.senseExtras.enumerated()), id: \.offset) { index, sense in
             VStack(alignment: .leading, spacing: 2) {
                 // Glosses for this sense
                 ForEach(sense.glosses, id: \.self) { gloss in
@@ -216,6 +223,15 @@ struct WordDetailSheet: View {
                     .foregroundStyle(.secondary)
                 }
             }
+            .opacity(useLabel && !enrolled.contains(index) ? 0.4 : 1.0)
+        }
+
+        if useLabel {
+            infoGroup(heading: "Senses used in quizzes") {
+                senseList
+            }
+        } else {
+            senseList
         }
     }
 
