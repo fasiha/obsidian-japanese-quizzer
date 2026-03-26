@@ -128,6 +128,13 @@ For each group:
      differ and *when* the confusion arises. If a rule is only a tendency, state
      that upfront — do not present it as absolute and then hedge in a subordinate
      clause. Verify that cautions do not contradict the examples in `subUses`.
+
+     **Priming risk**: these cautions are injected directly into Haiku's prompt,
+     so describing a confusable form in detail can cause Haiku to produce that
+     form rather than avoid it. Frame cautions as positive rules or brief
+     prohibitions — don't explain what the wrong alternative means or give
+     examples of it. Instead of "X means Y — do not use X," write "always use Z"
+     or "do not use X" with only enough context to identify it unambiguously.
      Example:
      `"ら抜き言葉: 食べれる/見れる are colloquially accepted — do not mark wrong"`
    - `stub`: set to `true` if `contentItems` contains no sentences with non-empty

@@ -76,6 +76,26 @@
   },
   {
     "topics": [
+      "bunpro:ことにする",
+      "dbjg:koto-ni-suru",
+      "genki:kotonisuru"
+    ],
+    "summary": "Verb[dictionary]+ことにする means 'decide to do X' — a volitional choice made by the subject. The negative form Verb[ない]+ことにする means 'decide not to do X.' The ongoing form ことにしている extends this decision into a standing rule or habit: 'make it a point to do X' or 'have a policy of doing X.'",
+    "subUses": [
+      "One-time decision (affirmative): 留学することにしました (Decided to study abroad)",
+      "One-time decision (negative): オーストラリアに帰らないことにしました (Decided not to return to Australia)",
+      "Standing self-imposed rule (ことにしている, affirmative): 毎日新聞を読むことにしています (I make it a rule to read the newspaper every day)",
+      "Standing self-imposed rule (ことにしている, negative): テレビを見ながら勉強しないことにしています (I have a rule not to study while watching TV)"
+    ],
+    "cautions": [
+      "All sentences for this topic should reflect the subject's own volition — ことにする expresses a deliberate personal choice",
+      "ことにしている describes a self-imposed ongoing rule, not a fresh one-time decision — it implies the habit has already been established and continues",
+      "ことにしている expresses a firm, already-decided rule — not tentative ongoing effort toward a goal",
+      "The verb before こと must be plain dictionary form (affirmative) or ない-form (negative) — not て-form or ます-form"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:し-し",
       "dbjg:shi",
       "genki:shi"
@@ -111,6 +131,25 @@
       "Negative forms: ない always becomes なさそう (さ inserted): 食べなさそう (doesn't look like they'll eat), 高くなさそう (doesn't look expensive). Do not produce なそう",
       "Do NOT confuse with hearsay そうだ ('I heard that'): both use そうだ but attach differently — 'looks like' attaches to the adjective/verb stem (い dropped, verb in stem form), while hearsay attaches to the plain/dictionary form. When generating sentences for this topic, only produce stem-attached そう forms",
       "そう vs らしい: そう expresses a guess based on direct visual/sensory evidence; らしい expresses inference based on information or secondhand evidence"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:たことがある",
+      "dbjg:koto-ga-aru1",
+      "genki:kotoga-aru"
+    ],
+    "summary": "Verb[た]+ことがある expresses past experience — 'have done X before' or 'have experienced X at least once.' The こと nominalizes the verb phrase, and ある/ない confirms whether the experience exists in one's history.",
+    "subUses": [
+      "Past experience (affirmative): 日本に行ったことがあります (I have been to Japan before)",
+      "Past experience (negative / never): 天ぷらを食べたことがありません (I have never eaten tempura)",
+      "Experience with distant past time adverb: 五年前に日本へ行ったことがある (I went to Japan five years ago — simultaneously asserts the experience and when it occurred)"
+    ],
+    "cautions": [
+      "The pattern requires Verb[た]+こと+が+ある/ない — こと is fixed here and cannot be replaced by の",
+      "Always use Verb[た]+ことがある — this is because dictionary-form ことがある (without た) is a separate grammar point and should not appear in sentences for this topic",
+      "たことがある describes cumulative experience up to the present — the ある/ない at the end stays in present form even when a past time adverb is present (五年前に行ったことがある). Do not change ある to あった",
+      "When using a past time adverb with this pattern, the time must be clearly distant from the present. Very recent adverbs (きのう, さっき, etc.) are unnatural — do not combine them with たことがある"
     ]
   },
   {
