@@ -206,7 +206,8 @@ function buildFuriganaForWord(word, furiganaMap) {
 // (so intervening Grammar/Vocab blocks between the prose and the target Vocab block
 // are transparently skipped). Then collects non-blank lines that are not bullets or
 // block-level HTML tags. Inline <ruby> tags within prose lines are preserved.
-// Returns joined text, or null if no such paragraph is found.
+// Returns { text, line } where text is the joined sentence text (or null) and line
+// is the 1-based line number of the last sentence line found (or null if none found).
 function extractContextBefore(content, endIdx) {
   const lines = content.slice(0, endIdx).split("\n");
   let i = lines.length - 1;
@@ -225,10 +226,11 @@ function extractContextBefore(content, endIdx) {
     }
     break;
   }
-  if (i < 0) return null;
+  if (i < 0) return { text: null, line: null };
   // Collect contiguous prose lines. Stop at blank lines, bullet lines, or
   // block-level <details>/<summary>/</details> lines. Inline <ruby> lines are prose.
   const paraLines = [];
+  let lastSentenceLineIdx = i; // 0-indexed; tracks the last (bottom) sentence line
   while (i >= 0) {
     const trimmed = lines[i].trim();
     if (
@@ -242,7 +244,8 @@ function extractContextBefore(content, endIdx) {
     paraLines.unshift(trimmed);
     i--;
   }
-  return paraLines.length > 0 ? paraLines.join(" ") : null;
+  if (paraLines.length === 0) return { text: null, line: null };
+  return { text: paraLines.join(" "), line: lastSentenceLineIdx + 1 }; // 1-based
 }
 
 // Like shared.extractVocabBullets but also returns 1-indexed line numbers,
@@ -257,13 +260,13 @@ function extractVocabBullets(content) {
     const inner = match[1];
     if (!SUMMARY_REGEXP.test(inner)) continue;
     const openingTagLen = match[0].length - inner.length - "</details>".length;
-    const context = extractContextBefore(content, match.index);
-    const innerStartLine = content
-      .slice(0, match.index + openingTagLen)
-      .split("\n").length;
+    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
+    // Fallback: use the <details> opening line number if no sentence found above.
+    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
+    const line = sentenceLine ?? detailsOpeningLine;
     const innerLines = inner.split("\n");
-    for (let i = 0; i < innerLines.length; i++) {
-      const trimmed = innerLines[i].trim();
+    for (const innerLine of innerLines) {
+      const trimmed = innerLine.trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
       if (!bullet) continue;
@@ -272,7 +275,7 @@ function extractVocabBullets(content) {
       let j = 0;
       while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
       const narration = parts.slice(j).join(" ").trim() || null;
-      bullets.push({ bullet, line: innerStartLine + i, context, narration });
+      bullets.push({ bullet, line, context, narration });
     }
   }
   return bullets;
@@ -324,7 +327,7 @@ for (const filePath of mdFiles) {
 
   const title = relPath.replace(/\.md$/i, "");
   if (!stories.find((s) => s.title === title)) {
-    stories.push({ title });
+    stories.push({ title, content });
   }
 
   // --- Grammar extraction ---
@@ -343,8 +346,10 @@ for (const filePath of mdFiles) {
       continue;
     }
 
-    const context = extractContextBefore(content, matchIndex);
-    const occurrence = { line, context, narration: note || undefined };
+    const { text: context, line: sentenceLine } = extractContextBefore(content, matchIndex);
+    // Use the sentence line number so that line points to the same line as context.
+    // Fallback to the bullet line from extractGrammarBullets if no sentence found.
+    const occurrence = { line: sentenceLine ?? line, context, narration: note || undefined };
 
     if (grammarMap.has(topicId)) {
       const entry = grammarMap.get(topicId);
@@ -563,10 +568,11 @@ if (!noLlm) {
     word.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
     sensesAnalyzed++;
 
-    // Write vocab.json after each call so a crash doesn't lose prior work
+    // Write vocab.json after each call so a crash doesn't lose prior work.
+    // Omit `content` from stories — that field is only used for corpus.json.
     const partialOutput = {
       generatedAt: new Date().toISOString(),
-      stories,
+      stories: stories.map(({ title }) => ({ title })),
       words,
     };
     writeFileSync(outPath, JSON.stringify(partialOutput, null, 2) + "\n");
@@ -575,7 +581,7 @@ if (!noLlm) {
 
 const output = {
   generatedAt: new Date().toISOString(),
-  stories,
+  stories: stories.map(({ title }) => ({ title })),
   words,
 };
 
@@ -682,3 +688,29 @@ writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
 console.log(
   `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
 );
+
+// --- Corpus JSON ---
+// Build per-title vocab and grammar counts from the already-compiled maps.
+const vocabCountByTitle = new Map();
+for (const { sources } of wordMap.values()) {
+  for (const title of sources) {
+    vocabCountByTitle.set(title, (vocabCountByTitle.get(title) ?? 0) + 1);
+  }
+}
+const grammarCountByTitle = new Map();
+for (const { sources } of grammarMap.values()) {
+  for (const title of sources) {
+    grammarCountByTitle.set(title, (grammarCountByTitle.get(title) ?? 0) + 1);
+  }
+}
+
+const corpusEntries = stories.map(({ title, content: rawMarkdown }) => ({
+  title,
+  markdown: rawMarkdown,
+  vocabCount: vocabCountByTitle.get(title) ?? 0,
+  grammarCount: grammarCountByTitle.get(title) ?? 0,
+}));
+
+const corpusOutPath = path.join(projectRoot, "corpus.json");
+writeFileSync(corpusOutPath, JSON.stringify(corpusEntries, null, 2) + "\n");
+console.log(`Wrote ${corpusEntries.length} corpus entries → ${corpusOutPath}`);

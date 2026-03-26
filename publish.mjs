@@ -59,6 +59,12 @@ if (!existsSync(transitivePairsPath)) {
   process.exit(1);
 }
 
+const corpusPath = path.join(projectRoot, "corpus.json");
+if (!existsSync(corpusPath)) {
+  console.error("corpus.json not found — run `node prepare-publish.mjs` first");
+  process.exit(1);
+}
+
 const tmpDir = mkdtempSync(path.join(tmpdir(), "gist-publish-"));
 
 function run(cmd, opts = {}) {
@@ -77,8 +83,9 @@ try {
   copyFileSync(grammarEquivPath, path.join(tmpDir, "grammar-equivalences.json"));
   // transitive-pairs.json lives in transitive-intransitive/ locally but is published flat.
   copyFileSync(transitivePairsPath, path.join(tmpDir, "transitive-pairs.json"));
+  copyFileSync(corpusPath, path.join(tmpDir, "corpus.json"));
 
-  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json transitive-pairs.json`);
+  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json transitive-pairs.json corpus.json`);
 
   // Check if there's anything staged to commit
   const diff = execSync(`git -C "${tmpDir}" diff --cached --name-only`, {
