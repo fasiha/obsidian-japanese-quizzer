@@ -24,7 +24,7 @@
         "intransitive": {
           "en": "The sliding door opened suddenly.",
           "ja": "引き戸が急に開いた。",
-          "jaFurigana": "<ruby>引<rt>ひ</rt></ruby>き<ruby>戸<rt>ど</rt></ruby>が<ruby>急<rt>きゅう</rt></ruby>に<ruby>開<rt>ひら</rt></ruby>いた。"
+          "jaFurigana": "<ruby>引<rt>ひ</rt></ruby>き<ruby>戸<rt>ど</rt></ruby>が<ruby>急<rt>きゅう</rt></ruby>に<ruby>開<rt>あ</rt></ruby>いた。"
         },
         "transitive": {
           "en": "She opened the curtains to see why.",
@@ -36,7 +36,7 @@
         "intransitive": {
           "en": "The shop door is open now.",
           "ja": "店のドアが開いている。",
-          "jaFurigana": "<ruby>店<rt>みせ</rt></ruby>のドアが<ruby>開<rt>ひら</rt></ruby>いている。"
+          "jaFurigana": "<ruby>店<rt>みせ</rt></ruby>のドアが<ruby>開<rt>あ</rt></ruby>いている。"
         },
         "transitive": {
           "en": "The owner also opened the back window.",
@@ -48,7 +48,7 @@
         "intransitive": {
           "en": "The gate opens at eight every morning.",
           "ja": "門は毎朝八時に開く。",
-          "jaFurigana": "<ruby>門<rt>もん</rt></ruby>は<ruby>毎<rt>まい</rt></ruby><ruby>朝<rt>あさ</rt></ruby><ruby>八<rt>はち</rt></ruby><ruby>時<rt>じ</rt></ruby>に<ruby>開<rt>ひら</rt></ruby>く。"
+          "jaFurigana": "<ruby>門<rt>もん</rt></ruby>は<ruby>毎<rt>まい</rt></ruby><ruby>朝<rt>あさ</rt></ruby><ruby>八<rt>はち</rt></ruby><ruby>時<rt>じ</rt></ruby>に<ruby>開<rt>あ</rt></ruby>く。"
         },
         "transitive": {
           "en": "Please open the side door for early visitors.",
