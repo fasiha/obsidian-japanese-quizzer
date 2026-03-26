@@ -486,3 +486,7 @@ rendered as paragraph breaks rather than silently dropped.
 
 - [CLAUDE.md](CLAUDE.md) — detailed architecture notes for Claude (iOS quiz facets, grammar tiers, tool schemas)
 - [TESTING.md](TESTING.md) — TestHarness build instructions and modes
+
+## Acknowledgements
+
+[Dog](https://www.freepik.com/icon/dog_5222314) icon by Iconixar on Freepik.
