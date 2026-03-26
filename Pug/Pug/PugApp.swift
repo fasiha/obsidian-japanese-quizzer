@@ -39,7 +39,7 @@ struct AppRootView: View {
                     HomeView(session: session, corpus: corpus, pairCorpus: pairCorpus,
                              db: db, jmdict: jmdict,
                              grammarSession: grammarSession, grammarManifest: grammarManifest,
-                             corpusEntries: corpusEntries)
+                             corpusEntries: $corpusEntries)
                         .environment(preferences)
                 } else {
                     ContentUnavailableView(

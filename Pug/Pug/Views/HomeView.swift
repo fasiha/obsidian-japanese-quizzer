@@ -14,7 +14,7 @@ struct HomeView: View {
     let jmdict: any DatabaseReader
     let grammarSession: GrammarAppSession
     let grammarManifest: GrammarManifest?
-    let corpusEntries: [CorpusEntry]     // document corpus for the Reader (used in Phase 4)
+    @Binding var corpusEntries: [CorpusEntry]  // document corpus for the Reader tab
 
     var body: some View {
         TabView {
@@ -39,11 +39,9 @@ struct HomeView: View {
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             }
 
-            ContentUnavailableView(
-                "Reader",
-                systemImage: "book.pages",
-                description: Text("Document reader coming soon.")
-            )
+            DocumentBrowserView(entries: corpusEntries) {
+                corpusEntries = try await CorpusSync.download()
+            }
             .tabItem { Label("Reader", systemImage: "book.pages") }
         }
     }

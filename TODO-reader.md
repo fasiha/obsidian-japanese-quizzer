@@ -112,11 +112,14 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 
 ### Phase 4 — DocumentBrowserView
 
-- [ ] Create `DocumentBrowserView.swift`: DisclosureGroups mirroring the
+- [x] Create `DocumentBrowserView.swift`: DisclosureGroups mirroring the
   `/`-delimited title hierarchy. Each leaf shows title + vocab/grammar counts.
   Tap to navigate to `DocumentReaderView`.
-- [ ] Show a loading/empty state when `corpus.json` has not yet been fetched,
+- [x] Show a loading/empty state when `corpus.json` has not yet been fetched,
   with a "Download" button that triggers `CorpusSync`.
+- [x] Changed `HomeView.corpusEntries` from `let` to `@Binding` so the Download
+  button can update the root state; updated `AppRootView` to pass `$corpusEntries`.
+- [x] Added `DocumentReaderView` stub (Phase 5 placeholder).
 
 ### Phase 5 — DocumentReaderView
 
