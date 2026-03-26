@@ -3,7 +3,7 @@
 // as nested DisclosureGroups (same pattern as VocabBrowserView).
 //
 // Each leaf shows the document title, vocab count, and grammar count.
-// Tapping a leaf navigates to DocumentReaderView (Phase 5 stub for now).
+// Tapping a leaf navigates to DocumentReaderView.
 //
 // Empty state: shown when corpus.json has not been downloaded yet;
 // includes a Download button that triggers CorpusSync.
@@ -12,6 +12,10 @@ import SwiftUI
 
 struct DocumentBrowserView: View {
     let entries: [CorpusEntry]
+    let corpus: VocabCorpus
+    let grammarManifest: GrammarManifest?
+    let db: QuizDB
+    let session: QuizSession
     let onDownload: () async throws -> Void
 
     @State private var collapsedSections: Set<String> = []
@@ -73,7 +77,14 @@ struct DocumentBrowserView: View {
         let roots = buildCorpusTree(entries: entries)
         return List {
             ForEach(roots, id: \.pathKey) { node in
-                CorpusSectionView(node: node, collapsedSections: $collapsedSections)
+                CorpusSectionView(
+                    node: node,
+                    collapsedSections: $collapsedSections,
+                    corpus: corpus,
+                    grammarManifest: grammarManifest,
+                    db: db,
+                    session: session
+                )
             }
         }
         .listStyle(.plain)
@@ -144,6 +155,10 @@ func buildCorpusTree(entries: [CorpusEntry]) -> [CorpusTreeNode] {
 struct CorpusSectionView: View {
     let node: CorpusTreeNode
     @Binding var collapsedSections: Set<String>
+    let corpus: VocabCorpus
+    let grammarManifest: GrammarManifest?
+    let db: QuizDB
+    let session: QuizSession
 
     private var isExpanded: Binding<Bool> {
         Binding(
@@ -160,7 +175,14 @@ struct CorpusSectionView: View {
         case .directory(let name, _, let children):
             DisclosureGroup(isExpanded: isExpanded) {
                 ForEach(children, id: \.pathKey) { child in
-                    CorpusSectionView(node: child, collapsedSections: $collapsedSections)
+                    CorpusSectionView(
+                        node: child,
+                        collapsedSections: $collapsedSections,
+                        corpus: corpus,
+                        grammarManifest: grammarManifest,
+                        db: db,
+                        session: session
+                    )
                 }
             } label: {
                 Text(name)
@@ -171,7 +193,13 @@ struct CorpusSectionView: View {
 
         case .leaf(let entry):
             NavigationLink {
-                DocumentReaderView(entry: entry)
+                DocumentReaderView(
+                    entry: entry,
+                    corpus: corpus,
+                    grammarManifest: grammarManifest,
+                    db: db,
+                    session: session
+                )
             } label: {
                 CorpusEntryRowView(entry: entry)
             }
@@ -211,23 +239,5 @@ struct CorpusEntryRowView: View {
             .foregroundStyle(color)
             .clipShape(Capsule())
             .accessibilityLabel("\(count) \(label)")
-    }
-}
-
-// MARK: - DocumentReaderView (Phase 5 stub)
-
-/// Placeholder view shown when the user taps a document in DocumentBrowserView.
-/// Full implementation (line-by-line Markdown rendering with annotation panels) is Phase 5.
-struct DocumentReaderView: View {
-    let entry: CorpusEntry
-
-    var body: some View {
-        ContentUnavailableView(
-            entry.title.components(separatedBy: "/").last ?? entry.title,
-            systemImage: "book.pages",
-            description: Text("Document reader coming in Phase 5.")
-        )
-        .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -39,7 +39,13 @@ struct HomeView: View {
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             }
 
-            DocumentBrowserView(entries: corpusEntries) {
+            DocumentBrowserView(
+                entries: corpusEntries,
+                corpus: corpus,
+                grammarManifest: grammarManifest,
+                db: db,
+                session: session
+            ) {
                 corpusEntries = try await CorpusSync.download()
             }
             .tabItem { Label("Reader", systemImage: "book.pages") }

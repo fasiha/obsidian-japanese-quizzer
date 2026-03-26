@@ -123,24 +123,23 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 
 ### Phase 5 — DocumentReaderView
 
-- [ ] Create `DocumentReaderView.swift`: takes a `CorpusEntry` plus inverted
-  annotation maps from `VocabCorpus` and `GrammarCorpus`.
-- [ ] **Inverted map** (built once at load time, passed in):
-  `[String: [Int: [String]]]` — `title → lineNumber → [wordId]`, and same for
-  grammar topic IDs.
-- [ ] **Parser**: split raw Markdown on newlines, retaining original 1-based
-  line numbers. Skip YAML frontmatter (lines 1 through closing `---`). Then
-  scan line by line:
-  - Lines matching `<details>…</details>` (single-line) → discard.
-  - Lines starting with `<details>` (multi-line) → discard through `</details>`.
-  - All other lines → renderable, keyed by their original line number.
-- [ ] For each renderable line, render via Markdownosaur's `AttributedString`
-  API. If the inverted map has entries for that line number, show a
-  `DisclosureGroup` (collapsed by default) below it:
-  - **Vocab chip**: furigana form + first gloss truncated. Tapping opens
-    `WordDetailSheet`.
-  - **Grammar chip**: topic slug + equivalence-group summary truncated. Tapping
-    opens `GrammarDetailSheet`.
+- [x] Create `DocumentReaderView.swift`: takes a `CorpusEntry` plus corpus/
+  manifest/db/session; inverted maps are built once on appear.
+- [x] **Inverted map**: `[Int: [String]]` per document — `lineNumber → [wordId]`
+  and `lineNumber → [prefixedId]`. Built from `VocabItem.references[title]` and
+  `GrammarTopic.references?[title]`.
+- [x] **Parser** (`parseLines(_:)`): splits on newlines, retains 1-based line
+  numbers, skips YAML frontmatter and `<details>` blocks (both single-line and
+  multi-line forms).
+- [x] **MarkdownLineView**: renders each line via `Markdownosaur` →
+  `NSAttributedString` → `AttributedString(_, including: \.uiKit)` → SwiftUI
+  `Text`. Empty lines render as a scaled spacer.
+- [x] **DisclosureGroup per annotated line** (collapsed by default): vocab chips
+  (blue, word + first gloss, opens `WordDetailSheet`) and grammar chips (green,
+  titleEn + summary, opens `GrammarDetailSheet`).
+- [x] Updated `DocumentBrowserView` to thread `corpus`, `grammarManifest`, `db`,
+  `session` through to `DocumentReaderView`.
+- [x] Updated `HomeView` to pass those params to `DocumentBrowserView`.
 
 ### Phase 6 — Polish and docs
 
