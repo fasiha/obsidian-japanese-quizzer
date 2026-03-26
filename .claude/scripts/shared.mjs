@@ -295,7 +295,7 @@ export function extractGrammarBullets(content) {
           : topicId.slice(0, colonIdx).toLowerCase() +
             topicId.slice(colonIdx);
 
-      bullets.push({ topicId: normalized, note, line: innerStartLine + i });
+      bullets.push({ topicId: normalized, note, line: innerStartLine + i, matchIndex: match.index });
     }
   }
   return bullets;

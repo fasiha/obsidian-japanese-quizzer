@@ -54,6 +54,7 @@ struct GrammarDetailSheet: View {
                         descriptionSection
                     }
                     sourcesFooter
+                    corpusContextsSection
                     if let m = mnemonic {
                         mnemonicSection(m)
                     }
@@ -174,6 +175,46 @@ struct GrammarDetailSheet: View {
             Text(allSources.joined(separator: ", "))
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Corpus contexts
+
+    /// Sentences from the reading corpus where this grammar point (or any sibling in its
+    /// equivalence group) appears, grouped by source title.
+    @ViewBuilder
+    private var corpusContextsSection: some View {
+        let allRefs = ([topic] + (topic.equivalenceGroup ?? []).compactMap { manifest.topics[$0] })
+            .compactMap(\.references)
+            .flatMap { $0 }
+            .reduce(into: [String: [VocabReference]]()) { acc, pair in
+                acc[pair.key, default: []].append(contentsOf: pair.value)
+            }
+        if !allRefs.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Corpus Contexts")
+                    .font(.headline)
+                ForEach(allRefs.keys.sorted(), id: \.self) { source in
+                    if let refs = allRefs[source] {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(source)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ForEach(refs.indices, id: \.self) { i in
+                                let ref = refs[i]
+                                if let context = ref.context {
+                                    SentenceFuriganaView(htmlRuby: context)
+                                }
+                                if let narration = ref.narration {
+                                    Text(narration)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

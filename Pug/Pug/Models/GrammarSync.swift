@@ -32,6 +32,7 @@ struct GrammarTopic: Codable {
     let level: String           // e.g. "Genki II", "jlptN4"
     let href: String?           // URL to external reference page
     let sources: [String]       // story/textbook sources this topic appears in
+    let references: [String: [VocabReference]]?     // corpus occurrences keyed by source title
     let equivalenceGroup: [String]?  // other prefixed topic IDs in the same equivalence group
 
     // Populated from grammar-equivalences.json at sync time (not in grammar.json).
@@ -46,7 +47,7 @@ struct GrammarTopic: Codable {
     // Custom CodingKeys so description fields are excluded from Codable round-trips
     // (they aren't in grammar.json and we don't want encoding to include them).
     private enum CodingKeys: String, CodingKey {
-        case source, id, titleEn, titleJp, level, href, sources, equivalenceGroup
+        case source, id, titleEn, titleJp, level, href, sources, references, equivalenceGroup
     }
 }
 

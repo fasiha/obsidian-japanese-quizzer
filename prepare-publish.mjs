@@ -328,7 +328,7 @@ for (const filePath of mdFiles) {
   }
 
   // --- Grammar extraction ---
-  for (const { topicId, note, line } of extractGrammarBullets(content)) {
+  for (const { topicId, note, line, matchIndex } of extractGrammarBullets(content)) {
     const colonIdx = topicId.indexOf(":");
     if (colonIdx === -1) {
       grammarErrors.push(
@@ -343,12 +343,19 @@ for (const filePath of mdFiles) {
       continue;
     }
 
+    const context = extractContextBefore(content, matchIndex);
+    const occurrence = { line, context, narration: note || undefined };
+
     if (grammarMap.has(topicId)) {
-      grammarMap.get(topicId).sources.add(title);
+      const entry = grammarMap.get(topicId);
+      entry.sources.add(title);
+      if (!entry.refs.has(title)) entry.refs.set(title, []);
+      entry.refs.get(title).push(occurrence);
     } else {
       grammarMap.set(topicId, {
         topicId,
         sources: new Set([title]),
+        refs: new Map([[title, [occurrence]]]),
       });
     }
   }
@@ -585,8 +592,11 @@ const grammarSources = {
 };
 
 const grammarTopics = {};
-for (const [topicId, { sources }] of grammarMap) {
+for (const [topicId, { sources, refs }] of grammarMap) {
   const dbEntry = grammarDb.get(topicId);
+  const references = Object.fromEntries(
+    [...refs.entries()].map(([source, occs]) => [source, occs]),
+  );
   grammarTopics[topicId] = {
     source: dbEntry.source,
     id: dbEntry.id,
@@ -596,6 +606,7 @@ for (const [topicId, { sources }] of grammarMap) {
     href: dbEntry.href || undefined,
     aliasOf: dbEntry.aliasOf || undefined,
     sources: [...sources],
+    references,
   };
 }
 
