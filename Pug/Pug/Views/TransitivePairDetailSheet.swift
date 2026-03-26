@@ -12,6 +12,9 @@ struct TransitivePairDetailSheet: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let client: AnthropicClient
+    let corpusEntries: [CorpusEntry]
+    let corpus: VocabCorpus
+    let grammarManifest: GrammarManifest?
 
     /// Live item looked up from corpus — updates reactively when pairCorpus.items changes.
     private var item: TransitivePairItem {

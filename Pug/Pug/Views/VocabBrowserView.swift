@@ -19,6 +19,8 @@ struct VocabBrowserView: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let session: QuizSession
+    let corpusEntries: [CorpusEntry]
+    let grammarManifest: GrammarManifest?
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
@@ -112,15 +114,18 @@ struct VocabBrowserView: View {
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
-                WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
+                WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session,
+                                corpusEntries: corpusEntries, grammarManifest: grammarManifest)
             }
             .sheet(item: $selectedPair) { pair in
-                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict, client: session.client)
+                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict, client: session.client,
+                                          corpusEntries: corpusEntries, corpus: corpus, grammarManifest: grammarManifest)
             }
 
             .sheet(isPresented: $showSettings) { SettingsView(db: db) }
             .navigationDestination(isPresented: $showQuiz) {
-                QuizView(session: session, corpus: corpus, pairCorpus: pairCorpus, jmdict: jmdict)
+                QuizView(session: session, corpus: corpus, pairCorpus: pairCorpus, jmdict: jmdict,
+                         corpusEntries: corpusEntries, grammarManifest: grammarManifest)
             }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",

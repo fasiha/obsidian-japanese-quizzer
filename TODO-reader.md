@@ -149,6 +149,67 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 - [x] `TESTING.md` needs no changes (Reader has no new quiz logic).
 - [x] Manual smoke-test passed (user confirmed).
 
+### Phase 7 — Deep-link from detail sheets into the reader
+
+**Goal:** corpus-context entries in `WordDetailSheet`, `GrammarDetailSheet`, and
+`TransitivePairDetailSheet` become tappable links that open `DocumentReaderView`
+scrolled to (and briefly highlighting) the relevant line.
+
+#### Sub-tasks
+
+- [x] **Thread `corpusEntries` and `grammarManifest` into detail sheets.**
+  - `WordDetailSheet` already has `corpus` and `session`; add
+    `corpusEntries: [CorpusEntry]` and `grammarManifest: GrammarManifest?`.
+  - `GrammarDetailSheet` already has `client`; add `corpusEntries`,
+    `corpus: VocabCorpus`, and `grammarManifest`.
+  - `TransitivePairDetailSheet` already has `client`; add `corpusEntries`,
+    `corpus: VocabCorpus`, and `grammarManifest`.
+  - Update every call-site that constructs these sheets
+    (`DocumentReaderView`, quiz views, anywhere else) to pass the new params.
+
+- [ ] **Add navigation destination inside each sheet's `NavigationStack`.**
+  Each sheet already wraps its content in a `NavigationStack`. Add a
+  `.navigationDestination(item:)` for a `ReaderTarget` value type:
+  ```swift
+  struct ReaderTarget: Identifiable {
+      let entry: CorpusEntry
+      let lineNumber: Int
+      var id: String { "\(entry.title):\(lineNumber)" }
+  }
+  ```
+  When a corpus-context row is tapped, set `@State var readerTarget: ReaderTarget?`
+  and the destination pushes `DocumentReaderView(entry:..., scrollToLine:lineNumber, ...)`.
+
+- [ ] **Add `scrollToLine: Int?` parameter to `DocumentReaderView`.**
+  On `.onAppear`, if `scrollToLine` is set, use `ScrollViewReader` to call
+  `proxy.scrollTo(lineNumber, anchor: .center)`. Wrap in
+  `withAnimation(UIAccessibility.isReduceMotionEnabled ? nil : .easeInOut)`
+  to respect the reduce-motion accessibility setting.
+
+- [ ] **Highlight the target line briefly.**
+  Add `@State private var highlightedLine: Int? = nil` to `DocumentReaderView`.
+  After scrolling, set `highlightedLine = scrollToLine`, then clear it after
+  1.5 s with `Task { try? await Task.sleep(for: .seconds(1.5)); highlightedLine = nil }`.
+  In `lineView`, apply `.background(highlightedLine == line.lineNumber ? Color.yellow.opacity(0.35) : Color.clear)`
+  with `.animation(.easeOut(duration: 0.6), value: highlightedLine)` so the
+  flash fades rather than snapping off. The highlight does not animate *on*
+  (it appears instantly) and fades out — this is perceptible but not motion-heavy,
+  so no special reduced-motion guard is needed for the fade itself.
+
+- [ ] **Make corpus-context rows tappable in each sheet.**
+  Replace the plain `SentenceFuriganaView` / `Text` display with a `Button`
+  whose action sets `readerTarget`. Keep the existing visual style; add a subtle
+  chevron or underline only if it reads naturally (do not over-decorate).
+
+- [ ] **Update call-sites** (`DocumentReaderView` already opens `WordDetailSheet`
+  and `GrammarDetailSheet` — pass the new params through). Check all other
+  places these sheets are presented (quiz result views, vocab/grammar browser
+  detail taps) and thread the params there too.
+
+- [ ] **Smoke-test all three sheets** (word, grammar, transitive pair): tap a
+  corpus-context entry, confirm the reader opens at the right line with the
+  highlight, confirm it works from both the Reader tab and quiz views.
+
 ---
 
 ## Notes / constraints

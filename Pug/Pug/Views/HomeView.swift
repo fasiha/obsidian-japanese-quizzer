@@ -18,7 +18,8 @@ struct HomeView: View {
 
     var body: some View {
         TabView {
-            VocabBrowserView(corpus: corpus, pairCorpus: pairCorpus, db: db, jmdict: jmdict, session: session)
+            VocabBrowserView(corpus: corpus, pairCorpus: pairCorpus, db: db, jmdict: jmdict, session: session,
+                             corpusEntries: corpusEntries, grammarManifest: grammarManifest)
                 .tabItem { Label("Vocab", systemImage: "books.vertical") }
 
             if let manifest = grammarManifest {
@@ -27,7 +28,9 @@ struct HomeView: View {
                     db: db,
                     grammarSession: grammarSession,
                     client: session.client,
-                    toolHandler: session.toolHandler
+                    toolHandler: session.toolHandler,
+                    corpusEntries: corpusEntries,
+                    corpus: corpus
                 )
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             } else {

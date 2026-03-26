@@ -82,6 +82,7 @@ struct DocumentBrowserView: View {
                 CorpusSectionView(
                     node: node,
                     collapsedSections: $collapsedSections,
+                    allEntries: entries,
                     corpus: corpus,
                     grammarManifest: grammarManifest,
                     db: db,
@@ -158,6 +159,7 @@ func buildCorpusTree(entries: [CorpusEntry]) -> [CorpusTreeNode] {
 struct CorpusSectionView: View {
     let node: CorpusTreeNode
     @Binding var collapsedSections: Set<String>
+    let allEntries: [CorpusEntry]
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
     let db: QuizDB
@@ -182,6 +184,7 @@ struct CorpusSectionView: View {
                     CorpusSectionView(
                         node: child,
                         collapsedSections: $collapsedSections,
+                        allEntries: allEntries,
                         corpus: corpus,
                         grammarManifest: grammarManifest,
                         db: db,
@@ -200,6 +203,7 @@ struct CorpusSectionView: View {
             NavigationLink {
                 DocumentReaderView(
                     entry: entry,
+                    allEntries: allEntries,
                     corpus: corpus,
                     grammarManifest: grammarManifest,
                     db: db,

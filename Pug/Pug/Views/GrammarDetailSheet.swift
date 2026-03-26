@@ -15,6 +15,8 @@ struct GrammarDetailSheet: View {
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let isEnrolled: Bool
+    let corpusEntries: [CorpusEntry]
+    let corpus: VocabCorpus
     /// Called when enrollment changes; receives the new enrolled state.
     let onEnrollmentChange: (Bool) -> Void
 
@@ -34,13 +36,16 @@ struct GrammarDetailSheet: View {
 
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
          toolHandler: ToolHandler? = nil,
-         isEnrolled: Bool, onEnrollmentChange: @escaping (Bool) -> Void) {
+         isEnrolled: Bool, corpusEntries: [CorpusEntry], corpus: VocabCorpus,
+         onEnrollmentChange: @escaping (Bool) -> Void) {
         self.topic = topic
         self.manifest = manifest
         self.db = db
         self.client = client
         self.toolHandler = toolHandler
         self.isEnrolled = isEnrolled
+        self.corpusEntries = corpusEntries
+        self.corpus = corpus
         self.onEnrollmentChange = onEnrollmentChange
         self._enrolled = State(initialValue: isEnrolled)
     }

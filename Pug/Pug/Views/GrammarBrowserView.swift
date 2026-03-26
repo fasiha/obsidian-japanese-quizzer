@@ -19,6 +19,8 @@ struct GrammarBrowserView: View {
     @State var grammarSession: GrammarAppSession
     let client: AnthropicClient
     let toolHandler: ToolHandler?
+    let corpusEntries: [CorpusEntry]
+    let corpus: VocabCorpus
 
     @State private var enrollmentStatus: [String: Bool] = [:]   // topicId → enrolled
     @State private var searchText = ""
@@ -30,12 +32,15 @@ struct GrammarBrowserView: View {
     @State private var lastSyncedAt: String? = nil
 
     init(manifest: GrammarManifest, db: QuizDB, grammarSession: GrammarAppSession,
-         client: AnthropicClient, toolHandler: ToolHandler? = nil) {
+         client: AnthropicClient, toolHandler: ToolHandler? = nil,
+         corpusEntries: [CorpusEntry], corpus: VocabCorpus) {
         self._manifest = State(initialValue: manifest)
         self.db = db
         self._grammarSession = State(initialValue: grammarSession)
         self.client = client
         self.toolHandler = toolHandler
+        self.corpusEntries = corpusEntries
+        self.corpus = corpus
     }
 
     enum EnrollmentFilter: String, CaseIterable {
@@ -107,7 +112,9 @@ struct GrammarBrowserView: View {
                     db: db,
                     client: client,
                     toolHandler: toolHandler,
-                    isEnrolled: enrollmentStatus[wrapper.id] ?? false
+                    isEnrolled: enrollmentStatus[wrapper.id] ?? false,
+                    corpusEntries: corpusEntries,
+                    corpus: corpus
                 ) { nowEnrolled in
                     let groupIds = wrapper.topic.equivalenceGroup ?? []
                     let allIds = [wrapper.id] + groupIds

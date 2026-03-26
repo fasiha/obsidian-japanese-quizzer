@@ -22,6 +22,7 @@ import Markdownosaur
 
 struct DocumentReaderView: View {
     let entry: CorpusEntry
+    let allEntries: [CorpusEntry]
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
     let db: QuizDB
@@ -51,7 +52,8 @@ struct DocumentReaderView: View {
         .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedWord) { item in
-            WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session)
+            WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session,
+                            corpusEntries: allEntries, grammarManifest: grammarManifest)
         }
         .sheet(item: $selectedTopic) { wrapper in
             if let manifest = grammarManifest {
@@ -61,7 +63,9 @@ struct DocumentReaderView: View {
                     db: db,
                     client: session.client,
                     toolHandler: session.toolHandler,
-                    isEnrolled: enrolledTopicIds.contains(wrapper.topic.prefixedId)
+                    isEnrolled: enrolledTopicIds.contains(wrapper.topic.prefixedId),
+                    corpusEntries: allEntries,
+                    corpus: corpus
                 ) { nowEnrolled in
                     let allIds = [wrapper.topic.prefixedId] + (wrapper.topic.equivalenceGroup ?? [])
                     for id in allIds {

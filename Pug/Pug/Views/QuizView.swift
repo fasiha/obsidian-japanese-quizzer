@@ -10,6 +10,8 @@ struct QuizView: View {
     let corpus: VocabCorpus
     let pairCorpus: TransitivePairCorpus
     let jmdict: any DatabaseReader
+    let corpusEntries: [CorpusEntry]
+    let grammarManifest: GrammarManifest?
     @State private var showRescaleSheet = false
     @State private var showDetailsSheet = false
     @State private var showSettings = false
@@ -67,9 +69,11 @@ struct QuizView: View {
                 if let item = session.currentItem {
                     if item.wordType == "transitive-pair",
                        let pairItem = pairCorpus.items.first(where: { $0.id == item.wordId }) {
-                        TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus, db: session.db, jmdict: jmdict, client: session.client)
+                        TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus, db: session.db, jmdict: jmdict, client: session.client,
+                                                  corpusEntries: corpusEntries, corpus: corpus, grammarManifest: grammarManifest)
                     } else if let vocabItem = corpus.items.first(where: { $0.id == item.wordId }) {
-                        WordDetailSheet(initialItem: vocabItem, corpus: corpus, db: session.db, session: session)
+                        WordDetailSheet(initialItem: vocabItem, corpus: corpus, db: session.db, session: session,
+                                        corpusEntries: corpusEntries, grammarManifest: grammarManifest)
                     }
                 }
             }

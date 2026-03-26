@@ -19,6 +19,8 @@ struct WordDetailSheet: View {
     let corpus: VocabCorpus
     let db: QuizDB
     let session: QuizSession    // for AnthropicClient + ToolHandler access
+    let corpusEntries: [CorpusEntry]
+    let grammarManifest: GrammarManifest?
 
     /// Live item looked up from corpus — updates reactively when corpus.items changes.
     /// Falls back to the initial snapshot if the item disappears (e.g. during re-download).
