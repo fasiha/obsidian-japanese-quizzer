@@ -118,7 +118,7 @@ final class GrammarAppSession {
         // recognition shows Japanese sentence + choices.
         let choicesText = (0..<question.choices.count)
             .map { "\(letters[safe: $0] ?? "?"))) \(question.choiceDisplay($0))" }
-            .joined(separator: "\n")
+            .joined(separator: "\n\n")
         let stemDisplay = buildStemDisplay(question: question, item: item)
         let questionBubble = "\(stemDisplay)\n\n\(choicesText)"
         var answerBubble = "\(chosenLetter))) \(choiceDisplay)"
@@ -158,7 +158,7 @@ final class GrammarAppSession {
         let letters = ["A", "B", "C", "D"]
         let choicesText = (0..<question.choices.count)
             .map { "\(letters[safe: $0] ?? "?"))) \(question.choiceDisplay($0))" }
-            .joined(separator: "\n")
+            .joined(separator: "\n\n")
         let stemDisplay = buildStemDisplay(question: question, item: item)
 
         // Use the actual message sent to Claude as the user bubble so the student can see that

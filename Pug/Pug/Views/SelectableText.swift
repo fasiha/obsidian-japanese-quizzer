@@ -31,16 +31,27 @@ struct SelectableText: UIViewRepresentable {
 
     func updateUIView(_ uiView: UITextView, context: Context) {
         guard uiView.text != text else { return }
+        // Promote isolated single newlines to double newlines so Markdownosaur renders
+        // them as paragraph breaks. Markdownosaur drops soft breaks (single \n within a
+        // paragraph) because swift-markdown emits SoftBreak nodes with no visitor override.
+        let normalized = text.replacingOccurrences(of: "(?<!\n)\n(?!\n)", with: "\n\n",
+                                                   options: .regularExpression)
         var parser = Markdownosaur()
-        let document = Document(parsing: text)
+        let document = Document(parsing: normalized)
         let attributed = NSMutableAttributedString(attributedString: parser.attributedString(from: document))
         // Re-base all fonts to Dynamic Type body size, preserving bold/italic/monospace traits.
         let body = UIFont.preferredFont(forTextStyle: .body)
         let full = NSRange(location: 0, length: attributed.length)
+        // Collect font changes before applying — mutating the attributed string while
+        // enumerating it is undefined behavior per Apple's docs and can corrupt paragraph breaks.
+        var fontUpdates: [(NSRange, UIFont)] = []
         attributed.enumerateAttribute(.font, in: full) { value, range, _ in
             let traits = (value as? UIFont)?.fontDescriptor.symbolicTraits ?? []
             let descriptor = body.fontDescriptor.withSymbolicTraits(traits) ?? body.fontDescriptor
-            attributed.addAttribute(.font, value: UIFont(descriptor: descriptor, size: body.pointSize), range: range)
+            fontUpdates.append((range, UIFont(descriptor: descriptor, size: body.pointSize)))
+        }
+        for (range, font) in fontUpdates {
+            attributed.addAttribute(.font, value: font, range: range)
         }
         // Apply system label color so text adapts to dark/light mode.
         attributed.addAttribute(.foregroundColor, value: UIColor.label, range: full)

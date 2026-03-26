@@ -76,6 +76,7 @@ struct GrammarQuizView: View {
     @State private var showRescaleSheet = false
     @State private var vocabExpanded = false
     @State private var audioPlayer = GrammarAudioPlayer()
+    @FocusState private var isChatFocused: Bool
 
     var body: some View {
         Group {
@@ -400,6 +401,7 @@ struct GrammarQuizView: View {
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...6)
                     .disabled(session.isSendingChat)
+                    .focused($isChatFocused)
 
                     if session.isSendingChat {
                         ProgressView()
@@ -408,6 +410,7 @@ struct GrammarQuizView: View {
                     } else {
                         Button {
                             session.sendChatMessage()
+                            isChatFocused = false
                         } label: {
                             Image(systemName: "arrow.up.circle.fill")
                                 .font(.title2)

@@ -442,6 +442,29 @@ learning projects:
 
 ---
 
+## iOS app accessibility
+
+### Reduced motion (keyboard management)
+
+After typing an answer and tapping send, the keyboard is explicitly dismissed and focus
+is removed from the chat input (`@FocusState` set to `false` in both `QuizView` and
+`GrammarQuizView`). The keyboard does not reappear automatically when the response
+arrives — the user reads at their own pace and taps the input field when they want to
+type again. This prevents the involuntary scroll-to-bottom-and-keyboard-reappear cycle
+that causes motion sickness for users sensitive to unexpected scrolling.
+
+### Markdown rendering
+
+LLM responses are rendered via [Markdownosaur](https://github.com/christianselig/Markdownosaur)
+(Christian Selig) backed by Apple's [swift-markdown](https://github.com/swiftlang/swift-markdown)
+AST parser. Bold, italic, inline code, ordered and unordered lists, and paragraph
+spacing are all rendered correctly in `SelectableText` (a non-editable `UITextView`
+wrapper). Single newlines are promoted to double newlines before parsing so that
+soft-break separators — common in LLM output and in hard-coded choice lists — are
+rendered as paragraph breaks rather than silently dropped.
+
+---
+
 ## See also
 
 - [CLAUDE.md](CLAUDE.md) — detailed architecture notes for Claude (iOS quiz facets, grammar tiers, tool schemas)
