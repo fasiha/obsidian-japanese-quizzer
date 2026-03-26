@@ -22,14 +22,15 @@ import Markdownosaur
 
 struct DocumentReaderView: View {
     let entry: CorpusEntry
-    let allEntries: [CorpusEntry]
-    let corpus: VocabCorpus
-    let grammarManifest: GrammarManifest?
     let db: QuizDB
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let jmdict: any DatabaseReader
     let scrollToLine: Int?
+
+    @Environment(VocabCorpus.self) private var corpus
+    @Environment(GrammarStore.self) private var grammarStore
+    @Environment(CorpusStore.self) private var corpusStore
 
     @State private var selectedWord: VocabItem? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
@@ -72,12 +73,11 @@ struct DocumentReaderView: View {
         .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedWord) { item in
-            WordDetailSheet(initialItem: item, corpus: corpus, db: db,
-                            client: client, toolHandler: toolHandler, jmdict: jmdict,
-                            corpusEntries: allEntries, grammarManifest: grammarManifest)
+            WordDetailSheet(initialItem: item, db: db,
+                            client: client, toolHandler: toolHandler, jmdict: jmdict)
         }
         .sheet(item: $selectedTopic) { wrapper in
-            if let manifest = grammarManifest {
+            if let manifest = grammarStore.manifest {
                 GrammarDetailSheet(
                     topic: wrapper.topic,
                     manifest: manifest,
@@ -85,8 +85,6 @@ struct DocumentReaderView: View {
                     client: client,
                     toolHandler: toolHandler,
                     isEnrolled: enrolledTopicIds.contains(wrapper.topic.prefixedId),
-                    corpusEntries: allEntries,
-                    corpus: corpus,
                     jmdict: jmdict
                 ) { nowEnrolled in
                     let allIds = [wrapper.topic.prefixedId] + (wrapper.topic.equivalenceGroup ?? [])
@@ -156,7 +154,7 @@ struct DocumentReaderView: View {
                     vocabChip(item)
                 }
             }
-            if let manifest = grammarManifest {
+            if let manifest = grammarStore.manifest {
                 ForEach(grammarIds, id: \.self) { topicId in
                     if let topic = manifest.topics[topicId] {
                         grammarChip(topic)
@@ -200,7 +198,7 @@ struct DocumentReaderView: View {
 
     private func grammarChip(_ topic: GrammarTopic) -> some View {
         Button {
-            if grammarManifest != nil {
+            if grammarStore.manifest != nil {
                 selectedTopic = IdentifiableGrammarTopic(topic: topic)
             }
         } label: {
@@ -287,7 +285,7 @@ struct DocumentReaderView: View {
 
     /// Maps each 1-based line number to the grammar topic prefixed IDs annotated on that line.
     private func buildGrammarMap() -> [Int: [String]] {
-        guard let manifest = grammarManifest else { return [:] }
+        guard let manifest = grammarStore.manifest else { return [:] }
         var map: [Int: [String]] = [:]
         for (_, topic) in manifest.topics {
             guard let refs = topic.references?[entry.title] else { continue }

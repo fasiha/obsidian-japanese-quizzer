@@ -14,13 +14,14 @@ import SwiftUI
 import GRDB
 
 struct VocabBrowserView: View {
-    let corpus: VocabCorpus
     let pairCorpus: TransitivePairCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
     let session: QuizSession
-    let corpusEntries: [CorpusEntry]
-    let grammarManifest: GrammarManifest?
+
+    @Environment(VocabCorpus.self) private var corpus
+    @Environment(GrammarStore.self) private var grammarStore
+    @Environment(CorpusStore.self) private var corpusStore
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItem? = nil
@@ -114,20 +115,17 @@ struct VocabBrowserView: View {
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
-                WordDetailSheet(initialItem: item, corpus: corpus, db: db,
-                                client: session.client, toolHandler: session.toolHandler, jmdict: jmdict,
-                                corpusEntries: corpusEntries, grammarManifest: grammarManifest)
+                WordDetailSheet(initialItem: item, db: db,
+                                client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
             }
             .sheet(item: $selectedPair) { pair in
                 TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict,
-                                          client: session.client, toolHandler: session.toolHandler,
-                                          corpusEntries: corpusEntries, corpus: corpus, grammarManifest: grammarManifest)
+                                          client: session.client, toolHandler: session.toolHandler)
             }
 
             .sheet(isPresented: $showSettings) { SettingsView(db: db) }
             .navigationDestination(isPresented: $showQuiz) {
-                QuizView(session: session, corpus: corpus, pairCorpus: pairCorpus, jmdict: jmdict,
-                         corpusEntries: corpusEntries, grammarManifest: grammarManifest)
+                QuizView(session: session, pairCorpus: pairCorpus, jmdict: jmdict)
             }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",

@@ -20,10 +20,10 @@ struct AppRootView: View {
     @State private var preferences = UserPreferences()
     @State private var session: QuizSession? = nil
     @State private var grammarSession: GrammarAppSession? = nil
-    @State private var grammarManifest: GrammarManifest? = nil
+    @State private var grammarStore = GrammarStore()
     @State private var corpus = VocabCorpus()
     @State private var pairCorpus = TransitivePairCorpus()
-    @State private var corpusEntries: [CorpusEntry] = []
+    @State private var corpusStore = CorpusStore()
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
     @State private var errorMessage: String? = nil
@@ -36,11 +36,13 @@ struct AppRootView: View {
                 let isConfigured = !SetupHandler.resolvedApiKey().isEmpty
                                 && VocabSync.resolvedURL() != nil
                 if isConfigured {
-                    HomeView(session: session, corpus: corpus, pairCorpus: pairCorpus,
+                    HomeView(session: session, pairCorpus: pairCorpus,
                              db: db, jmdict: jmdict,
-                             grammarSession: grammarSession, grammarManifest: grammarManifest,
-                             corpusEntries: $corpusEntries)
+                             grammarSession: grammarSession)
                         .environment(preferences)
+                        .environment(corpus)
+                        .environment(grammarStore)
+                        .environment(corpusStore)
                 } else {
                     ContentUnavailableView(
                         "Setup Required",
@@ -105,8 +107,8 @@ struct AppRootView: View {
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await pairLoad
             session!.pairCorpus = pairCorpus
-            grammarManifest = await grammarLoad
-            corpusEntries = await corpusLoad
+            grammarStore.manifest = await grammarLoad
+            corpusStore.entries = await corpusLoad
         } catch {
             errorMessage = error.localizedDescription
         }

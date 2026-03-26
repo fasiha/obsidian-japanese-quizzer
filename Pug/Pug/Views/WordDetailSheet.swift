@@ -16,13 +16,14 @@ import GRDB
 
 struct WordDetailSheet: View {
     let initialItem: VocabItem
-    let corpus: VocabCorpus
     let db: QuizDB
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let jmdict: any DatabaseReader
-    let corpusEntries: [CorpusEntry]
-    let grammarManifest: GrammarManifest?
+
+    @Environment(VocabCorpus.self) private var corpus
+    @Environment(GrammarStore.self) private var grammarStore
+    @Environment(CorpusStore.self) private var corpusStore
 
     /// Live item looked up from corpus — updates reactively when corpus.items changes.
     /// Falls back to the initial snapshot if the item disappears (e.g. during re-download).
@@ -74,9 +75,6 @@ struct WordDetailSheet: View {
             .navigationDestination(item: $readerTarget) { target in
                 DocumentReaderView(
                     entry: target.entry,
-                    allEntries: corpusEntries,
-                    corpus: corpus,
-                    grammarManifest: grammarManifest,
                     db: db,
                     client: client,
                     toolHandler: toolHandler,
@@ -118,7 +116,7 @@ struct WordDetailSheet: View {
                                 ForEach(refs.indices, id: \.self) { i in
                                     let ref = refs[i]
                                     if let context = ref.context {
-                                        if let entry = corpusEntries.first(where: { $0.title == source }) {
+                                        if let entry = corpusStore.entries.first(where: { $0.title == source }) {
                                             Button {
                                                 readerTarget = ReaderTarget(entry: entry, lineNumber: ref.line)
                                             } label: {

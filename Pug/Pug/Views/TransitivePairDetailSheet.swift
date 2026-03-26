@@ -13,16 +13,15 @@ struct TransitivePairDetailSheet: View {
     let jmdict: any DatabaseReader
     let client: AnthropicClient
     let toolHandler: ToolHandler?
-    let corpusEntries: [CorpusEntry]
-    let corpus: VocabCorpus
-    let grammarManifest: GrammarManifest?
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(GrammarStore.self) private var grammarStore
+    @Environment(CorpusStore.self) private var corpusStore
 
     /// Live item looked up from corpus — updates reactively when pairCorpus.items changes.
     private var item: TransitivePairItem {
         pairCorpus.items.first { $0.id == initialItem.id } ?? initialItem
     }
-
-    @Environment(\.dismiss) private var dismiss
     @State private var readerTarget: ReaderTarget? = nil
     @State private var intransitiveInfo: MemberInfo?
     @State private var transitiveInfo: MemberInfo?
@@ -131,9 +130,6 @@ struct TransitivePairDetailSheet: View {
             .navigationDestination(item: $readerTarget) { target in
                 DocumentReaderView(
                     entry: target.entry,
-                    allEntries: corpusEntries,
-                    corpus: corpus,
-                    grammarManifest: grammarManifest,
                     db: db,
                     client: client,
                     toolHandler: toolHandler,

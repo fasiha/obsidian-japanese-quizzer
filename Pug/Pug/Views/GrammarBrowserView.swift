@@ -20,8 +20,6 @@ struct GrammarBrowserView: View {
     @State var grammarSession: GrammarAppSession
     let client: AnthropicClient
     let toolHandler: ToolHandler?
-    let corpusEntries: [CorpusEntry]
-    let corpus: VocabCorpus
     let jmdict: any DatabaseReader
 
     @State private var enrollmentStatus: [String: Bool] = [:]   // topicId → enrolled
@@ -35,14 +33,12 @@ struct GrammarBrowserView: View {
 
     init(manifest: GrammarManifest, db: QuizDB, grammarSession: GrammarAppSession,
          client: AnthropicClient, toolHandler: ToolHandler? = nil,
-         corpusEntries: [CorpusEntry], corpus: VocabCorpus, jmdict: any DatabaseReader) {
+         jmdict: any DatabaseReader) {
         self._manifest = State(initialValue: manifest)
         self.db = db
         self._grammarSession = State(initialValue: grammarSession)
         self.client = client
         self.toolHandler = toolHandler
-        self.corpusEntries = corpusEntries
-        self.corpus = corpus
         self.jmdict = jmdict
     }
 
@@ -116,8 +112,6 @@ struct GrammarBrowserView: View {
                     client: client,
                     toolHandler: toolHandler,
                     isEnrolled: enrollmentStatus[wrapper.id] ?? false,
-                    corpusEntries: corpusEntries,
-                    corpus: corpus,
                     jmdict: jmdict
                 ) { nowEnrolled in
                     let groupIds = wrapper.topic.equivalenceGroup ?? []

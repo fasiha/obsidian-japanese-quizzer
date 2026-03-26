@@ -8,29 +8,27 @@ import GRDB
 
 struct HomeView: View {
     let session: QuizSession
-    let corpus: VocabCorpus
     let pairCorpus: TransitivePairCorpus
     let db: QuizDB
     let jmdict: any DatabaseReader
     let grammarSession: GrammarAppSession
-    let grammarManifest: GrammarManifest?
-    @Binding var corpusEntries: [CorpusEntry]  // document corpus for the Reader tab
+
+    @Environment(VocabCorpus.self) private var corpus
+    @Environment(GrammarStore.self) private var grammarStore
+    @Environment(CorpusStore.self) private var corpusStore
 
     var body: some View {
         TabView {
-            VocabBrowserView(corpus: corpus, pairCorpus: pairCorpus, db: db, jmdict: jmdict, session: session,
-                             corpusEntries: corpusEntries, grammarManifest: grammarManifest)
+            VocabBrowserView(pairCorpus: pairCorpus, db: db, jmdict: jmdict, session: session)
                 .tabItem { Label("Vocab", systemImage: "books.vertical") }
 
-            if let manifest = grammarManifest {
+            if let manifest = grammarStore.manifest {
                 GrammarBrowserView(
                     manifest: manifest,
                     db: db,
                     grammarSession: grammarSession,
                     client: session.client,
                     toolHandler: session.toolHandler,
-                    corpusEntries: corpusEntries,
-                    corpus: corpus,
                     jmdict: jmdict
                 )
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
@@ -44,15 +42,12 @@ struct HomeView: View {
             }
 
             DocumentBrowserView(
-                entries: corpusEntries,
-                corpus: corpus,
-                grammarManifest: grammarManifest,
                 db: db,
                 jmdict: jmdict,
                 client: session.client,
                 toolHandler: session.toolHandler
             ) {
-                corpusEntries = try await CorpusSync.download()
+                corpusStore.entries = try await CorpusSync.download()
             }
             .tabItem { Label("Reader", systemImage: "book.pages") }
         }

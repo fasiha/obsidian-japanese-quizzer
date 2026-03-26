@@ -16,13 +16,12 @@ struct GrammarDetailSheet: View {
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let isEnrolled: Bool
-    let corpusEntries: [CorpusEntry]
-    let corpus: VocabCorpus
     let jmdict: any DatabaseReader
     /// Called when enrollment changes; receives the new enrolled state.
     let onEnrollmentChange: (Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(CorpusStore.self) private var corpusStore
     @State private var readerTarget: ReaderTarget? = nil
     @State private var enrolled: Bool
     @State private var isTogglingEnrollment = false
@@ -39,8 +38,7 @@ struct GrammarDetailSheet: View {
 
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
          toolHandler: ToolHandler? = nil,
-         isEnrolled: Bool, corpusEntries: [CorpusEntry], corpus: VocabCorpus,
-         jmdict: any DatabaseReader,
+         isEnrolled: Bool, jmdict: any DatabaseReader,
          onEnrollmentChange: @escaping (Bool) -> Void) {
         self.topic = topic
         self.manifest = manifest
@@ -48,8 +46,6 @@ struct GrammarDetailSheet: View {
         self.client = client
         self.toolHandler = toolHandler
         self.isEnrolled = isEnrolled
-        self.corpusEntries = corpusEntries
-        self.corpus = corpus
         self.jmdict = jmdict
         self.onEnrollmentChange = onEnrollmentChange
         self._enrolled = State(initialValue: isEnrolled)
@@ -92,9 +88,6 @@ struct GrammarDetailSheet: View {
             .navigationDestination(item: $readerTarget) { target in
                 DocumentReaderView(
                     entry: target.entry,
-                    allEntries: corpusEntries,
-                    corpus: corpus,
-                    grammarManifest: manifest,
                     db: db,
                     client: client,
                     toolHandler: toolHandler,
@@ -226,7 +219,7 @@ struct GrammarDetailSheet: View {
                             ForEach(refs.indices, id: \.self) { i in
                                 let ref = refs[i]
                                 if let context = ref.context {
-                                    if let entry = corpusEntries.first(where: { $0.title == source }) {
+                                    if let entry = corpusStore.entries.first(where: { $0.title == source }) {
                                         Button {
                                             readerTarget = ReaderTarget(entry: entry, lineNumber: ref.line)
                                         } label: {

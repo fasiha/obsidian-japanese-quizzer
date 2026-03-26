@@ -12,14 +12,13 @@ import SwiftUI
 import GRDB
 
 struct DocumentBrowserView: View {
-    let entries: [CorpusEntry]
-    let corpus: VocabCorpus
-    let grammarManifest: GrammarManifest?
     let db: QuizDB
     let jmdict: any DatabaseReader
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let onDownload: () async throws -> Void
+
+    @Environment(CorpusStore.self) private var corpusStore
 
     @State private var collapsedSections: Set<String> = []
     @State private var isDownloading = false
@@ -28,7 +27,7 @@ struct DocumentBrowserView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if entries.isEmpty {
+                if corpusStore.entries.isEmpty {
                     emptyState
                 } else {
                     documentList
@@ -77,15 +76,12 @@ struct DocumentBrowserView: View {
     // MARK: - Document list
 
     private var documentList: some View {
-        let roots = buildCorpusTree(entries: entries)
+        let roots = buildCorpusTree(entries: corpusStore.entries)
         return List {
             ForEach(roots, id: \.pathKey) { node in
                 CorpusSectionView(
                     node: node,
                     collapsedSections: $collapsedSections,
-                    allEntries: entries,
-                    corpus: corpus,
-                    grammarManifest: grammarManifest,
                     db: db,
                     jmdict: jmdict,
                     client: client,
@@ -161,13 +157,12 @@ func buildCorpusTree(entries: [CorpusEntry]) -> [CorpusTreeNode] {
 struct CorpusSectionView: View {
     let node: CorpusTreeNode
     @Binding var collapsedSections: Set<String>
-    let allEntries: [CorpusEntry]
-    let corpus: VocabCorpus
-    let grammarManifest: GrammarManifest?
     let db: QuizDB
     let jmdict: any DatabaseReader
     let client: AnthropicClient
     let toolHandler: ToolHandler?
+
+    @Environment(CorpusStore.self) private var corpusStore
 
     private var isExpanded: Binding<Bool> {
         Binding(
@@ -187,9 +182,6 @@ struct CorpusSectionView: View {
                     CorpusSectionView(
                         node: child,
                         collapsedSections: $collapsedSections,
-                        allEntries: allEntries,
-                        corpus: corpus,
-                        grammarManifest: grammarManifest,
                         db: db,
                         jmdict: jmdict,
                         client: client,
@@ -207,9 +199,6 @@ struct CorpusSectionView: View {
             NavigationLink {
                 DocumentReaderView(
                     entry: entry,
-                    allEntries: allEntries,
-                    corpus: corpus,
-                    grammarManifest: grammarManifest,
                     db: db,
                     client: client,
                     toolHandler: toolHandler,

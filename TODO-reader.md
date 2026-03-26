@@ -212,6 +212,100 @@ scrolled to (and briefly highlighting) the relevant line.
 
 ---
 
+### Phase 8 — Replace prop drilling with SwiftUI environment injection
+
+**Goal:** eliminate the manual threading of `corpus: VocabCorpus`,
+`grammarManifest: GrammarManifest?`, and `corpusEntries: [CorpusEntry]` through
+every intermediate view. Phase 7 required touching 9–11 files to add two
+parameters; with environment injection, adding a new global value in the future
+will only require changes at the root (inject) and the leaf (read) — zero
+intermediate-file changes.
+
+**Root cause:** `VocabCorpus`, `GrammarManifest`, and `[CorpusEntry]` are
+read-only shared state, but they are passed as explicit `let` props at every
+layer. `UserPreferences` already uses `@Environment` correctly; this phase
+brings the other three values in line with that pattern.
+
+#### Sub-tasks
+
+- [x] **Create `CorpusStore.swift`** (in `Models/`):
+  ```swift
+  @Observable final class CorpusStore {
+      var entries: [CorpusEntry] = []
+  }
+  ```
+
+- [x] **Create `GrammarStore.swift`** (in `Models/`):
+  ```swift
+  @Observable final class GrammarStore {
+      var manifest: GrammarManifest? = nil
+  }
+  ```
+  `VocabCorpus` is already `@Observable` and needs no wrapper.
+
+- [x] **Update `AppRootView`:**
+  - Replace `@State private var grammarManifest: GrammarManifest?` with
+    `@State private var grammarStore = GrammarStore()`.
+  - Replace `@State private var corpusEntries: [CorpusEntry] = []` with
+    `@State private var corpusStore = CorpusStore()`.
+  - Update `setup()` to write `grammarStore.manifest = ...` and
+    `corpusStore.entries = ...` instead of the bare state vars.
+  - Inject `.environment(corpus).environment(grammarStore).environment(corpusStore)`
+    on the `HomeView` (alongside the existing `.environment(preferences)`).
+  - `HomeView` call site loses its `corpus:`, `grammarManifest:`, and
+    `corpusEntries:` arguments.
+
+- [x] **Simplify `HomeView`:**
+  - Remove `let corpus`, `let grammarManifest`, `@Binding var corpusEntries`.
+  - Add `@Environment(VocabCorpus.self)`, `@Environment(GrammarStore.self)`,
+    `@Environment(CorpusStore.self)` reads.
+  - The `if let manifest = grammarStore.manifest` guard replaces the old
+    `if let manifest = grammarManifest`.
+  - The `DocumentBrowserView` download closure sets `corpusStore.entries`.
+
+- [x] **Simplify `VocabBrowserView`:**
+  - Remove `let corpus`, `let corpusEntries`, `let grammarManifest`; read all
+    from `@Environment`.
+
+- [x] **Simplify `QuizView`:**
+  - Remove `let corpus`, `let corpusEntries`, `let grammarManifest`; read all
+    from `@Environment`.
+
+- [x] **Simplify `GrammarBrowserView`:**
+  - Remove `let corpusEntries`, `let corpus`; read both from `@Environment`.
+  - Keep `@State private var manifest` (it performs a local re-download
+    mutation on line ~297). The init parameter `manifest: GrammarManifest`
+    stays; `HomeView` now sources it from `grammarStore.manifest`.
+
+- [x] **Simplify `DocumentBrowserView`** (both the outer struct and the inner
+  `DocumentTreeNode` struct):
+  - Remove `let corpus`, `let grammarManifest`, `let entries`; read all from
+    `@Environment`.
+  - The download closure in the outer struct sets `corpusStore.entries`.
+
+- [x] **Simplify `DocumentReaderView`:**
+  - Remove `let corpus`, `let grammarManifest`, `let allEntries`; read all
+    from `@Environment`.
+
+- [x] **Simplify `WordDetailSheet`:**
+  - Remove `let corpus`, `let corpusEntries`, `let grammarManifest`; read all
+    from `@Environment`.
+
+- [x] **Simplify `GrammarDetailSheet`:**
+  - Remove `let corpusEntries`, `let corpus`; read both from `@Environment`.
+  - `let manifest: GrammarManifest` stays (it is a direct consumer, not a
+    forwarder, and is always non-nil at call sites).
+
+- [x] **Simplify `TransitivePairDetailSheet`:**
+  - Remove `let corpus`, `let corpusEntries`, `let grammarManifest`; read all
+    from `@Environment`.
+
+- [ ] **Smoke-test:** build and run; verify Vocab browser, Grammar browser,
+  Reader tab, Vocab quiz, and Grammar quiz all open detail sheets and navigate
+  to the reader without crashes.
+
+---
+
 ## Notes / constraints
 
 - Claude never writes directly to SQLite or to the user's Markdown content.
