@@ -41,7 +41,10 @@ struct TransitivePairDetailSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Pattern rules hint
+                    // Compact two-column summary: verb + examples side-by-side
+                    pairSummaryTable
+
+                    // Pattern rules hint (moved below the summary table)
                     if let hint = pairPatternHint {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Pattern")
@@ -54,34 +57,27 @@ struct TransitivePairDetailSheet: View {
                                 .font(.callout)
                                 .foregroundStyle(.teal)
                         }
-                        Divider()
                     }
 
-                    // Intransitive verb
+                    Divider()
+
+                    // Intransitive verb (example shown in summary table above)
                     verbSection(
                         heading: "Intransitive (自動詞)",
                         member: item.pair.intransitive,
                         furigana: item.intransitiveFurigana,
-                        info: intransitiveInfo,
-                        example: item.pair.examples.intransitive
+                        info: intransitiveInfo
                     )
 
                     Divider()
 
-                    // Transitive verb
+                    // Transitive verb (example shown in summary table above)
                     verbSection(
                         heading: "Transitive (他動詞)",
                         member: item.pair.transitive,
                         furigana: item.transitiveFurigana,
-                        info: transitiveInfo,
-                        example: item.pair.examples.transitive
+                        info: transitiveInfo
                     )
-
-                    // Drill sentences
-                    if let drills = item.pair.drills, !drills.isEmpty {
-                        Divider()
-                        drillsSection(drills)
-                    }
 
                     // Ambiguous reason
                     if let reason = item.pair.ambiguousReason {
@@ -126,6 +122,80 @@ struct TransitivePairDetailSheet: View {
                 RescaleSheet(currentHalflife: record.t) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
+            }
+        }
+    }
+
+    // MARK: - Summary table
+
+    /// Summary table: two-column verb header, then alternating left/right drill rows.
+    /// Intransitive drills are left-aligned; transitive drills are right-aligned.
+    /// Drills are shown here only — not repeated in the glosses section below.
+    private var pairSummaryTable: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Two-column verb header: intransitive left, transitive right
+            Grid(alignment: .topLeading, horizontalSpacing: 12, verticalSpacing: 4) {
+                GridRow {
+                    Text("自動詞")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase).tracking(0.5)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("他動詞")
+                        .font(.caption).fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase).tracking(0.5)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                GridRow(alignment: .bottom) {
+                    inlineVerb(member: item.pair.intransitive, furigana: item.intransitiveFurigana)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    inlineVerb(member: item.pair.transitive,   furigana: item.transitiveFurigana)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+
+            // Alternating drill rows: intransitive left, transitive right
+            if let drills = item.pair.drills, !drills.isEmpty {
+                Divider()
+                ForEach(Array(drills.enumerated()), id: \.offset) { i, drill in
+                    if i > 0 { Divider().padding(.vertical, 2) }
+
+                    // Intransitive — left-aligned
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(drill.intransitive.ja).font(.body)
+                        Text(drill.intransitive.en).font(.callout).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Transitive — right-aligned
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(drill.transitive.ja).font(.body)
+                        Text(drill.transitive.en).font(.callout).foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    /// Render a verb word with furigana at compact (title2) size for use in the summary table.
+    @ViewBuilder
+    private func inlineVerb(member: TransitivePairMember, furigana: [FuriganaSegment]?) -> some View {
+        if let segs = furigana {
+            HStack(spacing: 0) {
+                ForEach(Array(segs.enumerated()), id: \.offset) { _, seg in
+                    VStack(spacing: 0) {
+                        Text(seg.rt ?? " ").font(.caption2).foregroundStyle(.secondary)
+                        Text(seg.ruby).font(.title2)
+                    }
+                }
+            }
+        } else {
+            VStack(spacing: 0) {
+                Text(" ").font(.caption2)
+                Text(member.kanji.first ?? member.kana).font(.title2)
             }
         }
     }
@@ -258,8 +328,7 @@ struct TransitivePairDetailSheet: View {
         heading: String,
         member: TransitivePairMember,
         furigana: [FuriganaSegment]?,
-        info: MemberInfo?,
-        example: String?
+        info: MemberInfo?
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(heading)
@@ -311,64 +380,6 @@ struct TransitivePairDetailSheet: View {
                 }
             }
 
-            // Example sentence
-            if let example {
-                Text(example)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .textSelection(.enabled)
-    }
-
-    // MARK: - Drills section
-
-    @ViewBuilder
-    private func drillsSection(_ drills: [TransitivePairDrill]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Drill Sentences")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-
-            ForEach(Array(drills.enumerated()), id: \.offset) { i, drill in
-                VStack(alignment: .leading, spacing: 6) {
-                    if drills.count > 1 {
-                        Text("Pair \(i + 1)")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-
-                    // Intransitive
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("自動詞")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(drill.intransitive.ja)
-                            .font(.callout)
-                        Text(drill.intransitive.en)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    // Transitive
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("他動詞")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                        Text(drill.transitive.ja)
-                            .font(.callout)
-                        Text(drill.transitive.en)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if i < drills.count - 1 {
-                    Divider().padding(.leading, 16)
-                }
-            }
         }
         .textSelection(.enabled)
     }
