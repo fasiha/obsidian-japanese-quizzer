@@ -105,7 +105,7 @@ struct VocabBrowserView: View {
                             showSettings: $showSettings,
                             db: db,
                             lastSyncedAt: corpus.lastSyncedAt,
-                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict) } }
+                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict); try? await CorpusSync.download() } }
                         )
                     }
                 }

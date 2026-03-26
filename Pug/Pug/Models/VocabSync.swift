@@ -115,11 +115,7 @@ enum VocabSync {
         return manifest
     }
 
-    private static func cacheFileURL() throws -> URL {
-        let docs = try FileManager.default.url(
-            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        return docs.appendingPathComponent(cacheFilename)
-    }
+    private static func cacheFileURL() throws -> URL { try documentsURL(filename: cacheFilename) }
 }
 
 // MARK: - Errors

@@ -75,22 +75,7 @@ enum GrammarSync {
     /// Priority:
     ///   1. Derive from vocab URL (replace "vocab.json" with "grammar.json")
     ///   2. GRAMMAR_URL environment variable
-    static func resolvedURL() -> URL? {
-        // Derive from the vocab URL if possible.
-        if let vocabURLString = UserDefaults.standard.string(forKey: "vocabUrl"),
-           !vocabURLString.isEmpty {
-            let grammarString = vocabURLString.replacingOccurrences(of: "vocab.json", with: "grammar.json")
-            if let url = URL(string: grammarString), grammarString != vocabURLString { return url }
-        }
-        if let vocabEnv = ProcessInfo.processInfo.environment["VOCAB_URL"], !vocabEnv.isEmpty {
-            let grammarString = vocabEnv.replacingOccurrences(of: "vocab.json", with: "grammar.json")
-            if let url = URL(string: grammarString), grammarString != vocabEnv { return url }
-        }
-        // Fallback: explicit GRAMMAR_URL override.
-        if let s = ProcessInfo.processInfo.environment["GRAMMAR_URL"],
-           !s.isEmpty, let url = URL(string: s) { return url }
-        return nil
-    }
+    static func resolvedURL() -> URL? { derivedURL(replacing: "grammar.json", fallbackEnvVar: "GRAMMAR_URL") }
 
     /// Download grammar.json from the resolved URL, decode it, and cache to Documents.
     /// Throws `GrammarSyncError.noURLConfigured` if no URL can be derived.
@@ -120,30 +105,13 @@ enum GrammarSync {
         return manifest
     }
 
-    private static func cacheFileURL() throws -> URL {
-        let docs = try FileManager.default.url(
-            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        return docs.appendingPathComponent(cacheFilename)
-    }
+    private static func cacheFileURL() throws -> URL { try documentsURL(filename: cacheFilename) }
 
     // MARK: - Equivalences (grammar-equivalences.json)
 
     /// Resolve the equivalences download URL by substituting "grammar-equivalences.json" for
     /// "vocab.json" in the vocab URL.  Falls back to GRAMMAR_EQUIVALENCES_URL env var.
-    static func equivalencesURL() -> URL? {
-        if let vocabURLString = UserDefaults.standard.string(forKey: "vocabUrl"),
-           !vocabURLString.isEmpty {
-            let s = vocabURLString.replacingOccurrences(of: "vocab.json", with: "grammar-equivalences.json")
-            if let url = URL(string: s), s != vocabURLString { return url }
-        }
-        if let vocabEnv = ProcessInfo.processInfo.environment["VOCAB_URL"], !vocabEnv.isEmpty {
-            let s = vocabEnv.replacingOccurrences(of: "vocab.json", with: "grammar-equivalences.json")
-            if let url = URL(string: s), s != vocabEnv { return url }
-        }
-        if let s = ProcessInfo.processInfo.environment["GRAMMAR_EQUIVALENCES_URL"],
-           !s.isEmpty, let url = URL(string: s) { return url }
-        return nil
-    }
+    static func equivalencesURL() -> URL? { derivedURL(replacing: "grammar-equivalences.json", fallbackEnvVar: "GRAMMAR_EQUIVALENCES_URL") }
 
     /// Download grammar-equivalences.json, decode it, and cache to Documents.
     @discardableResult
@@ -192,11 +160,7 @@ enum GrammarSync {
         }
     }
 
-    private static func equivalencesCacheFileURL() throws -> URL {
-        let docs = try FileManager.default.url(
-            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        return docs.appendingPathComponent(equivalencesCacheFilename)
-    }
+    private static func equivalencesCacheFileURL() throws -> URL { try documentsURL(filename: equivalencesCacheFilename) }
 }
 
 // MARK: - Errors

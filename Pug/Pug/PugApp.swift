@@ -23,6 +23,7 @@ struct AppRootView: View {
     @State private var grammarManifest: GrammarManifest? = nil
     @State private var corpus = VocabCorpus()
     @State private var pairCorpus = TransitivePairCorpus()
+    @State private var corpusEntries: [CorpusEntry] = []
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
     @State private var errorMessage: String? = nil
@@ -37,7 +38,8 @@ struct AppRootView: View {
                 if isConfigured {
                     HomeView(session: session, corpus: corpus, pairCorpus: pairCorpus,
                              db: db, jmdict: jmdict,
-                             grammarSession: grammarSession, grammarManifest: grammarManifest)
+                             grammarSession: grammarSession, grammarManifest: grammarManifest,
+                             corpusEntries: corpusEntries)
                         .environment(preferences)
                 } else {
                     ContentUnavailableView(
@@ -96,13 +98,15 @@ struct AppRootView: View {
             grammarSession = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
                                               jmdict: toolHandler.jmdict)
 
-            // Load vocab corpus, pair corpus, and grammar manifest concurrently.
+            // Load vocab corpus, pair corpus, grammar manifest, and corpus entries concurrently.
             async let grammarLoad = loadGrammarManifest()
+            async let corpusLoad = loadCorpusEntries()
             async let pairLoad: () = pairCorpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await pairLoad
             session!.pairCorpus = pairCorpus
             grammarManifest = await grammarLoad
+            corpusEntries = await corpusLoad
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -138,5 +142,20 @@ struct AppRootView: View {
             return m
         }
         return manifest
+    }
+
+    /// Load corpus entries: try cached first, then attempt a background sync.
+    private func loadCorpusEntries() async -> [CorpusEntry] {
+        var entries = CorpusSync.cached()
+
+        if CorpusSync.resolvedURL() != nil {
+            do {
+                entries = try await CorpusSync.download()
+                print("[Setup] corpus synced: \(entries.count) document(s)")
+            } catch {
+                print("[Setup] corpus sync failed (using cache): \(error)")
+            }
+        }
+        return entries
     }
 }

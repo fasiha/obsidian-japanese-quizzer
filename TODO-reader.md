@@ -90,14 +90,14 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 
 ### Phase 2 — iOS data model: CorpusSync
 
-- [ ] Create `CorpusSync.swift` (in `Models/`): download `corpus.json` from the
+- [x] Create `CorpusSync.swift` (in `Models/`): download `corpus.json` from the
   derived URL (replace `vocab.json` → `corpus.json`, same pattern as
   `GrammarSync`), decode into `[CorpusEntry]`, persist to a local JSON cache.
-- [ ] `CorpusEntry`: `title: String`, `markdown: String`, `vocabCount: Int`,
+- [x] `CorpusEntry`: `title: String`, `markdown: String`, `vocabCount: Int`,
   `grammarCount: Int`.
-- [ ] Expose corpus through the app's existing state-passing pattern
+- [x] Expose corpus through the app's existing state-passing pattern
   (HomeView → DocumentBrowserView).
-- [ ] Hook `CorpusSync.download()` into the existing "Re-download" action in
+- [x] Hook `CorpusSync.download()` into the existing "Re-download" action in
   `BrowserToolbarMenu` (alongside the existing vocab/grammar/transitive-pairs
   re-downloads).
 

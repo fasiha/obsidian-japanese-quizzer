@@ -13,6 +13,7 @@ struct HomeView: View {
     let jmdict: any DatabaseReader
     let grammarSession: GrammarAppSession
     let grammarManifest: GrammarManifest?
+    let corpusEntries: [CorpusEntry]     // document corpus for the Reader (used in Phase 4)
 
     var body: some View {
         TabView {

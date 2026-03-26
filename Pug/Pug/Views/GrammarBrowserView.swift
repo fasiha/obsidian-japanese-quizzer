@@ -254,6 +254,7 @@ struct GrammarBrowserView: View {
         } catch {
             print("[GrammarBrowserView] redownload failed: \(error)")
         }
+        try? await CorpusSync.download()
     }
 }
 

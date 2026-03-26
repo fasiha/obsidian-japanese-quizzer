@@ -48,20 +48,9 @@ struct TransitivePair: Codable, Identifiable {
 enum TransitivePairSync {
     private static let cacheFilename = "transitive-pairs.json"
 
-    /// Resolve the download URL by substituting "transitive-pairs.json" for
-    /// "vocab.json" in the vocab URL.
-    static func resolvedURL() -> URL? {
-        if let vocabURLString = UserDefaults.standard.string(forKey: "vocabUrl"),
-           !vocabURLString.isEmpty {
-            let s = vocabURLString.replacingOccurrences(of: "vocab.json", with: "transitive-pairs.json")
-            if let url = URL(string: s), s != vocabURLString { return url }
-        }
-        if let vocabEnv = ProcessInfo.processInfo.environment["VOCAB_URL"], !vocabEnv.isEmpty {
-            let s = vocabEnv.replacingOccurrences(of: "vocab.json", with: "transitive-pairs.json")
-            if let url = URL(string: s), s != vocabEnv { return url }
-        }
-        return nil
-    }
+    /// Resolve the download URL by substituting "transitive-pairs.json" for "vocab.json" in the
+    /// vocab URL.
+    static func resolvedURL() -> URL? { derivedURL(replacing: "transitive-pairs.json") }
 
     /// Download transitive-pairs.json from the resolved URL, decode it, and cache to Documents.
     @discardableResult
@@ -90,11 +79,7 @@ enum TransitivePairSync {
         return pairs
     }
 
-    private static func cacheFileURL() throws -> URL {
-        let docs = try FileManager.default.url(
-            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        return docs.appendingPathComponent(cacheFilename)
-    }
+    private static func cacheFileURL() throws -> URL { try documentsURL(filename: cacheFilename) }
 }
 
 // MARK: - Errors
