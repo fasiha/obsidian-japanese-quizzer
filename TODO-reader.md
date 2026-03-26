@@ -143,9 +143,11 @@ All `<details>` content is discarded. The `reference.line` in `vocab.json` /
 
 ### Phase 6 — Polish and docs
 
-- [ ] Update `README.md` and `App.md` with the Reader feature description.
-- [ ] Confirm `TESTING.md` needs no changes (no new quiz logic).
-- [ ] Manual smoke-test: publish a fresh gist, set up on device, open Reader.
+- [x] Updated `README.md`: added "Document reader" section under Quiz formats,
+  updated publish pipeline to mention `corpus.json`, updated architecture diagram.
+- [x] `App.md` no longer exists; no action needed.
+- [x] `TESTING.md` needs no changes (Reader has no new quiz logic).
+- [x] Manual smoke-test passed (user confirmed).
 
 ---
 

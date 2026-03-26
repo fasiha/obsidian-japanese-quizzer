@@ -161,7 +161,22 @@ included in the default quiz. Tapping the Quiz button starts a session covering 
 vocab and pairs; long-pressing it shows a menu to quiz only vocab or only transitive
 pairs.
 
----
+## Document reader
+
+The Reader tab lets you read the original Markdown source files that your vocab and
+grammar annotations came from. Each annotated line has a collapsible panel showing
+every word and grammar topic that appears on that line. Tapping a chip opens the full
+detail sheet — the same sheet used in the Vocab and Grammar browsers — so you can
+enroll, quiz, or chat about the item without leaving the reader.
+
+Lines with inline `<ruby>` furigana tags are rendered with kana stacked above the
+kanji characters. Non-annotated lines with Markdown formatting (bold, italic, etc.) are
+rendered via Markdownosaur. Both use Dynamic Type so the text scales with the system
+font size setting.
+
+The reader document list mirrors the `/`-delimited title hierarchy of your Markdown
+files as nested disclosure groups — the same visual pattern as the Vocab and Grammar
+browsers.
 
 ## Content authoring
 
@@ -277,6 +292,7 @@ GIST_ID=<your-gist-id> node publish.mjs
 2. Runs check-vocab validation (blocks on failures)
 3. Extracts vocab data, enriches with JmdictFurigana written forms → writes `vocab.json`
 4. Extracts grammar bullets → writes `grammar.json`
+5. Bundles the full Markdown source of each story with pre-computed annotation counts → writes `corpus.json` (used by the Reader tab)
 
 `publish.mjs` pushes the output files to a GitHub secret Gist via git over SSH. The
 app fetches from the Gist's raw URL on startup.
@@ -327,7 +343,8 @@ to mitigate key exposure.
          ▲                            ▲
          │ periodic sync              │ one-time setup
          │ (vocab.json,               │
-         │  grammar.json)             │
+         │  grammar.json,             │
+         │  corpus.json)              │
   ┌──────┴──────┐             ┌───────┴────────┐
   │ hosted URL  │             │  setup link    │
   │ (Gist/S3)   │             │ japanquiz://.. │
