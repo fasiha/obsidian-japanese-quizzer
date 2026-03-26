@@ -196,23 +196,6 @@ struct GrammarDetailSheet: View {
                     .tint(enrolled ? .red : .accentColor)
                 }
             }
-            if enrolled {
-                Divider()
-                HStack {
-                    Text("See an example")
-                        .font(.headline)
-                    Spacer()
-                    if isTryingItOut {
-                        ProgressView()
-                            .controlSize(.small)
-                    }
-                    Button("Try it out") {
-                        Task { await tryItOut() }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(isTryingItOut)
-                }
-            }
         }
     }
 
@@ -307,6 +290,22 @@ struct GrammarDetailSheet: View {
 
     private var chatSection: some View {
         VStack(alignment: .leading, spacing: 8) {
+            Divider()
+            HStack {
+                Text("See an example")
+                    .font(.headline)
+                Spacer()
+                if isTryingItOut {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Button("Try it out") {
+                    Task { await tryItOut() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isTryingItOut)
+            }
+
             Divider()
             Text("Ask Claude about this grammar")
                 .font(.headline)
