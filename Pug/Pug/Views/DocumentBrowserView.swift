@@ -17,7 +17,8 @@ struct DocumentBrowserView: View {
     let grammarManifest: GrammarManifest?
     let db: QuizDB
     let jmdict: any DatabaseReader
-    let session: QuizSession
+    let client: AnthropicClient
+    let toolHandler: ToolHandler?
     let onDownload: () async throws -> Void
 
     @State private var collapsedSections: Set<String> = []
@@ -87,7 +88,8 @@ struct DocumentBrowserView: View {
                     grammarManifest: grammarManifest,
                     db: db,
                     jmdict: jmdict,
-                    session: session
+                    client: client,
+                    toolHandler: toolHandler
                 )
             }
         }
@@ -164,7 +166,8 @@ struct CorpusSectionView: View {
     let grammarManifest: GrammarManifest?
     let db: QuizDB
     let jmdict: any DatabaseReader
-    let session: QuizSession
+    let client: AnthropicClient
+    let toolHandler: ToolHandler?
 
     private var isExpanded: Binding<Bool> {
         Binding(
@@ -189,7 +192,8 @@ struct CorpusSectionView: View {
                         grammarManifest: grammarManifest,
                         db: db,
                         jmdict: jmdict,
-                        session: session
+                        client: client,
+                        toolHandler: toolHandler
                     )
                 }
             } label: {
@@ -207,8 +211,10 @@ struct CorpusSectionView: View {
                     corpus: corpus,
                     grammarManifest: grammarManifest,
                     db: db,
-                    session: session,
-                    jmdict: jmdict
+                    client: client,
+                    toolHandler: toolHandler,
+                    jmdict: jmdict,
+                    scrollToLine: nil
                 )
             } label: {
                 CorpusEntryRowView(entry: entry)

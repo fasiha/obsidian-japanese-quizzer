@@ -167,7 +167,7 @@ scrolled to (and briefly highlighting) the relevant line.
   - Update every call-site that constructs these sheets
     (`DocumentReaderView`, quiz views, anywhere else) to pass the new params.
 
-- [ ] **Add navigation destination inside each sheet's `NavigationStack`.**
+- [x] **Add navigation destination inside each sheet's `NavigationStack`.**
   Each sheet already wraps its content in a `NavigationStack`. Add a
   `.navigationDestination(item:)` for a `ReaderTarget` value type:
   ```swift

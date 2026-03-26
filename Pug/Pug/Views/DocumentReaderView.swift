@@ -26,8 +26,10 @@ struct DocumentReaderView: View {
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
     let db: QuizDB
-    let session: QuizSession
+    let client: AnthropicClient
+    let toolHandler: ToolHandler?
     let jmdict: any DatabaseReader
+    let scrollToLine: Int?
 
     @State private var selectedWord: VocabItem? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
@@ -52,7 +54,8 @@ struct DocumentReaderView: View {
         .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedWord) { item in
-            WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session,
+            WordDetailSheet(initialItem: item, corpus: corpus, db: db,
+                            client: client, toolHandler: toolHandler, jmdict: jmdict,
                             corpusEntries: allEntries, grammarManifest: grammarManifest)
         }
         .sheet(item: $selectedTopic) { wrapper in
@@ -61,11 +64,12 @@ struct DocumentReaderView: View {
                     topic: wrapper.topic,
                     manifest: manifest,
                     db: db,
-                    client: session.client,
-                    toolHandler: session.toolHandler,
+                    client: client,
+                    toolHandler: toolHandler,
                     isEnrolled: enrolledTopicIds.contains(wrapper.topic.prefixedId),
                     corpusEntries: allEntries,
-                    corpus: corpus
+                    corpus: corpus,
+                    jmdict: jmdict
                 ) { nowEnrolled in
                     let allIds = [wrapper.topic.prefixedId] + (wrapper.topic.equivalenceGroup ?? [])
                     for id in allIds {

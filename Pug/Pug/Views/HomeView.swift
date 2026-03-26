@@ -30,7 +30,8 @@ struct HomeView: View {
                     client: session.client,
                     toolHandler: session.toolHandler,
                     corpusEntries: corpusEntries,
-                    corpus: corpus
+                    corpus: corpus,
+                    jmdict: jmdict
                 )
                 .tabItem { Label("Grammar", systemImage: "text.book.closed") }
             } else {
@@ -48,7 +49,8 @@ struct HomeView: View {
                 grammarManifest: grammarManifest,
                 db: db,
                 jmdict: jmdict,
-                session: session
+                client: session.client,
+                toolHandler: session.toolHandler
             ) {
                 corpusEntries = try await CorpusSync.download()
             }

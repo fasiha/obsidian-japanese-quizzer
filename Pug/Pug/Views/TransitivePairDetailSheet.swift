@@ -12,6 +12,7 @@ struct TransitivePairDetailSheet: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let client: AnthropicClient
+    let toolHandler: ToolHandler?
     let corpusEntries: [CorpusEntry]
     let corpus: VocabCorpus
     let grammarManifest: GrammarManifest?
@@ -22,6 +23,7 @@ struct TransitivePairDetailSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @State private var readerTarget: ReaderTarget? = nil
     @State private var intransitiveInfo: MemberInfo?
     @State private var transitiveInfo: MemberInfo?
     @State private var ebisuModels: [EbisuRecord] = []
@@ -125,6 +127,19 @@ struct TransitivePairDetailSheet: View {
                 RescaleSheet(currentHalflife: record.t) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
+            }
+            .navigationDestination(item: $readerTarget) { target in
+                DocumentReaderView(
+                    entry: target.entry,
+                    allEntries: corpusEntries,
+                    corpus: corpus,
+                    grammarManifest: grammarManifest,
+                    db: db,
+                    client: client,
+                    toolHandler: toolHandler,
+                    jmdict: jmdict,
+                    scrollToLine: target.lineNumber
+                )
             }
         }
     }

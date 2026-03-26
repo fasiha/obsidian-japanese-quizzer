@@ -11,11 +11,19 @@ import Foundation
 
 /// One document entry as stored in corpus.json.
 /// Counts are pre-computed server-side by prepare-publish.mjs.
-struct CorpusEntry: Codable {
+struct CorpusEntry: Codable, Hashable {
     let title: String           // e.g. "Genki 1/L11" or "nhk-easy"
     let markdown: String        // full Markdown source of the document
     let vocabCount: Int         // number of vocab annotations in this document
     let grammarCount: Int       // number of grammar annotations in this document
+}
+
+/// Navigation target for deep-linking from a detail sheet into DocumentReaderView.
+/// Carries the corpus entry to open and the line number to scroll to.
+struct ReaderTarget: Identifiable, Hashable {
+    let entry: CorpusEntry
+    let lineNumber: Int
+    var id: String { "\(entry.title):\(lineNumber)" }
 }
 
 // MARK: - Sync helpers

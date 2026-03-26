@@ -7,6 +7,7 @@
 // Actions: enroll/unenroll, Claude chat.
 
 import SwiftUI
+import GRDB
 
 struct GrammarDetailSheet: View {
     let topic: GrammarTopic
@@ -17,10 +18,12 @@ struct GrammarDetailSheet: View {
     let isEnrolled: Bool
     let corpusEntries: [CorpusEntry]
     let corpus: VocabCorpus
+    let jmdict: any DatabaseReader
     /// Called when enrollment changes; receives the new enrolled state.
     let onEnrollmentChange: (Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var readerTarget: ReaderTarget? = nil
     @State private var enrolled: Bool
     @State private var isTogglingEnrollment = false
     @State private var isTryingItOut = false
@@ -37,6 +40,7 @@ struct GrammarDetailSheet: View {
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
          toolHandler: ToolHandler? = nil,
          isEnrolled: Bool, corpusEntries: [CorpusEntry], corpus: VocabCorpus,
+         jmdict: any DatabaseReader,
          onEnrollmentChange: @escaping (Bool) -> Void) {
         self.topic = topic
         self.manifest = manifest
@@ -46,6 +50,7 @@ struct GrammarDetailSheet: View {
         self.isEnrolled = isEnrolled
         self.corpusEntries = corpusEntries
         self.corpus = corpus
+        self.jmdict = jmdict
         self.onEnrollmentChange = onEnrollmentChange
         self._enrolled = State(initialValue: isEnrolled)
     }
@@ -83,6 +88,19 @@ struct GrammarDetailSheet: View {
                 RescaleSheet(currentHalflife: record.t) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
+            }
+            .navigationDestination(item: $readerTarget) { target in
+                DocumentReaderView(
+                    entry: target.entry,
+                    allEntries: corpusEntries,
+                    corpus: corpus,
+                    grammarManifest: manifest,
+                    db: db,
+                    client: client,
+                    toolHandler: toolHandler,
+                    jmdict: jmdict,
+                    scrollToLine: target.lineNumber
+                )
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

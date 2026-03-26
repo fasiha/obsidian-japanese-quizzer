@@ -114,11 +114,13 @@ struct VocabBrowserView: View {
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
             .sheet(item: $selectedItem) { item in
-                WordDetailSheet(initialItem: item, corpus: corpus, db: db, session: session,
+                WordDetailSheet(initialItem: item, corpus: corpus, db: db,
+                                client: session.client, toolHandler: session.toolHandler, jmdict: jmdict,
                                 corpusEntries: corpusEntries, grammarManifest: grammarManifest)
             }
             .sheet(item: $selectedPair) { pair in
-                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict, client: session.client,
+                TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict,
+                                          client: session.client, toolHandler: session.toolHandler,
                                           corpusEntries: corpusEntries, corpus: corpus, grammarManifest: grammarManifest)
             }
 

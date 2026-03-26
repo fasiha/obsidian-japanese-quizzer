@@ -18,7 +18,9 @@ struct WordDetailSheet: View {
     let initialItem: VocabItem
     let corpus: VocabCorpus
     let db: QuizDB
-    let session: QuizSession    // for AnthropicClient + ToolHandler access
+    let client: AnthropicClient
+    let toolHandler: ToolHandler?
+    let jmdict: any DatabaseReader
     let corpusEntries: [CorpusEntry]
     let grammarManifest: GrammarManifest?
 
@@ -29,6 +31,7 @@ struct WordDetailSheet: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @State private var readerTarget: ReaderTarget? = nil
     @State private var isWorking = false
     @State private var explore: WordExploreSession? = nil
     @State private var vocabMnemonic: String? = nil
@@ -60,18 +63,27 @@ struct WordDetailSheet: View {
                 if isWorking { ProgressView() }
             }
             .onAppear {
-                let exploreSession = WordExploreSession(
-                    client: session.client,
-                    toolHandler: session.toolHandler,
-                    item: item,
-                    corpus: corpus
-                )
-                explore = exploreSession
+                if let th = toolHandler {
+                    explore = WordExploreSession(client: client, toolHandler: th, item: item, corpus: corpus)
+                }
                 Task { await loadMnemonics() }
                 Task { await loadEbisuModels() }
                 Task { await autoCommitFirstForm() }
             }
             .onChange(of: explore?.turnCount) { Task { await loadMnemonics() } }
+            .navigationDestination(item: $readerTarget) { target in
+                DocumentReaderView(
+                    entry: target.entry,
+                    allEntries: corpusEntries,
+                    corpus: corpus,
+                    grammarManifest: grammarManifest,
+                    db: db,
+                    client: client,
+                    toolHandler: toolHandler,
+                    jmdict: jmdict,
+                    scrollToLine: target.lineNumber
+                )
+            }
             .sheet(item: $rescaleRecord) { record in
                 RescaleSheet(currentHalflife: record.t) { hours in
                     Task { await doRescale(record: record, hours: hours) }
@@ -672,7 +684,7 @@ struct WordDetailSheet: View {
     }
 
     private func loadEbisuModels() async {
-        guard let quizDB = session.toolHandler.quizDB else { return }
+        guard let quizDB = toolHandler?.quizDB else { return }
         if let records = try? await quizDB.ebisuRecords(wordType: "jmdict", wordId: item.id) {
             let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji"]
             ebisuModels = records.sorted {
@@ -683,7 +695,7 @@ struct WordDetailSheet: View {
 
     // TODO: near-duplicate of QuizSession.rescaleCurrentFacet — consider extracting to QuizDB
     private func doRescale(record: EbisuRecord, hours: Double) async {
-        guard hours > 0, let quizDB = session.toolHandler.quizDB else { return }
+        guard hours > 0, let quizDB = toolHandler?.quizDB else { return }
         do {
             guard let current = try await quizDB.ebisuRecord(
                 wordType: record.wordType, wordId: record.wordId, quizType: record.quizType) else { return }
@@ -708,7 +720,7 @@ struct WordDetailSheet: View {
     }
 
     private func loadMnemonics() async {
-        guard let quizDB = session.toolHandler.quizDB else { return }
+        guard let quizDB = toolHandler?.quizDB else { return }
         if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: item.id) {
             vocabMnemonic = m.mnemonic
         }

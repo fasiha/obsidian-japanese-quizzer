@@ -12,6 +12,7 @@
 //   Trailing: quiz button (when enrolled topics exist) + ··· menu (Settings, Re-download, last synced)
 
 import SwiftUI
+import GRDB
 
 struct GrammarBrowserView: View {
     @State private var manifest: GrammarManifest
@@ -21,6 +22,7 @@ struct GrammarBrowserView: View {
     let toolHandler: ToolHandler?
     let corpusEntries: [CorpusEntry]
     let corpus: VocabCorpus
+    let jmdict: any DatabaseReader
 
     @State private var enrollmentStatus: [String: Bool] = [:]   // topicId → enrolled
     @State private var searchText = ""
@@ -33,7 +35,7 @@ struct GrammarBrowserView: View {
 
     init(manifest: GrammarManifest, db: QuizDB, grammarSession: GrammarAppSession,
          client: AnthropicClient, toolHandler: ToolHandler? = nil,
-         corpusEntries: [CorpusEntry], corpus: VocabCorpus) {
+         corpusEntries: [CorpusEntry], corpus: VocabCorpus, jmdict: any DatabaseReader) {
         self._manifest = State(initialValue: manifest)
         self.db = db
         self._grammarSession = State(initialValue: grammarSession)
@@ -41,6 +43,7 @@ struct GrammarBrowserView: View {
         self.toolHandler = toolHandler
         self.corpusEntries = corpusEntries
         self.corpus = corpus
+        self.jmdict = jmdict
     }
 
     enum EnrollmentFilter: String, CaseIterable {
@@ -114,7 +117,8 @@ struct GrammarBrowserView: View {
                     toolHandler: toolHandler,
                     isEnrolled: enrollmentStatus[wrapper.id] ?? false,
                     corpusEntries: corpusEntries,
-                    corpus: corpus
+                    corpus: corpus,
+                    jmdict: jmdict
                 ) { nowEnrolled in
                     let groupIds = wrapper.topic.equivalenceGroup ?? []
                     let allIds = [wrapper.id] + groupIds
