@@ -27,7 +27,7 @@ aims to be accessible to beginners and non-native English speakers.
 ### Environment vs explicit props
 
 **Observable shared data → SwiftUI environment.**
-`VocabCorpus`, `GrammarStore` (wrapping `GrammarManifest?`), and `CorpusStore`
+`VocabCorpus`, `TransitivePairCorpus`, `GrammarStore` (wrapping `GrammarManifest?`), and `CorpusStore`
 (wrapping `[CorpusEntry]`) are injected at `AppRootView` via `.environment()` and
 read with `@Environment` at the leaf views that need them. Do not thread these as
 explicit `let` props through intermediate views.

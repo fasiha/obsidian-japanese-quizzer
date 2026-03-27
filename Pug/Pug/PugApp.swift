@@ -41,6 +41,7 @@ struct AppRootView: View {
                              grammarSession: grammarSession)
                         .environment(preferences)
                         .environment(corpus)
+                        .environment(pairCorpus)
                         .environment(grammarStore)
                         .environment(corpusStore)
                 } else {

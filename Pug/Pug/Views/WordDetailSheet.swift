@@ -22,6 +22,7 @@ struct WordDetailSheet: View {
     let jmdict: any DatabaseReader
 
     @Environment(VocabCorpus.self) private var corpus
+    @Environment(TransitivePairCorpus.self) private var pairCorpus
     @Environment(GrammarStore.self) private var grammarStore
     @Environment(CorpusStore.self) private var corpusStore
 
@@ -33,6 +34,7 @@ struct WordDetailSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var readerTarget: ReaderTarget? = nil
+    @State private var pairDetailItem: TransitivePairItem? = nil
     @State private var isWorking = false
     @State private var explore: WordExploreSession? = nil
     @State private var vocabMnemonic: String? = nil
@@ -87,6 +89,11 @@ struct WordDetailSheet: View {
                     Task { await doRescale(record: record, hours: hours) }
                 }
             }
+            .sheet(item: $pairDetailItem) { pairItem in
+                TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus,
+                                          db: db, jmdict: jmdict,
+                                          client: client, toolHandler: toolHandler)
+            }
         }
     }
 
@@ -103,6 +110,24 @@ struct WordDetailSheet: View {
                 Text(item.sources.joined(separator: ", "))
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+            }
+
+            if let pairItem = pairCorpus.items.first(where: {
+                $0.pair.intransitive.jmdictId == item.id ||
+                $0.pair.transitive.jmdictId == item.id
+            }) {
+                let isIntransitive = pairItem.pair.intransitive.jmdictId == item.id
+                let intr = pairItem.pair.intransitive.kanji.first ?? pairItem.pair.intransitive.kana
+                let tr   = pairItem.pair.transitive.kanji.first  ?? pairItem.pair.transitive.kana
+                infoGroup(heading: isIntransitive ? "Intransitive Verb" : "Transitive Verb") {
+                    Button {
+                        pairDetailItem = pairItem
+                    } label: {
+                        Label("\(intr) (intransitive) ↔ \(tr) (transitive)", systemImage: "arrow.left.arrow.right")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
 
             if !item.references.isEmpty {
