@@ -288,8 +288,32 @@ struct DocumentReaderView: View {
             }
 
             // Fall back to the jmdict furigana table using the first kanji form + first kana reading.
-            if let text = item.writtenTexts.first, let reading = item.kanaTexts.first,
-               let segs = lookupFurigana(text: text, reading: reading, db: jmdict) {
+            // JMDict kana entries can be katakana (e.g. シラフ) while the furigana table stores
+            // hiragana (しらふ), so normalize to hiragana before the lookup.
+            if let text = item.writtenTexts.first, let reading = item.kanaTexts.first {
+                // Katakana U+30A1–U+30F6 → hiragana U+3041–U+3096 (subtract 0x60).
+                // JMDict kana entries may be katakana (e.g. シラフ) while the furigana table
+                // stores hiragana (しらふ), so normalize before the lookup.
+                var scalars = String.UnicodeScalarView()
+                for scalar in reading.unicodeScalars {
+                    if scalar.value >= 0x30A1 && scalar.value <= 0x30F6,
+                       let h = Unicode.Scalar(scalar.value - 0x60) {
+                        scalars.append(h)
+                    } else {
+                        scalars.append(scalar)
+                    }
+                }
+                let hiraganaReading = String(scalars)
+                if let segs = lookupFurigana(text: text, reading: hiraganaReading, db: jmdict) {
+                    map[item.id] = segs
+                    continue
+                }
+            }
+
+            // Final fallback: furigana embedded in writtenForms (from vocab.json). Guards against
+            // version skew between jmdict.sqlite and vocab.json.
+            if let segs = item.writtenForms.first?.forms.first?.furigana,
+               segs.contains(where: { $0.rt != nil }) {
                 map[item.id] = segs
             }
         }
