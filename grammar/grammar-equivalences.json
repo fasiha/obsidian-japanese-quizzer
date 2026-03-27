@@ -56,6 +56,27 @@
   },
   {
     "topics": [
+      "bunpro:verb-た-noun",
+      "dbjg:relative-clause",
+      "genki:qualifying-nouns-with-verbs-and-adjectives"
+    ],
+    "summary": "In Japanese, verbs and adjectives modify nouns by directly preceding them in plain (short) form — no relative pronoun like 'that' or 'which' is needed. The modifying clause can use any plain-form tense: dictionary form for habitual or future actions, た-form for completed or past actions, and ている-form for ongoing or resultant states. Adjectives also follow this pattern: い-adjectives precede the noun unchanged, while な-adjectives drop だ and take な.",
+    "subUses": [
+      "Non-past verb (habitual/future): 毎朝走る人 (a person who runs every morning)",
+      "Past-action (た-form): 昨日読んだ本 (the book I read yesterday)",
+      "Ongoing state (ている-form): 眠っている子供 (a sleeping child / a child who is sleeping)",
+      "い-adjective with embedded subject: 目が青い人 (a person with blue eyes)",
+      "な-adjective: 静かな場所 (a quiet place)",
+      "Gap noun as object of the embedded verb: 妹が作ったケーキ (the cake my sister made — ケーキ is the object of 作った)"
+    ],
+    "cautions": [
+      "Never use ます-form in a relative clause: 住んでいる人 is correct; 住んでいます人 is ungrammatical",
+      "な-adjectives drop だ and add な directly before the noun: 元気な子 not 元気だ子",
+      "The noun being modified can fill any argument role in the embedded clause — subject, object, location, instrument, etc. The position is implied; no gap marker is used"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:Verb[passive]",
       "dbjg:rareru1",
       "genki:passive-sentences"
@@ -282,18 +303,22 @@
   },
   {
     "topics": [
-      "bunpro:のように-のような"
+      "bunpro:のように-のような",
+      "dbjg:yoni2",
+      "genki:noyona-noyoni"
     ],
     "summary": "のように and のような express similarity or comparison — 'like (noun)' or 'in the manner of (noun).' のように modifies verbs and adjectives (how something is done), while のような modifies nouns (what kind of thing). Both require の after the comparison noun. This is the more formal equivalent of みたいに/みたいな.",
     "subUses": [
       "Simile modifying a verb: 鳥のように飛びたい (I want to fly like a bird)",
       "Simile modifying a noun: 夢のような話 (A story like a dream)",
+      "Counterfactual simile ('as if'), often with まるで: まるで別人のように話した (spoke as if they were a completely different person)",
+      "Clause-modifying form (no の): 春になったように暖かい (warm as if spring had arrived — ように follows a plain-form clause directly)",
       "Referring back to a previous state: もとのように元気になった (Became healthy like before)",
       "Giving an example: このような場合はどうしますか (What do you do in cases like this?)"
     ],
     "cautions": [
       "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
-      "When following a clause (not a noun), よう attaches directly without の: 走っているように見える (looks like they're running)"
+      "After a noun, use のように/のような (の required). After a verb or adjective clause, よう attaches directly without の: 走っているように見える not 走っているのように見える"
     ]
   },
   {
@@ -335,5 +360,21 @@
       "できる (potential of する) is a standalone verb, not a conjugation pattern — it takes が for the object: 料理ができる (can cook)",
       "Do not use させられる in quiz sentences for this topic — させられる is causative-passive ('being forced to do'), which is a confusing form that belongs to a different grammar topic. Stick to clear potential forms like 書ける, 食べられる, できる"
     ]
+  },
+  {
+    "topics": [
+      "genki:using-sentences-to-qualify-nouns"
+    ],
+    "summary": "Genki II Chapter 15 extends basic noun modification to cases where the embedded clause contains a noun or な-adjective as its predicate. Because nouns and な-adjectives cannot directly precede another noun, the copula forms の/な/だった/だった are used: noun/な-adj + な + noun (non-past attributive) or noun/な-adj + だった + noun (past). This completes the pattern started in Genki I Ch.9, which covered verb and い-adjective modifiers.",
+    "subUses": [
+      "な-adjective as predicate (non-past): 有名な選手が来た (a famous player came — 有名 modifies 選手 via な)",
+      "Noun as predicate (non-past): 医者の友達がいる (I have a friend who is a doctor — の links the predicate noun to the head noun)",
+      "Past copula (だった): 子供だった頃の話 (a story from the time when I was a child)"
+    ],
+    "cautions": [
+      "Non-past noun/な-adjective predicates inside a relative clause use な (not だ): 先生な人 is wrong; 先生の人 or restructuring the sentence is needed — の is used for noun predicates, な for な-adjectives",
+      "Do not confuse の here (noun predicate in relative clause) with possessive の — context and clause structure distinguish them"
+    ],
+    "stub": true
   }
 ]

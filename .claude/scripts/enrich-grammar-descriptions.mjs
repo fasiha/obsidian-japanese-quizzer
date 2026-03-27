@@ -117,34 +117,43 @@ function extractContentItems(content, relPath, topicIds) {
     const charsBefore = content.slice(0, match.index);
     const blockStartLine = charsBefore.split("\n").length - 1;
 
-    // Walk backward from the line before the block to find the annotated sentence
+    // Walk backward from the line before the block to find the annotated sentence.
+    // When we encounter a </details> closing tag, skip the entire block back to
+    // its <details> opener (same approach as extractContextBefore in prepare-publish.mjs),
+    // so intervening Vocab/Translation blocks don't cause their content to be
+    // mistaken for the annotated sentence.
     let sentence = "";
     let rawSentence = "";
-    for (let i = blockStartLine - 1; i >= 0; i--) {
+    let i = blockStartLine - 1;
+    while (i >= 0) {
       const rawLine = lines[i];
-      const clean = stripRuby(rawLine).trim();
+      const rawTrimmed = rawLine.trim();
 
       // Skip empty lines
-      if (!clean) continue;
+      if (!rawTrimmed) { i--; continue; }
 
-      // Skip lines that are part of a details block. Check the RAW line before
-      // tag-stripping, because stripRuby removes all HTML tags — a Translation
-      // line like "<details><summary>Translation</summary>...ピーマン...</details>"
-      // would become "Translation...ピーマン..." after stripping, pass isJapanese,
-      // and be wrongly captured as the sentence.
+      // Skip entire <details>...</details> blocks going backward
+      if (rawTrimmed === "</details>") {
+        i--;
+        while (i >= 0 && !lines[i].trim().startsWith("<details")) i--;
+        i--;
+        continue;
+      }
+
+      // Skip remaining block-level HTML tags (e.g. a lone <details> or <summary>)
       // Do NOT skip lines starting with "-" — in list-style Markdown files the
       // annotated sentence is itself a list item (e.g. "- 日本語が話せます").
       // Non-Japanese bullets (e.g. "- genki:potential-verbs" inside a sibling
       // Grammar block) will be rejected by the isJapanese check below.
-      const rawTrimmed = rawLine.trim();
       if (
         rawTrimmed.startsWith("<details") ||
-        rawTrimmed.startsWith("</details") ||
         rawTrimmed.startsWith("<summary") ||
         rawTrimmed.startsWith("</summary>")
       ) {
-        continue;
+        i--; continue;
       }
+
+      const clean = stripRuby(rawLine).trim();
 
       // If this line contains Japanese, it's our sentence
       if (isJapanese(clean)) {
@@ -155,6 +164,7 @@ function extractContentItems(content, relPath, topicIds) {
 
       // If this line is purely ASCII/English (e.g. a translation line that
       // escaped its details block), skip and keep looking
+      i--;
     }
 
     // Warn if no parent sentence was found — likely a Markdown structure the

@@ -37,12 +37,7 @@ Classify the result:
 node lookup.mjs '{stem}*'
 ```
 - **Not found (elongated form)**: if the word is simply a lengthened version of a dictionary word (e.g. ゆうるり is ゆるり with a long vowel), cite the base dictionary word instead. No "Not in JMDict" note needed.
-- **Not found (mimetic/onomatopoeia)**: try several lookup strategies before giving up:
-  1. Try katakana: `node lookup.mjs ホフッ`
-  2. Try the shortest mora stem (e.g. `node lookup.mjs 'ピュ*'` instead of the full elongated form)
-  3. Grep mimetic.md for related words: `grep -i "{stem}" mimetic.md`
-
-  If a close variant is found by any of these, note it. Either way, mark the word as not in JMDict (see output format below).
+- **Not found (mimetic/onomatopoeia)**: try lookup.mjs with variations until you find a match — all mimetic words in JMDict are findable this way. Useful variations to try: hiragana vs katakana, long vowel vs short (ゅ vs ゅう), geminated vs non-geminated (っ vs none), with vs without trailing と, prefix search on the stem (`node lookup.mjs 'きゅっ*'`). If a close variant is found, note it. If nothing matches after reasonable attempts, mark the word as not in JMDict (see output format below).
 
 ## Step 2.5 — Check for multi-morpheme compounds
 
