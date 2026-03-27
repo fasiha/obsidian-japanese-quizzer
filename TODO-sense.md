@@ -251,6 +251,84 @@ correct answer and distractor pool). They do not affect grading or coaching:
 
 ---
 
+---
+
+### Step 6 — Per-reference sense assignment (DONE)
+
+**Goal:** record, for each corpus reference of a word, which JMDict sense(s) that
+specific occurrence embodies. This enables the iOS reader to show exactly the
+right sense for each source line rather than defaulting to the first couple.
+
+**Schema change** — each reference occurrence gains an optional `llm_sense` field:
+```json
+"references": {
+  "path/to/File": [
+    { "line": 42, "context": "…", "narration": null, "llm_sense": { "sense_indices": [2], "computed_from": ["…"], "reasoning": "<Haiku reasoning>" } },
+    { "line": 107, "context": "…", "narration": null, "llm_sense": { "sense_indices": [0, 1], "computed_from": ["…"] } }
+  ]
+}
+```
+
+- `sense_indices`: which JMDict senses this specific occurrence embodies. A
+  reference can have multiple if the sentence genuinely covers more than one
+  sense (e.g. a metaphorical extension that also echoes the literal sense).
+- `computed_from`: sorted array of the non-null `context` and `narration`
+  strings for this reference, used to detect staleness on future runs.
+- `reasoning`: Haiku's chain-of-thought text; present only when Haiku was
+  called for this reference (i.e. when the word has more than one JMDict sense).
+  For the migration, `reasoning` is copied from the old top-level `llm_sense`
+  only when the word has exactly one reference (the aggregate reasoning is then
+  about that specific occurrence).
+- `llm_sense` is absent when the assignment has not yet been determined.
+
+With this in place, the top-level `llm_sense` key (which contained
+`sense_indices`, `computed_from`, and `reasoning`) is dropped from the word
+object. (The iOS app reads from vocab.json only after publishing, so there is no
+window where old iOS and new vocab.json are live together that would cause a
+problem.)
+
+**One-time migration — `migrate-sense-refs.mjs`:**
+- Standalone script; does not re-parse Markdown, does not call Haiku.
+- For each word that has a top-level `llm_sense`:
+  - **`sense_indices` is `[]`** (no context was available): stamp every
+    reference with `{ "sense_indices": [], "computed_from": [] }` and drop the
+    top-level `llm_sense`.
+  - **`sense_indices` has exactly one element**: stamp every reference with
+    `{ "sense_indices": [X], "computed_from": <non-null context+narration for that ref> }`.
+    Additionally include `"reasoning"` copied from the top-level `llm_sense`
+    if and only if the word has exactly one reference. Drop the top-level
+    `llm_sense`.
+  - **`sense_indices` has two or more elements** (ambiguous): leave all
+    references without an `llm_sense` key; keep the top-level `llm_sense`
+    so it is visible as a signal for manual disambiguation.
+- Writes the resulting vocab.json.
+- Prints a count of words that still have a top-level `llm_sense` (i.e.
+  still need manual disambiguation), so we know when we're done.
+- Manual overrides (hand-editing specific references) can be appended as
+  inline edits at the bottom of the script and re-run as needed.
+
+**Pipeline change — `prepare-publish.mjs`:**
+- Single-sense JMDict words: stamp every reference `[0]` with no LLM call.
+- Multi-sense JMDict words: new `analyzeReferenceSense(anthropic, jmWord, reference)`:
+  - **Skip** if `reference.llm_sense` already exists and `computed_from`
+    matches the current non-null context/narration values for that reference
+    (cache hit).
+  - **Skip with `sense_indices: []`** if both `context` and `narration` are
+    null (nothing to send to Haiku).
+  - Otherwise call Haiku with the single sentence and ask which sense(s) the
+    word is used in. Store the result as `reference.llm_sense` with
+    `sense_indices`, `computed_from`, and `reasoning`.
+  - Per-sentence calls are more accurate than sending all sentences together:
+    the model classifies one unambiguous target rather than solving a joint
+    assignment problem.
+
+**iOS reader change (TODO — see TODO-reader.md Phase 9):**
+- `DocumentReaderView` inverted map extended to carry `senseIndices?` per word-id.
+- Vocab chips in the disclosure group show only the matched sense(s) instead of
+  defaulting to the first couple.
+
+---
+
 ## Decision log
 
 | Date | Decision |
@@ -261,3 +339,4 @@ correct answer and distractor pool). They do not affect grading or coaching:
 | 2026-03-24 | Contronyms: no special handling. Enrolled senses (even contradictory) passed as-is to quiz generation. |
 | 2026-03-24 | Grading and coaching remain sense-agnostic. Only question generation respects enrolled senses. Rationale: student shouldn't be penalized for knowing the word via a non-enrolled sense. |
 | 2026-03-24 | Step 1 (iOS app default-to-first-sense) implemented and compiles. Steps 2-4 are TODO. |
+| 2026-03-26 | Step 6 complete: migration script (migrate-sense-refs.mjs) and pipeline change (prepare-publish.mjs) both implemented and tested. Original design settled: per-reference llm_sense with computed_from for cache invalidation; reasoning copied only when word has exactly one reference; ambiguous top-level entries left in place for manual disambiguation; null-context references skip Haiku and receive sense_indices: []. |

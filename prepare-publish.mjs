@@ -293,13 +293,20 @@ const maxSenses =
 // Define output paths early (also needed for cache loading below)
 const outPath = path.join(projectRoot, "vocab.json");
 
-// Load existing vocab.json once for llm_sense cache lookups
-const existingLlmSense = new Map(); // wordId -> llm_sense object
+// Load existing vocab.json once for per-reference llm_sense cache lookups.
+// Key: "<wordId>|<file title>|<line number>"  Value: the ref's llm_sense object
+const existingRefSense = new Map();
 if (existsSync(outPath)) {
   try {
     const existing = JSON.parse(readFileSync(outPath, "utf8"));
     for (const w of existing.words ?? []) {
-      if (w.llm_sense) existingLlmSense.set(w.id, w.llm_sense);
+      for (const [title, refs] of Object.entries(w.references ?? {})) {
+        for (const ref of refs) {
+          if (ref.llm_sense) {
+            existingRefSense.set(`${w.id}|${title}|${ref.line}`, ref.llm_sense);
+          }
+        }
+      }
     }
   } catch {
     // Corrupt or missing vocab.json — start fresh
@@ -439,28 +446,22 @@ function stripRuby(text) {
 }
 
 /**
- * Collect the sorted, deduplicated list of non-null context and narration
- * strings for a word across all its source files. This is the cache key
- * (computed_from) and also the content sent to Haiku.
+ * Compute the per-reference computed_from array: the sorted, deduplicated list
+ * of non-null context and narration strings for a single reference object.
+ * This is the cache key — recompute when it changes.
  */
-function collectContextStrings(word) {
-  const seen = new Set();
-  for (const occurrences of Object.values(word.references ?? {})) {
-    for (const { context, narration } of occurrences) {
-      if (context) seen.add(stripRuby(context));
-      if (narration) seen.add(narration);
-    }
-  }
-  return [...seen].sort();
+function refComputedFrom(ref) {
+  const parts = [ref.context, ref.narration].filter((v) => v != null);
+  return [...new Set(parts)].sort();
 }
 
 /**
- * Call Haiku to determine which JMDict sense indices are relevant to quiz
- * the student on, given their corpus contexts. Returns an array of valid
- * 0-based sense indices and the full raw response text (for the reasoning log).
+ * Call Haiku to determine which JMDict sense(s) a single sentence uses the
+ * word in. Returns an array of valid 0-based sense indices and the full raw
+ * response text (for the reasoning log).
  * Throws on API error or malformed response (caller handles abort).
  */
-async function analyzeWordSenses(anthropic, jmWord, contextStrings) {
+async function analyzeReferenceSense(anthropic, jmWord, ref) {
   const displayForm =
     jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text ?? "(unknown)";
   const reading = jmWord.kana?.[0]?.text ?? "";
@@ -472,18 +473,21 @@ async function analyzeWordSenses(anthropic, jmWord, contextStrings) {
     })
     .join("\n");
 
-  const contextBlock = contextStrings.join("\n---\n");
+  const parts = [];
+  if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
+  if (ref.narration) parts.push(`Note: ${ref.narration}`);
+  const contextBlock = parts.join("\n");
 
   const prompt =
-    `You are helping a Japanese language learner identify which dictionary senses of a word are relevant for quizzing, given their reading contexts.\n\n` +
+    `You are helping a Japanese language learner understand which sense of a word is used in a specific sentence.\n\n` +
     `Word: ${displayForm}${reading && reading !== displayForm ? ` (${reading})` : ""}\n\n` +
     `JMDict senses (0-indexed):\n${senseList}\n\n` +
-    `Contexts where the student encountered this word:\n${contextBlock}\n\n` +
-    `Which senses are relevant for quizzing this student on this word? ` +
-    `Include a sense if it is directly evidenced in the contexts, and also include any sense that is a near-synonym or shares a core meaning with an evidenced sense. ` +
+    `${contextBlock}\n\n` +
+    `Which sense(s) does this specific occurrence of the word use? ` +
+    `A sentence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
     `Use an empty array if the context is insufficient to determine. ` +
     `Think step by step, then end your response with a JSON code block:\n` +
-    "```json\n{\"sense_indices\": [0, 1]}\n```";
+    "```json\n{\"sense_indices\": [0]}\n```";
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -516,66 +520,81 @@ async function analyzeWordSenses(anthropic, jmWord, contextStrings) {
   return { senseIndices: validIndices, reasoning: fullText };
 }
 
-// Run sense analysis unless --no-llm was passed
-if (!noLlm) {
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  let sensesAnalyzed = 0;
+// Run per-reference sense analysis.
+// --no-llm: carry forward cached llm_sense values but skip all Haiku calls.
+{
+  const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  let refsAnalyzed = 0;
 
   // Open a reasoning log file so we can review Haiku's chain-of-thought later
   const reasoningLogPath = `/tmp/sense-reasoning-${Date.now()}.log`;
   const reasoningLines = [];
   console.log(`  Sense reasoning log → ${reasoningLogPath}`);
 
-  for (const word of words) {
-    if (sensesAnalyzed >= maxSenses) break;
-
+  outer: for (const word of words) {
     const jmWord = jmdictById.get(word.id);
-    // Skip words with only one sense — sense index is trivially [0]
-    if (!jmWord || jmWord.sense.length <= 1) continue;
-
-    const computedFrom = collectContextStrings(word);
-
-    // No usable context at all — write empty sense_indices without calling Haiku
-    if (computedFrom.length === 0) {
-      word.llm_sense = { sense_indices: [], computed_from: [] };
-      continue;
-    }
-
-    // Cache hit: computed_from matches existing entry
-    const cached = existingLlmSense.get(word.id);
-    if (
-      cached &&
-      JSON.stringify(cached.computed_from) === JSON.stringify(computedFrom)
-    ) {
-      word.llm_sense = cached;
-      continue;
-    }
-
-    // Cache miss: call Haiku
     const displayForm =
-      jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text ?? word.id;
-    process.stdout.write(
-      `  Analyzing senses for ${displayForm} (${sensesAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
-    );
-    const { senseIndices, reasoning } = await analyzeWordSenses(anthropic, jmWord, computedFrom);
-    process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
+      jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
 
-    reasoningLines.push(
-      `${"=".repeat(60)}\n${displayForm}  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
-    );
-    writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
+    // Single-sense words: stamp every reference [0], no LLM call needed
+    if (!jmWord || jmWord.sense.length <= 1) {
+      for (const refs of Object.values(word.references ?? {})) {
+        for (const ref of refs) {
+          ref.llm_sense = { sense_indices: [0], computed_from: refComputedFrom(ref) };
+        }
+      }
+      continue;
+    }
 
-    word.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
-    sensesAnalyzed++;
+    for (const [title, refs] of Object.entries(word.references ?? {})) {
+      for (const ref of refs) {
+        if (refsAnalyzed >= maxSenses) break outer;
 
-    // Write vocab.json after each call so a crash doesn't lose prior work.
-    // Omit `content` from stories — that field is only used for corpus.json.
-    const partialOutput = {
-      generatedAt: new Date().toISOString(),
-      stories: stories.map(({ title }) => ({ title })),
-      words,
-    };
-    writeFileSync(outPath, JSON.stringify(partialOutput, null, 2) + "\n");
+        const computedFrom = refComputedFrom(ref);
+
+        // No usable context — stamp empty sense_indices without calling Haiku
+        if (computedFrom.length === 0) {
+          ref.llm_sense = { sense_indices: [], computed_from: [] };
+          continue;
+        }
+
+        // Cache hit: existing llm_sense with matching computed_from
+        const cacheKey = `${word.id}|${title}|${ref.line}`;
+        const cached = existingRefSense.get(cacheKey);
+        if (
+          cached &&
+          JSON.stringify(cached.computed_from) === JSON.stringify(computedFrom)
+        ) {
+          ref.llm_sense = cached;
+          continue;
+        }
+
+        // Cache miss: call Haiku for this specific reference (skip if --no-llm)
+        if (noLlm) continue;
+        process.stdout.write(
+          `  Analyzing ${displayForm} [${title}:${ref.line}] (${refsAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
+        );
+        const { senseIndices, reasoning } = await analyzeReferenceSense(anthropic, jmWord, ref);
+        process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
+
+        reasoningLines.push(
+          `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
+        );
+        writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
+
+        ref.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
+        refsAnalyzed++;
+
+        // Write vocab.json after each call so a crash doesn't lose prior work.
+        // Omit `content` from stories — that field is only used for corpus.json.
+        const partialOutput = {
+          generatedAt: new Date().toISOString(),
+          stories: stories.map(({ title }) => ({ title })),
+          words,
+        };
+        writeFileSync(outPath, JSON.stringify(partialOutput, null, 2) + "\n");
+      }
+    }
   }
 }
 

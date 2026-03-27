@@ -2,7 +2,7 @@
 description: Annotate a Japanese sentence with vocabulary from JMDict for N4-level learners
 ---
 
-Given a Japanese sentence (or short passage) in `$ARGUMENTS`, produce a vocabulary list for an N4-level learner: someone passingly familiar with some words but for whom many will be new or uncertain.
+Given a Japanese sentence (or short passage) in `$ARGUMENTS`, produce a vocabulary list for an N5-level learner: someone passingly familiar with some words but for whom many will be new or uncertain.
 
 ## Step 1 — Run MeCab
 
@@ -30,7 +30,7 @@ node lookup.mjs {lemma}
 
 Classify the result:
 
-- **Found**: use the entry. Skip obviously N5 words that nearly all learners know (e.g. 食べる、大きい、日本、今). When in doubt, include.
+- **Found**: use the entry. Skip the most basic words that nearly all learners, adults and children both, know (e.g. 食べる、大きい、日本、今). When in doubt, include.
 - **Not found (conjugated/inflected form)**: try the plain dictionary form. For example, if `入りこも` fails, try `入り込む`. If the base form is found, use that. You can also search for the kana form (`はいりこむ`). You can also try a prefix search to discover the right form:
 
 ```bash

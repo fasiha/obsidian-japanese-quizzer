@@ -143,10 +143,7 @@ final class VocabCorpus {
                 learnedMap: learnedMap
             )
 
-            let enrolledSenseIndices: [Int] = {
-                guard let indices = entry.llmSense?.senseIndices, !indices.isEmpty else { return [] }
-                return indices
-            }()
+            let enrolledSenseIndices = entry.enrolledSenseIndices
 
             return VocabItem(
                 id: entry.id,

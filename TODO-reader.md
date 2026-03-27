@@ -306,6 +306,55 @@ brings the other three values in line with that pattern.
 
 ---
 
+### Phase 9 — Show per-line sense in the reader
+
+**Goal:** when a vocab chip is shown in a line's disclosure group, display only
+the sense(s) that this specific line's usage embodies, rather than defaulting
+to the first couple of JMDict senses.
+
+**Prerequisite:** Step 6 of TODO-sense.md — DONE. vocab.json references now carry
+`llm_sense: { sense_indices: [...], computed_from: [...], reasoning: "..." }`.
+The word-level `llm_sense` key has been removed entirely.
+
+**vocab.json reference schema (after Step 6):**
+```json
+"references": {
+  "path/to/File": [
+    { "line": 42, "context": "…", "narration": null,
+      "llm_sense": { "sense_indices": [2], "computed_from": ["…"], "reasoning": "…" } },
+    { "line": 107, "context": "…", "narration": null,
+      "llm_sense": { "sense_indices": [0, 1], "computed_from": ["…"] } }
+  ]
+}
+```
+`llm_sense` is absent on a reference when the sense could not be determined.
+`reasoning` is absent when no Haiku call was made (e.g. single-sense word stamped `[0]`).
+
+#### Sub-tasks
+
+- [x] **VocabSync / VocabCorpus: decode per-reference `llm_sense`.**
+  - `LlmSense` struct already existed with `senseIndices: [Int]`.
+  - Added `llmSense: LlmSense?` to `VocabReference`, decoded from `"llm_sense"`.
+  - Removed `llmSense: LlmSense?` from `VocabWordEntry` — word-level field gone.
+  - `VocabCorpus.load()`: `enrolledSenseIndices` now unioned from all per-reference
+    `llm_sense.sense_indices` across every occurrence; empty means no data.
+
+- [x] **QuizContext: derive enrolled senses from references.**
+  `QuizContext.build()` now unions `llmSense.senseIndices` across all references
+  for each word and deduplicates. Falls back to `[0]` when the union is empty.
+
+- [x] **Vocab chip uses per-line sense.** `vocabChip` receives `lineNumber`;
+  looks up `item.references[entry.title]?.first(where: { $0.line == lineNumber })`
+  to get that occurrence's `llmSense.senseIndices`, then picks the gloss from the
+  matching sense. Falls back to first sense when absent. Inverted map type unchanged.
+
+- [ ] **Smoke-test:** open a document, expand annotation panels on lines with
+  multi-sense words, confirm the shown gloss matches the line's actual usage.
+  Also verify quiz enrolled senses are unchanged for words that previously had
+  a word-level `llm_sense`.
+
+---
+
 ## Notes / constraints
 
 - Claude never writes directly to SQLite or to the user's Markdown content.

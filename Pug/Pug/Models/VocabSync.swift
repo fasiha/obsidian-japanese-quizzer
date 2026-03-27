@@ -25,12 +25,13 @@ struct VocabWordEntry: Codable {
     let id: String
     let sources: [String]
     let writtenForms: [WrittenFormGroup]?  // nil for old vocab.json without furigana data
-    let llmSense: LlmSense?               // nil until prepare-publish.mjs runs sense analysis
     let references: [String: [VocabReference]]?  // nil for old vocab.json without reference data
 
-    private enum CodingKeys: String, CodingKey {
-        case id, sources, writtenForms, references
-        case llmSense = "llm_sense"
+    /// Union of sense indices across all corpus occurrences, sorted and deduplicated.
+    /// Empty when no reference has llm_sense data.
+    var enrolledSenseIndices: [Int] {
+        let allRefs = references?.values.flatMap { $0 } ?? []
+        return Array(Set(allRefs.compactMap(\.llmSense).flatMap(\.senseIndices))).sorted()
     }
 }
 
@@ -41,6 +42,13 @@ struct VocabReference: Codable {
     let context: String?
     /// Non-Japanese pedagogical annotation on the word's bullet line (e.g. "[kanji]").
     let narration: String?
+    /// LLM-inferred sense(s) this specific occurrence embodies. Absent when not yet determined.
+    let llmSense: LlmSense?
+
+    private enum CodingKeys: String, CodingKey {
+        case line, context, narration
+        case llmSense = "llm_sense"
+    }
 }
 
 /// LLM-inferred sense data stored in vocab.json under the "llm_sense" key.

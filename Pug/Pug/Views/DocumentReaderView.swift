@@ -55,7 +55,7 @@ struct DocumentReaderView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
             }
-            .onChange(of: renderedLines.isEmpty) { isEmpty in
+            .onChange(of: renderedLines.isEmpty) { _, isEmpty in
                 guard !isEmpty, let target = scrollToLine else { return }
                 let animate = !UIAccessibility.isReduceMotionEnabled
                 if animate {
@@ -132,7 +132,7 @@ struct DocumentReaderView: View {
                     }
                 )
                 DisclosureGroup(isExpanded: isExpanded) {
-                    annotationPanel(vocabIds: vocabIds, grammarIds: grammarIds)
+                    annotationPanel(vocabIds: vocabIds, grammarIds: grammarIds, lineNumber: line.lineNumber)
                         .padding(.top, 4)
                 } label: {
                     annotationSummaryLabel(vocabCount: vocabIds.count, grammarCount: grammarIds.count)
@@ -147,11 +147,11 @@ struct DocumentReaderView: View {
     // MARK: - Annotation panel
 
     @ViewBuilder
-    private func annotationPanel(vocabIds: [String], grammarIds: [String]) -> some View {
+    private func annotationPanel(vocabIds: [String], grammarIds: [String], lineNumber: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(vocabIds, id: \.self) { wordId in
                 if let item = corpus.items.first(where: { $0.id == wordId }) {
-                    vocabChip(item)
+                    vocabChip(item, lineNumber: lineNumber)
                 }
             }
             if let manifest = grammarStore.manifest {
@@ -164,8 +164,21 @@ struct DocumentReaderView: View {
         }
     }
 
-    private func vocabChip(_ item: VocabItem) -> some View {
-        Button {
+    private func vocabChip(_ item: VocabItem, lineNumber: Int) -> some View {
+        // Use this line's specific sense indices if available; fall back to first sense.
+        let senseIndices = item.references[entry.title]?
+            .first(where: { $0.line == lineNumber })?.llmSense?.senseIndices ?? []
+        let gloss: String? = {
+            let firstGlosses: [String]
+            if senseIndices.isEmpty {
+                firstGlosses = item.senseExtras.first.map { [$0.glosses.first].compactMap { $0 } } ?? []
+            } else {
+                firstGlosses = senseIndices.compactMap { $0 < item.senseExtras.count ? item.senseExtras[$0].glosses.first : nil }
+            }
+            return firstGlosses.isEmpty ? nil : firstGlosses.joined(separator: "; ")
+        }()
+
+        return Button {
             selectedWord = item
         } label: {
             HStack(spacing: 8) {
@@ -177,7 +190,7 @@ struct DocumentReaderView: View {
                     Text(item.wordText)
                         .font(.subheadline).fontWeight(.medium)
                 }
-                if let gloss = item.senseExtras.first?.glosses.first {
+                if let gloss {
                     Text(gloss)
                         .font(.caption)
                         .foregroundStyle(.secondary)

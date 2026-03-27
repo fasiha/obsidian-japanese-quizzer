@@ -120,14 +120,15 @@ struct QuizContext {
         let reviewCounts   = try await db.reviewCounts()
         let commitments    = try await db.allCommitments()
 
-        // Build enrolled-senses map from cached vocab.json (llm_sense.sense_indices).
-        // Default is [0] (first JMDict sense) when the field is absent or empty —
+        // Build enrolled-senses map from cached vocab.json per-reference llm_sense.sense_indices.
+        // Union across all occurrences — a word should cover every sense the student has seen.
+        // Default is [0] (first JMDict sense) when no reference has llm_sense —
         // this prevents quizzes from testing distant/obscure senses the student never encountered.
         var enrolledSensesMap: [String: [Int]] = [:]
         if let manifest = VocabSync.cached() {
             for entry in manifest.words {
-                let raw = entry.llmSense?.senseIndices ?? []
-                enrolledSensesMap[entry.id] = raw.isEmpty ? [0] : raw
+                let deduped = entry.enrolledSenseIndices
+                enrolledSensesMap[entry.id] = deduped.isEmpty ? [0] : deduped
             }
         }
 
