@@ -13,6 +13,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
     "ebisu-js": "^2.1.3",
-    "jmdict-simplified-node": "github:fasiha/jmdict-simplified-node#sqlite"
+    "jmdict-simplified-node": "github:fasiha/jmdict-simplified-node#sqlite",
+    "jsdom": "^29.0.1"
   }
 }
