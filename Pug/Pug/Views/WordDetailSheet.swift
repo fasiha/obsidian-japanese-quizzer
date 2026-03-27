@@ -243,6 +243,7 @@ struct WordDetailSheet: View {
         let useLabel = !enrolled.isEmpty
 
         let senseList = ForEach(Array(item.senseExtras.enumerated()), id: \.offset) { index, sense in
+            if index > 0 { Divider() }
             VStack(alignment: .leading, spacing: 2) {
                 // Glosses for this sense
                 ForEach(sense.glosses, id: \.self) { gloss in
