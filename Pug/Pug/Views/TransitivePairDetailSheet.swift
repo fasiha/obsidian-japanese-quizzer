@@ -226,33 +226,35 @@ struct TransitivePairDetailSheet: View {
 
     // MARK: - Pattern hint
 
-    /// Returns a human-readable description of the transitive/intransitive pattern that
-    /// applies to this pair, if any. Rules checked in priority order:
+    /// Returns human-readable descriptions of all transitive/intransitive patterns that
+    /// apply to this pair. Multiple rules can match the same pair (e.g., 壊す/壊れる
+    /// matches both the す rule and the れる rule).
     ///   1. まる/める ending → intransitive/transitive
     ///   2. す ending on transitive → always transitive
     ///   3. れる ending on intransitive (the はいる/いれる exception won't trigger this)
     private var pairPatternHint: String? {
         let intr = item.pair.intransitive.kana
         let tr   = item.pair.transitive.kana
+        var hints: [String] = []
 
         // Rule 1: まる/める pair
         if intr.hasSuffix("まる") && tr.hasSuffix("める") {
-            return "まる/める pattern: \(intr) is intransitive, \(tr) is transitive."
+            hints.append("まる/める pattern: \(intr) is intransitive, \(tr) is transitive.")
         }
 
         // Rule 2: す is always transitive
         if tr.hasSuffix("す") {
-            return "す ending: \(tr) is reliably transitive."
+            hints.append("す ending: \(tr) is reliably transitive.")
         }
 
         // Rule 3: れる on the intransitive side is almost always intransitive.
         // (The only known exception, はいる/いれる, won't trigger this because
         // はいる doesn't end in れる.)
         if intr.hasSuffix("れる") {
-            return "れる ending: \(intr) is (almost always) intransitive."
+            hints.append("れる ending: \(intr) is (almost always) intransitive.")
         }
 
-        return nil
+        return hints.isEmpty ? nil : hints.joined(separator: "\n")
     }
 
     // MARK: - Mnemonics
