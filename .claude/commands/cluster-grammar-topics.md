@@ -57,6 +57,15 @@ hasn't annotated yet:
 like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki).
 For example, てみる → search `temiru` and `miru`; なら → search `nara`.
 
+**Long vowels in DBJG keys:** DBJG usually uses macrons for long vowels (ō, ū, etc.). When
+searching, try both the plain ASCII form and the macron form — `do` will not match `dō`.
+For example,たらどうですか → search both `tara-do` and `tara-dō`.
+
+**Bunpro usually uses Japanese script as keys:** search Bunpro with the hiragana/kanji
+form of the topic, not romaji. くれる should be searched as `くれる`, since `kureru` might
+not exist. When a new topic bundles multiple words (like あげる・くれる・もらう), search
+each component separately in hiragana.
+
 If a new topic matches an entry in another database that ISN'T in grammar.json,
 **still add it to the equivalence group** — the work of verifying the match has
 already been done, and pre-grouping means the topic will be correctly clustered

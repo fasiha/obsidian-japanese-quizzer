@@ -37,6 +37,24 @@
   },
   {
     "topics": [
+      "bunpro:number-しか-ない",
+      "dbjg:shika",
+      "genki:number-mo-number-shika-negative"
+    ],
+    "summary": "Two contrastive patterns express the speaker's attitude toward a quantity. Number + も (with an affirmative predicate) conveys surprise or emphasis that the number is large: 七台も持っている means 'has as many as seven.' Number + しか (with a negative predicate) conveys that the number is smaller than expected: 一冊しか読まなかった means 'read only one.' The choice reflects the speaker's subjective evaluation, not an objective threshold.",
+    "subUses": [
+      "Emphasizing a large quantity with も: メアリーさんはアルバイトが三つもあります (Mary has as many as three part-time jobs — the speaker finds this a lot)",
+      "Emphasizing a small quantity with しか～ない: けんさんは友だちが一人しかいません (Ken has only one friend — the speaker finds this few)"
+    ],
+    "cautions": [
+      "The choice between も and しか is always the speaker's subjective judgment, not an objective rule. The same number can take either particle depending on context: 三本も (as many as three, if three seems like a lot to the speaker) vs 三本しか (only three, if three seems like few).",
+      "しか requires a negative predicate (ない, ません, etc.). Using しか with an affirmative predicate is ungrammatical.",
+      "も in this pattern is different from the additive も meaning 'also/too'. Context (appearing after a counter word) disambiguates.",
+      "Vary the domain across questions: use physical objects with counter words (本, 匹, 台, 冊), time durations (時間, 分), and amounts of money (円) — do not default to the same type repeatedly."
+    ]
+  },
+  {
+    "topics": [
       "bunpro:transitive-intransitive-verbs",
       "genki:transitive-pairs"
     ],
@@ -93,6 +111,52 @@
       "ら抜き言葉 (dropping ら) applies ONLY to the potential meaning, never to the passive — 食べれる is colloquial potential, but the passive is always 食べられる",
       "The indirect/suffering passive has no English equivalent — it expresses that an event happened and the speaker was negatively affected, even if they weren't the direct object",
       "から can replace に for the agent when there is no physical contact: みんなから愛されている (loved by everyone)"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:あげる",
+      "bunpro:くれる",
+      "bunpro:もらう",
+      "dbjg:ageru1",
+      "dbjg:kureru1",
+      "dbjg:morau1",
+      "genki:ageru-kureru-morau"
+    ],
+    "summary": "あげる, くれる, and もらう are the three basic Japanese giving/receiving verbs. あげる means the giver gives outward (away from the speaker's sphere); くれる means someone gives inward toward the speaker or the speaker's in-group; もらう reverses the perspective so the recipient is the subject (X は Y に/から もらう). The giver is marked with は/が and the recipient with に for both あげる and くれる.",
+    "subUses": [
+      "Giving outward (あげる): 私はスーさんに辞書をあげました (I gave Sue a dictionary)",
+      "Third-party giving (あげる): けんさんはスーさんに猫をあげました (Ken gave Sue a cat)",
+      "Giving directly to the speaker (くれる): スーさんは私にTシャツをくれました (Sue gave me a T-shirt)",
+      "Giving from an outsider to someone in the speaker's in-group (くれる): 大統領が妹に手紙をくれました (The president gave my sister a letter — くれる because the speaker identifies with their sister, and the giver is distant)",
+      "Receiving with もらう (recipient as subject): 私はけんさんに帽子をもらいました (I received a hat from Ken)",
+      "Asking what was received: 誕生日に何をもらいましたか (What did you get for your birthday?)"
+    ],
+    "cautions": [
+      "あげる and くれる cannot be swapped freely — use あげる when the gift moves away from the speaker; use くれる only when the recipient is the speaker or someone the speaker feels close to",
+      "もらう makes the recipient the grammatical subject; the giver takes に or から (私は友だちに/から本をもらった)",
+      "Do not use くれる when speaking of something given to a third party outside the speaker's in-group — use あげる instead",
+      "These base giving verbs (for objects) are distinct from the て-form giving verbs (てあげる/てくれる/てもらう) which express doing favors; do not confuse the two patterns"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:かもしれない",
+      "dbjg:kamoshirenai",
+      "genki:kamoshiremasen"
+    ],
+    "summary": "かもしれない (polite: かもしれません) expresses that something is possible but uncertain — roughly 'might' or 'maybe'. It attaches directly to the plain (short) form of verbs and い-adjectives; な-adjectives and nouns drop the copula だ before it (元気かもしれない, not 元気だかもしれない). The colloquial abbreviation かも appears frequently at the end of casual sentences.",
+    "subUses": [
+      "Future uncertainty with verbs: 雨が降るかもしれない (It might rain)",
+      "Speculation about current states with adjectives: さむいかもしれません (It might be cold)",
+      "Conjecture about people or things with nouns: 今日はスーさんの誕生日かもしれません (Today might be Sue's birthday)",
+      "Speculation about past events using past plain form: プロポーズしたかもしれません (He might have proposed)",
+      "Negative speculation: 友だちがいないかもしれません (She might not have any friends)"
+    ],
+    "cautions": [
+      "な-adjectives and nouns do NOT take だ before かもしれない — 元気かもしれない is correct; 元気だかもしれない is ungrammatical",
+      "かもしれない expresses lower certainty than でしょう/だろう; use かもしれない when genuinely unsure, でしょう when you expect agreement or higher probability",
+      "The shortened form かも is very common in casual speech and should be accepted as correct; かもしれません is the polite equivalent"
     ]
   },
   {
@@ -171,6 +235,25 @@
       "Always use Verb[た]+ことがある — this is because dictionary-form ことがある (without た) is a separate grammar point and should not appear in sentences for this topic",
       "たことがある describes cumulative experience up to the present — the ある/ない at the end stays in present form even when a past time adverb is present (五年前に行ったことがある). Do not change ある to あった",
       "When using a past time adverb with this pattern, the time must be clearly distant from the present. Very recent adverbs (きのう, さっき, etc.) are unnatural — do not combine them with たことがある"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:たらどう",
+      "dbjg:~tara-dō-desu-ka",
+      "genki:tara-dodesuka"
+    ],
+    "summary": "たらどうですか (casual: たらどう) offers advice or a suggestion to someone who has expressed a problem — roughly 'Why don't you...?' or 'How about...?'. It is formed from the past tense short form (た-form) of a verb followed by どうですか. The pattern is specifically for advice in response to a stated problem, not for invitations.",
+    "subUses": [
+      "Advice responding to a problem: 疲れているんです → 早く寝たらどうですか (You're tired? Why don't you go to bed early?)",
+      "Suggestion to take action: 財布をなくしたんです → 警察に行ったらどうですか (You lost your wallet? Why don't you go to the police?)",
+      "Casual shortening: 薬を飲んだらどう？ (Why don't you take some medicine?)"
+    ],
+    "cautions": [
+      "Use たらどうですか for advice in response to someone's expressed problem, not for invitations — for invitations use ませんか instead",
+      "たらどうですか can sound critical depending on tone; たほうがいい is a more direct recommendation, and ませんか is a warmer invitation",
+      "The construction uses the た-form (past plain form) of the verb, not the て-form — 行ったらどうですか, not 行ってどうですか",
+      "Politeness scale: たらどう (casual) → たらどうですか (polite) → たらどうでしょう(か) / たらいかがですか (more formal). Accept any of these as correct."
     ]
   },
   {
