@@ -49,9 +49,18 @@ struct GrammarBrowserView: View {
     }
 
     // Topics after applying search + enrollment filter, sorted by level then title.
+    // Equivalence group siblings are collapsed: only the canonical representative
+    // (the topic whose prefixedId sorts first among all group members) is shown.
     private var filteredTopics: [GrammarTopic] {
-        manifest.topics.values
+        var seenGroupKeys = Set<String>()
+        return manifest.topics.values
             .filter { topic in
+                // Deduplicate equivalence groups: compute a stable canonical key
+                // by taking the lexicographically smallest prefixed ID in the group.
+                let groupMembers = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).sorted()
+                let groupKey = groupMembers.first ?? topic.prefixedId
+                guard seenGroupKeys.insert(groupKey).inserted else { return false }
+
                 let enrolled = enrollmentStatus[topic.prefixedId] ?? false
                 switch filterEnrolled {
                 case .all: break
