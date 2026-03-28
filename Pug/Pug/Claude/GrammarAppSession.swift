@@ -210,6 +210,18 @@ final class GrammarAppSession {
         }
     }
 
+    /// Remove all not-yet-answered items belonging to the given equivalence group.
+    /// Called when the student unenrolls a topic from the detail sheet mid-session.
+    /// Items already answered (index < currentIndex) are left in place so the
+    /// progress counter stays consistent.
+    func evictItems(topicId: String, equivalenceGroupIds: [String]) {
+        let evictIds = Set([topicId] + equivalenceGroupIds)
+        let splitPoint = min(currentIndex + 1, items.endIndex)
+        let future = items[splitPoint...].filter { !evictIds.contains($0.topicId) }
+        items = Array(items[..<splitPoint]) + future
+        if currentIndex >= items.count { phase = .finished }
+    }
+
 
     // MARK: - Private: load items
 

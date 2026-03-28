@@ -178,6 +178,8 @@ struct GrammarQuizContext {
     /// Collapse items so that only one representative per (equivalenceGroupKey, facet) appears.
     /// Items are already sorted by ascending recall; we keep the first (most urgent) representative.
     /// Topics with no equivalence group use their own topicId as the key.
+    /// NOTE: facets are intentionally NOT collapsed across each other — quizzing recognition
+    /// does not prime production (or vice versa), so both facets of a group can appear in one session.
     private static func collapseEquivalenceGroups(_ items: [GrammarQuizItem]) -> [GrammarQuizItem] {
         var seen = Set<String>()
         var result: [GrammarQuizItem] = []
