@@ -4,9 +4,46 @@
 //
 // Each annotated word (from VocabGloss.reading) becomes a non-breaking unit
 // with the kana reading shown above it. Plain text between annotated words is
-// split into individual characters so the flow layout can break anywhere.
+// tokenized by NLTagger so the flow layout only breaks between words, not mid-word.
+// Kinsoku (行頭禁則) rules prevent sentence-ending punctuation like 。 from starting a line.
 
+import NaturalLanguage
 import SwiftUI
+
+// MARK: - Plain-text word tokenization
+
+/// Splits a plain (non-annotated) span into `FuriganaSegment` runs using `NLTagger`.
+/// Each token (word or punctuation) becomes one segment, which the flow layout treats
+/// as a non-breakable unit. This prevents the layout from splitting mid-word — e.g.
+/// `ください` stays together instead of wrapping as `くださ / い`.
+///
+/// Any span not covered by a tagger token (rare) is emitted character-by-character
+/// as a fallback so no text is lost.
+private func plainSegments(for text: String) -> [FuriganaSegment] {
+    guard !text.isEmpty else { return [] }
+    var segments: [FuriganaSegment] = []
+    let tagger = NLTagger(tagSchemes: [.tokenType])
+    tagger.string = text
+    var pos = text.startIndex
+    tagger.enumerateTags(in: text.startIndex..<text.endIndex, unit: .word, scheme: .tokenType) { _, range in
+        // Fill any gap before this token (e.g. whitespace NLTagger skips) char-by-char.
+        if range.lowerBound > pos {
+            for ch in text[pos..<range.lowerBound] {
+                segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
+            }
+        }
+        segments.append(FuriganaSegment(ruby: String(text[range]), rt: nil))
+        pos = range.upperBound
+        return true
+    }
+    // Emit any trailing text not covered by the tagger.
+    if pos < text.endIndex {
+        for ch in text[pos...] {
+            segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
+        }
+    }
+    return segments
+}
 
 // MARK: - Segmentation
 
@@ -49,22 +86,18 @@ func sentenceFuriganaSegments(sentence: String, glosses: [VocabGloss]) -> [Furig
     let allAnnotations = (annotations + singleKanjiAnnotations)
         .sorted { $0.range.lowerBound < $1.range.lowerBound }
 
-    // Build FuriganaSegment array. Plain text between annotations is emitted
-    // character by character so the flow layout can break between any two characters.
+    // Build FuriganaSegment array. Plain text between annotations is tokenized into
+    // words by NLTagger so the flow layout only breaks between words, not mid-word.
     var segments: [FuriganaSegment] = []
     var pos = sentence.startIndex
     for (range, segs) in allAnnotations {
-        for ch in sentence[pos..<range.lowerBound] {
-            segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
-        }
+        segments.append(contentsOf: plainSegments(for: String(sentence[pos..<range.lowerBound])))
         segments.append(contentsOf: segs)
         pos = range.upperBound
     }
-    for ch in sentence[pos...] {
-        segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
-    }
+    segments.append(contentsOf: plainSegments(for: String(sentence[pos...])))
 
-    return segments.isEmpty ? sentence.map { FuriganaSegment(ruby: String($0), rt: nil) } : segments
+    return segments.isEmpty ? plainSegments(for: sentence) : segments
 }
 
 /// Returns whether a Unicode scalar is a CJK kanji character.
@@ -144,16 +177,14 @@ func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
 
     while !remaining.isEmpty {
         if let rubyStart = remaining.range(of: "<ruby>", options: .caseInsensitive) {
-            // Emit plain text before this <ruby> tag character by character.
-            for ch in remaining[..<rubyStart.lowerBound] {
-                segments.append(FuriganaSegment(ruby: String(ch), rt: nil))
-            }
+            // Emit plain text before this <ruby> tag as NLTagger word tokens.
+            segments.append(contentsOf: plainSegments(for: String(remaining[..<rubyStart.lowerBound])))
             remaining = remaining[rubyStart.upperBound...]
 
             // Find the matching </ruby>.
             guard let rubyEnd = remaining.range(of: "</ruby>", options: .caseInsensitive) else {
                 // Malformed — treat the rest as plain text.
-                for ch in remaining { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+                segments.append(contentsOf: plainSegments(for: String(remaining)))
                 return segments
             }
             let rubyContent = remaining[..<rubyEnd.lowerBound]
@@ -170,11 +201,11 @@ func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
                 }
             } else {
                 // No <rt> found inside — emit the whole block as plain text.
-                for ch in rubyContent { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+                segments.append(contentsOf: plainSegments(for: String(rubyContent)))
             }
         } else {
-            // No more <ruby> tags — emit the rest character by character.
-            for ch in remaining { segments.append(FuriganaSegment(ruby: String(ch), rt: nil)) }
+            // No more <ruby> tags — emit the rest as NLTagger word tokens.
+            segments.append(contentsOf: plainSegments(for: String(remaining)))
             break
         }
     }
@@ -234,6 +265,24 @@ struct SentenceFuriganaView: View {
 
 // MARK: - Flow layout
 
+/// Characters that must not appear at the start of a line (Japanese 行頭禁則).
+/// When the flow layout would wrap here, the character is pulled onto the previous row instead.
+private let lineStartForbidden: Set<Character> = [
+    "。", "、", "！", "？", "…", "・",       // sentence-ending and ellipsis
+    "）", "」", "』", "】", "〉", "》", "〕", // closing brackets
+    "ー",                                   // prolonged-sound mark
+    "っ", "ッ",                             // small tsu (can't sensibly open a line)
+    "ぁ", "ぃ", "ぅ", "ぇ", "ぉ",           // small hiragana vowels
+    "ァ", "ィ", "ゥ", "ェ", "ォ",           // small katakana vowels
+    "ゃ", "ゅ", "ょ", "ャ", "ュ", "ョ",     // small ya/yu/yo
+    "ゎ", "ヮ",                             // small wa
+]
+
+/// Returns true if a segment's first (and only) character is forbidden at the start of a line.
+private func isForbiddenAtLineStart(_ seg: FuriganaSegment) -> Bool {
+    seg.rt == nil && seg.ruby.count == 1 && seg.ruby.first.map { lineStartForbidden.contains($0) } == true
+}
+
 /// A flow (wrapping) layout for furigana segments. Annotated words (with `rt`) are
 /// taller than plain characters; all items in a row are bottom-aligned so baselines match.
 private struct SentenceFuriganaFlow: View {
@@ -255,8 +304,14 @@ private struct SentenceFuriganaFlow: View {
         }
     }
 
+    // Parallel array: true means the flow layout may break before this segment.
+    // Kinsoku characters (。、） etc.) are marked false so they stay on the previous line.
+    private var canBreakBefore: [Bool] {
+        segments.map { !isForbiddenAtLineStart($0) }
+    }
+
     var body: some View {
-        SentenceFuriganaLayout(trailingAlignment: trailingAlignment) {
+        SentenceFuriganaLayout(trailingAlignment: trailingAlignment, canBreakBefore: canBreakBefore) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
                 if let rt = seg.rt {
                     VStack(spacing: 0) {
@@ -281,6 +336,8 @@ private struct SentenceFuriganaFlow: View {
 private struct SentenceFuriganaLayout: Layout {
     let spacing: CGFloat = 0
     var trailingAlignment: Bool = false
+    /// Parallel to subviews: false means this subview may not start a new line (kinsoku).
+    var canBreakBefore: [Bool] = []
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let rows = computeRows(maxWidth: proposal.width ?? .infinity, subviews: subviews)
@@ -319,8 +376,9 @@ private struct SentenceFuriganaLayout: Layout {
     private func computeRows(maxWidth: CGFloat, subviews: Subviews) -> [Row] {
         var rows: [Row] = []
         var current = Row()
-        for subview in subviews {
+        for (index, subview) in subviews.enumerated() {
             let size = subview.sizeThatFits(.unspecified)
+            let breakAllowed = index < canBreakBefore.count ? canBreakBefore[index] : true
             if current.subviews.isEmpty {
                 current.subviews.append(subview)
                 current.width = size.width
@@ -330,8 +388,17 @@ private struct SentenceFuriganaLayout: Layout {
                 current.width += spacing + size.width
                 current.height = max(current.height, size.height)
             } else {
-                rows.append(current)
-                current = Row(subviews: [subview], width: size.width, height: size.height)
+                // Before starting a new row, check the kinsoku flag (行頭禁則).
+                // If this character must not start a line, pull it onto the current row
+                // even if it overflows slightly — an orphaned 。 looks far worse.
+                if !breakAllowed {
+                    current.subviews.append(subview)
+                    current.width += spacing + size.width
+                    current.height = max(current.height, size.height)
+                } else {
+                    rows.append(current)
+                    current = Row(subviews: [subview], width: size.width, height: size.height)
+                }
             }
         }
         if !current.subviews.isEmpty { rows.append(current) }
