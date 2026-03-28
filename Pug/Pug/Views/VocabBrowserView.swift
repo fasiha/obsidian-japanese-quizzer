@@ -491,11 +491,15 @@ struct VocabRowView: View {
                 Spacer()
                 statusBadge
             }
-            if let meaning = item.senseExtras.first?.glosses.first {
-                Text(meaning)
+            let corpusSenseGlosses: [String] = item.corpusSenseIndices.isEmpty
+                ? (item.senseExtras.first?.glosses.first.map { [$0] } ?? [])
+                : item.corpusSenseIndices.compactMap { $0 < item.senseExtras.count ? item.senseExtras[$0].glosses.first : nil }
+            if !corpusSenseGlosses.isEmpty {
+                Text(corpusSenseGlosses.joined(separator: "; "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .truncationMode(.tail)
             }
             if !item.sources.isEmpty {
                 Text(item.sources.joined(separator: ", "))
