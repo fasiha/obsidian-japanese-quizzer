@@ -260,7 +260,8 @@ struct QuizContext {
                 let elapsed = max(now.timeIntervalSince(iso8601Date(record.lastReview)), 1e-6) / 3600.0
                 pairRecallMap[record.wordId] = (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
             }
-            for pairItem in pairCorpus.items where pairItem.state == .learning {
+            let pairItems = await MainActor.run { pairCorpus.items }
+            for pairItem in pairItems where pairItem.state == .learning {
                 guard let (recall, halflife) = pairRecallMap[pairItem.id] else { continue }
                 let status = QuizStatus.reviewed(recall: recall, isFree: false, halflife: halflife)
                 let kanjiIntr = pairItem.pair.intransitive.kanji.first ?? pairItem.pair.intransitive.kana

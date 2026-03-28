@@ -13,7 +13,7 @@ let package = Package(
             dependencies: [
                 .product(name: "GRDB", package: "GRDB.swift"),
             ],
-            path: "Sources/TestHarness"
+            path: "Sources/TestHarness",
         ),
     ]
 )
