@@ -68,14 +68,14 @@ struct QuizItem: Identifiable {
     /// nil when there is no word commitment. Used for local exact-match grading on reading facets.
     let committedReading: String?
 
-    /// Zero-based indices into senseExtras for the senses the student is learning.
-    /// Loaded from vocab.json llm_sense.sense_indices; defaults to [0] (first sense) when absent or empty.
+    /// Zero-based indices into senseExtras for senses attested in the corpus (from llm_sense.sense_indices).
+    /// Defaults to [0] (first sense) when absent or empty, so quiz prompts always have at least one meaning.
     /// Empty for non-jmdict word types (transitive pairs, etc.).
-    let enrolledSenseIndices: [Int]
+    let corpusSenseIndices: [Int]
 
-    /// The subset of senseExtras the student is actually learning.
-    var enrolledSenses: [SenseExtra] {
-        enrolledSenseIndices.compactMap { $0 < senseExtras.count ? senseExtras[$0] : nil }
+    /// The subset of senseExtras attested in the corpus (used as the quiz meaning pool).
+    var corpusSenses: [SenseExtra] {
+        corpusSenseIndices.compactMap { $0 < senseExtras.count ? senseExtras[$0] : nil }
     }
 
     var recall: Double {
@@ -124,11 +124,11 @@ struct QuizContext {
         // Union across all occurrences — a word should cover every sense the student has seen.
         // Default is [0] (first JMDict sense) when no reference has llm_sense —
         // this prevents quizzes from testing distant/obscure senses the student never encountered.
-        var enrolledSensesMap: [String: [Int]] = [:]
+        var corpusSensesMap: [String: [Int]] = [:]
         if let manifest = VocabSync.cached() {
             for entry in manifest.words {
-                let deduped = entry.enrolledSenseIndices
-                enrolledSensesMap[entry.id] = deduped.isEmpty ? [0] : deduped
+                let deduped = entry.corpusSenseIndices
+                corpusSensesMap[entry.id] = deduped.isEmpty ? [0] : deduped
             }
         }
 
@@ -249,7 +249,7 @@ struct QuizContext {
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate,
                 committedReading: committedReading,
-                enrolledSenseIndices: enrolledSensesMap[wordId] ?? [0]))
+                corpusSenseIndices: corpusSensesMap[wordId] ?? [0]))
         }
 
         // Include enrolled transitive-pair items.
@@ -271,7 +271,7 @@ struct QuizContext {
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
                     facet: "pair-discrimination", status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
-                    enrolledSenseIndices: []
+                    corpusSenseIndices: []
                 ))
             }
         }

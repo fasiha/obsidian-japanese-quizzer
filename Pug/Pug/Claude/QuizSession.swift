@@ -591,7 +591,7 @@ final class QuizSession {
     /// Build the question stem app-side for free-answer facets (no LLM needed).
     func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.kanaTexts.first ?? "?"
-        let meanings = item.enrolledSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+        let meanings = item.corpusSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
         switch item.facet {
         case "meaning-to-reading":
             return meanings.isEmpty ? item.wordText : meanings
@@ -1267,10 +1267,10 @@ final class QuizSession {
         // Each facet then restricts what may appear in the question *stem* — separate from what Claude knows.
         let allWritten  = item.writtenTexts.isEmpty  ? "none" : item.writtenTexts.joined(separator: ", ")
         let allKana     = item.kanaTexts.isEmpty     ? "none" : item.kanaTexts.joined(separator: ", ")
-        // Use only the senses the student is enrolled in. enrolledSenses defaults to [senseExtras[0]]
+        // Use only the corpus-attested senses. corpusSenses defaults to [senseExtras[0]]
         // when vocab.json has no llm_sense data — prevents testing obscure/distant senses by default.
-        let enrolledSenses = item.enrolledSenses
-        let allMeanings = enrolledSenses.isEmpty ? "unknown" : enrolledSenses.flatMap(\.glosses).joined(separator: "; ")
+        let corpusSenses = item.corpusSenses
+        let allMeanings = corpusSenses.isEmpty ? "unknown" : corpusSenses.flatMap(\.glosses).joined(separator: "; ")
 
         // Aggregate sense-level metadata across all senses for context (deduplicated).
         let extras = item.senseExtras

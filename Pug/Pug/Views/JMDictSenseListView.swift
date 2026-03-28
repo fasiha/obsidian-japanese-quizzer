@@ -10,7 +10,7 @@ import SwiftUI
 struct JMDictSenseListView: View {
     let senseExtras: [SenseExtra]
     /// Indices of senses enrolled for quizzing. When non-empty, non-enrolled senses are dimmed.
-    var enrolledSenseIndices: [Int] = []
+    var corpusSenseIndices: [Int] = []
 
     var body: some View {
         // Part of speech is shared across senses (JMDict convention: repeated on each sense,
@@ -22,7 +22,7 @@ struct JMDictSenseListView: View {
                 .foregroundStyle(.secondary)
         }
 
-        let useLabel = !enrolledSenseIndices.isEmpty
+        let useLabel = !corpusSenseIndices.isEmpty
 
         let senseList = ForEach(Array(senseExtras.enumerated()), id: \.offset) { index, sense in
             if index > 0 { Divider() }
@@ -53,7 +53,7 @@ struct JMDictSenseListView: View {
                     .foregroundStyle(.secondary)
                 }
             }
-            .opacity(useLabel && !enrolledSenseIndices.contains(index) ? 0.4 : 1.0)
+            .opacity(useLabel && !corpusSenseIndices.contains(index) ? 0.4 : 1.0)
         }
 
         if useLabel {

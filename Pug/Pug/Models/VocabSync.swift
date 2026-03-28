@@ -29,7 +29,7 @@ struct VocabWordEntry: Codable {
 
     /// Union of sense indices across all corpus occurrences, sorted and deduplicated.
     /// Empty when no reference has llm_sense data.
-    var enrolledSenseIndices: [Int] {
+    var corpusSenseIndices: [Int] {
         let allRefs = references?.values.flatMap { $0 } ?? []
         return Array(Set(allRefs.compactMap(\.llmSense).flatMap(\.senseIndices))).sorted()
     }

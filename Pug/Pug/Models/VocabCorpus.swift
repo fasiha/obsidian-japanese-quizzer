@@ -27,9 +27,9 @@ struct VocabItem: Identifiable {
     let senseExtras: [SenseExtra]        // per-sense data: glosses + metadata (usage notes, related/antonym xrefs, pos tags)
     let writtenForms: [WrittenFormGroup]  // furigana data from vocab.json
     let references: [String: [VocabReference]]  // corpus occurrences with context
-    /// Zero-based indices of senses the student is being quizzed on, from vocab.json llm_sense.
-    /// Empty means llm_sense was absent or had no computed indices — show all senses equally.
-    let enrolledSenseIndices: [Int]
+    /// Zero-based indices of senses attested in the corpus, from vocab.json llm_sense.
+    /// Empty means llm_sense was absent or had no computed indices — show all senses equally (undimmed).
+    let corpusSenseIndices: [Int]
 
     // Derived from DB state (ebisu_models + learned + word_commitment)
     var commitment: WordCommitment?
@@ -143,7 +143,7 @@ final class VocabCorpus {
                 learnedMap: learnedMap
             )
 
-            let enrolledSenseIndices = entry.enrolledSenseIndices
+            let corpusSenseIndices = entry.corpusSenseIndices
 
             return VocabItem(
                 id: entry.id,
@@ -154,7 +154,7 @@ final class VocabCorpus {
                 senseExtras: jd.senseExtras,
                 writtenForms: entry.writtenForms ?? [],
                 references: entry.references ?? [:],
-                enrolledSenseIndices: enrolledSenseIndices,
+                corpusSenseIndices: corpusSenseIndices,
                 commitment: commitment,
                 readingState: readingState,
                 kanjiState: kanjiState

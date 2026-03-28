@@ -15,8 +15,7 @@ struct TransitivePairDetailSheet: View {
     let toolHandler: ToolHandler?
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(GrammarStore.self) private var grammarStore
-    @Environment(CorpusStore.self) private var corpusStore
+    @Environment(VocabCorpus.self) private var vocabCorpus
 
     /// Live item looked up from corpus — updates reactively when pairCorpus.items changes.
     private var item: TransitivePairItem {
@@ -66,7 +65,8 @@ struct TransitivePairDetailSheet: View {
                         heading: "Intransitive (自動詞)",
                         member: item.pair.intransitive,
                         furigana: item.intransitiveFurigana,
-                        senses: intransitiveSenses
+                        senses: intransitiveSenses,
+                        corpusSenseIndices: vocabCorpus.items.first { $0.id == item.pair.intransitive.jmdictId }?.corpusSenseIndices ?? []
                     )
 
                     Divider()
@@ -76,7 +76,8 @@ struct TransitivePairDetailSheet: View {
                         heading: "Transitive (他動詞)",
                         member: item.pair.transitive,
                         furigana: item.transitiveFurigana,
-                        senses: transitiveSenses
+                        senses: transitiveSenses,
+                        corpusSenseIndices: vocabCorpus.items.first { $0.id == item.pair.transitive.jmdictId }?.corpusSenseIndices ?? []
                     )
 
                     // Ambiguous reason
@@ -424,7 +425,8 @@ struct TransitivePairDetailSheet: View {
         heading: String,
         member: TransitivePairMember,
         furigana: [FuriganaSegment]?,
-        senses: [SenseExtra]
+        senses: [SenseExtra],
+        corpusSenseIndices: [Int]
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(heading)
@@ -455,7 +457,7 @@ struct TransitivePairDetailSheet: View {
 
             // Senses (shared with WordDetailSheet)
             if !senses.isEmpty {
-                JMDictSenseListView(senseExtras: senses)
+                JMDictSenseListView(senseExtras: senses, corpusSenseIndices: corpusSenseIndices)
             }
         }
         .textSelection(.enabled)

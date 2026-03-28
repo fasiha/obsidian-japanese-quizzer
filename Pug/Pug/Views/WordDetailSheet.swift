@@ -227,7 +227,7 @@ struct WordDetailSheet: View {
     private var senseExtrasSection: some View {
         JMDictSenseListView(
             senseExtras: item.senseExtras,
-            enrolledSenseIndices: item.enrolledSenseIndices
+            corpusSenseIndices: item.corpusSenseIndices
         )
     }
 
