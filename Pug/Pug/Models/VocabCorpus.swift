@@ -70,6 +70,8 @@ struct VocabItem: Identifiable {
 @MainActor
 final class VocabCorpus {
     private(set) var items: [VocabItem] = []
+    // TODO: add func item(for id: String) -> VocabItem? backed by a [String: VocabItem] index,
+    // to replace the O(n) .first { $0.id == ... } scans in TransitivePairDetailSheet.
     private(set) var isLoading = false
     private(set) var syncError: String? = nil
     private(set) var lastSyncedAt: String? = nil

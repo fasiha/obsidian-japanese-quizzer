@@ -512,6 +512,8 @@ final class QuizDB: Sendable {
         }
     }
 
+    // TODO: add reviewCounts(for: [EbisuRecord]) -> [String: Int] to replace the
+    // triplicated loop in WordDetailSheet, TransitivePairDetailSheet, GrammarDetailSheet.
     func reviewCount(wordType: String, wordId: String, quizType: String) async throws -> Int {
         try await pool.read { db in
             try Review

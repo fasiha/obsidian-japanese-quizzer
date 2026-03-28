@@ -119,7 +119,7 @@ struct GrammarQuizView: View {
                     toolHandler: session.toolHandler,
                     isEnrolled: true,
                     jmdict: jmdict,
-                    onEnrollmentChange: { _ in }
+                    onEnrollmentChange: { _ in }  // no-op: session is pre-built; if both facets of this topic are queued, unenrolling here won't remove the other facet's item from the current session
                 )
             }
         }

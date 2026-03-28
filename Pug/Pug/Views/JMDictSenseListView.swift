@@ -9,7 +9,8 @@ import SwiftUI
 /// cross-references, and optional dimming for non-enrolled senses.
 struct JMDictSenseListView: View {
     let senseExtras: [SenseExtra]
-    /// Indices of senses enrolled for quizzing. When non-empty, non-enrolled senses are dimmed.
+    /// Corpus-attested sense indices (from llm_sense.sense_indices). When non-empty,
+    /// non-corpus senses are dimmed to show which senses the student has encountered.
     var corpusSenseIndices: [Int] = []
 
     var body: some View {
@@ -59,7 +60,7 @@ struct JMDictSenseListView: View {
         if useLabel {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Senses used in quizzes")
+                    Text("Senses found in corpus")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundStyle(.secondary)
