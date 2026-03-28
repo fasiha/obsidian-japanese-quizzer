@@ -287,28 +287,6 @@ struct QuizContext {
         let senseExtras: [SenseExtra]
     }
 
-    /// Build the "written:X,Y  reading:A,B" (or "reading:A,B") forms portion of a context line.
-    /// Mirrors wordFormsPart() in shared.mjs.
-    static func formsPart(written: [String], kana: [String]) -> String {
-        if !written.isEmpty {
-            return "written:\(written.joined(separator: ","))  reading:\(kana.joined(separator: ","))"
-        }
-        return "reading:\(kana.joined(separator: ","))"
-    }
-
-    /// Format a quiz-context line for LLM pre-selection, mirroring the JS skill's quiz-context.txt.
-    static func contextLine(for item: QuizItem) -> String {
-        let quizTag     = item.hasKanji ? "{kanji-ok}" : "{no-kanji}"
-        let formStr     = formsPart(written: item.writtenTexts, kana: item.kanaTexts)
-        let meaningsStr = item.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
-        let facetPart: String
-        switch item.status {
-        case .reviewed(let recall, let isFree, _):
-            facetPart = "→\(item.facet)@\(String(format: "%.2f", recall))" + (isFree ? " free" : "")
-        }
-        return "\(item.wordId)  \(formStr)  \(quizTag)  \(meaningsStr)  \(facetPart)"
-    }
-
     /// Cached JMDict tag abbreviation → full description map. Loaded once from the
     /// metadata table on first use, then reused for the lifetime of the process.
     private nonisolated(unsafe) static var cachedTags: [String: String]?

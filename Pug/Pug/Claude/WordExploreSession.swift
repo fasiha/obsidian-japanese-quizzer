@@ -55,10 +55,9 @@ final class WordExploreSession {
             let (response, updatedConversation, meta) = try await client.send(
                 messages: conversation,
                 system: prompt,
-                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
+                tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
                 toolHandler: { @Sendable name, input in
-                    if name == "get_vocab_context" { return await MainActor.run { self.vocabContextJSON() } }
                     return try await th.handle(toolName: name, input: input)
                 }
             )
@@ -80,25 +79,6 @@ final class WordExploreSession {
             messages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }
         isSending = false
-    }
-
-    /// Serialize the user's enrolled vocab as JSON for the get_vocab_context tool.
-    private func vocabContextJSON() -> String {
-        var learning: [[String: Any]] = []
-        var known:    [[String: Any]] = []
-        for item in corpus.items {
-            guard item.readingState != .unknown || item.kanjiState != .unknown else { continue }
-            var entry: [String: Any] = ["text": item.wordText]
-            if !item.kanaTexts.isEmpty    { entry["kana"]     = item.kanaTexts }
-            if !item.writtenTexts.isEmpty { entry["written"]  = item.writtenTexts }
-            let glosses = item.senseExtras.flatMap(\.glosses)
-            if !glosses.isEmpty           { entry["meanings"] = Array(glosses.prefix(3)) }
-            if item.readingState == .learning || item.kanjiState == .learning { learning.append(entry) }
-            else                          { known.append(entry) }
-        }
-        let obj: [String: Any] = ["learning": learning, "known": known]
-        let data = (try? JSONSerialization.data(withJSONObject: obj, options: [.sortedKeys])) ?? Data()
-        return String(data: data, encoding: .utf8) ?? "{}"
     }
 
     /// Build system prompt with any existing mnemonics fetched from the DB.
@@ -139,7 +119,7 @@ final class WordExploreSession {
         Japanese tutor — free exploration (no quizzing/scoring).
         Word: \(item.wordText) (id \(item.id)). \(writtenPart)Readings: \(kanaStr). Meanings: \(meaningStr)
         \(mnemonicBlock)
-        Be concise. Use lookup_jmdict for accurate details. Use get_vocab_context to relate to the learner's other words.
+        Be concise. Use lookup_jmdict for accurate details.
         set_mnemonic overwrites — always merge with existing content before saving.
         SRS context: each word has 2–4 facets with Ebisu halflives. Halflives auto-update after quizzes. Manual adjustment: tap the halflife row in the detail screen above this chat.
         """

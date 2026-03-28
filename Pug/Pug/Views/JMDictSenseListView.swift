@@ -1,0 +1,75 @@
+// JMDictSenseListView.swift
+// Shared view for rendering JMDict sense data (glosses, part-of-speech, metadata).
+// Used by both WordDetailSheet and TransitivePairDetailSheet to keep dictionary
+// display consistent across the app.
+
+import SwiftUI
+
+/// Renders a list of JMDict senses with glosses, part-of-speech, metadata tags,
+/// cross-references, and optional dimming for non-enrolled senses.
+struct JMDictSenseListView: View {
+    let senseExtras: [SenseExtra]
+    /// Indices of senses enrolled for quizzing. When non-empty, non-enrolled senses are dimmed.
+    var enrolledSenseIndices: [Int] = []
+
+    var body: some View {
+        // Part of speech is shared across senses (JMDict convention: repeated on each sense,
+        // but effectively describes the word). Deduplicate and show once at the top.
+        let allPos = Array(NSOrderedSet(array: senseExtras.flatMap(\.partOfSpeech))) as? [String] ?? []
+        if !allPos.isEmpty {
+            Text(allPos.joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        let useLabel = !enrolledSenseIndices.isEmpty
+
+        let senseList = ForEach(Array(senseExtras.enumerated()), id: \.offset) { index, sense in
+            if index > 0 { Divider() }
+            VStack(alignment: .leading, spacing: 2) {
+                // Glosses for this sense
+                ForEach(sense.glosses, id: \.self) { gloss in
+                    Text("• \(gloss)")
+                }
+
+                // Metadata that applies only to this sense
+                if !sense.metadataIsEmpty {
+                    let tags = (sense.misc + sense.field + sense.dialect).joined(separator: ", ")
+                    Group {
+                        if !tags.isEmpty {
+                            Text(tags).italic()
+                        }
+                        ForEach(sense.info, id: \.self) { note in
+                            Text(note).italic()
+                        }
+                        if !sense.related.isEmpty {
+                            Text("Related: \(SenseExtra.formatXrefs(sense.related))")
+                        }
+                        if !sense.antonym.isEmpty {
+                            Text("Antonym: \(SenseExtra.formatXrefs(sense.antonym))")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
+            .opacity(useLabel && !enrolledSenseIndices.contains(index) ? 0.4 : 1.0)
+        }
+
+        if useLabel {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Senses used in quizzes")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                }
+                senseList
+            }
+        } else {
+            senseList
+        }
+    }
+}

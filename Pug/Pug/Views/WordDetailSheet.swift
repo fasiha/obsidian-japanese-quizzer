@@ -40,6 +40,7 @@ struct WordDetailSheet: View {
     @State private var vocabMnemonic: String? = nil
     @State private var kanjiMnemonics: [(kanji: String, text: String)] = []
     @State private var ebisuModels: [EbisuRecord] = []
+    @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleRecord: EbisuRecord? = nil
 
     var body: some View {
@@ -85,7 +86,7 @@ struct WordDetailSheet: View {
                 )
             }
             .sheet(item: $rescaleRecord) { record in
-                RescaleSheet(currentHalflife: record.t) { hours in
+                RescaleSheet(currentHalflife: record.t, reviewCount: ebisuReviewCounts[record.id]) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
             }
@@ -222,65 +223,12 @@ struct WordDetailSheet: View {
         }
     }
 
-    /// Per-sense display: each sense's glosses followed immediately by its own metadata.
-    /// This keeps usage notes, cross-references, and tags tied to the definition they apply to.
-    ///
-    /// When the word has enrolled senses (from llm_sense.sense_indices), the list is wrapped
-    /// in a labeled group and non-enrolled senses are dimmed to show the student which senses
-    /// the quiz is using.
-    @ViewBuilder
+    /// Per-sense display using the shared JMDictSenseListView.
     private var senseExtrasSection: some View {
-        // Part of speech is shared across senses (JMDict convention: repeated on each sense,
-        // but effectively describes the word). Deduplicate and show once at the top.
-        let allPos = Array(NSOrderedSet(array: item.senseExtras.flatMap(\.partOfSpeech))) as? [String] ?? []
-        if !allPos.isEmpty {
-            Text(allPos.joined(separator: ", "))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-
-        let enrolled = item.enrolledSenseIndices
-        let useLabel = !enrolled.isEmpty
-
-        let senseList = ForEach(Array(item.senseExtras.enumerated()), id: \.offset) { index, sense in
-            if index > 0 { Divider() }
-            VStack(alignment: .leading, spacing: 2) {
-                // Glosses for this sense
-                ForEach(sense.glosses, id: \.self) { gloss in
-                    Text("• \(gloss)")
-                }
-
-                // Metadata that applies only to this sense
-                if !sense.metadataIsEmpty {
-                    let tags = (sense.misc + sense.field + sense.dialect).joined(separator: ", ")
-                    Group {
-                        if !tags.isEmpty {
-                            Text(tags).italic()
-                        }
-                        ForEach(sense.info, id: \.self) { note in
-                            Text(note).italic()
-                        }
-                        if !sense.related.isEmpty {
-                            Text("Related: \(SenseExtra.formatXrefs(sense.related))")
-                        }
-                        if !sense.antonym.isEmpty {
-                            Text("Antonym: \(SenseExtra.formatXrefs(sense.antonym))")
-                        }
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-            }
-            .opacity(useLabel && !enrolled.contains(index) ? 0.4 : 1.0)
-        }
-
-        if useLabel {
-            infoGroup(heading: "Senses used in quizzes") {
-                senseList
-            }
-        } else {
-            senseList
-        }
+        JMDictSenseListView(
+            senseExtras: item.senseExtras,
+            enrolledSenseIndices: item.enrolledSenseIndices
+        )
     }
 
     @ViewBuilder
@@ -732,10 +680,15 @@ struct WordDetailSheet: View {
             ebisuModels = records.sorted {
                 (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
             }
+            var counts: [String: Int] = [:]
+            for record in records {
+                counts[record.id] = (try? await quizDB.reviewCount(
+                    wordType: record.wordType, wordId: record.wordId, quizType: record.quizType)) ?? 0
+            }
+            ebisuReviewCounts = counts
         }
     }
 
-    // TODO: near-duplicate of QuizSession.rescaleCurrentFacet — consider extracting to QuizDB
     private func doRescale(record: EbisuRecord, hours: Double) async {
         guard hours > 0, let quizDB = toolHandler?.quizDB else { return }
         do {

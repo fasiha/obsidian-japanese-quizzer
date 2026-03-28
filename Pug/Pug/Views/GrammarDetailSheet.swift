@@ -29,6 +29,7 @@ struct GrammarDetailSheet: View {
 
     @State private var mnemonic: String? = nil
     @State private var ebisuModels: [EbisuRecord] = []
+    @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleRecord: EbisuRecord? = nil
 
     // Claude chat (reuses WordExploreSession pattern for simplicity).
@@ -81,7 +82,7 @@ struct GrammarDetailSheet: View {
                 await loadEbisuModels()
             }
             .sheet(item: $rescaleRecord) { record in
-                RescaleSheet(currentHalflife: record.t) { hours in
+                RescaleSheet(currentHalflife: record.t, reviewCount: ebisuReviewCounts[record.id]) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
             }
@@ -331,6 +332,12 @@ struct GrammarDetailSheet: View {
     private func loadEbisuModels() async {
         if let records = try? await db.ebisuRecords(wordType: "grammar", wordId: topic.prefixedId) {
             ebisuModels = records.sorted { $0.quizType < $1.quizType }
+            var counts: [String: Int] = [:]
+            for record in records {
+                counts[record.id] = (try? await db.reviewCount(
+                    wordType: record.wordType, wordId: record.wordId, quizType: record.quizType)) ?? 0
+            }
+            ebisuReviewCounts = counts
         }
     }
 
@@ -521,7 +528,7 @@ struct GrammarDetailSheet: View {
         }
         messages.append(AnthropicMessage(role: "user", content: [.text(userText)]))
 
-        let tools: [AnthropicTool] = toolHandler != nil ? [.getMnemonic, .setMnemonic] : []
+        let tools: [AnthropicTool] = toolHandler != nil ? [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic] : []
         let handler = toolHandler.map { th in
             { @Sendable (name: String, input: [String: JSONValue]) async throws -> String in
                 if name == "set_mnemonic",

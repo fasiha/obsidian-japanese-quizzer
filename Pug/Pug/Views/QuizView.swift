@@ -11,7 +11,6 @@ struct QuizView: View {
     let jmdict: any DatabaseReader
 
     @Environment(VocabCorpus.self) private var corpus
-    @State private var showRescaleSheet = false
     @State private var showDetailsSheet = false
     @State private var showSettings = false
     @FocusState private var isChatFocused: Bool
@@ -59,11 +58,6 @@ struct QuizView: View {
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsView(db: session.db) }
-            .sheet(isPresented: $showRescaleSheet) {
-                RescaleSheet(currentHalflife: session.gradedHalflife ?? 24, reviewCount: session.gradedReviewCount) { hours in
-                    Task { await session.rescaleCurrentFacet(hours: hours) }
-                }
-            }
             .sheet(isPresented: $showDetailsSheet) {
                 if let item = session.currentItem {
                     if item.wordType == "transitive-pair",
@@ -376,8 +370,6 @@ struct QuizView: View {
                 let isGraded = session.gradedScore != nil
                 if isGraded {
                     HStack {
-                        Button("Adjust…") { showRescaleSheet = true }
-                            .buttonStyle(.borderedProminent)
                         Button("Details…") { showDetailsSheet = true }
                             .buttonStyle(.bordered)
                         Spacer()

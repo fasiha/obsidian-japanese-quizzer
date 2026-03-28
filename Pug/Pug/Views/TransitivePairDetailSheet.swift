@@ -23,10 +23,12 @@ struct TransitivePairDetailSheet: View {
         pairCorpus.items.first { $0.id == initialItem.id } ?? initialItem
     }
     @State private var readerTarget: ReaderTarget? = nil
-    @State private var intransitiveInfo: MemberInfo?
-    @State private var transitiveInfo: MemberInfo?
+    @State private var intransitiveSenses: [SenseExtra] = []
+    @State private var transitiveSenses: [SenseExtra] = []
     @State private var ebisuModels: [EbisuRecord] = []
+    @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleRecord: EbisuRecord? = nil
+    @State private var mnemonics: [(label: String, text: String)] = []
 
     // Claude chat state
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
@@ -34,12 +36,6 @@ struct TransitivePairDetailSheet: View {
     @State private var isSendingChat = false
     @State private var chatConversation: [AnthropicMessage] = []
 
-    /// Parsed JMDict info for one verb.
-    struct MemberInfo {
-        let partOfSpeech: [String]
-        let glosses: [[String]]   // per-sense list of glosses
-        let senseInfo: [[String]] // per-sense misc/info tags
-    }
 
     var body: some View {
         NavigationStack {
@@ -70,7 +66,7 @@ struct TransitivePairDetailSheet: View {
                         heading: "Intransitive (自動詞)",
                         member: item.pair.intransitive,
                         furigana: item.intransitiveFurigana,
-                        info: intransitiveInfo
+                        senses: intransitiveSenses
                     )
 
                     Divider()
@@ -80,7 +76,7 @@ struct TransitivePairDetailSheet: View {
                         heading: "Transitive (他動詞)",
                         member: item.pair.transitive,
                         furigana: item.transitiveFurigana,
-                        info: transitiveInfo
+                        senses: transitiveSenses
                     )
 
                     // Ambiguous reason
@@ -99,6 +95,10 @@ struct TransitivePairDetailSheet: View {
                         }
                     }
 
+                    if !mnemonics.isEmpty {
+                        Divider()
+                        mnemonicsSection
+                    }
                     Divider()
                     actionsSection
                     if !ebisuModels.isEmpty {
@@ -121,9 +121,10 @@ struct TransitivePairDetailSheet: View {
             .task {
                 await loadJMDictInfo()
                 await loadEbisuModels()
+                await loadMnemonics()
             }
             .sheet(item: $rescaleRecord) { record in
-                RescaleSheet(currentHalflife: record.t) { hours in
+                RescaleSheet(currentHalflife: record.t, reviewCount: ebisuReviewCounts[record.id]) { hours in
                     Task { await doRescale(record: record, hours: hours) }
                 }
             }
@@ -253,6 +254,47 @@ struct TransitivePairDetailSheet: View {
         return nil
     }
 
+    // MARK: - Mnemonics
+
+    private var mnemonicsSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Mnemonics")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+            ForEach(mnemonics, id: \.label) { m in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(m.label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(m.text)
+                }
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    private func loadMnemonics() async {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        var results: [(label: String, text: String)] = []
+        if let m = try? await quizDB.mnemonic(wordType: "transitive-pair", wordId: item.id) {
+            results.append((label: "Pair", text: m.mnemonic))
+        }
+        let intr = item.pair.intransitive
+        let tr = item.pair.transitive
+        if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: intr.jmdictId) {
+            let word = intr.kanji.first ?? intr.kana
+            results.append((label: "Intransitive (\(word))", text: m.mnemonic))
+        }
+        if let m = try? await quizDB.mnemonic(wordType: "jmdict", wordId: tr.jmdictId) {
+            let word = tr.kanji.first ?? tr.kana
+            results.append((label: "Transitive (\(word))", text: m.mnemonic))
+        }
+        mnemonics = results
+    }
+
     // MARK: - Claude chat
 
     private var chatSection: some View {
@@ -316,23 +358,54 @@ struct TransitivePairDetailSheet: View {
         let tr   = item.pair.transitive
         let intrWord = intr.kanji.first ?? intr.kana
         let trWord   = tr.kanji.first ?? tr.kana
+
+        // Fetch existing mnemonics for context
+        var mnemonicParts: [String] = []
+        if let db = toolHandler?.quizDB {
+            if let m = try? await db.mnemonic(wordType: "transitive-pair", wordId: item.id) {
+                mnemonicParts.append("Pair mnemonic: \(m.mnemonic)")
+            }
+            // Also check individual verb mnemonics
+            for (label, member) in [("Intransitive", intr), ("Transitive", tr)] {
+                if let m = try? await db.mnemonic(wordType: "jmdict", wordId: member.jmdictId) {
+                    mnemonicParts.append("\(label) vocab mnemonic: \(m.mnemonic)")
+                }
+            }
+        }
+        let mnemonicBlock = mnemonicParts.isEmpty ? "" : """
+
+        Mnemonics on file:
+        \(mnemonicParts.joined(separator: "\n"))
+        """
+
         let system = """
         Japanese tutor — free exploration (no quizzing/scoring).
         The student is looking at a transitive-intransitive verb pair:
-        Intransitive (自動詞): \(intrWord) (\(intr.kana))
-        Transitive (他動詞): \(trWord) (\(tr.kana))
-        Be concise. Answer the student's question about this verb pair.
+        Intransitive (自動詞): \(intrWord) (\(intr.kana)) [JMDict \(intr.jmdictId)]
+        Transitive (他動詞): \(trWord) (\(tr.kana)) [JMDict \(tr.jmdictId)]
+        \(mnemonicBlock)
+        Be concise. Use lookup_jmdict for accurate details.
+        set_mnemonic overwrites — always merge with existing content before saving.
         """
 
         chatConversation.append(AnthropicMessage(role: "user", content: [.text(userText)]))
+
+        let tools: [AnthropicTool] = toolHandler != nil
+            ? [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic]
+            : []
+        let th = toolHandler
 
         do {
             let (response, updatedConversation, _) = try await client.send(
                 messages: chatConversation,
                 system: system,
-                tools: [],
-                maxTokens: 512,
-                toolHandler: nil
+                tools: tools,
+                maxTokens: 1024,
+                toolHandler: th.map { handler in
+                    { @Sendable (name: String, input: [String: JSONValue]) async throws -> String in
+                        return try await handler.handle(toolName: name, input: input)
+                    }
+                }
             )
             chatConversation = updatedConversation
             chatMessages.append((isUser: false, text: response))
@@ -340,6 +413,7 @@ struct TransitivePairDetailSheet: View {
             chatConversation.removeLast()
             chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
         }
+        await loadMnemonics()   // Refresh display if Claude saved a new mnemonic.
         isSendingChat = false
     }
 
@@ -350,7 +424,7 @@ struct TransitivePairDetailSheet: View {
         heading: String,
         member: TransitivePairMember,
         furigana: [FuriganaSegment]?,
-        info: MemberInfo?
+        senses: [SenseExtra]
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(heading)
@@ -379,29 +453,10 @@ struct TransitivePairDetailSheet: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // Part of speech
-            if let info, !info.partOfSpeech.isEmpty {
-                Text(info.partOfSpeech.joined(separator: ", "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // Senses (shared with WordDetailSheet)
+            if !senses.isEmpty {
+                JMDictSenseListView(senseExtras: senses)
             }
-
-            // Glosses
-            if let info {
-                ForEach(Array(info.glosses.enumerated()), id: \.offset) { i, senseGlosses in
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(senseGlosses, id: \.self) { gloss in
-                            Text("• \(gloss)")
-                        }
-                        if i < info.senseInfo.count {
-                            ForEach(info.senseInfo[i], id: \.self) { note in
-                                Text(note).font(.caption).foregroundStyle(.secondary).italic()
-                            }
-                        }
-                    }
-                }
-            }
-
         }
         .textSelection(.enabled)
     }
@@ -499,6 +554,12 @@ struct TransitivePairDetailSheet: View {
     private func loadEbisuModels() async {
         if let records = try? await db.ebisuRecords(wordType: "transitive-pair", wordId: item.id) {
             ebisuModels = records
+            var counts: [String: Int] = [:]
+            for record in records {
+                counts[record.id] = (try? await db.reviewCount(
+                    wordType: record.wordType, wordId: record.wordId, quizType: record.quizType)) ?? 0
+            }
+            ebisuReviewCounts = counts
         }
     }
 
@@ -524,48 +585,9 @@ struct TransitivePairDetailSheet: View {
     // MARK: - JMDict lookup
 
     private func loadJMDictInfo() async {
-        intransitiveInfo = lookupMemberInfo(member: item.pair.intransitive)
-        transitiveInfo = lookupMemberInfo(member: item.pair.transitive)
-    }
-
-    private func lookupMemberInfo(member: TransitivePairMember) -> MemberInfo? {
-        guard let raw = lookupEntryJSON(jmdictId: member.jmdictId) else { return nil }
-        let senses = raw["sense"] as? [[String: Any]] ?? []
-
-        // Part of speech — deduplicated across senses
-        let allPos = Array(NSOrderedSet(
-            array: senses.flatMap { (sense: [String: Any]) -> [String] in (sense["partOfSpeech"] as? [String]) ?? [] }
-        )) as? [String] ?? []
-
-        var glosses: [[String]] = []
-        var senseInfo: [[String]] = []
-        for sense in senses {
-            let engGlosses = (sense["gloss"] as? [[String: Any]] ?? [])
-                .filter { ($0["lang"] as? String) == "eng" }
-                .compactMap { $0["text"] as? String }
-            glosses.append(engGlosses)
-
-            var notes: [String] = []
-            notes += (sense["misc"] as? [String]) ?? []
-            notes += (sense["info"] as? [String]) ?? []
-            notes += (sense["field"] as? [String]) ?? []
-            senseInfo.append(notes)
-        }
-
-        return MemberInfo(partOfSpeech: allPos, glosses: glosses, senseInfo: senseInfo)
-    }
-
-    private func lookupEntryJSON(jmdictId: String) -> [String: Any]? {
-        try? jmdict.read { dbConn -> [String: Any]? in
-            guard let json = try String.fetchOne(
-                dbConn,
-                sql: "SELECT entry_json FROM entries WHERE id = ?",
-                arguments: [jmdictId]
-            ) else { return nil }
-            guard let data = json.data(using: .utf8),
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else { return nil }
-            return obj
-        }
+        let ids = [item.pair.intransitive.jmdictId, item.pair.transitive.jmdictId]
+        guard let entries = try? await QuizContext.jmdictWordData(ids: ids, jmdict: jmdict) else { return }
+        intransitiveSenses = entries[item.pair.intransitive.jmdictId]?.senseExtras ?? []
+        transitiveSenses = entries[item.pair.transitive.jmdictId]?.senseExtras ?? []
     }
 }

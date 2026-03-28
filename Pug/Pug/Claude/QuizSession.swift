@@ -2,8 +2,7 @@
 // Observable session that orchestrates one quiz item at a time.
 // The conversation is open: the student can answer, ask tangent questions about
 // the current word, or ask about completely different words. Claude grades when
-// it detects a clear answer (SCORE: X.X) and can call get_vocab_context to
-// situate tangent answers in what the student is learning.
+// it detects a clear answer (SCORE: X.X).
 
 import Foundation
 #if os(iOS)
@@ -63,7 +62,6 @@ final class QuizSession {
     var preQuizRecall: Double? = nil   // recall probability at the start of this item (nil for new words)
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
     var gradedHalflife: Double? = nil      // updated halflife after recordReview; nil until graded
-    var gradedReviewCount: Int? = nil      // total reviews for this facet after recordReview; nil until graded
 
     // MARK: - Quiz filter
 
@@ -111,7 +109,7 @@ final class QuizSession {
     let preferences: UserPreferences
     let db: QuizDB
     private var conversation: [AnthropicMessage] = []
-    var allCandidates: [QuizItem] = []   // full enrolled list, for get_vocab_context tool
+    var allCandidates: [QuizItem] = []
 
     // Prefetched next question: kicked off as soon as the current item is graded.
     private var prefetched: (index: Int, question: String, multipleChoice: MultipleChoiceQuestion?,
@@ -510,33 +508,6 @@ final class QuizSession {
         isSendingChat = false
     }
 
-    // TODO: near-duplicate of WordDetailSheet.doRescale — consider extracting to QuizDB
-    func rescaleCurrentFacet(hours: Double) async {
-        guard let item = currentItem, hours > 0 else { return }
-        do {
-            guard let rec = try await db.ebisuRecord(
-                wordType: item.wordType, wordId: item.wordId, quizType: item.facet) else { return }
-            let scale = hours / rec.t
-            let newModel = try rescaleHalflife(rec.model, scale: scale)
-            gradedHalflife = newModel.t
-            let updated = EbisuRecord(
-                wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
-                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
-                lastReview: rec.lastReview
-            )
-            try await db.upsert(record: updated)
-            let event = ModelEvent(
-                timestamp: ISO8601DateFormatter().string(from: Date()),
-                wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
-                event: "rescaled,\(rec.t),\(newModel.t)"
-            )
-            try await db.log(event: event)
-            print("[QuizSession] rescaled \(item.wordId)/\(item.facet) \(rec.t)h → \(newModel.t)h")
-        } catch {
-            print("[QuizSession] rescaleCurrentFacet error: \(error)")
-        }
-    }
-
     func refreshSession() {
         // Reset UI state synchronously so the view updates immediately.
         items = []
@@ -656,7 +627,7 @@ final class QuizSession {
             isSendingChat  = false
             gradedScore       = nil
             gradedHalflife    = nil
-            gradedReviewCount = nil
+
             meaningBonusApplied = false
             uncertaintyUnlocked = false
             preQuizRecall   = pf.preRecall
@@ -690,7 +661,6 @@ final class QuizSession {
         isSendingChat = false
         gradedScore       = nil
         gradedHalflife    = nil
-        gradedReviewCount = nil
         multipleChoiceResult = nil
         lastPairQuestion = nil
         lastPairAnswers = nil
@@ -813,7 +783,7 @@ final class QuizSession {
                 messages: conversation,
                 system: systemPrompt(for: item, preRecall: preQuizRecall, preHalflife: preQuizHalflife,
                                      postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock),
-                tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
+                tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler()
             )
@@ -873,7 +843,7 @@ final class QuizSession {
                                                    postHalflife: gradedHalflife,
                                                    mnemonicBlock: mnemonicBlock)
             }
-            let activeTools: [AnthropicTool] = [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic]
+            let activeTools: [AnthropicTool] = [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic]
             let (response, updatedMsgs, meta) = try await client.send(
                 messages: conversation,
                 system: activeSystemPrompt,
@@ -964,7 +934,6 @@ final class QuizSession {
         let elapsed = max(Date().timeIntervalSince(referenceDate) / 3600, 1e-6)
         let newModel = try updateRecall(oldModel, successes: score, total: 1, tnow: elapsed)
         gradedHalflife = newModel.t
-        gradedReviewCount = try await db.reviewCount(wordType: item.wordType, wordId: item.wordId, quizType: item.facet)
         let record = EbisuRecord(
             wordType: item.wordType, wordId: item.wordId, quizType: item.facet,
             alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
@@ -1140,7 +1109,7 @@ final class QuizSession {
         let (response, _, _) = try await client.send(
             messages: messages,
             system: system,
-            tools: [.lookupJmdict, .lookupKanjidic, .getVocabContext, .getMnemonic, .setMnemonic],
+            tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
             maxTokens: 1024,
             toolHandler: makeToolHandler()
         )
@@ -1282,18 +1251,9 @@ final class QuizSession {
 
     private func makeToolHandler() -> AnthropicClient.ToolHandler {
         let th = toolHandler
-        let vocabContext = buildVocabContextResult()
         return { name, input in
-            if name == "get_vocab_context" { return vocabContext }
             return try await th.handle(toolName: name, input: input)
         }
-    }
-
-    private func buildVocabContextResult() -> String {
-        guard !allCandidates.isEmpty else { return "No enrolled words found." }
-        let lines = allCandidates.map { QuizContext.contextLine(for: $0) }
-        return "Enrolled vocabulary (\(allCandidates.count) words, sorted by urgency — lowest recall first):\n"
-            + lines.joined(separator: "\n")
     }
 
     // MARK: - Private: prompt helpers

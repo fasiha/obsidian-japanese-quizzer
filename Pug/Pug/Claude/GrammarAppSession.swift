@@ -38,7 +38,6 @@ final class GrammarAppSession {
     var isSendingChat: Bool = false
     var gradedScore: Double? = nil
     var gradedHalflife: Double? = nil
-    var gradedReviewCount: Int? = nil
     var uncertaintyUnlocked: Bool = false
     var preQuizRecall: Double? = nil
     var preQuizHalflife: Double? = nil
@@ -61,7 +60,8 @@ final class GrammarAppSession {
 
     let client: AnthropicClient
     let db: QuizDB
-    private let toolHandler: ToolHandler?
+    let toolHandler: ToolHandler?
+    let jmdict: (any DatabaseReader)?
     private var manifest: GrammarManifest?
     private let itemSession: GrammarQuizSession  // single-item LLM helper
     private var conversation: [AnthropicMessage] = []
@@ -72,6 +72,7 @@ final class GrammarAppSession {
         self.client      = client
         self.db          = db
         self.toolHandler = toolHandler
+        self.jmdict      = jmdict
         self.itemSession = GrammarQuizSession(client: client, db: db)
         self.itemSession.jmdict = jmdict
     }
@@ -97,7 +98,7 @@ final class GrammarAppSession {
         isSendingChat = false
         gradedScore = nil
         gradedHalflife = nil
-        gradedReviewCount = nil
+
         uncertaintyUnlocked = false
         phase = .loadingItems
         Task { await loadItems() }
@@ -209,25 +210,6 @@ final class GrammarAppSession {
         }
     }
 
-    func rescaleCurrentFacet(hours: Double) async {
-        guard let item = currentItem, hours > 0 else { return }
-        do {
-            guard let rec = try await db.ebisuRecord(
-                wordType: "grammar", wordId: item.topicId, quizType: item.facet) else { return }
-            let scale = hours / rec.t
-            let newModel = try rescaleHalflife(rec.model, scale: scale)
-            gradedHalflife = newModel.t
-            let updated = EbisuRecord(
-                wordType: "grammar", wordId: item.topicId, quizType: item.facet,
-                alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
-                lastReview: rec.lastReview
-            )
-            try await db.upsert(record: updated)
-            print("[GrammarAppSession] rescaled \(item.topicId)/\(item.facet) \(rec.t)h → \(newModel.t)h")
-        } catch {
-            print("[GrammarAppSession] rescaleCurrentFacet error: \(error)")
-        }
-    }
 
     // MARK: - Private: load items
 
@@ -263,7 +245,7 @@ final class GrammarAppSession {
         isSendingChat = false
         gradedScore = nil
         gradedHalflife = nil
-        gradedReviewCount = nil
+
         uncertaintyUnlocked = false
         itemSession.multipleChoiceResult = nil
         currentQuestion = nil
@@ -308,7 +290,7 @@ final class GrammarAppSession {
                 for: item, isGenerating: false,
                 preRecall: preQuizRecall, preHalflife: preQuizHalflife,
                 postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock)
-            let tools: [AnthropicTool] = toolHandler != nil ? [.getMnemonic, .setMnemonic] : []
+            let tools: [AnthropicTool] = toolHandler != nil ? [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic] : []
             // Compute allIds on the main actor before entering the @Sendable closure.
             let allIds = ([item.topicId] + item.equivalenceGroupIds).removingDuplicates()
             let handler = toolHandler.map { th in
@@ -418,9 +400,6 @@ final class GrammarAppSession {
         let elapsed = max(Date().timeIntervalSince(refDate) / 3600, 1e-6)
         let newModel = try updateRecall(oldModel, successes: score, total: 1, tnow: elapsed)
         gradedHalflife = newModel.t
-        gradedReviewCount = try await db.reviewCount(
-            wordType: "grammar", wordId: item.topicId, quizType: item.facet)
-
         let record = EbisuRecord(
             wordType: "grammar", wordId: item.topicId, quizType: item.facet,
             alpha: newModel.alpha, beta: newModel.beta, t: newModel.t, lastReview: now

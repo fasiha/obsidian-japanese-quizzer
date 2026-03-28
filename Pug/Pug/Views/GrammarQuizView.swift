@@ -73,7 +73,7 @@ final class GrammarAudioPlayer: NSObject, AVSpeechSynthesizerDelegate {
 struct GrammarQuizView: View {
     @State var session: GrammarAppSession
     let manifest: GrammarManifest
-    @State private var showRescaleSheet = false
+    @State private var showDetailsSheet = false
     @State private var vocabExpanded = false
     @State private var audioPlayer = GrammarAudioPlayer()
     @FocusState private var isChatFocused: Bool
@@ -107,12 +107,20 @@ struct GrammarQuizView: View {
         .onChange(of: session.currentItem?.topicId) { vocabExpanded = false }
         .onChange(of: session.phase) { audioPlayer.stop() }
         .onDisappear { audioPlayer.stop() }
-        .sheet(isPresented: $showRescaleSheet) {
-            RescaleSheet(
-                currentHalflife: session.gradedHalflife ?? 24,
-                reviewCount: session.gradedReviewCount
-            ) { hours in
-                Task { await session.rescaleCurrentFacet(hours: hours) }
+        .sheet(isPresented: $showDetailsSheet) {
+            if let item = session.currentItem,
+               let topic = manifest.topics[item.topicId],
+               let jmdict = session.jmdict {
+                GrammarDetailSheet(
+                    topic: topic,
+                    manifest: manifest,
+                    db: session.db,
+                    client: session.client,
+                    toolHandler: session.toolHandler,
+                    isEnrolled: true,
+                    jmdict: jmdict,
+                    onEnrollmentChange: { _ in }
+                )
             }
         }
         .task {
@@ -425,7 +433,7 @@ struct GrammarQuizView: View {
                 let isGraded = session.gradedScore != nil
                 if isGraded {
                     HStack {
-                        Button("Adjust…") { showRescaleSheet = true }
+                        Button("Details…") { showDetailsSheet = true }
                             .buttonStyle(.bordered)
                         Spacer()
                         Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }

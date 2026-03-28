@@ -23,16 +23,6 @@ extension AnthropicTool {
         ]
     )
 
-    static let getVocabContext = AnthropicTool(
-        name: "get_vocab_context",
-        description: "Get the student's full enrolled vocabulary list with recall probabilities and facet urgency. Call this when the student asks about another word they might be studying, or when knowing their broader learning context would help answer their question.",
-        inputSchema: [
-            "type": .string("object"),
-            "properties": .object([:]),
-            "required": .array([])
-        ]
-    )
-
     static let getMnemonic = AnthropicTool(
         name: "get_mnemonic",
         description: "Get the mnemonic note for a vocabulary word, a single kanji character, or a grammar topic. Returns the mnemonic text, or null if none exists.",
