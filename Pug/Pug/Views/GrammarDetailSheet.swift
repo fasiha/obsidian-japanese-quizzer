@@ -436,6 +436,7 @@ struct GrammarDetailSheet: View {
                 enrolled = true
             }
             onEnrollmentChange(enrolled)
+            await loadEbisuModels()
         } catch {
             print("[GrammarDetailSheet] enrollment toggle error: \(error)")
         }
