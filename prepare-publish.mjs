@@ -290,20 +290,23 @@ const maxSensesIdx = args.indexOf("--max-senses");
 const maxSenses =
   maxSensesIdx !== -1 ? parseInt(args[maxSensesIdx + 1], 10) : Infinity;
 
-// Define output paths early (also needed for cache loading below)
+// Define output paths
 const outPath = path.join(projectRoot, "vocab.json");
 
-// Load existing vocab.json once for per-reference llm_sense cache lookups.
-// Key: "<wordId>|<file title>|<line number>"  Value: the ref's llm_sense object
+// Load existing vocab.json to seed the in-memory sense cache.
+// Cache key: "<wordId>|<JSON(sorted deduplicated [context, narration])>"
+// Value: the llm_sense object { sense_indices, computed_from, reasoning? }
 const existingRefSense = new Map();
 if (existsSync(outPath)) {
   try {
     const existing = JSON.parse(readFileSync(outPath, "utf8"));
     for (const w of existing.words ?? []) {
-      for (const [title, refs] of Object.entries(w.references ?? {})) {
+      for (const refs of Object.values(w.references ?? {})) {
         for (const ref of refs) {
           if (ref.llm_sense) {
-            existingRefSense.set(`${w.id}|${title}|${ref.line}`, ref.llm_sense);
+            const computedFrom = [ref.context, ref.narration].filter((v) => v != null);
+            const key = `${w.id}|${JSON.stringify([...new Set(computedFrom)].sort())}`;
+            existingRefSense.set(key, ref.llm_sense);
           }
         }
       }
@@ -531,52 +534,56 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
   const reasoningLines = [];
   console.log(`  Sense reasoning log → ${reasoningLogPath}`);
 
-  outer: for (const word of words) {
+  // Pre-populate every ref that can be resolved without an LLM call so that
+  // the incremental vocab.json writes below never clobber previously-computed
+  // data for entries not yet reached in the loop.
+  for (const word of words) {
     const jmWord = jmdictById.get(word.id);
-    const displayForm =
-      jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
-
-    // Single-sense words: stamp every reference [0], no LLM call needed
-    if (!jmWord || jmWord.sense.length <= 1) {
-      for (const refs of Object.values(word.references ?? {})) {
-        for (const ref of refs) {
+    for (const refs of Object.values(word.references ?? {})) {
+      for (const ref of refs) {
+        if (!jmWord || jmWord.sense.length <= 1) {
           ref.llm_sense = { sense_indices: [0], computed_from: refComputedFrom(ref) };
+        } else {
+          const computedFrom = refComputedFrom(ref);
+          if (computedFrom.length === 0) {
+            ref.llm_sense = { sense_indices: [], computed_from: [] };
+          } else {
+            const cached = existingRefSense.get(`${word.id}|${JSON.stringify(computedFrom)}`);
+            if (cached) ref.llm_sense = cached;
+          }
         }
       }
-      continue;
     }
+  }
+
+  // Loop over every ref. Each ref is now either already resolved (llm_sense set
+  // above) or genuinely needs a Haiku call. After each Haiku call write vocab.json —
+  // safe because every ref not yet reached already has its llm_sense pre-populated.
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    if (!jmWord || jmWord.sense.length <= 1) continue;
+
+    const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
 
     for (const [title, refs] of Object.entries(word.references ?? {})) {
       for (const ref of refs) {
-        if (refsAnalyzed >= maxSenses) break outer;
-
-        const computedFrom = refComputedFrom(ref);
-
-        // No usable context — stamp empty sense_indices without calling Haiku
-        if (computedFrom.length === 0) {
-          ref.llm_sense = { sense_indices: [], computed_from: [] };
+        if (ref.llm_sense) continue;
+        if (refsAnalyzed >= maxSenses) {
+          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
+          continue;
+        }
+        if (noLlm) {
+          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
           continue;
         }
 
-        // Cache hit: existing llm_sense with matching computed_from
-        const cacheKey = `${word.id}|${title}|${ref.line}`;
-        const cached = existingRefSense.get(cacheKey);
-        if (
-          cached &&
-          JSON.stringify(cached.computed_from) === JSON.stringify(computedFrom)
-        ) {
-          ref.llm_sense = cached;
-          continue;
-        }
-
-        // Cache miss: call Haiku for this specific reference (skip if --no-llm)
-        if (noLlm) continue;
         process.stdout.write(
           `  Analyzing ${displayForm} [${title}:${ref.line}] (${refsAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
         );
         const { senseIndices, reasoning } = await analyzeReferenceSense(anthropic, jmWord, ref);
         process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
 
+        const computedFrom = refComputedFrom(ref);
         reasoningLines.push(
           `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
         );
@@ -585,14 +592,11 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
         ref.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
         refsAnalyzed++;
 
-        // Write vocab.json after each call so a crash doesn't lose prior work.
-        // Omit `content` from stories — that field is only used for corpus.json.
-        const partialOutput = {
+        writeFileSync(outPath, JSON.stringify({
           generatedAt: new Date().toISOString(),
           stories: stories.map(({ title }) => ({ title })),
           words,
-        };
-        writeFileSync(outPath, JSON.stringify(partialOutput, null, 2) + "\n");
+        }, null, 2) + "\n");
       }
     }
   }
