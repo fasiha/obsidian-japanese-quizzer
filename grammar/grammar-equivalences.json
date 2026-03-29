@@ -1,6 +1,22 @@
 [
   {
     "topics": [
+      "bunpro:adjective-て-noun-で"
+    ],
+    "summary": "The conjunctive form connects adjectives and nouns to a following clause the way English 'and' or 'because' does. い-adjectives drop い and add くて (寒い → 寒くて); な-adjectives and nouns add で (静か → 静かで; 学生 → 学生で). The exception is いい, which becomes よくて.",
+    "subUses": [
+      "Linking qualities in sequence: 空が青くて海もきれいだった (The sky was blue and the sea was beautiful too)",
+      "Expressing cause or reason: 試験が難しくて困った (I was troubled because the exam was difficult)",
+      "Linking noun predicates: 今日は休みで、明日も休みだ (Today is a day off, and tomorrow is too)"
+    ],
+    "cautions": [
+      "The て/で form can be read as neutral 'and' or causal 'because' — context determines which fits; do not force one interpretation",
+      "Exception: いい → よくて (not いくて); mark いくて wrong",
+      "Noun + で here is the て-form of the copula だ (だ → で), not the location or means particle で — judge by whether a noun is being linked to another predicate"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:causative",
       "genki:causative-sentences"
     ],
@@ -239,6 +255,23 @@
   },
   {
     "topics": [
+      "bunpro:たら",
+      "genki:tara"
+    ],
+    "summary": "たら is formed by adding ら to the short-form past: verb (行った → 行ったら), い-adjective (安い → 安かったら), な-adjective (静かだ → 静かだったら), noun (休みだ → 休みだったら). It expresses 'if/when A, then B,' focusing on the completion or occurrence of A as the trigger for B.",
+    "subUses": [
+      "Hypothetical condition: お金があったら、旅行したい (If I had money, I'd want to travel)",
+      "Sequential or temporal 'when': 家に帰ったら、電話して (Call me when you get home)",
+      "Past discovery — something found upon doing A: 窓を開けたら、雨が降っていた (When I opened the window, it was raining)"
+    ],
+    "cautions": [
+      "たら is natural with commands and requests in the B clause: 時間があったら来てください is correct",
+      "For timeless or habitual conditions, ば or と is more natural than たら; たら works best for one-time or specific events",
+      "Do not confuse with たらどう, which expresses a suggestion ('Why don't you...?'); たらどう is a separate construction"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:たらどう",
       "dbjg:~tara-dō-desu-ka",
       "genki:tara-dodesuka"
@@ -275,6 +308,55 @@
       "Conjugation: the final する carries all tense and politeness marking. The たり particles themselves do not change."
     ],
     "stub": true
+  },
+  {
+    "topics": [
+      "dbjg:iku1"
+    ],
+    "summary": "いく marks movement away from the speaker's location or away from the speaker's empathy point. Like くる, this perspectival meaning applies whether いく stands alone or follows a conjunctive て-form verb. In narrative, いく marks departure away from the story's focus point.",
+    "subUses": [
+      "Motion away from speaker: 友達が行った (My friend left)",
+      "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])",
+      "Carrying something away: かれくさをもっていく (take dried grass away)"
+
+    ],
+    "cautions": [
+      "うちにいく is ungrammatical for going to one's own home — use うちにかえる",
+      "When the speaker identifies psychologically with the destination, くる replaces いく even across phone calls or in writing — if unsure, ask whether the speaker's empathy is at the destination"
+    ]
+  },
+  {
+    "topics": [
+      "dbjg:kuru1"
+    ],
+    "summary": "くる marks movement toward the speaker's location or toward wherever the speaker has placed their empathy or viewpoint — which need not be the speaker's physical position. This perspectival meaning applies whether くる stands alone or follows a conjunctive て-form verb (the preceding verb describes manner; くる carries the directionality). In narrative, くる marks movement toward the story's empathy center (often a key place or protagonist).",
+    "subUses": [
+      "Motion toward speaker's location: 友達が来た (My friend came [here])",
+      "Visitor adopts host's location as reference: 明日来てもいいですか (May I come tomorrow? — said by the visitor)",
+      "Narrative empathy center: のねずみがかれくさをもってきて、きりかぶにかぶせました (the field mouse brought dried grass and covered the stump [stump is the story's focus point])",
+      "Speaker's \"territory\" includes workplace: 明日、会社に来てください (Please come to my office tomorrow)"
+    ],
+    "cautions": [
+      "The くる/いく choice depends on whose viewpoint the speaker adopts, not physical proximity: use くる when the speaker's empathy is at the destination (movement is toward the speaker's viewpoint); use いく when the speaker's empathy stays at the origin (movement is away from the speaker's viewpoint)"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:てしまう-ちゃう",
+      "dbjg:shimau",
+      "genki:teshimau"
+    ],
+    "summary": "Attach しまう to the て-form of a verb to express that an action was carried out completely or resulted in an unfortunate, irreversible outcome. Colloquial contractions: て + しまう → ちゃう; で + しまう → じゃう (e.g., 飲んでしまう → 飲んじゃう). Both meanings (completion and regret) can overlap in a single use.",
+    "subUses": [
+      "Thorough completion: 宿題をやってしまった (I got all the homework done — finished it completely)",
+      "Regrettable or accidental outcome: 財布を忘れてしまった (I went and forgot my wallet — used with regret)",
+      "Irreversible change with emotional weight: 大切な皿を割ってしまった (I broke the precious plate — no going back)"
+    ],
+    "cautions": [
+      "Context determines whether the meaning is completion or regret — the same form can carry both simultaneously; do not force one reading",
+      "Colloquial contractions ちゃう and じゃう are correct in casual speech; do not mark them wrong in informal contexts",
+      "Contraction rule: て-form ending in て → ちゃう; て-form ending in で → じゃう (e.g., 読んでしまう → 読んじゃう)"
+    ]
   },
   {
     "topics": [
@@ -331,6 +413,24 @@
   },
   {
     "topics": [
+      "bunpro:など",
+      "dbjg:nado"
+    ],
+    "summary": "など is a particle placed after a noun (or a list of nouns) to indicate that the mentioned items are examples from a larger, unstated set. It translates as 'such as,' 'things like,' or 'etc.' It can also precede の to modify a following noun: Nounなど+の+Noun.",
+    "subUses": [
+      "Listing with open-ended implication: コーヒーや紅茶などを飲んだ (I drank things like coffee and tea)",
+      "Modifying a following noun with などの: 本などの荷物を棚に置いた (I put luggage such as books on the shelf)",
+      "Self-deprecating or humble use (with negated predicate): 私などにはとても無理だ (It's quite impossible for someone like me)"
+    ],
+    "cautions": [
+      "など implies the list is not exhaustive — do not use it when the enumeration is meant to be complete",
+      "With a negated predicate, など conveys humbleness (when the subject is the speaker or their in-group) or derogation (otherwise); なんか intensifies the derogatory nuance",
+      "なんか is the informal colloquial version of など and can be used the same way, but in derogatory contexts it carries stronger emphasis; neither なんか nor なんて is appropriate in formal writing",
+      "The kanji form 等 carries the same meaning and is common in written Japanese; both forms are correct"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:なら",
       "dbjg:nara",
       "genki:nara"
@@ -364,6 +464,25 @@
       "Do not confuse に (frequency) with で (total time): 三日でこの本を読んだ means 'read the book in 3 days total (start to finish),' whereas 一日に二時間読む means '2 hours per day (recurring).' に marks a slot within a repeating cycle; で marks the total span consumed",
       "The time period always precedes に and the count/duration follows: 一週間に三回 (three times per week) — reversing the order is unnatural",
       "Related patterns: ごとに (every X, marking each unit individually: 二時間ごとに = every two hours) and おきに (at intervals of X: 二時間おきに = every other two hours, i.e. with a gap of two hours between)"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:になる-くなる",
+      "dbjg:naru",
+      "genki:naru-to-become"
+    ],
+    "summary": "なる expresses a change of state: 'to become (A).' い-adjectives attach くなる to the stem (大きい → 大きくなる); な-adjectives and nouns attach になる (静か → 静かになる; 医者 → 医者になる). The exception is いい, which becomes よくなる.",
+    "subUses": [
+      "Change in quality (い-adjective): 外が暗くなった (It got dark outside)",
+      "Change in quality (な-adjective): 部屋が静かになった (The room became quiet)",
+      "Change in role or category (noun): 医者になりたい (I want to become a doctor)",
+      "Gradual ongoing change with てくる: だんだん上手になってきた (I've gradually been getting better)"
+    ],
+    "cautions": [
+      "Exception: いい → よくなる; mark いくなる wrong",
+      "なる describes spontaneous change without an agent; to express making something change, use にする or くする instead",
+      "なっている indicates the resulting state persists (e.g., 寒くなっている = it has become cold and remains so), not an ongoing process of becoming"
     ]
   },
   {
@@ -402,6 +521,22 @@
     "cautions": [
       "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
       "After a noun, use のように/のような (の required). After a verb or adjective clause, よう attaches directly without の: 走っているように見える not 走っているのように見える"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:代わりに",
+      "dbjg:kawari-ni"
+    ],
+    "summary": "代わりに means 'instead of,' 'in place of,' or 'to make up for.' The pattern is [A] の 代わりに [B], where B substitutes for or compensates for A. A can be a noun phrase (Nounの代わりに) or a verb clause (verb dictionary form + 代わりに).",
+    "subUses": [
+      "Noun substitution: バターの代わりにマーガリンを使った (I used margarine instead of butter)",
+      "Role substitution: 私の代わりに発表してもらえますか (Could you present in my place?)",
+      "Compensation for a prior action: 昨日休んだ代わりに今日は遅くまで働いた (I worked late today to make up for resting yesterday)"
+    ],
+    "cautions": [
+      "代わりに expresses direct substitution or compensation; for a preferred alternative without a one-for-one replacement, むしろ ('rather') is more appropriate",
+      "に代わって is a formal variant used for taking over someone's official role or speaking on their behalf — accept it as correct but note the register difference"
     ]
   },
   {
