@@ -17,7 +17,7 @@
 
 import { readFileSync } from "fs";
 import path from "path";
-import { projectRoot, migrateEquivalences } from "./shared.mjs";
+import { projectRoot, migrateEquivalences, loadGrammarDatabases } from "./shared.mjs";
 
 const grammarPath = path.join(projectRoot, "grammar.json");
 const equivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
@@ -44,9 +44,16 @@ try {
 // Build set of all topic IDs already covered by some equivalence group
 const covered = new Set(existingGroups.flatMap((g) => g.topics));
 
-// Find topics in grammar.json not yet covered
+// Build set of alias topic IDs across all grammar databases
+const aliasIds = new Set(
+  [...loadGrammarDatabases().values()]
+    .filter((e) => e.aliasOf)
+    .map((e) => e.prefixedId),
+);
+
+// Find topics in grammar.json not yet covered and not aliases
 const newTopics = Object.keys(grammar.topics).filter(
-  (id) => !covered.has(id),
+  (id) => !covered.has(id) && !aliasIds.has(id),
 );
 
 if (newTopics.length === 0) {

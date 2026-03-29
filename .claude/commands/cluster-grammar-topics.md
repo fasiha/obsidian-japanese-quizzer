@@ -57,6 +57,10 @@ hasn't annotated yet:
 like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki).
 For example, てみる → search `temiru` and `miru`; なら → search `nara`.
 
+**DBJG aliases:** Some DBJG entries have a non-empty `alias-of` column (column 5) pointing to a
+canonical entry. Do not add alias entries to equivalence groups — only add the canonical entry.
+For example, `te-shimau` is an alias of `shimau`; only `dbjg:shimau` belongs in a group.
+
 **Long vowels in DBJG keys:** DBJG usually uses macrons for long vowels (ō, ū, etc.). When
 searching, try both the plain ASCII form and the macron form — `do` will not match `dō`.
 For example,たらどうですか → search both `tara-do` and `tara-dō`.

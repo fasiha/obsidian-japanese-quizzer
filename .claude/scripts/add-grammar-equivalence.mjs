@@ -45,7 +45,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { migrateEquivalences } from "./shared.mjs";
+import { migrateEquivalences, loadGrammarDatabases } from "./shared.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../..");
@@ -72,6 +72,18 @@ for (const id of args) {
   }
 }
 
+// Resolve DBJG aliases to their canonical entry
+const dbMap = loadGrammarDatabases();
+const resolvedArgs = [...new Set(args.map((id) => {
+  const entry = dbMap.get(id);
+  if (entry?.aliasOf) {
+    const canonical = entry.aliasOf[0];
+    process.stderr.write(`[warn] ${id} is an alias for ${canonical} — using canonical\n`);
+    return canonical;
+  }
+  return id;
+}))];
+
 // Load existing equivalences (or start fresh), migrating old array-of-arrays format
 function loadEquivalences(filePath) {
   let raw;
@@ -88,7 +100,7 @@ const groups = loadEquivalences(EQUIV_PATH);
 // Find which groups contain any of the given topics
 const touchedIndices = new Set();
 for (let i = 0; i < groups.length; i++) {
-  for (const id of args) {
+  for (const id of resolvedArgs) {
     if (groups[i].topics.includes(id)) {
       touchedIndices.add(i);
     }
@@ -96,7 +108,7 @@ for (let i = 0; i < groups.length; i++) {
 }
 
 // Merge: collect all topic members from touched groups + the new args
-const mergedTopics = new Set(args);
+const mergedTopics = new Set(resolvedArgs);
 // Preserve non-topics fields from the first touched group (description data etc.)
 let preservedMeta = {};
 for (const i of touchedIndices) {
