@@ -7,6 +7,7 @@
 // tokenized by NLTagger so the flow layout only breaks between words, not mid-word.
 // Kinsoku (行頭禁則) rules prevent sentence-ending punctuation like 。 from starting a line.
 
+import AVFoundation
 import NaturalLanguage
 import SwiftUI
 
@@ -251,6 +252,10 @@ struct SentenceFuriganaView: View {
         self.textStyle = textStyle
     }
 
+    // Must be held as a persistent property; a synthesizer created inside a closure
+    // is deallocated before it finishes speaking.
+    @State private var synthesizer = AVSpeechSynthesizer()
+
     var body: some View {
         SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment, textStyle: textStyle)
             .contextMenu {
@@ -258,6 +263,13 @@ struct SentenceFuriganaView: View {
                     UIPasteboard.general.string = sentence
                 } label: {
                     Label("Copy", systemImage: "doc.on.doc")
+                }
+                Button {
+                    let utterance = AVSpeechUtterance(string: sentence)
+                    utterance.voice = AVSpeechSynthesisVoice(language: "ja-JP")
+                    synthesizer.speak(utterance)
+                } label: {
+                    Label("Speak", systemImage: "speaker.wave.2")
                 }
             }
     }
