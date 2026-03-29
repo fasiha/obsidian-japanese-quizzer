@@ -57,7 +57,7 @@ Format for words **found in JMDict**:
 ```
 - {kana reading} {kanji form}
 ```
-If the word has no kanji form (kana-only), just:
+Where `{kana reading}` is the **dictionary form** reading (e.g. さかせる, not the inflected form さかせて that appeared in the sentence). If the word has no kanji form (kana-only), just:
 ```
 - {kana}
 ```
