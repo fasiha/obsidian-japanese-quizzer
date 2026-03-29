@@ -369,7 +369,7 @@ func parseLines(_ markdown: String) -> [(lineNumber: Int, text: String)] {
             continue
         }
         if inDetails {
-            if trimmed == "</details>" { inDetails = false }
+            if trimmed.hasSuffix("</details>") { inDetails = false }
             continue
         }
 
