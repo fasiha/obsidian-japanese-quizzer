@@ -189,6 +189,7 @@ struct DocumentReaderView: View {
                 } else {
                     Text(item.wordText)
                         .font(.subheadline).fontWeight(.medium)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if let gloss {
                     Text(gloss)
