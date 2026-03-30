@@ -147,10 +147,16 @@ final class VocabCorpus {
 
             let corpusSenseIndices = entry.corpusSenseIndices
 
+            let preferredText = preferredWrittenForm(
+                senseExtras: jd.senseExtras,
+                activeSenseIndices: corpusSenseIndices,
+                writtenForms: entry.writtenForms ?? []
+            )?.text ?? jd.text
+
             return VocabItem(
                 id: entry.id,
                 sources: entry.sources,
-                wordText: jd.text,
+                wordText: preferredText,
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 senseExtras: jd.senseExtras,
@@ -338,8 +344,12 @@ final class VocabCorpus {
 
     /// Default furigana JSON for a word (first form of first reading group, or "[]").
     private func defaultFuriganaJSON(for item: VocabItem) -> String {
-        guard let group = item.writtenForms.first,
-              let form = group.forms.first,
+        let form = preferredWrittenForm(
+            senseExtras: item.senseExtras,
+            activeSenseIndices: item.corpusSenseIndices,
+            writtenForms: item.writtenForms
+        ) ?? item.writtenForms.first?.forms.first
+        guard let form,
               let data = try? JSONEncoder().encode(form.furigana),
               let json = String(data: data, encoding: .utf8)
         else { return "[]" }

@@ -184,12 +184,17 @@ struct WordDetailSheet: View {
     /// Large ruby furigana heading from the first written form, or plain kana for kana-only words.
     @ViewBuilder
     private var wordHeading: some View {
+        let preferred = preferredWrittenForm(
+            senseExtras: item.senseExtras,
+            activeSenseIndices: item.corpusSenseIndices,
+            writtenForms: item.writtenForms
+        )
         if item.isKanaOnly {
             // Pure kana — no ruby needed; use the first kana form as a plain heading
             Text(item.writtenForms.first?.forms.first?.furigana.map(\.ruby).joined()
                  ?? item.kanaTexts.first ?? item.wordText)
                 .font(.largeTitle)
-        } else if let group = item.writtenForms.first, let form = group.forms.first {
+        } else if let form = preferred ?? item.writtenForms.first?.forms.first {
             headingFurigana(form.furigana)
                 .textSelection(.disabled)
         } else {
@@ -227,7 +232,8 @@ struct WordDetailSheet: View {
     private var senseExtrasSection: some View {
         JMDictSenseListView(
             senseExtras: item.senseExtras,
-            corpusSenseIndices: item.corpusSenseIndices
+            corpusSenseIndices: item.corpusSenseIndices,
+            writtenTexts: item.writtenTexts
         )
     }
 
@@ -589,7 +595,11 @@ struct WordDetailSheet: View {
     /// later via the written form picker.
     private func autoCommitFirstForm() async {
         guard item.commitment == nil else { return }
-        guard let form = item.writtenForms.flatMap(\.forms).first else { return }
+        guard let form = preferredWrittenForm(
+            senseExtras: item.senseExtras,
+            activeSenseIndices: item.corpusSenseIndices,
+            writtenForms: item.writtenForms
+        ) ?? item.writtenForms.flatMap(\.forms).first else { return }
         if let data = try? JSONEncoder().encode(form.furigana),
            let json = String(data: data, encoding: .utf8) {
             await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)

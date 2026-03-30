@@ -254,7 +254,11 @@ struct VocabBrowserView: View {
             }
             .tint(.green)
             // "Learn kanji" only makes sense when the word has actual kanji forms.
-            let firstForm = item.writtenForms.flatMap(\.forms).first
+            let firstForm = preferredWrittenForm(
+                senseExtras: item.senseExtras,
+                activeSenseIndices: item.corpusSenseIndices,
+                writtenForms: item.writtenForms
+            ) ?? item.writtenForms.flatMap(\.forms).first
             if !item.isKanaOnly, let form = firstForm, !form.furigana.extractKanji().isEmpty {
                 Button {
                     Task {

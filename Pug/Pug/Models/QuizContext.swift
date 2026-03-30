@@ -25,6 +25,8 @@ struct SenseExtra {
     let misc: [String]           // misc tag codes (e.g. "uk" = usually kana, "col" = colloquial)
     let field: [String]          // subject-field tag codes (e.g. "math", "law")
     let dialect: [String]        // dialect tag codes (e.g. "ksb" = Kansai)
+    /// Which kanji forms this sense applies to. Empty array or ["*"] both mean "no restriction".
+    let appliesToKanji: [String]
 
     /// True when there is no metadata beyond the glosses themselves.
     var metadataIsEmpty: Bool {
@@ -36,6 +38,45 @@ struct SenseExtra {
     static func formatXrefs(_ xrefs: [[String]]) -> String {
         xrefs.map { $0.joined(separator: ",") }.joined(separator: "; ")
     }
+}
+
+// MARK: - Preferred written form
+
+/// Returns the best written form for the given active senses, implementing the D3 algorithm
+/// from TODO-appliesToKanji.md:
+///
+///   1. Collect the union of appliesToKanji across all active restricted senses
+///      (skip empty arrays and ["*"] — both mean "no restriction").
+///   2. Return the first WrittenForm whose text is in that union (all active restricted
+///      senses agree, or at least the union covers it).
+///   3. If step 2 yields nothing (mutually-exclusive senses), return the first WrittenForm
+///      that satisfies any single active restricted sense.
+///   4. If no active sense has any kanji restriction at all, return nil — the caller
+///      should use its own default (typically kanjiTexts.first or kanaTexts.first).
+func preferredWrittenForm(
+    senseExtras: [SenseExtra],
+    activeSenseIndices: [Int],
+    writtenForms: [WrittenFormGroup]
+) -> WrittenForm? {
+    let allForms = writtenForms.flatMap(\.forms)
+    guard !allForms.isEmpty else { return nil }
+
+    // Collect per-sense restricted sets (ignoring empty and ["*"]).
+    let restrictedSets: [Set<String>] = activeSenseIndices.compactMap { i -> Set<String>? in
+        guard i < senseExtras.count else { return nil }
+        let atk = senseExtras[i].appliesToKanji
+        guard !atk.isEmpty, atk != ["*"] else { return nil }
+        return Set(atk)
+    }
+
+    guard !restrictedSets.isEmpty else { return nil }  // no restriction at all → caller decides
+
+    // Pass 1: first form in the union of all restricted sets.
+    let union = restrictedSets.reduce(Set<String>()) { $0.union($1) }
+    if let form = allForms.first(where: { union.contains($0.text) }) { return form }
+
+    // Pass 2 (mutually exclusive case): first form satisfying any single restricted sense.
+    return allForms.first { form in restrictedSets.contains { $0.contains(form.text) } }
 }
 
 // MARK: - Quiz item
@@ -125,10 +166,12 @@ struct QuizContext {
         // Default is [0] (first JMDict sense) when no reference has llm_sense —
         // this prevents quizzes from testing distant/obscure senses the student never encountered.
         var corpusSensesMap: [String: [Int]] = [:]
+        var wordWrittenForms: [String: [WrittenFormGroup]] = [:]
         if let manifest = VocabSync.cached() {
             for entry in manifest.words {
                 let deduped = entry.corpusSenseIndices
                 corpusSensesMap[entry.id] = deduped.isEmpty ? [0] : deduped
+                wordWrittenForms[entry.id] = entry.writtenForms ?? []
             }
         }
 
@@ -167,7 +210,14 @@ struct QuizContext {
             let hasKanji = wordModels.contains { kanjiFacetSet.contains($0.quizType) }
             let facets = hasKanji ? kanjiOkFacets : noKanjiFacets
 
-            let wordText = wordTexts[wordId] ?? wordId
+            let wordText: String = {
+                let senses = wordSenseExtras[wordId] ?? []
+                let active = corpusSensesMap[wordId] ?? [0]
+                let forms  = wordWrittenForms[wordId] ?? []
+                return preferredWrittenForm(senseExtras: senses, activeSenseIndices: active, writtenForms: forms)?.text
+                    ?? wordTexts[wordId]
+                    ?? wordId
+            }()
 
             // Compute recall for each facet.
             var recallMap: [String: (recall: Double, halflife: Double)] = [:]
@@ -342,14 +392,15 @@ struct QuizContext {
                         .filter { ($0["lang"] as? String) == "eng" }
                         .compactMap { $0["text"] as? String }
                     return SenseExtra(
-                        glosses:      glosses,
-                        info:         sense["info"] as? [String] ?? [],
-                        related:      parseXrefs(sense["related"]),
-                        antonym:      parseXrefs(sense["antonym"]),
-                        partOfSpeech: expand(sense["partOfSpeech"] as? [String] ?? []),
-                        misc:         expand(sense["misc"] as? [String] ?? []),
-                        field:        expand(sense["field"] as? [String] ?? []),
-                        dialect:      expand(sense["dialect"] as? [String] ?? [])
+                        glosses:        glosses,
+                        info:           sense["info"] as? [String] ?? [],
+                        related:        parseXrefs(sense["related"]),
+                        antonym:        parseXrefs(sense["antonym"]),
+                        partOfSpeech:   expand(sense["partOfSpeech"] as? [String] ?? []),
+                        misc:           expand(sense["misc"] as? [String] ?? []),
+                        field:          expand(sense["field"] as? [String] ?? []),
+                        dialect:        expand(sense["dialect"] as? [String] ?? []),
+                        appliesToKanji: sense["appliesToKanji"] as? [String] ?? []
                     )
                 }
                 result[id] = JmdictEntry(text: text, writtenTexts: kanjiTexts, kanaTexts: kanaTexts,

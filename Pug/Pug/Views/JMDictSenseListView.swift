@@ -12,6 +12,9 @@ struct JMDictSenseListView: View {
     /// Corpus-attested sense indices (from llm_sense.sense_indices). When non-empty,
     /// non-corpus senses are dimmed to show which senses the student has encountered.
     var corpusSenseIndices: [Int] = []
+    /// All written (kanji/mixed) forms for the word. Used to expand ["*"] in appliesToKanji
+    /// to the full form list so the user can see which spellings each sense covers.
+    var writtenTexts: [String] = []
 
     var body: some View {
         // Part of speech is shared across senses (JMDict convention: repeated on each sense,
@@ -31,6 +34,16 @@ struct JMDictSenseListView: View {
                 // Glosses for this sense
                 ForEach(sense.glosses, id: \.self) { gloss in
                     Text("• \(gloss)")
+                }
+
+                // appliesToKanji annotation: show which written forms this sense covers.
+                // Restricted (not ["*"]): list the specific forms.
+                // Unrestricted (["*"]): enumerate all written forms so it's clear this sense
+                // covers every spelling, not just the first one.
+                if !writtenTexts.isEmpty && !sense.appliesToKanji.isEmpty {
+                    let forms: [String] = sense.appliesToKanji == ["*"] ? writtenTexts : sense.appliesToKanji
+                    Text("Applies to: \(forms.joined(separator: ", "))")
+                        .font(.caption)
                 }
 
                 // Metadata that applies only to this sense
