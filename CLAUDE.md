@@ -5,6 +5,17 @@ Node.js scripts in `.claude/scripts/` still exist for the CLI quiz skill and voc
 but most development happens in `Pug/`. Claude never writes directly to SQLite and never
 writes to the user's Markdown content.
 
+See `DATA-FORMATS.md` for the shape of `vocab.json`, `transitive-pairs.json`,
+`grammar/grammar-equivalences.json`, and the `entries`/`furigana` tables in
+`jmdict.sqlite`.
+
+The app bundles a complete copy of JMDict (all ~200 k entries) and all of
+JmdictFurigana in `jmdict.sqlite`. Any feature that needs dictionary lookups,
+readings, or furigana segmentation should query this database rather than
+hard-coding or duplicating data. `vocab.json` and `transitive-pairs.json` store
+only IDs and user-specific metadata; all linguistic content (senses, kanji
+forms, readings) is fetched at runtime from `jmdict.sqlite`.
+
 ## Documentation upkeep
 
 When implementing any new feature or making a non-trivial change, always check

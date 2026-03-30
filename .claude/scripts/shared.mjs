@@ -169,7 +169,10 @@ export function wordMeanings(word, numbered = false) {
         s.gloss
           .filter((g) => g.lang === "eng")
           .map((g) => g.text)
-          .join("; "),
+          .join("; ") +
+        (s.appliesToKanji[0] !== "*"
+          ? ` (applies to these kanji: ${s.appliesToKanji.join(" or ")})`
+          : ""),
     )
     .filter(Boolean)
     .join(numbered ? ". " : " / ");
@@ -292,10 +295,14 @@ export function extractGrammarBullets(content) {
       const normalized =
         colonIdx === -1
           ? topicId
-          : topicId.slice(0, colonIdx).toLowerCase() +
-            topicId.slice(colonIdx);
+          : topicId.slice(0, colonIdx).toLowerCase() + topicId.slice(colonIdx);
 
-      bullets.push({ topicId: normalized, note, line: innerStartLine + i, matchIndex: match.index });
+      bullets.push({
+        topicId: normalized,
+        note,
+        line: innerStartLine + i,
+        matchIndex: match.index,
+      });
     }
   }
   return bullets;
@@ -312,9 +319,7 @@ export function extractGrammarBullets(content) {
  */
 export function migrateEquivalences(raw) {
   if (!Array.isArray(raw)) return [];
-  return raw.map((entry) =>
-    Array.isArray(entry) ? { topics: entry } : entry,
-  );
+  return raw.map((entry) => (Array.isArray(entry) ? { topics: entry } : entry));
 }
 
 // Parse YAML frontmatter and return key-value pairs, or null if none present.
