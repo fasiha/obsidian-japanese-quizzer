@@ -206,6 +206,21 @@ struct DocumentReaderView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
+                if item.readingState == .learning || item.kanjiState == .learning {
+                    Text("Learning")
+                        .font(.caption2).fontWeight(.medium)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.green.opacity(0.15))
+                        .foregroundStyle(.green)
+                        .clipShape(Capsule())
+                } else if item.readingState == .known || item.kanjiState == .known {
+                    Text("Learned")
+                        .font(.caption2).fontWeight(.medium)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.blue.opacity(0.15))
+                        .foregroundStyle(.blue)
+                        .clipShape(Capsule())
+                }
                 Image(systemName: "chevron.right")
                     .imageScale(.small)
                     .foregroundStyle(.tertiary)
