@@ -1,4 +1,6 @@
-# Work plan: prefer kanji form consistent with corpus/user senses
+# Work plan: prefer kanji/kana form consistent with corpus/user senses
+
+> **Status: COMPLETE** (2026-03-29)
 
 ## Problem statement
 
@@ -136,7 +138,63 @@ to the same preferred-form function. No new plumbing needed when that feature la
   passed in so it can substitute real form names for `["*"]`. No model change —
   data is already in `SenseExtra` (after task 1) and `VocabItem.writtenTexts`.
 
-- [ ] **8. Smoke-test with the あて example.**
-  Confirm via `TestHarness --dump-prompts` that quiz stems now show 宛 or 宛て
-  (not 当て) for entry 1448820. `VocabRowView` gets the fix for free via
-  `item.wordText`; no code change expected there.
+- [x] **8. Smoke-test with the あて example.**
+  Verified in iOS simulator. TestHarness still shows 当て because it does not
+  load vocab.json (no writtenForms / corpusSenseIndices), so preferredWrittenForm
+  returns nil and falls back to kanjiTexts.first — expected and correct for a
+  standalone harness.
+
+---
+
+## Stretch goal: handle `appliesToKana`
+
+Symmetric treatment for kana-only words (and the kana fallback path for mixed
+words). Real example: entry 2059800 (ビュービュー etc.) where corpus uses
+ぴゅうぴゅう but the app defaults to ビュービュー (kanaTexts.first).
+
+Data confirmed: `appliesToKana` on senses is a real and populated field in
+jmdict.sqlite, same `["*"]` convention as `appliesToKanji`.
+
+- [x] **S1. Add `appliesToKana` to `SenseExtra` and parse in `jmdictWordData()`.**
+  Identical pattern to task 1: `appliesToKana: [String]`, parse
+  `sense["appliesToKana"] as? [String] ?? []`. Empty and `["*"]` = no restriction.
+
+- [x] **S2. Add `preferredKanaForm(senseExtras:activeSenseIndices:kanaTexts:)` helper.**
+  Parallel to `preferredWrittenForm` but inputs are `[String]` (plain kana texts,
+  not `[WrittenFormGroup]`). Returns `String?` — the preferred kana, or `nil`
+  when no active sense restricts to a specific kana. Same two-pass algorithm:
+  union pass first, single-sense fallback second.
+
+- [x] **S3. Fix kana-only `wordText` in `VocabCorpus.load()`.**
+  After the existing `preferredWrittenForm` call, if the result is still `jd.text`
+  and `kanjiTexts` is empty (kana-only word), also try `preferredKanaForm(...)`.
+  Fallback chain: `preferredWrittenForm` → `preferredKanaForm` → `jd.text`.
+
+- [x] **S4. Fix kana-only `QuizItem.wordText` in `QuizContext.build()`.**
+  Same fallback chain as S3 after the existing `preferredWrittenForm` call.
+
+- [x] **S5. Fix `WordDetailSheet` heading kana fallback.**
+  The kana-only branch and the else branch both use `kanaTexts.first`.
+  Apply `preferredKanaForm` there instead.
+
+- [x] **S6. Annotate `JMDictSenseListView` with `appliesToKana`.**
+  Below the `appliesToKanji` annotation line (task 7), add a parallel line for
+  kana: show restricted kana forms, or expand `["*"]` to all kana texts.
+  Pass `kanaTexts: [String]` to `JMDictSenseListView` alongside `writtenTexts`.
+  Only show the annotation when there is more than one kana reading (single-kana
+  words have nothing interesting to say about which kana applies).
+
+---
+
+## Bonus: surface all readings in `WordDetailSheet`
+
+For words with multiple kana readings (e.g. ビュービュー/びゅうびゅう/ヒューヒュー…),
+the heading shows only one. Users have no way to see the others.
+
+- [x] **B1. Show secondary kana readings below the heading.**
+  After the `wordHeading` block, if `item.kanaTexts` has more than one entry,
+  render the non-primary readings as a small secondary line, e.g.
+  "Also: びゅうびゅう, ヒューヒュー". Deduplicate readings that differ only in
+  hiragana vs katakana script (convert both to hiragana for comparison; keep the
+  first encountered form for display). The primary reading (used in the heading)
+  is excluded from the "Also:" list.

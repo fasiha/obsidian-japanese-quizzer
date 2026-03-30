@@ -151,7 +151,13 @@ final class VocabCorpus {
                 senseExtras: jd.senseExtras,
                 activeSenseIndices: corpusSenseIndices,
                 writtenForms: entry.writtenForms ?? []
-            )?.text ?? jd.text
+            )?.text
+            ?? preferredKanaForm(
+                senseExtras: jd.senseExtras,
+                activeSenseIndices: corpusSenseIndices,
+                kanaTexts: jd.kanaTexts
+            )
+            ?? jd.text
 
             return VocabItem(
                 id: entry.id,

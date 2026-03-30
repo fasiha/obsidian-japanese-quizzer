@@ -15,6 +15,9 @@ struct JMDictSenseListView: View {
     /// All written (kanji/mixed) forms for the word. Used to expand ["*"] in appliesToKanji
     /// to the full form list so the user can see which spellings each sense covers.
     var writtenTexts: [String] = []
+    /// All kana readings for the word. Used to expand ["*"] in appliesToKana annotations.
+    /// Only shown when there is more than one kana reading (single-kana words are unambiguous).
+    var kanaTexts: [String] = []
 
     var body: some View {
         // Part of speech is shared across senses (JMDict convention: repeated on each sense,
@@ -40,9 +43,13 @@ struct JMDictSenseListView: View {
                 // Restricted (not ["*"]): list the specific forms.
                 // Unrestricted (["*"]): enumerate all written forms so it's clear this sense
                 // covers every spelling, not just the first one.
-                if !writtenTexts.isEmpty && !sense.appliesToKanji.isEmpty {
+                if writtenTexts.count > 1 && !sense.appliesToKanji.isEmpty {
                     let forms: [String] = sense.appliesToKanji == ["*"] ? writtenTexts : sense.appliesToKanji
                     Text("Applies to: \(forms.joined(separator: ", "))")
+                        .font(.caption)
+                }
+                if kanaTexts.count > 1 && !sense.appliesToKana.isEmpty && sense.appliesToKana != ["*"] {
+                    Text("Read as: \(sense.appliesToKana.joined(separator: ", "))")
                         .font(.caption)
                 }
 

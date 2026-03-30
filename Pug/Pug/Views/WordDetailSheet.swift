@@ -105,6 +105,31 @@ struct WordDetailSheet: View {
             // Large ruby heading: first written form's furigana, or plain kana
             wordHeading
 
+            // Secondary kana readings, deduplicated across hiragana/katakana variants.
+            // Only shown when there is more than one distinct phonetic reading.
+            let primaryKana = preferredKanaForm(
+                senseExtras: item.senseExtras,
+                activeSenseIndices: item.corpusSenseIndices,
+                kanaTexts: item.kanaTexts
+            ) ?? item.kanaTexts.first
+            let secondaryReadings: [String] = {
+                var seen: Set<String> = primaryKana.map { [toHiragana($0)] } ?? []
+                var result: [String] = []
+                for kana in item.kanaTexts {
+                    let normalized = toHiragana(kana)
+                    if !seen.contains(normalized) {
+                        seen.insert(normalized)
+                        result.append(kana)
+                    }
+                }
+                return result
+            }()
+            if !secondaryReadings.isEmpty {
+                Text("Also: \(secondaryReadings.joined(separator: ", "))")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
             senseExtrasSection
 
             if !item.sources.isEmpty {
@@ -189,16 +214,20 @@ struct WordDetailSheet: View {
             activeSenseIndices: item.corpusSenseIndices,
             writtenForms: item.writtenForms
         )
+        let preferredKana = preferredKanaForm(
+            senseExtras: item.senseExtras,
+            activeSenseIndices: item.corpusSenseIndices,
+            kanaTexts: item.kanaTexts
+        )
         if item.isKanaOnly {
-            // Pure kana — no ruby needed; use the first kana form as a plain heading
-            Text(item.writtenForms.first?.forms.first?.furigana.map(\.ruby).joined()
-                 ?? item.kanaTexts.first ?? item.wordText)
+            // Pure kana — no ruby needed; use the preferred kana form as a plain heading
+            Text(preferredKana ?? item.kanaTexts.first ?? item.wordText)
                 .font(.largeTitle)
         } else if let form = preferred ?? item.writtenForms.first?.forms.first {
             headingFurigana(form.furigana)
                 .textSelection(.disabled)
         } else {
-            Text(item.kanaTexts.first ?? item.wordText)
+            Text(preferredKana ?? item.kanaTexts.first ?? item.wordText)
                 .font(.largeTitle)
         }
     }
@@ -233,7 +262,8 @@ struct WordDetailSheet: View {
         JMDictSenseListView(
             senseExtras: item.senseExtras,
             corpusSenseIndices: item.corpusSenseIndices,
-            writtenTexts: item.writtenTexts
+            writtenTexts: item.writtenTexts,
+            kanaTexts: item.kanaTexts
         )
     }
 
@@ -801,6 +831,62 @@ private struct FlowLayout: Layout {
             rowHeight = max(rowHeight, size.height)
         }
     }
+}
+
+/// Map each hiragana character to its vowel (あいうえお).
+/// Used to resolve chōonpu (ー) to a concrete kana when deduplicating readings.
+private let hiraganaVowel: [Character: Character] = [
+    // a-vowel
+    "あ":"あ","ぁ":"あ","か":"あ","が":"あ","さ":"あ","ざ":"あ","た":"あ","だ":"あ",
+    "な":"あ","は":"あ","ば":"あ","ぱ":"あ","ま":"あ","や":"あ","ゃ":"あ","ら":"あ","わ":"あ","ゎ":"あ",
+    // i-vowel
+    "い":"い","ぃ":"い","き":"い","ぎ":"い","し":"い","じ":"い","ち":"い","ぢ":"い",
+    "に":"い","ひ":"い","び":"い","ぴ":"い","み":"い","り":"い","ゐ":"い",
+    // u-vowel
+    "う":"う","ぅ":"う","く":"う","ぐ":"う","す":"う","ず":"う","つ":"う","づ":"う",
+    "ぬ":"う","ふ":"う","ぶ":"う","ぷ":"う","む":"う","ゆ":"う","ゅ":"う","る":"う","ゔ":"う",
+    // e-vowel
+    "え":"え","ぇ":"え","け":"え","げ":"え","せ":"え","ぜ":"え","て":"え","で":"え",
+    "ね":"え","へ":"え","べ":"え","ぺ":"え","め":"え","れ":"え","ゑ":"え",
+    // o-row: chōonpu after an o-sound is written う in modern Japanese orthography (とうきょう not とおきょお)
+    "お":"う","ぉ":"う","こ":"う","ご":"う","そ":"う","ぞ":"う","と":"う","ど":"う",
+    "の":"う","ほ":"う","ぼ":"う","ぽ":"う","も":"う","よ":"う","ょ":"う","ろ":"う","を":"う",
+]
+
+/// Convert a string to hiragana for phonetic deduplication of kana readings.
+/// Two passes:
+///   1. Full-width katakana (ア–ン range) → hiragana by subtracting 0x60.
+///   2. Chōonpu (ー, U+30FC) → the vowel of the preceding hiragana character,
+///      e.g. ヒューヒュー → ひゅうひゅう (ゅ is a u-vowel, so ー → う).
+///      Chōonpu with no resolvable preceding vowel is dropped.
+private func toHiragana(_ text: String) -> String {
+    // Pass 1: katakana → hiragana
+    var pass1 = String.UnicodeScalarView()
+    for scalar in text.unicodeScalars {
+        if scalar.value >= 0x30A1 && scalar.value <= 0x30F6,
+           let h = Unicode.Scalar(scalar.value - 0x60) {
+            pass1.append(h)
+        } else {
+            pass1.append(scalar)
+        }
+    }
+    let hiragana = String(pass1)
+
+    // Pass 2: resolve chōonpu
+    let chouonpu: Character = "ー"
+    var result: [Character] = []
+    for ch in hiragana {
+        if ch == chouonpu {
+            if let prev = result.last, let vowel = hiraganaVowel[prev] {
+                result.append(vowel)
+            } else {
+                result.append(ch)  // no resolvable vowel — keep chōonpu as-is
+            }
+        } else {
+            result.append(ch)
+        }
+    }
+    return String(result)
 }
 
 // SelectableText lives in SelectableText.swift

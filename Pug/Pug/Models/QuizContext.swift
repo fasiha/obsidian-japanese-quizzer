@@ -27,6 +27,8 @@ struct SenseExtra {
     let dialect: [String]        // dialect tag codes (e.g. "ksb" = Kansai)
     /// Which kanji forms this sense applies to. Empty array or ["*"] both mean "no restriction".
     let appliesToKanji: [String]
+    /// Which kana readings this sense applies to. Empty array or ["*"] both mean "no restriction".
+    let appliesToKana: [String]
 
     /// True when there is no metadata beyond the glosses themselves.
     var metadataIsEmpty: Bool {
@@ -77,6 +79,31 @@ func preferredWrittenForm(
 
     // Pass 2 (mutually exclusive case): first form satisfying any single restricted sense.
     return allForms.first { form in restrictedSets.contains { $0.contains(form.text) } }
+}
+
+/// Returns the best kana reading for the given active senses, parallel to `preferredWrittenForm`.
+/// Inputs are plain strings (kanaTexts) rather than WrittenFormGroups.
+/// Returns nil when no active sense restricts to a specific kana — caller uses its own default.
+func preferredKanaForm(
+    senseExtras: [SenseExtra],
+    activeSenseIndices: [Int],
+    kanaTexts: [String]
+) -> String? {
+    guard !kanaTexts.isEmpty else { return nil }
+
+    let restrictedSets: [Set<String>] = activeSenseIndices.compactMap { i -> Set<String>? in
+        guard i < senseExtras.count else { return nil }
+        let atk = senseExtras[i].appliesToKana
+        guard !atk.isEmpty, atk != ["*"] else { return nil }
+        return Set(atk)
+    }
+
+    guard !restrictedSets.isEmpty else { return nil }
+
+    let union = restrictedSets.reduce(Set<String>()) { $0.union($1) }
+    if let form = kanaTexts.first(where: { union.contains($0) }) { return form }
+
+    return kanaTexts.first { form in restrictedSets.contains { $0.contains(form) } }
 }
 
 // MARK: - Quiz item
@@ -214,7 +241,9 @@ struct QuizContext {
                 let senses = wordSenseExtras[wordId] ?? []
                 let active = corpusSensesMap[wordId] ?? [0]
                 let forms  = wordWrittenForms[wordId] ?? []
+                let kanas  = wordKana[wordId] ?? []
                 return preferredWrittenForm(senseExtras: senses, activeSenseIndices: active, writtenForms: forms)?.text
+                    ?? preferredKanaForm(senseExtras: senses, activeSenseIndices: active, kanaTexts: kanas)
                     ?? wordTexts[wordId]
                     ?? wordId
             }()
@@ -400,7 +429,8 @@ struct QuizContext {
                         misc:           expand(sense["misc"] as? [String] ?? []),
                         field:          expand(sense["field"] as? [String] ?? []),
                         dialect:        expand(sense["dialect"] as? [String] ?? []),
-                        appliesToKanji: sense["appliesToKanji"] as? [String] ?? []
+                        appliesToKanji: sense["appliesToKanji"] as? [String] ?? [],
+                        appliesToKana:  sense["appliesToKana"]  as? [String] ?? []
                     )
                 }
                 result[id] = JmdictEntry(text: text, writtenTexts: kanjiTexts, kanaTexts: kanaTexts,
