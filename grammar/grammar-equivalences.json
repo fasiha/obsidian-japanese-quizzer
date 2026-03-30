@@ -349,16 +349,16 @@
       "dbjg:shimau",
       "genki:teshimau"
     ],
-    "summary": "Attach しまう to the て-form of a verb to express that an action was carried out completely or resulted in an unfortunate, irreversible outcome. Colloquial contractions: て + しまう → ちゃう; で + しまう → じゃう (e.g., 飲んでしまう → 飲んじゃう). Both meanings (completion and regret) can overlap in a single use.",
+    "summary": "Attach しまう to the て-form of a verb to express that an action was carried out completely or resulted in an unfortunate, irreversible outcome. Both senses share the core idea that the action is fully completed and cannot be undone; the difference is only whether that finality is unwelcome or simply neutral. Colloquial contractions: て + しまう → ちゃう; で + しまう → じゃう (e.g., 飲んでしまう → 飲んじゃう).",
     "subUses": [
-      "Thorough completion: 宿題をやってしまった (I got all the homework done — finished it completely)",
-      "Regrettable or accidental outcome: 財布を忘れてしまった (I went and forgot my wallet — used with regret)",
-      "Irreversible change with emotional weight: 大切な皿を割ってしまった (I broke the precious plate — no going back)"
+      "Thorough completion: 宿題をやってしまった (I got all the homework done — finished it completely, no going back)",
+      "Regrettable or accidental outcome (also fully completed): 財布を忘れてしまった (I went and forgot my wallet — it's done, can't go back)"
     ],
     "cautions": [
-      "Context determines whether the meaning is completion or regret — the same form can carry both simultaneously; do not force one reading",
-      "Colloquial contractions ちゃう and じゃう are correct in casual speech; do not mark them wrong in informal contexts",
-      "Contraction rule: て-form ending in て → ちゃう; て-form ending in で → じゃう (e.g., 読んでしまう → 読んじゃう)"
+      "Context determines whether the meaning is completion or regret — the same form could carry both simultaneously so do not force exactly one reading",
+      "The completion sense is often reinforced by adverbs like すっかり (completely) or 全部 (all); their presence is a strong signal that completion, not regret, is the primary reading",
+      "Colloquial contractions ちゃう and じゃう are gender-neutral in casual speech; do not mark them wrong in informal contexts",
+      "Additional male-only contractions: ちまう and じまう follow the same て/で rule (e.g., 読んでしまう → 読んじまう); these are correct but gender-restricted"
     ]
   },
   {
