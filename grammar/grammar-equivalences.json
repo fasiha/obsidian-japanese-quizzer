@@ -517,13 +517,11 @@
       "Simile modifying a verb: 鳥のように飛びたい (I want to fly like a bird)",
       "Simile modifying a noun: 夢のような話 (A story like a dream)",
       "Counterfactual simile ('as if'), often with まるで: まるで別人のように話した (spoke as if they were a completely different person)",
-      "Clause-modifying form (no の): 春になったように暖かい (warm as if spring had arrived — ように follows a plain-form clause directly)",
-      "Referring back to a previous state: もとのように元気になった (Became healthy like before)",
       "Giving an example: このような場合はどうしますか (What do you do in cases like this?)"
     ],
     "cautions": [
       "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
-      "After a noun, use のように/のような (の required). After a verb or adjective clause, よう attaches directly without の: 走っているように見える not 走っているのように見える"
+      "Attachment rules: after a comparison noun, の is required (鳥のように). When the preceding element is a full clause (verb, い-adjective, or な-adjective predicate), よう attaches directly: 走っているように, 高いように, 静かなように (な-adjectives keep their な). Do not insert の between a clause and よう."
     ]
   },
   {
