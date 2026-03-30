@@ -117,15 +117,18 @@
     ],
     "summary": "The passive form is made by changing godan verbs to the あ-row + れる (書く→書かれる) and ichidan verbs by replacing る with られる (食べる→食べられる); irregulars: する→される, くる→こられる. The agent is marked with に. Japanese passive has both a direct passive (equivalent to English passive) and an indirect or 'suffering' passive where the subject is adversely affected by someone else's action.",
     "subUses": [
-      "Direct passive: 先生に名前を呼ばれた (My name was called by the teacher)",
-      "Indirect/suffering passive: 雨に降られた (I got rained on — adversely affected by rain)",
-      "Possessive passive: 友達に本を読まれた (My friend read my book — on me, to my displeasure)",
-      "Respectful passive (honorific): 先生が話された (The teacher spoke — polite/respectful)"
+      "Adverse affective (intransitive): 雨に降られた (I got rained on — adversely affected by someone else's action even though I wasn't involved)",
+      "Adverse affective (possessive): 友達に日記を読まれた (My friend read my diary on me — adversely affected through possession of the object)",
+      "Neutral affective: 先輩にパーティーに誘われた (I was invited to a party by my senpai — not adverse, just a thing that happened to me)",
+      "Direct passive (non-human subject, no agent): ここに公園が作られた (A park was built here — written-language style, inanimate subject, no agent mentioned)",
+      "Direct passive (non-human subject, named human agent with によって): この絵はピカソによって描かれた (This picture was painted by Picasso — によって marks the agent in direct passive, never in affective passive)",
+      "Honorific: 先生が話された (The teacher spoke — respectful/polite register)"
     ],
     "cautions": [
       "For ichidan verbs, passive られる and potential られる are identical in form — context distinguishes them",
       "ら抜き言葉 (dropping ら) applies ONLY to the potential meaning, never to the passive — 食べれる is colloquial potential, but the passive is always 食べられる",
-      "The indirect/suffering passive has no English equivalent — it expresses that an event happened and the speaker was negatively affected, even if they weren't the direct object",
+      "The adverse affective (intransitive) passive has no English equivalent — the subject is harmed by an event even though they have no grammatical role in the underlying action",
+      "に marks the agent in affective passive (human or rain etc.); によって marks the agent only in direct passive with a named human agent — do not use に+human-agent in direct passive or によって+non-human in affective passive",
       "から can replace に for the agent when there is no physical contact: みんなから愛されている (loved by everyone)"
     ]
   },
