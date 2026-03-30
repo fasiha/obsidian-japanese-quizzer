@@ -218,8 +218,7 @@ struct ReviewDetailSheet: View {
     private func doRescale(hours: Double) async {
         guard hours > 0, let current = ebisuRecord else { return }
         do {
-            let scale = hours / current.t
-            let newModel = try rescaleHalflife(current.model, scale: scale)
+            let newModel = try rescaleHalflife(current.model, targetHalflife: hours)
             let updated = EbisuRecord(
                 wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
                 alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,

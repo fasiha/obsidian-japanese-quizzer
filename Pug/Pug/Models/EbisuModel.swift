@@ -54,7 +54,7 @@ nonisolated func defaultModel(halflife t: Double, a: Double = 1.25) -> EbisuMode
 
 /// Return a new model with the halflife scaled by `scale`.
 /// Use scale > 1 to push out (word is easy), scale < 1 to pull in (word is hard).
-nonisolated func rescaleHalflife(_ prior: EbisuModel, scale: Double = 1.0) throws -> EbisuModel {
+nonisolated func rescaleHalflife(_ prior: EbisuModel, targetHalflife: Double) throws -> EbisuModel {
     let oldHalflife = try modelToPercentileDecay(prior)
     let dt = oldHalflife / prior.t
     let logDenominator = betaln(prior.alpha, prior.beta)
@@ -64,7 +64,7 @@ nonisolated func rescaleHalflife(_ prior: EbisuModel, scale: Double = 1.0) throw
     guard newAB > 0 else {
         throw EbisuError.numericalInstability("non-positive α/β in rescaleHalflife")
     }
-    return EbisuModel(alpha: newAB, beta: newAB, t: oldHalflife * scale)
+    return EbisuModel(alpha: newAB, beta: newAB, t: targetHalflife)
 }
 
 // MARK: - Private math helpers

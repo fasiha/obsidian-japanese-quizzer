@@ -734,8 +734,7 @@ struct WordDetailSheet: View {
         do {
             guard let current = try await quizDB.ebisuRecord(
                 wordType: record.wordType, wordId: record.wordId, quizType: record.quizType) else { return }
-            let scale = hours / current.t
-            let newModel = try rescaleHalflife(current.model, scale: scale)
+            let newModel = try rescaleHalflife(current.model, targetHalflife: hours)
             let updated = EbisuRecord(
                 wordType: current.wordType, wordId: current.wordId, quizType: current.quizType,
                 alpha: newModel.alpha, beta: newModel.beta, t: newModel.t,
