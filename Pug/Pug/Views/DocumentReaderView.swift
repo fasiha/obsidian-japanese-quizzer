@@ -135,7 +135,15 @@ struct DocumentReaderView: View {
                     annotationPanel(vocabIds: vocabIds, grammarIds: grammarIds, lineNumber: line.lineNumber)
                         .padding(.top, 4)
                 } label: {
-                    annotationSummaryLabel(vocabCount: vocabIds.count, grammarCount: grammarIds.count)
+                    let learningVocabCount = vocabIds.filter { id in
+                        guard let item = corpus.items.first(where: { $0.id == id }) else { return false }
+                        return item.readingState != .unknown || item.kanjiState != .unknown
+                    }.count
+                    let enrolledGrammarCount = grammarIds.filter { enrolledTopicIds.contains($0) }.count
+                    annotationSummaryLabel(
+                        vocabCount: vocabIds.count, learningVocabCount: learningVocabCount,
+                        grammarCount: grammarIds.count, enrolledGrammarCount: enrolledGrammarCount
+                    )
                 }
                 .padding(.bottom, 6)
             }
@@ -239,15 +247,18 @@ struct DocumentReaderView: View {
     }
 
     /// Small label shown in the DisclosureGroup header before it is expanded.
-    private func annotationSummaryLabel(vocabCount: Int, grammarCount: Int) -> some View {
+    private func annotationSummaryLabel(
+        vocabCount: Int, learningVocabCount: Int,
+        grammarCount: Int, enrolledGrammarCount: Int
+    ) -> some View {
         HStack(spacing: 6) {
             if vocabCount > 0 {
-                Label("\(vocabCount) vocab", systemImage: "books.vertical")
+                Label("\(learningVocabCount) of \(vocabCount) vocab", systemImage: "books.vertical")
                     .font(.caption2)
                     .foregroundStyle(.blue)
             }
             if grammarCount > 0 {
-                Label("\(grammarCount) grammar", systemImage: "text.book.closed")
+                Label("\(enrolledGrammarCount) of \(grammarCount) grammar", systemImage: "text.book.closed")
                     .font(.caption2)
                     .foregroundStyle(.green)
             }
