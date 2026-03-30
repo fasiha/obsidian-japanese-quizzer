@@ -86,6 +86,34 @@ Before doing any of the above, verify:
   `enrich-grammar-descriptions.mjs --gather` (the `href` column should
   contain full URLs)
 
+## Candidate future databases
+
+### IMABI — https://imabi.org
+
+~445 lessons by Seth Coonrod (linguistics and East Asian Studies, UT Austin 2015),
+edited by Taylor V. Edwards. Human-written, expert-level, with citations to classical
+texts and accurate historical phonology.
+Covers phonology, classical Japanese, fine-grained particle analysis, and word
+formation — territory none of the four current databases touch.
+
+**Why not enrolled yet (as of early 2026):** The site is mid-remodel. Some lessons
+are numbered `???課`, there is at least one duplicate lesson number, and URL slugs
+may shift as titles change. Building a stable TSV requires waiting for the remodel
+to finish.
+
+**Pre-enrollment checklist items to verify when the remodel settles:**
+- [ ] URL slugs have stabilized (spot-check a sample against any earlier scrape)
+- [ ] All lessons have assigned numbers (no more `???課` entries)
+- [ ] The `href` column (full lesson URLs) is fetchable by `enrich-grammar-descriptions.mjs --gather`
+- [ ] Decide whether to include only Advanced/Veteran lessons (to avoid overlap
+  with Bunpro/Genki for beginner topics) or all lessons
+
+**In the meantime:** use IMABI lesson pages directly as reference URLs during the
+`--gather` step when enriching descriptions for advanced or classical constructions.
+See `grammar/Grammar.md` for the full rationale.
+
+---
+
 ## iOS side — no changes needed
 
 `propagateGrammarEbisu` (GrammarQuizContext.swift) already handles new

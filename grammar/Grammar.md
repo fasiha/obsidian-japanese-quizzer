@@ -72,6 +72,43 @@ Example rows:
 | `passive_voice` | Essential | Passive voice |
 | `te_form` | Essential | Te-form |
 
+## Reference sources (not enrolled as databases)
+
+These sources are not scraped into TSV files and have no topic IDs, but are
+valuable reference material for the `enrich-grammar-descriptions.mjs --gather`
+step and for resolving ambiguous clustering decisions.
+
+### IMABI — https://imabi.org
+
+~445 numbered lessons by Seth Coonrod (linguistics and East Asian Studies, UT Austin
+2015), edited by Taylor V. Edwards. Human-written by a deep expert; citations trace
+to specific classical texts (方丈記, 枕草子, etc.) and footnotes cover historical
+phonology accurately.
+
+**Why it is not enrolled yet:** The site is mid-remodel (as of early 2026) with
+some lessons numbered `???課` and at least one duplicate lesson number. URL
+slugs are derived from lesson titles and may shift during the remodel. Building
+a stable TSV requires waiting for the remodel to settle.
+
+**What it covers that the enrolled databases do not:**
+- Phonology and pitch accent (dedicated lessons on rendaku, vowel devoicing, etc.)
+- Classical Japanese grammar: classical adjective conjugation (ク活用/シク活用),
+  classical particles (とて, して, つ, しき, いで), ク語法
+- Fine-grained particle analysis: separate lessons for も I–VI, eight separate
+  transitive/intransitive lessons, 16+ こそあど lessons
+- Word formation: reduplication across parts of speech, native and Sino-Japanese
+  affixes, ～かす causative verbs, 自発動詞
+
+**When to use it now:** Fetch the relevant IMABI lesson URL as a reference when
+writing `summary`/`subUses`/`cautions` for an advanced or classical construction
+that Bunpro, DBJG, and Kanshudo describe inadequately. The lesson pages include
+original example sentences from classical texts that are useful for calibrating
+scope and nuance.
+
+**Future enrollment:** Once the remodel finishes and URL slugs stabilize,
+IMABI is worth enrolling for Advanced/Veteran-level constructions not covered
+by the existing four databases. See `TODO-new-grammar-db.md` for the checklist.
+
 ## Planned Markdown usage
 
 Users will annotate content with a `<details><summary>Grammar</summary>` block,
