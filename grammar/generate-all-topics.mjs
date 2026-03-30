@@ -69,12 +69,27 @@ for (const row of parseTSV("grammar-dbjg.tsv")) {
   };
 }
 
+for (const row of parseTSV("kanshudo-grammar.tsv")) {
+  const key = "kanshudo:" + row.id;
+  topics[key] = {
+    source: "kanshudo",
+    id: row.id,
+    titleEn: row.title,
+    titleJp: null,
+    level: row.level,
+    href: row.href || null,
+    sources: [],
+    equivalenceGroup: null,
+  };
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
   sources: {
     genki: { name: "Genki I & II (textbook)", type: "textbook" },
     bunpro: { name: "Bunpro", type: "online" },
     dbjg: { name: "Dictionary of Basic Japanese Grammar", type: "book" },
+    kanshudo: { name: "Kanshudo grammar index", type: "online" },
   },
   topics,
 };

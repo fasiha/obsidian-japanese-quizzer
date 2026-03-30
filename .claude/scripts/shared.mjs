@@ -204,9 +204,9 @@ export function summarizeWord(word) {
 export const GRAMMAR_DIR = path.join(projectRoot, "grammar");
 
 /**
- * Load all three grammar databases and return a Map<prefixedId, entry>.
+ * Load all grammar databases and return a Map<prefixedId, entry>.
  * Each entry: { source, id, prefixedId, titleEn, titleJp?, level, href, aliasOf? }
- * Source prefixes: "genki:", "bunpro:", "dbjg:"
+ * Source prefixes: "genki:", "bunpro:", "dbjg:", "kanshudo:"
  */
 export function loadGrammarDatabases() {
   const map = new Map();
@@ -253,6 +253,9 @@ export function loadGrammarDatabases() {
   loadTsv(path.join(GRAMMAR_DIR, "grammar-dbjg.tsv"), "dbjg", {
     aliasOfCol: 4,
   });
+
+  // Kanshudo: id, href, level, title, gloss  (no titleJp, no alias-of)
+  loadTsv(path.join(GRAMMAR_DIR, "kanshudo-grammar.tsv"), "kanshudo");
 
   return map;
 }

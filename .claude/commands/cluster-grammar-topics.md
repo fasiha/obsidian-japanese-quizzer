@@ -47,15 +47,16 @@ equivalent to any topic already in `grammar/grammar-equivalences.json` OR to any
 other new topic. Two topics are equivalent if they teach the same grammatical
 concept (even if from different databases or with slightly different scope).
 
-Also consult the three grammar databases to find potential matches the user
+Also consult the four grammar databases to find potential matches the user
 hasn't annotated yet:
 - `grammar/grammar-stolaf-genki.tsv` (Genki textbook topics — keys are romaji, e.g. `temiru`, `nara`)
 - `grammar/grammar-bunpro.tsv` (Bunpro topics with Japanese + English titles)
 - `grammar/grammar-dbjg.tsv` (Dictionary of Basic Japanese Grammar — keys are romaji, e.g. `miru`, `nara`)
+- `grammar/kanshudo-grammar.tsv` (Kanshudo grammar index — columns: id, href, level, title, gloss; keys are English slugs with underscores, e.g. `passive_voice`, `te_form`)
 
-**Important:** DBJG and Genki TSV keys are romaji, not Japanese script. When searching for a topic
-like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki).
-For example, てみる → search `temiru` and `miru`; なら → search `nara`.
+**Important:** DBJG and Genki TSV keys are romaji, not Japanese script. Kanshudo keys are English slugs. When searching for a topic
+like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki) and English slug forms (for Kanshudo).
+For example, てみる → search `temiru` and `miru` and `te_form`; なら → search `nara`.
 
 **DBJG aliases:** Some DBJG entries have a non-empty `alias-of` column (column 5) pointing to a
 canonical entry. Do not add alias entries to equivalence groups — only add the canonical entry.

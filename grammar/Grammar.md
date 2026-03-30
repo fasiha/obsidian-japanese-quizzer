@@ -41,6 +41,37 @@ Example rows:
 | `adjectives` | Genki I | Adjectives |
 | `ageru-kureru-morau` | Genki II | ageru, kureru, morau |
 
+### DBJG — `grammar-dbjg.tsv` (~370 entries)
+
+- **Source:** *A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui
+- **Extraction:** Manually typed from the book's index
+- **`option` values:** empty (book does not assign JLPT levels)
+- **Only** `title-en` is present (no `title-jp`)
+- **Aliases:** Some entries have a non-empty `alias-of` column pointing to a canonical entry. Only canonical entries belong in equivalence groups — alias entries should be ignored during clustering.
+
+Example rows:
+
+| id | title-en |
+|----|----------|
+| `te-iru` | te iru |
+| `nara` | nara |
+
+### Kanshudo — `kanshudo-grammar.tsv` (~1300 entries)
+
+- **Source:** https://www.kanshudo.com/grammar/index
+- **Extraction script:** `kanshudo-website.js` (paste into browser console on that page)
+- **`level` values:** `Useful1` through `Useful6` (usage/vocabulary notes), `Essential` (core grammar), or blank
+- **Columns:** `id`, `href`, `level`, `title`, `gloss` — no `title-jp`, no `alias-of`
+- **Key format:** English slugs with underscores, e.g. `passive_voice`, `te_form`
+- **Note:** The ~743 "Useful1–6" entries are usage/vocabulary notes rather than pure grammar topics; they are included in the database but may not always be the best match for grammar annotations. Prefer Bunpro, DBJG, or Genki for standard grammar points; use Kanshudo when it covers something the other databases lack.
+
+Example rows:
+
+| id | level | title |
+|----|-------|-------|
+| `passive_voice` | Essential | Passive voice |
+| `te_form` | Essential | Te-form |
+
 ## Planned Markdown usage
 
 Users will annotate content with a `<details><summary>Grammar</summary>` block,

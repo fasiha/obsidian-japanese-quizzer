@@ -452,6 +452,7 @@ learning projects:
 | [grammar-bunpro.tsv](grammar/grammar-bunpro.tsv) | ~943 Bunpro grammar topics (ID, title, JLPT level, meaning). Scraped from [bunpro.jp](https://bunpro.jp/grammar_points) — re-run with `grammar/bunpro-website.js` in the browser console to update. |
 | [grammar-stolaf-genki.tsv](grammar/grammar-stolaf-genki.tsv) | ~123 Genki grammar topics. Scraped from [St. Olaf's Genki grammar index](https://wp.stolaf.edu/japanese/grammar-index/) — re-run with `grammar/stolaf-genki-website.js` in the browser console to update. |
 | [grammar-dbjg.tsv](grammar/grammar-dbjg.tsv) | ~370 DBJG grammar topics. Manually typed from the book's index (*A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui). |
+| [kanshudo-grammar.tsv](grammar/kanshudo-grammar.tsv) | ~1300 Kanshudo grammar topics (ID, URL, level, title, gloss). Scraped from [kanshudo.com/grammar/index](https://www.kanshudo.com/grammar/index) — re-run with `grammar/kanshudo-website.js` in the browser console to update. |
 | [transitive-pairs.json](transitive-intransitive/transitive-pairs.json) | ~56 core transitive/intransitive verb pairs selected for frequency and pedagogical value, with JMDict IDs and drill sentences |
 | [all-transitive-pairs.json](transitive-intransitive/all-transitive-pairs.json) | ~230 candidate pairs (superset of the above) assembled from sljfaq.org and an Anki deck, retained as an archive |
 | [wanikani-kanji-graph.json](wanikani/wanikani-kanji-graph.json) | Kanji → WaniKani component character mappings |
