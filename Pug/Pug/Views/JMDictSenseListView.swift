@@ -47,6 +47,7 @@ struct JMDictSenseListView: View {
                     let forms: [String] = sense.appliesToKanji == ["*"] ? writtenTexts : sense.appliesToKanji
                     Text("Applies to: \(forms.joined(separator: ", "))")
                         .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 if kanaTexts.count > 1 && !sense.appliesToKana.isEmpty && sense.appliesToKana != ["*"] {
                     Text("Read as: \(sense.appliesToKana.joined(separator: ", "))")
