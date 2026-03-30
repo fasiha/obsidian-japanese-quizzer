@@ -20,6 +20,8 @@ From the MeCab output, collect all **content word lemmas**: nouns, verbs (dictio
 - Pure grammar morphemes (て、に、は、が、etc.)
 - 無い lemma
 
+Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞): words like 度 (たび, "each time"), 本 (ほん, counter for long objects), 枚 (まい, counter for flat things) carry real lexical meaning and should be annotated.
+
 ## Step 2 — Look up each lemma in JMDict
 
 For each content word lemma, run:

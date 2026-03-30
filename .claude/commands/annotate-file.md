@@ -24,7 +24,7 @@ For each unique Japanese line (skip YAML frontmatter, blank lines, section heade
 echo "{line}" | mecab
 ```
 
-Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs. Skip particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い.
+Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs. Skip particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い. Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞) — words like 度 (たび), 本 (ほん), 枚 (まい) carry real lexical meaning.
 
 ### 2b — Look up each lemma in JMDict
 
