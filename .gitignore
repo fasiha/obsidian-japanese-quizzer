@@ -26,6 +26,9 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 *.md
 !.claude/commands/*.md
 !TODO-*md
+*.webm
+*.ass
+*.srt
 
 vocab.json
 grammar.json

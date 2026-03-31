@@ -68,6 +68,13 @@ for (const filePath of mdFiles) {
   const relPath = path.relative(projectRoot, filePath);
 
   for (const { bullet, line } of bullets) {
+    // If the bullet starts with a bare JMDict ID (all digits), trust it directly.
+    const directIdMatch = bullet.match(/^(\d+)/);
+    if (directIdMatch) {
+      totalChecked++;
+      continue;
+    }
+
     const tokens = extractJapaneseTokens(bullet);
     if (tokens.length === 0) continue;
     totalChecked++;

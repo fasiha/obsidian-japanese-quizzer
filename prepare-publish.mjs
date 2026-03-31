@@ -270,9 +270,10 @@ function extractVocabBullets(content) {
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
       if (!bullet) continue;
-      // Narration = text after the leading Japanese tokens
+      // Narration = text after the leading Japanese tokens (or after the bare ID).
       const parts = bullet.split(/\s+/);
       let j = 0;
+      if (/^\d+$/.test(parts[0])) j = 1; // skip bare JMDict ID prefix
       while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
       const narration = parts.slice(j).join(" ").trim() || null;
       bullets.push({ bullet, line, context, narration });
@@ -377,20 +378,26 @@ for (const filePath of mdFiles) {
 
   // --- Vocab extraction ---
   for (const { bullet, line, context, narration } of extractVocabBullets(content)) {
-    const tokens = extractJapaneseTokens(bullet);
-    if (tokens.length === 0) continue;
+    // If the bullet starts with a bare JMDict ID (all digits), trust it directly.
+    const directIdMatch = bullet.match(/^(\d+)/);
+    let wordId;
+    if (directIdMatch) {
+      wordId = directIdMatch[1];
+    } else {
+      const tokens = extractJapaneseTokens(bullet);
+      if (tokens.length === 0) continue;
 
-    const idSets = tokens.map((token) => new Set(findExactIds(db, token)));
-    const matchIds = [...intersectSets(idSets)];
+      const idSets = tokens.map((token) => new Set(findExactIds(db, token)));
+      const matchIds = [...intersectSets(idSets)];
 
-    if (matchIds.length !== 1) {
-      errors.push(
-        `${relPath}:${line}: bullet "${bullet}" matched ${matchIds.length} JMDict entries (expected 1)`,
-      );
-      continue;
+      if (matchIds.length !== 1) {
+        errors.push(
+          `${relPath}:${line}: bullet "${bullet}" matched ${matchIds.length} JMDict entries (expected 1)`,
+        );
+        continue;
+      }
+      wordId = String(matchIds[0]);
     }
-
-    const wordId = String(matchIds[0]);
 
     const occurrence = { line, context, narration };
     if (wordMap.has(wordId)) {
