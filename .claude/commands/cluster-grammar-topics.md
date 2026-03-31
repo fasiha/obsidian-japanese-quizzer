@@ -72,10 +72,10 @@ not exist. When a new topic bundles multiple words (like あげる・くれる�
 each component separately in hiragana.
 
 If a new topic matches an entry in another database that ISN'T in grammar.json,
-**still add it to the equivalence group** — the work of verifying the match has
-already been done, and pre-grouping means the topic will be correctly clustered
-if the user annotates it later. Note these cross-database additions in the
-report so the user is aware.
+**still add it to the equivalence group immediately** — the work of verifying the
+match has already been done, so cluster them now rather than waiting. Note these
+cross-database additions in the Step 6 report so the user knows the grouping is
+already complete.
 
 ## Step 4: Apply equivalences
 
@@ -151,9 +151,10 @@ For each group:
      or "do not use X" with only enough context to identify it unambiguously.
      Example:
      `"ら抜き言葉: 食べれる/見れる are colloquially accepted — do not mark wrong"`
-   - `stub`: set to `true` if `contentItems` contains no sentences with non-empty
-     `sentence` field (description based on web pages + your knowledge only);
-     omit the field otherwise
+   - `stub`: set to `true` **only** if every entry in `contentItems` has an empty
+     `sentence` field (i.e. the description is based solely on web pages and prior
+     knowledge, with no user content sentences). If any `contentItems` entry has a
+     non-empty `sentence`, omit `stub` entirely — do not set it to `true`.
 
 3. **Avoid copyright**: do not reproduce example sentences verbatim from
    textbooks or reference pages. Paraphrase explanations; write original examples.
@@ -198,8 +199,9 @@ are up to date.
 Show the user a summary:
 - Which topics were added as singletons (if any new topics were found)
 - Which topics were merged into existing groups (if any)
-- Any cross-database matches found in the TSVs that the user might want to
-  annotate in their Markdown files
+- Any cross-database topics added to equivalence groups that aren't yet referenced
+  in the user's Markdown files (these are already clustered; mention them only so
+  the user knows the grouping is complete and can annotate them at their leisure)
 - Which equivalence groups had descriptions written or updated
 - Which groups remain as stubs (generated without user content sentences)
 

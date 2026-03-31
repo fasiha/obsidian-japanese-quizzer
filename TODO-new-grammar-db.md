@@ -41,7 +41,15 @@ and when to prefer it.
 - **Kanshudo:** added as last column in table; added to grep command; noted
   as fallback when other databases lack coverage.
 
-### 4. `grammar/generate-all-topics.mjs`
+### 4. `.claude/scripts/check-grammar.mjs` — `VALID_SOURCES`
+
+Hardcoded set of known source prefixes. Add the new source name here or
+`check-grammar.mjs` will report every bullet from that source as
+"unknown source".
+
+- **Template:** add `"newsource"` to the `VALID_SOURCES` set.
+
+### 5. `grammar/generate-all-topics.mjs`
 
 Generates `grammar/all-topics.json` (used by TestHarness to load any topic
 without running prepare-publish first). Add a `parseTSV(...)` loop and a
@@ -51,14 +59,14 @@ matching entry in the `sources` map.
   Column names may differ from the standard `title-en`/`option` names used
   by the other three sources.
 
-### 5. `README.md` — grammar data-files table (~line 452)
+### 6. `README.md` — grammar data-files table (~line 452)
 
 Lists each TSV with a description and scraping instructions. Add a row with:
 - Approximate entry count
 - Source URL
 - Extraction script name
 
-### 6. `grammar/Grammar.md`
+### 7. `grammar/Grammar.md`
 
 Documents each source's schema with example rows. Add a section covering:
 - Source URL and extraction script
