@@ -58,7 +58,7 @@ Example rows:
 
 ### Kanshudo — `kanshudo-grammar.tsv` (~1300 entries)
 
-- **Source:** https://www.kanshudo.com/grammar/index
+- **Source:** https://www.kanshudo.com/grammar/overview
 - **Extraction script:** `kanshudo-website.js` (paste into browser console on that page)
 - **`level` values:** `Useful1` through `Useful6` (usage/vocabulary notes), `Essential` (core grammar), or blank
 - **Columns:** `id`, `href`, `level`, `title`, `gloss` — no `title-jp`, no `alias-of`
