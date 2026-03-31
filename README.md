@@ -453,6 +453,7 @@ learning projects:
 | [grammar-stolaf-genki.tsv](grammar/grammar-stolaf-genki.tsv) | ~123 Genki grammar topics. Scraped from [St. Olaf's Genki grammar index](https://wp.stolaf.edu/japanese/grammar-index/) — re-run with `grammar/stolaf-genki-website.js` in the browser console to update. |
 | [grammar-dbjg.tsv](grammar/grammar-dbjg.tsv) | ~370 DBJG grammar topics. Manually typed from the book's index (*A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui). |
 | [kanshudo-grammar.tsv](grammar/kanshudo-grammar.tsv) | ~1300 Kanshudo grammar topics (ID, URL, level, title, gloss). Scraped from [kanshudo.com/grammar/index](https://www.kanshudo.com/grammar/overview) — re-run with `grammar/kanshudo-website.js` in the browser console to update. |
+| [grammar-imabi.tsv](grammar/grammar-imabi.tsv) | Hand-curated IMABI lessons (ID, URL, level, title). Small set of advanced/classical topics not covered by other databases. URLs maintained manually. |
 | [transitive-pairs.json](transitive-intransitive/transitive-pairs.json) | ~56 core transitive/intransitive verb pairs selected for frequency and pedagogical value, with JMDict IDs and drill sentences |
 | [all-transitive-pairs.json](transitive-intransitive/all-transitive-pairs.json) | ~230 candidate pairs (superset of the above) assembled from sljfaq.org and an Anki deck, retained as an archive |
 | [wanikani-kanji-graph.json](wanikani/wanikani-kanji-graph.json) | Kanji → WaniKani component character mappings |

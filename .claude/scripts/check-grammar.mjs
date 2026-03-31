@@ -24,7 +24,7 @@ import {
   extractGrammarBullets,
 } from "./shared.mjs";
 
-const VALID_SOURCES = new Set(["genki", "bunpro", "dbjg", "kanshudo"]);
+const VALID_SOURCES = new Set(["genki", "bunpro", "dbjg", "kanshudo", "imabi"]);
 
 const grammarDb = loadGrammarDatabases();
 const mdFiles = findMdFiles(projectRoot);

@@ -83,6 +83,20 @@ for (const row of parseTSV("kanshudo-grammar.tsv")) {
   };
 }
 
+for (const row of parseTSV("grammar-imabi.tsv")) {
+  const key = "imabi:" + row.id;
+  topics[key] = {
+    source: "imabi",
+    id: row.id,
+    titleEn: row.title,
+    titleJp: null,
+    level: row.level,
+    href: row.href || null,
+    sources: [],
+    equivalenceGroup: null,
+  };
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
   sources: {
@@ -90,6 +104,7 @@ const output = {
     bunpro: { name: "Bunpro", type: "online" },
     dbjg: { name: "Dictionary of Basic Japanese Grammar", type: "book" },
     kanshudo: { name: "Kanshudo grammar index", type: "online" },
+    imabi: { name: "IMABI", type: "online" },
   },
   topics,
 };

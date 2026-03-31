@@ -1,8 +1,8 @@
 ---
-description: Annotate a Japanese sentence with grammar topic IDs from Genki, Bunpro, DBJG, and Kanshudo
+description: Annotate a Japanese sentence with grammar topic IDs from Genki, Bunpro, DBJG, Kanshudo, and IMABI
 ---
 
-Given a Japanese sentence (or short passage) in `$ARGUMENTS`, identify the grammar constructions present and match each to a single topic ID from one of the grammar databases (Genki, Bunpro, DBJG, Kanshudo).
+Given a Japanese sentence (or short passage) in `$ARGUMENTS`, identify the grammar constructions present and match each to a single topic ID from one of the grammar databases (Genki, Bunpro, DBJG, Kanshudo, IMABI).
 
 ## Step 1 — Identify grammar constructions
 
@@ -22,7 +22,7 @@ For each construction, note:
 
 ## Step 2 — Search the grammar databases
 
-For each construction, search all four TSV files. Try both a Japanese keyword and an English keyword. The TSV columns are:
+For each construction, search all five TSV files. Try both a Japanese keyword and an English keyword. The TSV columns are:
 
 | File | Columns |
 |---|---|
@@ -30,11 +30,12 @@ For each construction, search all four TSV files. Try both a Japanese keyword an
 | `grammar/grammar-dbjg.tsv` | id, href, option, title-en, alias-of |
 | `grammar/grammar-stolaf-genki.tsv` | id, href, option, title-en |
 | `grammar/kanshudo-grammar.tsv` | id, href, level, title, gloss |
+| `grammar/grammar-imabi.tsv` | id, href, level, title |
 
 Search command:
 
 ```bash
-grep -i "{keyword}" grammar/grammar-bunpro.tsv grammar/grammar-dbjg.tsv grammar/grammar-stolaf-genki.tsv grammar/kanshudo-grammar.tsv
+grep -i "{keyword}" grammar/grammar-bunpro.tsv grammar/grammar-dbjg.tsv grammar/grammar-stolaf-genki.tsv grammar/kanshudo-grammar.tsv grammar/grammar-imabi.tsv
 ```
 
 Try multiple keywords if needed — for example, `ように` first, then `so that`, then `in order`. DBJG IDs are romanized slugs (e.g. `yoni1`, `te-iru`), so also try romaji stems.
@@ -55,7 +56,7 @@ Use the WebFetch tool on the URL. Only do this when necessary to resolve ambigui
 
 ## Step 3 — Select one best match
 
-For each construction, pick a **single** ID from whichever database has the most precise match. Prefer Bunpro when it has a good match (broadest coverage). Fall back to DBJG, Genki, or Kanshudo if they are more precise. Kanshudo is a good choice when it covers a construction not well represented in the other three databases.
+For each construction, pick a **single** ID from whichever database has the most precise match. Prefer Bunpro when it has a good match (broadest coverage). Fall back to DBJG, Genki, or Kanshudo if they are more precise. Kanshudo is a good choice when it covers a construction not well represented in the other three databases. Use IMABI for classical constructions or fine-grained topics (classical particles, classical adjective conjugation, detailed particle analysis) not well covered elsewhere. Note that `grammar-imabi.tsv` is a small hand-curated list of relevant entries, not an exhaustive scrape like the other databases — only use an `imabi:` ID if it actually appears in that file.
 
 - If a DBJG entry has a non-empty `alias-of` field, use the canonical ID listed there instead.
 - Do not invent IDs — only use IDs that actually appear in the TSV files.

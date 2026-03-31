@@ -257,6 +257,9 @@ export function loadGrammarDatabases() {
   // Kanshudo: id, href, level, title, gloss  (no titleJp, no alias-of)
   loadTsv(path.join(GRAMMAR_DIR, "kanshudo-grammar.tsv"), "kanshudo");
 
+  // IMABI: id, href, level, title  (no titleJp, no alias-of)
+  loadTsv(path.join(GRAMMAR_DIR, "grammar-imabi.tsv"), "imabi");
+
   return map;
 }
 
