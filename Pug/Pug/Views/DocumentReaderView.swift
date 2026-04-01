@@ -475,14 +475,14 @@ func parseAudioClips(_ markdown: String) -> [Int: AudioClip] {
 
 /// Tags that are meaningful in Obsidian but have no iOS rendering support yet.
 /// Strip them from line text so they don't appear as raw HTML in the reader.
-private let unsupportedHtmlTagPattern: NSRegularExpression = {
+let unsupportedHtmlTagPattern: NSRegularExpression = {
     // Matches self-closing tags like <audio ... /> and paired open tags like <audio ...>
     // for the blocklisted tag names.
     let pattern = #"<(audio)[^>]*/?>|</(audio)>"#
     return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
 }()
 
-private func stripUnsupportedHtmlTags(_ line: String) -> String {
+func stripUnsupportedHtmlTags(_ line: String) -> String {
     let range = NSRange(line.startIndex..., in: line)
     return unsupportedHtmlTagPattern.stringByReplacingMatches(in: line, range: range, withTemplate: "")
         .trimmingCharacters(in: .whitespaces)
