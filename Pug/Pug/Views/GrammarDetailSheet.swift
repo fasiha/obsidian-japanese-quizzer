@@ -131,6 +131,14 @@ struct GrammarDetailSheet: View {
                             .background(.orange.opacity(0.15), in: Capsule())
                             .foregroundStyle(.orange)
                     }
+                    if topic.classicalJapanese == true && t.prefixedId == topic.prefixedId {
+                        Text("classical")
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.purple.opacity(0.15), in: Capsule())
+                            .foregroundStyle(.purple)
+                    }
                 }
             }
         }
@@ -262,7 +270,13 @@ struct GrammarDetailSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(enrolled ? .red : .accentColor)
+                    .disabled(topic.classicalJapanese == true && !enrolled)
                 }
+            }
+            if topic.classicalJapanese == true && !enrolled {
+                Text("Classical Japanese topics are reference-only and cannot be enrolled.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

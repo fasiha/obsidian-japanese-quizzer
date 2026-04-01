@@ -711,6 +711,7 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
     if (group.subUses) topic.subUses = group.subUses;
     if (group.cautions) topic.cautions = group.cautions;
     if (group.stub) topic.stub = group.stub;
+    if (group.classicalJapanese) topic.classicalJapanese = group.classicalJapanese;
   }
 }
 

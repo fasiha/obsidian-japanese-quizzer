@@ -230,6 +230,10 @@ if isGrammarMode {
         fputs("Warning: topic '\(topicId)' description is a stub (generated without user content sentences).\n", stderr)
         fputs("  Annotate the topic in a Markdown file and re-run /cluster-grammar-topics to improve it.\n", stderr)
     }
+    if topic.classicalJapanese == true {
+        fputs("Warning: topic '\(topicId)' is a Classical Japanese topic (reference-only).\n", stderr)
+        fputs("  Classical topics are filtered out of the quiz pool and should not reach the harness.\n", stderr)
+    }
 
     // Resolve --extra-grammar topic1,topic2 into GrammarExtraTopic values.
     // Unknown IDs are warned about but not fatal, so the user can still test with partial lists.

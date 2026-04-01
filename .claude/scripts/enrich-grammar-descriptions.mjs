@@ -330,13 +330,19 @@ function write() {
       process.stderr.write(`[warn] no equivalence group found for topics: ${desc.topics.join(", ")}\n`);
       continue;
     }
-    // Merge description fields into the group, preserving topics and any other fields
+    // Merge description fields into the group, preserving topics and any other hand-set fields.
+    // classicalJapanese may come from the payload (skill-detected) or already be in the file
+    // (hand-set); either way it is preserved. A payload value of false/absent clears it only
+    // if the file also has it absent — a hand-set true is never cleared by an absent payload.
+    const { summary: _s, subUses: _u, cautions: _c, stub: _st, classicalJapanese: _cj, ...preserved } = groups[idx];
+    const classicalJapanese = desc.classicalJapanese || _cj || undefined;
     groups[idx] = {
-      topics: groups[idx].topics,
+      ...preserved,
       summary: desc.summary,
       subUses: desc.subUses,
       cautions: desc.cautions,
       ...(desc.stub ? { stub: true } : {}),
+      ...(classicalJapanese ? { classicalJapanese: true } : {}),
     };
     written++;
   }

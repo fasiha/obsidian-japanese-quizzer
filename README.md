@@ -131,11 +131,18 @@ Two facets, drawn from three curated sources:
 | production | English context sentence | Japanese using target grammar |
 | recognition | Japanese sentence | English meaning |
 
-**Data sources:** Genki (~123 topics), Bunpro (~943 topics), DBJG (~370 topics). Topics
-covering the same grammar point across sources are clustered into equivalence groups (see
+**Data sources:** Genki (~123 topics), Bunpro (~943 topics), DBJG (~370 topics), Kanshudo
+(~930 topics), and opportunistically Imabi (~5 topics). Topics covering the same grammar
+point across sources are clustered into equivalence groups (see
 [grammar-equivalences.json](grammar/grammar-equivalences.json) and
 [cluster-grammar-topics.md](.claude/commands/cluster-grammar-topics.md)). Reviewing one
 topic in a group propagates the score to all siblings.
+
+Equivalence groups support two hand-set flags: `stub: true` (description generated without
+any user content sentences — needs enrichment) and `classicalJapanese: true` (Classical
+Japanese topic — shown with a "classical" badge in the detail sheet, not learnable,
+and filtered out of the quiz pool). Both flags survive re-enrichment via
+`enrich-grammar-descriptions.mjs --write`.
 
 Currently all grammar quizzes are multiple choice. Each question targets a different
 sub-use of the grammar point to ensure diversity across reviews.
@@ -448,7 +455,7 @@ learning projects:
 
 | File | Description |
 |---|---|
-| [grammar-equivalences.json](grammar/grammar-equivalences.json) | ~300 equivalence groups clustering grammar topics across Genki, Bunpro, and DBJG. Each group has a `summary`, `subUses`, and `cautions` list. |
+| [grammar-equivalences.json](grammar/grammar-equivalences.json) | ~300 equivalence groups clustering grammar topics across Genki, Bunpro, and DBJG. Each group has a `summary`, `subUses`, and `cautions` list. Optional hand-set flags: `stub` (no user content sentences yet) and `classicalJapanese` (reference-only, not enrollable). |
 | [grammar-bunpro.tsv](grammar/grammar-bunpro.tsv) | ~943 Bunpro grammar topics (ID, title, JLPT level, meaning). Scraped from [bunpro.jp](https://bunpro.jp/grammar_points) — re-run with `grammar/bunpro-website.js` in the browser console to update. |
 | [grammar-stolaf-genki.tsv](grammar/grammar-stolaf-genki.tsv) | ~123 Genki grammar topics. Scraped from [St. Olaf's Genki grammar index](https://wp.stolaf.edu/japanese/grammar-index/) — re-run with `grammar/stolaf-genki-website.js` in the browser console to update. |
 | [grammar-dbjg.tsv](grammar/grammar-dbjg.tsv) | ~370 DBJG grammar topics. Manually typed from the book's index (*A Dictionary of Basic Japanese Grammar*, Makino & Tsutsui). |

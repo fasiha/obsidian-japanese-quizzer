@@ -54,6 +54,7 @@ struct GrammarQuizItem: Identifiable {
     let subUses: [String]?
     let cautions: [String]?
     let isStub: Bool?
+    let classicalJapanese: Bool?
     /// Recent review notes for this topic+facet (from reviews.notes). Used by generation
     /// prompts to avoid repeating the same sub-use across consecutive quiz sessions.
     let recentNotes: [String]
@@ -166,12 +167,14 @@ struct GrammarQuizContext {
                     subUses:             topic.subUses,
                     cautions:            topic.cautions,
                     isStub:              topic.isStub,
+                    classicalJapanese:   topic.classicalJapanese,
                     recentNotes:         recentNotes
                 ))
             }
         }
 
-        let sorted = items.sorted { $0.recall < $1.recall }
+        let filtered = items.filter { $0.classicalJapanese != true }
+        let sorted = filtered.sorted { $0.recall < $1.recall }
         return collapseEquivalenceGroups(sorted)
     }
 

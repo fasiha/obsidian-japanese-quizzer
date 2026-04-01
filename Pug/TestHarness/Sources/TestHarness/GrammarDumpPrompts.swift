@@ -99,6 +99,7 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         subUses:             topic.subUses,
         cautions:            topic.cautions,
         isStub:              topic.isStub,
+        classicalJapanese:   topic.classicalJapanese,
         recentNotes:         recentNotes
     )
 }

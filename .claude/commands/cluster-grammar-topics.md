@@ -156,6 +156,16 @@ For each group:
      `sentence` field (i.e. the description is based solely on web pages and prior
      knowledge, with no user content sentences). If any `contentItems` entry has a
      non-empty `sentence`, omit `stub` entirely — do not set it to `true`.
+   - `classicalJapanese`: set to `true` when **every** topic in the group is
+     exclusively a Classical Japanese grammar point with no modern-Japanese
+     sub-use. Strong signals: the IMABI TSV shows `level: Classical` for all
+     topics, or the fetched reference pages describe only classical/archaic usage
+     (classical auxiliaries, 係り結び, archaic adjective conjugation, etc.).
+     Do **not** set it for groups that mix classical and modern survivals — for
+     example, ずに (classical root, but the modern adverbial form is an active
+     N3 grammar point) should not be flagged. When in doubt, omit the field.
+     If the field is already `true` in the existing description (shown in
+     `existingDescription`), preserve it in the payload.
 
 3. **Avoid copyright**: do not reproduce example sentences verbatim from
    textbooks or reference pages. Paraphrase explanations; write original examples.
@@ -181,6 +191,13 @@ back in one batch. Build a JSON object with this shape:
       "summary": "...",
       "subUses": ["...", "..."],
       "cautions": ["..."]
+    },
+    {
+      "topics": ["imabi:bound-particles"],
+      "summary": "...",
+      "subUses": ["...", "..."],
+      "cautions": ["..."],
+      "classicalJapanese": true
     }
   ]
 }
@@ -205,5 +222,6 @@ Show the user a summary:
   the user knows the grouping is complete and can annotate them at their leisure)
 - Which equivalence groups had descriptions written or updated
 - Which groups remain as stubs (generated without user content sentences)
+- Which groups are marked `classicalJapanese: true` (reference-only, not enrollable)
 
 Remind the user to review the diff of `grammar/grammar-equivalences.json` before committing.
