@@ -28,5 +28,5 @@ mkdir "$DEST"
 for f in "$SIM_DIR"/quiz.sqlite*; do
   [[ -e "$f" ]] || continue
   cp "$f" "$DEST/"
-  echo "Copied: $(basename "$f") → $DEST/"
+  echo "Copied: $f → $DEST/"
 done

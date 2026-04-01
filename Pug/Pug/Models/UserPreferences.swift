@@ -58,16 +58,25 @@ final class UserPreferences {
         didSet { UserDefaults.standard.set(localModel.rawValue, forKey: Keys.localModel) }
     }
 
+    /// Security-scoped bookmark for the external audio folder (e.g. the Obsidian vault).
+    /// Nil means no external folder is configured; audio lookup falls back to Documents only.
+    var audioFolderBookmark: Data? {
+        didSet { UserDefaults.standard.set(audioFolderBookmark, forKey: Keys.audioFolderBookmark) }
+    }
+
     init() {
         let storedStyle = UserDefaults.standard.string(forKey: Keys.quizStyle) ?? ""
         quizStyle = QuizStyle(rawValue: storedStyle) ?? .varied
 
         let storedModel = UserDefaults.standard.string(forKey: Keys.localModel) ?? ""
         localModel = LocalModel(rawValue: storedModel) ?? .haiku
+
+        audioFolderBookmark = UserDefaults.standard.data(forKey: Keys.audioFolderBookmark)
     }
 
     private enum Keys {
-        static let quizStyle  = "quizStyle"
-        static let localModel = "localModel"
+        static let quizStyle          = "quizStyle"
+        static let localModel         = "localModel"
+        static let audioFolderBookmark = "audioFolderBookmark"
     }
 }

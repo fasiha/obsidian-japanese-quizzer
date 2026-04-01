@@ -18,6 +18,7 @@ struct PugApp: App {
 /// Falls back to an error screen if the DB can't be opened.
 struct AppRootView: View {
     @State private var preferences = UserPreferences()
+    @State private var clipPlayer = ClipPlayer()
     @State private var session: QuizSession? = nil
     @State private var grammarSession: GrammarAppSession? = nil
     @State private var grammarStore = GrammarStore()
@@ -44,6 +45,7 @@ struct AppRootView: View {
                         .environment(pairCorpus)
                         .environment(grammarStore)
                         .environment(corpusStore)
+                        .environment(clipPlayer)
                 } else {
                     ContentUnavailableView(
                         "Setup Required",

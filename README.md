@@ -181,6 +181,8 @@ kanji characters. Non-annotated lines with Markdown formatting (bold, italic, et
 rendered via Markdownosaur. Both use Dynamic Type so the text scales with the system
 font size setting.
 
+**Audio playback for lyrics:** Lines tagged with timed audio clips (via `<audio data-src="file.m4a#t=START,END" />` per my [Timed Audio](https://github.com/fasiha/obsidian-timed-audio) Obsidian plugin) show an inline ▶ / ⏹ button. Tap to hear the audio segment. Audio files are located either in Pug's Documents folder (dropped via the Files app) or in an external folder (like your Obsidian vault) linked once via Settings. The feature is invisible to users without audio files — no buttons, no setup burden.
+
 The reader document list mirrors the `/`-delimited title hierarchy of your Markdown
 files as nested disclosure groups — the same visual pattern as the Vocab and Grammar
 browsers.

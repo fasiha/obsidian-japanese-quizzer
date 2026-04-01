@@ -31,6 +31,8 @@ struct DocumentReaderView: View {
     @Environment(VocabCorpus.self) private var corpus
     @Environment(GrammarStore.self) private var grammarStore
     @Environment(CorpusStore.self) private var corpusStore
+    @Environment(UserPreferences.self) private var preferences
+    @Environment(ClipPlayer.self) private var clipPlayer
 
     @State private var selectedWord: VocabItem? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
@@ -41,6 +43,8 @@ struct DocumentReaderView: View {
     @State private var vocabMap: [Int: [String]] = [:]
     @State private var grammarMap: [Int: [String]] = [:]
     @State private var chipFurigana: [String: [FuriganaSegment]] = [:]  // wordId → segments
+    @State private var audioClipMap: [Int: AudioClip] = [:]             // lineNumber → clip
+    @State private var audioAvailableLines: Set<Int> = []               // lines with a reachable audio file
     @State private var highlightedLine: Int? = nil
 
     var body: some View {
@@ -103,6 +107,20 @@ struct DocumentReaderView: View {
             if let records = try? await db.enrolledGrammarRecords() {
                 enrolledTopicIds = Set(records.map(\.wordId))
             }
+            let clips = parseAudioClips(entry.markdown)
+            audioClipMap = clips
+            let bookmark = preferences.audioFolderBookmark
+            var available: Set<Int> = []
+            for (lineNumber, clip) in clips {
+                if AudioFileFinder.fileExists(for: clip.audioFile, externalFolderBookmark: bookmark) {
+                    available.insert(lineNumber)
+                    print("[DocumentReaderView] Audio file found: \(clip.audioFile)")
+                } else {
+                    print("[DocumentReaderView] Audio file NOT found: \(clip.audioFile)")
+                }
+            }
+            audioAvailableLines = available
+            print("[DocumentReaderView] \(available.count) of \(clips.count) audio files available")
         }
     }
 
@@ -115,13 +133,30 @@ struct DocumentReaderView: View {
         let hasAnnotations = !vocabIds.isEmpty || !grammarIds.isEmpty
 
         VStack(alignment: .leading, spacing: 2) {
-            MarkdownLineView(text: line.text)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    (highlightedLine == line.lineNumber ? Color.yellow.opacity(0.35) : Color.clear)
-                        .animation(.easeOut(duration: 0.6), value: highlightedLine)
-                )
+            HStack(alignment: .top, spacing: 6) {
+                MarkdownLineView(text: line.text)
+                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        (highlightedLine == line.lineNumber ? Color.yellow.opacity(0.35) : Color.clear)
+                            .animation(.easeOut(duration: 0.6), value: highlightedLine)
+                    )
+
+                if audioAvailableLines.contains(line.lineNumber),
+                   let clip = audioClipMap[line.lineNumber] {
+                    let isPlaying = clipPlayer.currentClip == clip
+                    Button {
+                        clipPlayer.play(clip: clip,
+                                        externalFolderBookmark: preferences.audioFolderBookmark)
+                    } label: {
+                        Image(systemName: isPlaying ? "stop.circle" : "play.circle")
+                            .imageScale(.large)
+                            .foregroundStyle(isPlaying ? Color.accentColor : Color.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 6)
+                }
+            }
 
             if hasAnnotations {
                 let isExpanded = Binding(
@@ -403,6 +438,39 @@ func parseLines(_ markdown: String) -> [(lineNumber: Int, text: String)] {
         result.append((lineNumber: lineNumber, text: stripUnsupportedHtmlTags(line)))
     }
     return result
+}
+
+// MARK: - Audio clip parser
+
+private let audioClipPattern: NSRegularExpression = {
+    // Matches data-src="filename.m4a#t=START,END" inside any <audio> tag.
+    let pattern = ##"data-src="([^"#]+?\.m4a)#t=([0-9.]+),([0-9.]+)""##
+    return try! NSRegularExpression(pattern: pattern)
+}()
+
+/// Scans all lines of `markdown` for `<audio data-src="file.m4a#t=START,END" />` tags and
+/// returns a map from 1-based line number to the extracted `AudioClip`.
+/// Line numbers match those produced by `parseLines` for non-skipped lines.
+func parseAudioClips(_ markdown: String) -> [Int: AudioClip] {
+    var map: [Int: AudioClip] = [:]
+    let lines = markdown.components(separatedBy: "\n")
+    for (index, line) in lines.enumerated() {
+        let lineNumber = index + 1
+        let nsLine = line as NSString
+        let range = NSRange(location: 0, length: nsLine.length)
+        guard let match = audioClipPattern.firstMatch(in: line, range: range) else { continue }
+        let file  = nsLine.substring(with: match.range(at: 1))
+        let start = Double(nsLine.substring(with: match.range(at: 2))) ?? 0
+        let end   = Double(nsLine.substring(with: match.range(at: 3))) ?? 0
+        map[lineNumber] = AudioClip(audioFile: file, start: start, end: end)
+        print("[DocumentReaderView] Found audio clip: \(file) (\(start)–\(end)s) at line \(lineNumber)")
+    }
+    if map.isEmpty {
+        print("[DocumentReaderView] No audio clips found in document")
+    } else {
+        print("[DocumentReaderView] Parsed \(map.count) audio clip(s)")
+    }
+    return map
 }
 
 /// Tags that are meaningful in Obsidian but have no iOS rendering support yet.

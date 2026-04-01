@@ -77,10 +77,13 @@ For words **not in JMDict**:
 ```
 - Not in JMDict: {word as it appears in text} — {concise meaning in context}
 ```
+For proper nouns like names, places:
+```
+- Proper noun: {word as it appears in text} — {MeCab-proposed reading} — {in English, your guess about whether this is a famous place (example: "Uji, suburb of Kyoto"), a famous person ("Fukuzawa Yukichi, famous author"), or just some person or place's name}
+```
 
 Do **not** include English meanings for JMDict words.
 Do **not** annotate grammar (て-form, たら, ので, etc.) — vocabulary only.
-Do **not** annotate proper names (people, places).
 
 ## Step 4 — Report
 

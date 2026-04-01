@@ -2,11 +2,14 @@
 // User-configurable quiz preferences.
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     var db: QuizDB? = nil
     @Environment(UserPreferences.self) private var preferences
     @State private var shareURL: URL? = nil
+    @State private var showFolderPicker = false
+    @State private var audioFolderURL: URL? = nil
 
     var body: some View {
         @Bindable var prefs = preferences
@@ -38,6 +41,44 @@ struct SettingsView: View {
                     Text(preferences.localModel.description)
                 }
 
+                Section {
+                    if let folderURL = audioFolderURL {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(folderURL.lastPathComponent)
+                                .font(.body)
+                            Text(folderURL.path)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        Button("Change folder…") { showFolderPicker = true }
+                        Button("Remove folder", role: .destructive) {
+                            @Bindable var prefs = preferences
+                            prefs.audioFolderBookmark = nil
+                            audioFolderURL = nil
+                        }
+                    } else {
+                        Button("Choose audio folder…") { showFolderPicker = true }
+                    }
+                } header: {
+                    Text("Audio files")
+                } footer: {
+                    Text("Point Pug at your Obsidian vault (or any folder) to play timed audio clips while reading lyrics. Audio files can also be added directly via the Files app.")
+                }
+                .fileImporter(
+                    isPresented: $showFolderPicker,
+                    allowedContentTypes: [.folder]
+                ) { result in
+                    guard case .success(let url) = result else { return }
+                    guard url.startAccessingSecurityScopedResource() else { return }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let bookmark = try? url.bookmarkData(options: .minimalBookmark) {
+                        @Bindable var prefs = preferences
+                        prefs.audioFolderBookmark = bookmark
+                        audioFolderURL = url
+                    }
+                }
+
                 if db != nil {
                     Section("Export") {
                         if let url = shareURL {
@@ -55,6 +96,11 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .task {
+            if let bookmark = preferences.audioFolderBookmark {
+                var stale = false
+                audioFolderURL = try? URL(resolvingBookmarkData: bookmark, options: .withoutUI,
+                                          relativeTo: nil, bookmarkDataIsStale: &stale)
+            }
             guard let db else { return }
             try? await db.checkpointWAL()
             shareURL = try? FileManager.default.url(

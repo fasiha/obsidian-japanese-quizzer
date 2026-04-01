@@ -305,7 +305,8 @@ if (existsSync(outPath)) {
       for (const refs of Object.values(w.references ?? {})) {
         for (const ref of refs) {
           if (ref.llm_sense) {
-            const computedFrom = [ref.context, ref.narration].filter((v) => v != null);
+            const normalizedContext = normalizeContextForCache(ref.context);
+            const computedFrom = [normalizedContext, ref.narration].filter((v) => v != null);
             const key = `${w.id}|${JSON.stringify([...new Set(computedFrom)].sort())}`;
             existingRefSense.set(key, ref.llm_sense);
           }
@@ -441,6 +442,25 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   return entry;
 });
 
+// --- Preserve words from existing vocab.json that aren't in current Markdown ---
+// This prevents data loss if the script is interrupted: words not referenced in
+// the current Markdown files are preserved as-is from the previous run.
+{
+  const currentIds = new Set(words.map((w) => w.id));
+  if (existsSync(outPath)) {
+    try {
+      const existing = JSON.parse(readFileSync(outPath, "utf8"));
+      for (const oldWord of existing.words ?? []) {
+        if (!currentIds.has(oldWord.id)) {
+          words.push(oldWord);
+        }
+      }
+    } catch {
+      // Corrupt or missing vocab.json — continue with current Markdown only
+    }
+  }
+}
+
 // --- LLM sense analysis ---
 
 /**
@@ -456,12 +476,25 @@ function stripRuby(text) {
 }
 
 /**
+ * Normalize context for cache keying by stripping all HTML tags.
+ * This ensures that any HTML changes (ruby annotations, audio files, etc.)
+ * don't invalidate cached sense data.
+ * Example: また<ruby>夜<rt>よ</rt></ruby>が明ければ <audio .../> → また夜が明ければ
+ */
+function normalizeContextForCache(context) {
+  if (!context) return context;
+  return stripRuby(context);
+}
+
+/**
  * Compute the per-reference computed_from array: the sorted, deduplicated list
  * of non-null context and narration strings for a single reference object.
  * This is the cache key — recompute when it changes.
+ * Contexts are normalized (ruby tags stripped) for cache matching.
  */
 function refComputedFrom(ref) {
-  const parts = [ref.context, ref.narration].filter((v) => v != null);
+  const normalizedContext = normalizeContextForCache(ref.context);
+  const parts = [normalizedContext, ref.narration].filter((v) => v != null);
   return [...new Set(parts)].sort();
 }
 
