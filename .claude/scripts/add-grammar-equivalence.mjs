@@ -62,7 +62,7 @@ if (args.length === 0) {
 }
 
 // Validate prefixes
-const VALID_PREFIXES = ["genki:", "bunpro:", "dbjg:", "kanshudo:"];
+const VALID_PREFIXES = ["genki:", "bunpro:", "dbjg:", "kanshudo:", "imabi:"];
 for (const id of args) {
   if (!VALID_PREFIXES.some((p) => id.startsWith(p))) {
     console.error(

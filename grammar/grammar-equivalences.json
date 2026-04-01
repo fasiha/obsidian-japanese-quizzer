@@ -160,6 +160,23 @@
   },
   {
     "topics": [
+      "bunpro:かねる",
+      "kanshudo:かねます"
+    ],
+    "summary": "Verb stem (ます-stem) + かねる expresses that the speaker finds it difficult, emotionally hesitant, or impossible to perform an action. It implies a degree of inner willingness thwarted by circumstances, making it a softer, more polite alternative to できない. Frequently used in formal and business contexts where blunt refusal would be inappropriate.",
+    "subUses": [
+      "Polite formal refusal: そのご要望にはお応えしかねます (I'm afraid we cannot accommodate that request)",
+      "Genuine difficulty or reluctant inability: その判断には賛成しかねる (I find myself unable to agree with that judgment)",
+      "Classical/literary usage: 流れる涙止めそかねつる (the flowing tears I could not stop) — classical auxiliary forms may appear in older texts and songs"
+    ],
+    "cautions": [
+      "Primarily attaches to transitive verbs; わかる and できる are accepted exceptions — avoid attaching かねる to arbitrary intransitive verbs",
+      "Do not confuse with かねない, which means 'might well / quite possible that' — かねない expresses likelihood, not inability",
+      "Register is formal/written; in casual speech できない or しにくい is more natural — かねる sounds stiff in everyday conversation"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:かもしれない",
       "dbjg:kamoshirenai",
       "genki:kamoshiremasen"
@@ -490,6 +507,42 @@
   },
   {
     "topics": [
+      "bunpro:によって-による",
+      "kanshudo:により"
+    ],
+    "summary": "によって / による / により are three surface forms of the same grammatical expression, all built on the verb よる (to depend on, to be due to). によって and により introduce an agent, cause, means, or basis before a comma; による appears before a following noun as a modifier (その火事による被害 — damage due to that fire) or at the end of a sentence. により is a more formal or written variant of によって. The construction covers four overlapping meanings: agent in a passive clause, cause or reason, method or means, and variation depending on circumstances.",
+    "subUses": [
+      "Agent in a passive clause (named human or institution): この論文は田中先生によって書かれた (This paper was written by Professor Tanaka)",
+      "Cause or reason: 地震によって多くの建物が倒れた (Many buildings collapsed due to the earthquake)",
+      "Method or means: 話し合いによって解決した (Resolved through discussion)",
+      "Variation depending on circumstances: 結果は人によって違う (Results differ depending on the person)",
+      "Noun modifier with による: 事故による遅延 (delay caused by an accident)"
+    ],
+    "cautions": [
+      "In a passive clause, によって marks a named human or institutional agent; に marks the agent in the affective/suffering passive — do not swap them",
+      "による before a noun is a noun-modifying clause meaning 'caused by' or 'based on'; do not confuse this modifier によって with the location particle に followed by unrelated words",
+      "により is a more written/formal substitute for によって in cause and means senses — both should be accepted as correct; により rarely appears in casual speech"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:ぬ",
+      "kanshudo:ぬ_negative"
+    ],
+    "summary": "ぬ is the attributive form of the classical auxiliary ず, which negates verbs the same way modern ない does. Attach ぬ to the same stem that takes ない (the irrealis / 未然形 stem): 書く → 書かぬ, 食べる → 食べぬ. Irregular forms: する → せぬ, くる → こぬ, いる (via its classical counterpart おる) → おらぬ. The form appears in proverbs, set phrases, songs, literary fiction, and formal or historical writing.",
+    "subUses": [
+      "Classical negation modifying a noun: 帰らぬ人 (a person who does not return)",
+      "Negating a compound verbal phrase (classical おる replaces いる): されておらぬ (is not being done)",
+      "Set phrases frozen in classical form: 隅に置けぬ人 (a person not to be taken lightly)"
+    ],
+    "cautions": [
+      "する negates to せぬ, not しぬ — mark しぬ wrong (しぬ means 'to die')",
+      "くる negates to こぬ; いる negates via its classical counterpart おる → おらぬ",
+      "ぬ is attributive (modifies a following noun); the adverbial/conjunctive classical negative is ず — do not use ぬ as a standalone sentence-ending negative in a formal-modern register"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:のは",
       "dbjg:no3"
     ],
@@ -595,5 +648,87 @@
       "Do not confuse の here (noun predicate in relative clause) with possessive の — context and clause structure distinguish them"
     ],
     "stub": true
+  },
+  {
+    "topics": [
+      "imabi:「完了」を示す「ぬ」・「つ」"
+    ],
+    "summary": "ぬ and つ are Classical Japanese completion auxiliaries that mark an action as finished or perfected (完了), roughly corresponding to modern た or てしまう. They attach to the 連用形 (continuative stem) of verbs. The two differ by verb type: ぬ marks natural completion or the completion of intransitive/non-volitional events, while つ marks volitional, deliberate completion, typically with transitive verbs.",
+    "subUses": [
+      "Natural/non-volitional completion (ぬ): 春立ちぬ (spring has arrived — natural occurrence)",
+      "Deliberate/volitional completion (つ): 文書きつ (I have finished writing the letter — intentional act)",
+      "Terminal ぬ as plain completion: 散りぬ (has scattered — ぬ in its 終止形, marking completed natural action)",
+      "Attributive form (ぬる / つる) modifying a noun: 散りぬる花 (flowers that have fallen) / かねつる涙 (tears that could not be stopped)"
+    ],
+    "cautions": [
+      "Completion ぬ (連体形 ぬる) is a distinct auxiliary from negation ぬ (the 連体形 of ず, meaning 'does not'): both look like ぬ in the 終止形 but conjugate differently and mean opposite things",
+      "つ (completion) is not the same as the modern te-form て; in Classical Japanese つ is a standalone auxiliary with its own full paradigm (終止形 つ, 連体形 つる, 已然形 つれ)",
+      "ぬ and つ appear stacked together (ぬつ / つぬ) in Classical poetry for rhetorical alternation — this is not a mistake or redundancy",
+      "The rule that ぬ = intransitive and つ = transitive is a useful tendency, not an absolute law; poetic usage sometimes reverses them"
+    ]
+  },
+  {
+    "topics": [
+      "imabi:bound-particles"
+    ],
+    "summary": "Bound particles (係助詞) are Classical Japanese particles that impose a grammatical constraint on the predicate at the end of their clause: the final verb must appear in a specific inflected form rather than the plain 終止形. Most bound particles (ぞ、なむ、や、か) require the 連体形 (attributive form); こそ alone requires the 已然形 (realis form). The binding relationship is called 係り結び (kakari-musubi). The particles themselves carry emphatic, interrogative, or emotional nuances.",
+    "subUses": [
+      "ぞ — strong emphasis or assertive focus, requires 連体形: 止めそかねつる (could not stop; ぞ forces the final verb into 連体形 つる)",
+      "こそ — strong emphasis with 已然形 binding, often concessive: 命こそ惜しけれ (it is life that is dear to me)",
+      "や / か — rhetorical question or doubt, require 連体形: これや都鳥 (is this the bird of the capital?)",
+      "なむ — softer emphasis (modern なん), requires 連体形: 男もすなる日記 (a diary that men also write, so they say)"
+    ],
+    "cautions": [
+      "In modern Japanese は and も survive from the bound-particle system but have lost their binding requirement; do not expect modern は to force 連体形",
+      "こそ…已然形 is the sole exception to the 連体形 rule: every other bound particle triggers 連体形, but こそ triggers 已然形 — mixing them up is a common Classical Japanese reading error",
+      "係り結び is a Classical phenomenon; it does not apply to modern Japanese predicates even when classical-style particles like ぞ appear in song lyrics or quotations"
+    ]
+  },
+  {
+    "topics": [
+      "imabi:the-auxiliary-verb-～ず-i"
+    ],
+    "summary": "ず is the classical negation auxiliary, equivalent to modern ない. It attaches to the 未然形 (irrealis stem) of verbs: 恐れず (without fearing), 見ず (not seeing), せず (not doing). The IMABI entry focuses on its classical conjugation and literary uses. In modern Japanese, ず survives primarily as an adverbial/conjunctive form meaning 'without doing X' (何も恐れず進む = advance without fearing anything) and in set phrases.",
+    "subUses": [
+      "Adverbial/conjunctive negation (ず used mid-sentence): 何も恐れず進むの (advancing without fearing anything)",
+      "Literary attributive negation (ぬ, the 連体形 of ず): 帰らぬ人 (a person who does not return)",
+      "Set phrase ざるを得ない (cannot avoid doing): 認めざるを得ない (have no choice but to admit)",
+      "Set phrase ずにはいられない (cannot help doing): 笑わずにはいられない (can't help laughing)"
+    ],
+    "cautions": [
+      "This topic covers the classical auxiliary ず and its direct survivals in modern literary/set-phrase usage. The closely related modern grammar points ずに (without doing, N3), ずにはいられない, and ざるを得ない are each separate grammar topics — do not conflate them here",
+      "する negates to せず (not しず or すず); くる negates to こず",
+      "The 連体形 of ず is ぬ (e.g. 知らぬ), which looks identical to the completion auxiliary ぬ — context (verb transitivity, whether completion or negation is meant) distinguishes them"
+    ]
+  },
+  {
+    "topics": [
+      "kanshudo:〜む"
+    ],
+    "summary": "む is a classical Japanese auxiliary (推量助動詞) that attaches to the irrealis / 未然形 stem of a verb. It expresses either conjecture about an outcome — parallel to modern だろう — or a volitional invitation encouraging action — parallel to the modern volitional ending (〜よう). Because む covers both meanings, context determines which reading applies.",
+    "subUses": [
+      "Conjecture (like modern だろう): またいつか会わむ (I suppose we shall meet again someday)",
+      "Volitional or hortative (like modern 〜よう): 帰りみむ (let us look back [on the road home])"
+    ],
+    "cautions": [
+      "む attaches to the 未然形 (irrealis stem), the same stem used with ない — not the dictionary form",
+      "The two readings (conjecture vs. volitional) depend entirely on context; do not mark either interpretation wrong without evidence from surrounding text",
+      "む is classical and appears mainly in poetry, classical literature, and traditional song — do not expect it in modern prose or conversation"
+    ]
+  },
+  {
+    "topics": [
+      "kanshudo:き"
+    ],
+    "summary": "き is the archaic attributive (連体形) form of い-adjectives. In modern Japanese the attributive form ends in い and is identical to the dictionary form, but in classical and literary Japanese the final い was き (e.g. 遠い → 遠き). The transition from き to い is a historical sound change called イ音便. Today き survives in literary, poetic, or highly formal writing and in a few fixed expressions.",
+    "subUses": [
+      "Modifying a following noun in literary or poetic style: 遠き昔の話 (a tale of the distant past)",
+      "Fixed or set expressions that have not shifted to modern い: 愛しき人 (beloved person)",
+      "Archaic speech style in traditional song or poetry: 夢は遠きまぼろしに (dreams fade into far-off phantoms)"
+    ],
+    "cautions": [
+      "き is an archaic replacement for modern い in the adjective's noun-modifying position only — it does not appear in predicate position (do not accept 空は青き as a complete modern sentence)",
+      "Do not confuse with the noun き (tree/spirit) or the verb stem き from くる — the presence of an adjective stem before き makes it unambiguous"
+    ]
   }
 ]
