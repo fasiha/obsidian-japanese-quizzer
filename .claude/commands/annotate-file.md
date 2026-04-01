@@ -4,27 +4,35 @@ description: Annotate all Japanese lines in a Markdown file with vocabulary from
 
 Annotate every Japanese line in the file at path `$ARGUMENTS` with vocabulary bullet points.
 
-## Step 1 — Parse the file
-
-Run the deduplication helper on the file:
+## Step 1 — Filter the file
 
 ```bash
-node mark-duplicates.mjs "$ARGUMENTS"
+node filter-for-annotation.mjs "$ARGUMENTS"
 ```
 
-This prints the file contents with every duplicate Japanese line suffixed by `  <!-- DUPLICATE -->`. Work from this output for all subsequent steps. Lines **not** suffixed are unique and need annotation. Lines suffixed with `<!-- DUPLICATE -->` are exact repeats of an earlier line — skip MeCab and JMDict for those.
+This outputs a JSON array of unique Japanese lines that need annotation:
 
-## Step 2 — Annotate each unique Japanese line
+```json
+[{ "id": 5, "text": "日本語の文章です。" }, ...]
+```
 
-For each unique Japanese line (skip YAML frontmatter, blank lines, section headers in brackets, purely English/romanized lines), follow the full `annotate-vocab` procedure:
+`id` is the line index in the original file. `text` has ruby tags already stripped.
+If the original line contained ruby annotations, a `furigana` field is also present with readings inlined (e.g. `"furigana": "夢を運命[さだめ]と呼ぶ"` for `夢を<ruby>運命<rt>さだめ</rt></ruby>と呼ぶ`). Use `furigana` to resolve ateji or unusual readings when looking up JMDict — the bracketed reading shows exactly which kanji the author assigned an unexpected reading to.
+Duplicates, YAML frontmatter, blank lines, section headers in brackets, and purely English/romanized lines are already excluded.
+
+## Step 2 — Annotate each item
+
+For each item in the JSON array, annotate the `text` field using the full `annotate-vocab` procedure:
 
 ### 2a — Run MeCab
 
 ```bash
-echo "{line}" | mecab
+echo "{text}" | mecab
 ```
 
-Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs. Skip particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い. Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞) — words like 度 (たび), 本 (ほん), 枚 (まい) carry real lexical meaning.
+Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs, adjectival nouns, etc. Skip morphemes like particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い.
+
+Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞) — words like 度 (たび), 本 (ほん), 枚 (まい) carry real lexical meaning. For any word with a borderline POS classification (e.g., 連体詞, unusual noun subtypes), include it. When uncertain whether to include a word (e.g., it has an unusual MeCab classification), include it. If it has semantic content and isn't purely grammatical, include it.
 
 ### 2b — Look up each lemma in JMDict
 
@@ -44,26 +52,18 @@ node lookup.mjs {combined}
 
 If found, use the compound entry and drop its individual parts.
 
-## Step 3 — Write output to {filename}.annotated.md
+## Step 3 — Write annotation JSON and recombine
 
-Derive the output path by inserting `.annotated` before the `.md` extension of the input file (e.g. `Music/Shiki no Uta.md` → `Music/Shiki no Uta.annotated.md`).
+Write a JSON file to `/tmp/annotations.json` in this format:
 
-Write a Markdown file to that path with the following structure:
-
-- Reproduce each line from the original file exactly (including section headers, blank lines, and frontmatter), preserving order.
-- After each Japanese content line, insert a `<details>` vocab block (see format below).
-- For **duplicate lines** (lines that appeared earlier in the file), don't insert anything.
-
-### Vocab block format
-
-```
-<details><summary>Vocab</summary>
-- {entry}
-- {entry}
-</details>
+```json
+[
+  { "id": 5, "entries": ["- たび 度", "- はな 花"] },
+  { "id": 8, "entries": ["- Not in JMDict: ホゲ — some contextual meaning"] }
+]
 ```
 
-Each `{entry}` is one of:
+Each `id` must match the `id` from Step 1. Each string in `entries` follows one of these formats:
 
 For words **found in JMDict** with kanji:
 ```
@@ -84,7 +84,14 @@ For proper nouns like names, places:
 
 Do **not** include English meanings for JMDict words.
 Do **not** annotate grammar (て-form, たら, ので, etc.) — vocabulary only.
+If a line has no content words at all, include `{ "id": N, "entries": [] }` — the recombine script will skip the vocab block for empty entries.
+
+Then run:
+
+```bash
+node recombine-annotations.mjs "$ARGUMENTS" /tmp/annotations.json
+```
 
 ## Step 4 — Report
 
-After writing the file, print a one-line summary: how many unique lines were annotated, how many duplicate lines were skipped, and the output path.
+Print the one-line summary output by `recombine-annotations.mjs`.

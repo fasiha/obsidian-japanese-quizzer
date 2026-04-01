@@ -53,6 +53,13 @@ for (const filePath of mdFiles) {
   for (const bullet of extractVocabBullets(content)) {
     if (bullet in entries) continue; // already resolved
 
+    const directIdMatch = bullet.match(/^\d+/);
+    if (directIdMatch) {
+      const [word] = idsToWords(db, [directIdMatch[0]]);
+      entries[bullet] = word;
+      continue;
+    }
+    
     const tokens = extractJapaneseTokens(bullet);
     if (tokens.length === 0) continue;
 
