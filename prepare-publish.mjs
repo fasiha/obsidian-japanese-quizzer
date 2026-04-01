@@ -499,48 +499,28 @@ function refComputedFrom(ref) {
 }
 
 /**
- * Call Haiku to determine which JMDict sense(s) a single sentence uses the
- * word in. Returns an array of valid 0-based sense indices and the full raw
- * response text (for the reasoning log).
- * Throws on API error or malformed response (caller handles abort).
+ * Build the shared word header used in both single and batch sense prompts.
  */
-async function analyzeReferenceSense(anthropic, jmWord, ref) {
+function buildSensePromptHeader(jmWord) {
   const displayForm =
     jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text ?? "(unknown)";
   const reading = jmWord.kana?.[0]?.text ?? "";
-
   const senseList = jmWord.sense
     .map((s, i) => {
       const glosses = s.gloss.map((g) => g.text).join("; ");
       return `${i}: ${glosses}`;
     })
     .join("\n");
+  const wordLine = `Word: ${displayForm}${reading && reading !== displayForm ? ` (${reading})` : ""}`;
+  return { displayForm, wordLine, senseList };
+}
 
-  const parts = [];
-  if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
-  if (ref.narration) parts.push(`Note: ${ref.narration}`);
-  const contextBlock = parts.join("\n");
-
-  const prompt =
-    `You are helping a Japanese language learner understand which sense of a word is used in a specific sentence.\n\n` +
-    `Word: ${displayForm}${reading && reading !== displayForm ? ` (${reading})` : ""}\n\n` +
-    `JMDict senses (0-indexed):\n${senseList}\n\n` +
-    `${contextBlock}\n\n` +
-    `Which sense(s) does this specific occurrence of the word use? ` +
-    `A sentence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
-    `Use an empty array if the context is insufficient to determine. ` +
-    `Think step by step, then end your response with a JSON code block:\n` +
-    "```json\n{\"sense_indices\": [0]}\n```";
-
-  const response = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 600,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const fullText = response.content[0].text;
-
-  // Extract the last ```json ... ``` block from the response
+/**
+ * Parse and validate the last ```json``` block from a Haiku response,
+ * extracting a `sense_indices` array for a single occurrence.
+ * Throws on malformed response.
+ */
+function parseSingleSenseResponse(fullText, displayForm, numSenses) {
   const fenceMatches = [...fullText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
   if (fenceMatches.length === 0) {
     throw new Error(`Haiku returned no JSON code block for ${displayForm}:\n${fullText}`);
@@ -557,10 +537,111 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
       `Haiku response missing sense_indices array for ${displayForm}: ${jsonText}`,
     );
   }
-  const validIndices = parsed.sense_indices.filter(
-    (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < jmWord.sense.length,
+  return parsed.sense_indices.filter(
+    (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < numSenses,
   );
+}
+
+/**
+ * Call Haiku to determine which JMDict sense(s) a single sentence uses the
+ * word in. Returns an array of valid 0-based sense indices and the full raw
+ * response text (for the reasoning log).
+ * Throws on API error or malformed response (caller handles abort).
+ */
+async function analyzeReferenceSense(anthropic, jmWord, ref) {
+  const { displayForm, wordLine, senseList } = buildSensePromptHeader(jmWord);
+
+  const parts = [];
+  if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
+  if (ref.narration) parts.push(`Note: ${ref.narration}`);
+  const contextBlock = parts.join("\n");
+
+  const prompt =
+    `You are helping a Japanese language learner understand which sense of a word is used in a specific sentence.\n\n` +
+    `${wordLine}\n\n` +
+    `JMDict senses (0-indexed):\n${senseList}\n\n` +
+    `${contextBlock}\n\n` +
+    `Which sense(s) does this specific occurrence of the word use? ` +
+    `A sentence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
+    `Use an empty array if the context is insufficient to determine. ` +
+    `Think step by step, then end your response with a JSON code block:\n` +
+    "```json\n{\"sense_indices\": [0]}\n```";
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 600,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const fullText = response.content[0].text;
+  const validIndices = parseSingleSenseResponse(fullText, displayForm, jmWord.sense.length);
   return { senseIndices: validIndices, reasoning: fullText };
+}
+
+/**
+ * Call Haiku once to determine which JMDict sense(s) each of several
+ * occurrences of the same word uses. Returns one result object per ref
+ * (in the same order), each with senseIndices and the shared reasoning text.
+ * Throws on API error or malformed response (caller handles abort).
+ */
+async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
+  const { displayForm, wordLine, senseList } = buildSensePromptHeader(jmWord);
+
+  const occurrenceBlocks = refs
+    .map((ref, i) => {
+      const parts = [];
+      if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
+      if (ref.narration) parts.push(`Note: ${ref.narration}`);
+      return `Occurrence ${i}:\n${parts.length ? parts.join("\n") : "(no context)"}`;
+    })
+    .join("\n\n");
+
+  const exampleJson =
+    `{"occurrences": [{"sense_indices": [0]}, {"sense_indices": [1, 2]}]}`;
+
+  const prompt =
+    `You are helping a Japanese language learner understand which sense of a word is used in each of several sentences.\n\n` +
+    `${wordLine}\n\n` +
+    `JMDict senses (0-indexed):\n${senseList}\n\n` +
+    `${occurrenceBlocks}\n\n` +
+    `For each occurrence (in order), which sense(s) does the word use? ` +
+    `An occurrence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
+    `Use an empty array if the context is insufficient to determine. ` +
+    `Think step by step for each occurrence, then end your response with a single JSON code block ` +
+    `containing an array with exactly ${refs.length} entries (one per occurrence):\n` +
+    "```json\n" + exampleJson + "\n```";
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300 + 400 * refs.length,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const fullText = response.content[0].text;
+
+  const fenceMatches = [...fullText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  if (fenceMatches.length === 0) {
+    throw new Error(`Haiku returned no JSON code block for ${displayForm} (batch):\n${fullText}`);
+  }
+  const jsonText = fenceMatches[fenceMatches.length - 1][1].trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(`Haiku returned non-JSON for ${displayForm} (batch): ${jsonText}`);
+  }
+  if (!Array.isArray(parsed.occurrences) || parsed.occurrences.length !== refs.length) {
+    throw new Error(
+      `Haiku batch response has ${parsed.occurrences?.length} entries but expected ${refs.length} for ${displayForm}: ${jsonText}`,
+    );
+  }
+
+  return parsed.occurrences.map((occ) => ({
+    senseIndices: (occ.sense_indices ?? []).filter(
+      (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < jmWord.sense.length,
+    ),
+    reasoning: fullText,
+  }));
 }
 
 // Run per-reference sense analysis.
@@ -597,8 +678,12 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
   }
 
   // Loop over every ref. Each ref is now either already resolved (llm_sense set
-  // above) or genuinely needs a Haiku call. After each Haiku call write vocab.json —
-  // safe because every ref not yet reached already has its llm_sense pre-populated.
+  // above) or genuinely needs a Haiku call. After each Haiku call (or batch call)
+  // write vocab.json — safe because every ref not yet reached already has its
+  // llm_sense pre-populated.
+  //
+  // When a word appears multiple times in the same file, all uncached occurrences
+  // are sent in a single batched Haiku call instead of one call per occurrence.
   for (const word of words) {
     const jmWord = jmdictById.get(word.id);
     if (!jmWord || jmWord.sense.length <= 1) continue;
@@ -606,38 +691,59 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
     const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
 
     for (const [title, refs] of Object.entries(word.references ?? {})) {
-      for (const ref of refs) {
-        if (ref.llm_sense) continue;
-        if (refsAnalyzed >= maxSenses) {
-          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
-          continue;
-        }
-        if (noLlm) {
-          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
-          continue;
-        }
+      const uncachedRefs = refs.filter((ref) => !ref.llm_sense);
+      if (uncachedRefs.length === 0) continue;
 
+      if (refsAnalyzed >= maxSenses) {
+        for (const ref of uncachedRefs) {
+          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
+        }
+        continue;
+      }
+      if (noLlm) {
+        for (const ref of uncachedRefs) {
+          console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
+        }
+        continue;
+      }
+
+      let results;
+      if (uncachedRefs.length === 1) {
+        const ref = uncachedRefs[0];
         process.stdout.write(
           `  Analyzing ${displayForm} [${title}:${ref.line}] (${refsAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
         );
         const { senseIndices, reasoning } = await analyzeReferenceSense(anthropic, jmWord, ref);
         process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
+        results = [{ senseIndices, reasoning }];
+      } else {
+        const lines = uncachedRefs.map((r) => r.line).join(", ");
+        process.stdout.write(
+          `  Analyzing ${displayForm} [${title}:lines ${lines}] (${uncachedRefs.length} occurrences, batch; ${refsAnalyzed + 1}–${refsAnalyzed + uncachedRefs.length}/${maxSenses === Infinity ? "all" : maxSenses})… `,
+        );
+        results = await analyzeReferencesSenseBatch(anthropic, jmWord, uncachedRefs);
+        process.stdout.write(
+          `→ [${results.map((r) => `[${r.senseIndices.join(", ")}]`).join(", ")}]\n`,
+        );
+      }
 
+      for (let i = 0; i < uncachedRefs.length; i++) {
+        const ref = uncachedRefs[i];
+        const { senseIndices, reasoning } = results[i];
         const computedFrom = refComputedFrom(ref);
         reasoningLines.push(
           `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
         );
-        writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
-
         ref.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
-        refsAnalyzed++;
-
-        writeFileSync(outPath, JSON.stringify({
-          generatedAt: new Date().toISOString(),
-          stories: stories.map(({ title }) => ({ title })),
-          words,
-        }, null, 2) + "\n");
       }
+      writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
+      refsAnalyzed += uncachedRefs.length;
+
+      writeFileSync(outPath, JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        stories: stories.map(({ title }) => ({ title })),
+        words,
+      }, null, 2) + "\n");
     }
   }
 }
