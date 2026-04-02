@@ -75,12 +75,38 @@ struct AppRootView: View {
             if SetupHandler.handle(url: url) {
                 showSetupAlert = true
                 setupID = UUID()   // re-initialise with the new key/URL
+            } else if url.isFileURL {
+                copyIncomingFileToDocuments(url)
             }
         }
         .alert("Setup Complete", isPresented: $showSetupAlert) {
             Button("OK") { }
         } message: {
             Text("API key and vocab URL saved. Re-initialising…")
+        }
+    }
+
+    /// Copies a file delivered via the share sheet into Pug's Documents folder.
+    /// iOS grants temporary access to the incoming URL; we must start/stop security-scoped
+    /// access and copy the file before the grant expires.
+    private func copyIncomingFileToDocuments(_ url: URL) {
+        let didStartAccess = url.startAccessingSecurityScopedResource()
+        defer { if didStartAccess { url.stopAccessingSecurityScopedResource() } }
+        guard let docs = try? FileManager.default.url(
+            for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false
+        ) else {
+            print("[PugApp] Could not resolve Documents folder")
+            return
+        }
+        let destination = docs.appendingPathComponent(url.lastPathComponent)
+        do {
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.copyItem(at: url, to: destination)
+            print("[PugApp] Copied incoming file to Documents: \(url.lastPathComponent)")
+        } catch {
+            print("[PugApp] Failed to copy incoming file: \(error)")
         }
     }
 

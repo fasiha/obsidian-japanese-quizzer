@@ -2,3 +2,8 @@
 *.mp3
 *.srt
 *.ass
+*.opus
+*.flac
+*.ogg
+*.wav
+*.aac
