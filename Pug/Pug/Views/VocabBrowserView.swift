@@ -487,7 +487,10 @@ struct VocabRowView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(item.wordText)
                     .font(.headline)
-                if let kana = item.kanaTexts.first, kana != item.wordText {
+                // Prefer the committed reading (from furigana) over kanaTexts.first so that
+                // a word like 焚き木 shows たきぎ rather than the JMDict-default まき.
+                let displayKana = item.commitment?.committedReading ?? item.kanaTexts.first
+                if let kana = displayKana, kana != item.wordText {
                     Text(kana)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

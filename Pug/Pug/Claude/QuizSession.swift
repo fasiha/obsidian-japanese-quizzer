@@ -590,7 +590,7 @@ final class QuizSession {
 
     /// Build the question stem app-side for free-answer facets (no LLM needed).
     func freeAnswerStem(for item: QuizItem) -> String {
-        let kana = item.kanaTexts.first ?? "?"
+        let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
         let meanings = item.corpusSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
         switch item.facet {
         case "meaning-to-reading":
@@ -1299,7 +1299,8 @@ final class QuizSession {
         switch item.facet {
         case "reading-to-meaning":
             if isGenerating {
-                facetRule = "Show kana ONLY (never kanji). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
+                let stemKana = item.committedReading ?? item.kanaTexts.first ?? "unknown"
+                facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
                 wordLine = "Word: \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning). Enrolled senses: \(allMeanings)."

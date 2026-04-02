@@ -147,7 +147,11 @@ final class VocabCorpus {
 
             let corpusSenseIndices = entry.corpusSenseIndices
 
-            let preferredText = preferredWrittenForm(
+            // If the user has committed to a specific written form, use that for display
+            // rather than inferring from corpus senses — the commitment is the user's
+            // explicit choice and should always win.
+            let preferredText = commitment?.committedWrittenText
+            ?? preferredWrittenForm(
                 senseExtras: jd.senseExtras,
                 activeSenseIndices: corpusSenseIndices,
                 writtenForms: entry.writtenForms ?? []

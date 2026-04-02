@@ -278,42 +278,38 @@ struct QuizContext {
             // Decode committed kanji and build partial-kanji template from furigana.
             let committedKanji: [String]?
             var partialKanjiTemplate: String? = nil
-            var committedReading: String? = nil
+            let committedReading: String? = commitments[wordId]?.committedReading
+
             if let commitment = commitments[wordId], let kc = commitment.kanjiChars,
                let data = kc.data(using: .utf8),
-               let decoded = try? JSONDecoder().decode([String].self, from: data) {
+               let decoded = try? JSONDecoder().decode([String].self, from: data),
+               let segments = commitment.furiganaSegmentsForTemplate {
                 committedKanji = decoded
-                // Build template from furigana: committed kanji stay, uncommitted → kana.
-                // Also build full kana reading (rt ?? ruby for every segment).
-                if let fData = commitment.furigana.data(using: .utf8),
-                   let segments = try? JSONDecoder().decode([[String: String]].self, from: fData) {
-                    let committedSet = Set(decoded)
-                    var template = ""
-                    var fullReading = ""
-                    for seg in segments {
-                        let ruby = seg["ruby"] ?? ""
-                        let rt = seg["rt"]
-                        fullReading += rt ?? ruby
-                        if let rt, !ruby.isEmpty, !committedSet.contains(ruby) {
-                            // Uncommitted kanji → replace with kana reading
-                            template += rt
-                        } else {
-                            // Committed kanji, kana-only segment, or no rt → keep as-is
-                            template += ruby
-                        }
+                // Build partial-kanji template from furigana: committed kanji stay,
+                // uncommitted kanji are replaced by their kana reading.
+                let committedSet = Set(decoded)
+                var template = ""
+                for seg in segments {
+                    let ruby = seg["ruby"] ?? ""
+                    let rt = seg["rt"]
+                    if let rt, !ruby.isEmpty, !committedSet.contains(ruby) {
+                        // Uncommitted kanji → replace with kana reading
+                        template += rt
+                    } else {
+                        // Committed kanji, kana-only segment, or no rt → keep as-is
+                        template += ruby
                     }
-                    // Only set if there were actual uncommitted kanji replaced.
-                    let allKanjiInWord = Set(
-                        (wordWritten[wordId]?.first ?? "").unicodeScalars
-                            .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
-                                      ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
-                                      ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
-                            .map { String($0) }
-                    )
-                    if !allKanjiInWord.subtracting(committedSet).isEmpty {
-                        partialKanjiTemplate = template
-                    }
-                    committedReading = fullReading
+                }
+                // Only set if there were actual uncommitted kanji replaced.
+                let allKanjiInWord = Set(
+                    (wordWritten[wordId]?.first ?? "").unicodeScalars
+                        .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+                                  ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+                                  ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
+                        .map { String($0) }
+                )
+                if !allKanjiInWord.subtracting(committedSet).isEmpty {
+                    partialKanjiTemplate = template
                 }
             } else {
                 committedKanji = nil
