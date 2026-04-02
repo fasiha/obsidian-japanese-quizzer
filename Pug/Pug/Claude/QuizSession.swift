@@ -599,7 +599,7 @@ final class QuizSession {
             if let template = item.partialKanjiTemplate {
                 return "What is the full reading for: \(template)"
             }
-            return item.wordText
+            return "What is the reading for: \(item.wordText)"
         case "reading-to-meaning":
             return "What does \(kana) mean?"
         default:
@@ -1437,7 +1437,7 @@ final class QuizSession {
         - 0.0: strong evidence they don't remember — completely wrong word or meaning
         NOTES: one sentence on same message as SCORE.
         \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's answer contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent', 'prior example'). Correct kana or kanji, even perfect, do NOT qualify. Only emit if the student demonstrates the meaning of the word being tested — ignore other words they mention. Do not describe the token — just output it.\n" : "")\
-        Do not emit SCORE unless the student has made a genuine answer attempt. If their message is a question, a tangential comment, or clearly not an answer attempt, engage naturally and keep waiting for an answer. When doing so, never confirm, deny, or hint at whether any sound or word they mentioned overlaps with the correct answer — treat the answer as strictly confidential until SCORE is emitted.
+        Do not emit SCORE unless the student has made a genuine answer attempt in the correct form for this facet. If their message is a question, a tangential comment, or clearly not an answer attempt, engage naturally and keep waiting. If they answer in the wrong form (e.g. give an English meaning when kana reading is required), emit MEANING_DEMONSTRATED if applicable, gently redirect them to the correct form, and wait for a valid attempt — do not grade yet. Never confirm, deny, or hint at whether any sound or word they mentioned overlaps with the correct answer until SCORE is emitted.
         After grading, stop after emitting SCORE, unless the student's message was a question warranting an answer, in which case, engage with it after emitting SCORE.
         \(item.facet == "reading-to-meaning" ? "Sense coaching: after emitting SCORE, if the word has multiple senses and the student's answer covered only some of them, check whether any uncovered senses are worth a brief mention. Mention an uncovered sense only if it is (a) semantically distinct from what the student said — not just a nuance or register variant — and (b) either the mnemonic flags it as something the student is tracking, or it appears to be a commonly-used meaning based on your general knowledge (JMDict senses are roughly frequency-ordered, so earlier senses are more likely to be common). If both conditions hold, add one friendly sentence after SCORE — framed as bonus context, not a correction. If the mnemonic specifically flags a meaning, ask gently whether the student recalls it. Do not coach if the student already covered all the meaningful senses." : "")
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
