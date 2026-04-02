@@ -93,9 +93,9 @@ export function findMdFiles(dir, excludeDirs = ["node_modules", ".claude"]) {
   return results;
 }
 
-// True if the string contains at least one Japanese character
+// True if the string contains only Japanese characters
 export function isJapanese(str) {
-  return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]/.test(
+  return /^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]+$/.test(
     str,
   );
 }
