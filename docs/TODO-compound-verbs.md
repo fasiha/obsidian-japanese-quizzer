@@ -72,16 +72,18 @@ A secondary view: from within the CompoundVerbDetailSheet, browsing by prefix
   Use `lookup.mjs` (supports wildcard queries, e.g. `node lookup.mjs '*出す'`) to
   find candidate JMDict IDs for a given suffix.
 
-- **NINJAL Language Bank (NLB) API** — the `NLB_link` field in `headwords.json`
-  (e.g. `V.05546`) is a key into several NLB endpoints that return frequency and
-  usage data as JSON:
-  - `https://nlb.ninjal.ac.jp/basicinfob/V.05546/` — basic info (balanced corpus)
-  - `https://nlb.ninjal.ac.jp/basicinfosc/V.05546/` — spoken corpus
-  - `https://nlb.ninjal.ac.jp/basicinfosj/V.05546/` — written corpus
-  - `https://nlb.ninjal.ac.jp/patternfreqorder/V.05546/` — argument pattern frequencies
+- **BCCWJ Frequency List (LUW v2)** — `BCCWJ_frequencylist_luw2_ver1_0.tsv` provides
+  official frequency counts for Long Unit Words from the Balanced Corpus of
+  Contemporary Written Japanese. This is preferred over NLB API because:
+  - No rate limiting (instant lookup vs 60+ sec/request)
+  - Standardized, versioned data (`luw2_ver1_0`)
+  - Documented methodology (per-million-word normalization, LUW tokenization)
+  - Fast static lookup vs dynamic API scraping
   
-  The survey script can fetch frequency data for each compound word to rank
-  low-productivity examples by real-world usage rather than guessing.
+  The survey and classification scripts use this TSV to rank low-productivity
+  examples by corpus frequency. Download from:
+  http://doi.org/10.15084/00003214 and place `BCCWJ_frequencylist_luw2_ver1_0.tsv`
+  in the `compound-verbs/` directory.
 
 ## Output JSON Schema
 
@@ -149,46 +151,50 @@ For each v2 (default: all 470; in practice filtered to the target ~15):
 The script is designed to run for all v2s so that future expansion requires no
 code changes — just running it again and feeding more output files to the LLM.
 
-**1. NLB frequency fetcher (`compound-verbs/fetch-nlb.mjs`)**
-
-A separate script that runs independently and incrementally:
-- Scans all files in `compound-verbs/survey/` for words missing NLB data
-- Checks `compound-verbs/nlb-cache.json` (a flat map of `NLB_link → full API
-  response`) to skip already-fetched entries
-- For each missing entry, fetches `https://nlb.ninjal.ac.jp/basicinfob/{NLB_link}/`
-  and saves the entire response payload into `nlb-cache.json`
-- Waits a random delay between requests (e.g. 30–120 seconds) to avoid overwhelming
-  the server
-- Is safe to interrupt and rerun — it only fetches what is not yet cached
-
-`nlb-cache.json` is kept locally only. Subsequent LLM passes read frequency from 
-this cache rather than hitting the API themselves. If the cache is lost, the 
-fetcher script can rebuild it by rescraping.
-
-**2. LLM Pass 1: Productivity Classification (`compound-verbs/classify-productivity.mjs`)**
+**1. LLM Pass 1: Productivity Classification (`compound-verbs/classify-productivity.mjs`)**
 
 Classifies each compound verb individually (one LLM call per compound).
 
-Input: one survey file (e.g. `compound-verbs/survey/出す.json`) plus relevant
-NLB cache entries and `jmdict.sqlite` for v1 and v2 definitions. Refuses to proceed
-if any word lacks NLB data — user must run the fetcher first.
+Input: one survey file (e.g. `compound-verbs/survey/出す.json`) plus
+`BCCWJ_frequencylist_luw2_ver1_0.tsv` and `jmdict.sqlite` for v1 and v2
+definitions.
 
-For each compound, the LLM classifies it as:
-- `highly-productive` — meaning is transparently compositional from base + suffix
+For each compound, the LLM rates **each sense independently** (all JMDict senses and
+all NINJAL senses are numbered and presented together) as one of:
+- `highly-productive` — sense is transparently compositional from base + suffix
 - `medium` — partially idiomatic or restricted to certain verb types
 - `fully-lexicalized` — opaque, must be learned as standalone vocabulary
 
+The compound-level `classification` is derived by Node.js as the most productive
+rating across all sense ratings (e.g. if any sense is `highly-productive`, the
+compound is classified `highly-productive`).
+
 The prompt includes:
 - JMDict definitions of v1 (base verb) and v2 (suffix) if available
-- JMDict senses of the compound itself
-- NINJAL characterization of the compound
+- All JMDict senses of the compound and all NINJAL senses, numbered sequentially
 - Explicit instruction that VVLexicon and JMDict may disagree, and the task is to
-  judge whether the pattern is productive, not to reconcile the sources
+  rate each sense independently, not to reconcile the sources
 
 Output: `compound-verbs/classify/出す.jsonl` (one JSON object per line, one per compound)
-with fields: `{ headword, reading, v1, classification, reasoning }`.
+with fields:
+```json
+{
+  "headword": "言い立てる",
+  "reading": "いいたてる",
+  "v1": "言う",
+  "classification": "highly-productive",
+  "sense_ratings": [
+    { "source": "jmdict", "source_index": 1, "sense_text": "to assert; to declare", "rating": "highly-productive", "reasoning": "..." },
+    { "source": "ninjal", "source_index": 1, "sense_text": "To assert strongly.", "rating": "highly-productive", "reasoning": "..." }
+  ]
+}
+```
 
-**3. LLM Pass 2a: Cluster High-Productivity Compounds (`compound-verbs/cluster-productive.mjs`)**
+The script supports `--only compound1,compound2` to reprocess specific headwords and
+merge the new results back into the existing output file. Lines starting with `#` or
+`//` in the output file are treated as comments and preserved on rewrite.
+
+**2. LLM Pass 2a: Cluster High-Productivity Compounds (`compound-verbs/cluster-productive.mjs`)**
 
 Groups highly-productive compounds by the distinct *meanings* the suffix contributes.
 
@@ -197,7 +203,7 @@ Input: the `jsonl` file from Pass 1 (filtered to `classification: "highly-produc
 The LLM identifies all distinct senses and clusters the compounds under each. Output:
 `compound-verbs/clusters/出す-productive.json` with fields per sense: `{ meaning, examples: [headwords] }`.
 
-**4. LLM Pass 2b: Cluster Medium Compounds (`compound-verbs/cluster-medium.mjs`)**
+**3. LLM Pass 2b: Cluster Medium Compounds (`compound-verbs/cluster-medium.mjs`)**
 
 Groups medium compounds by meaning.
 
@@ -205,7 +211,7 @@ Input: the `jsonl` file from Pass 1 (filtered to `classification: "medium"`).
 
 Output: `compound-verbs/clusters/出す-medium.json` with the same schema as 2a.
 
-**5. Assemble Lexicalized Senses (`compound-verbs/assemble-lexicalized.mjs`)**
+**4. Assemble Lexicalized Senses (`compound-verbs/assemble-lexicalized.mjs`)**
 
 No LLM call — each fully-lexicalized compound from Pass 1 becomes its own sense.
 
@@ -213,26 +219,27 @@ Input: the `jsonl` file from Pass 1 (filtered to `classification: "fully-lexical
 
 Output: `compound-verbs/clusters/出す-lexicalized.json`, one sense per compound.
 
-**6. Pass 3: Enrich and Generate JSON (`compound-verbs/select-examples.mjs`)**
+**5. Pass 3: Enrich and Generate JSON (`compound-verbs/select-examples.mjs`)**
 
-Merges the three cluster files from steps 3–5 and enriches them with JMDict data.
+Merges the three cluster files from steps 2–4 and enriches them with JMDict data.
 
 Inputs:
 - `compound-verbs/clusters/出す-productive.json`
 - `compound-verbs/clusters/出す-medium.json`
 - `compound-verbs/clusters/出す-lexicalized.json`
-- The original survey file (for JMDict IDs and frequency data)
+- The original survey file (for JMDict IDs)
+- `BCCWJ_frequencylist_luw2_ver1_0.tsv` (for frequency data)
 
 For each sense, includes all compounds that have a JMDict ID (compounds without
 JMDict IDs are excluded from the final output but may have informed the sense
 clustering in Pass 2a/2b). The examples array contains only JMDict IDs, sorted
-by NLB frequency descending. The iOS app or any downstream processor decides
+by BCCWJ frequency descending. The iOS app or any downstream processor decides
 how many examples to display.
 
 Output: generates the final entry JSON and writes it to `compound-verbs.json` via
 a call to the writer script (below).
 
-**7. Writer script (`compound-verbs/write.mjs`)**
+**6. Writer script (`compound-verbs/write.mjs`)**
 
 A small script that accepts structured operations and applies them to
 `compound-verbs.json`. Operations it supports:
@@ -252,7 +259,7 @@ A small script that accepts structured operations and applies them to
 This script is called by pass 3 to write the final JSON, and can be used directly
 by hand for incremental tweaks without rerunning all LLM passes.
 
-**8. Validation script (`compound-verbs/validate.mjs`)**
+**7. Validation script (`compound-verbs/validate.mjs`)**
 
 Runs as a final check and as a pre-commit gate:
 - Every JMDict ID in `compound-verbs.json` exists in `jmdict.sqlite`
@@ -300,3 +307,9 @@ Runs as a final check and as a pre-commit gate:
 - How many suffixes to ship in v1? Suggest starting with the top 6 by NINJAL
   frequency (込む, 上げる, 出す, 付ける, 上がる, 入れる) and expanding based on
   what appears in the corpus.
+
+## Action Items
+
+- [ ] **Update README.md** with requirement to download and place 
+  `BCCWJ_frequencylist_luw2_ver1_0.tsv` in the `compound-verbs/` directory before
+  running classification scripts. Link to http://doi.org/10.15084/00003214
