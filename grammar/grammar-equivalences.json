@@ -338,7 +338,6 @@
       "Motion away from speaker: 友達が行った (My friend left)",
       "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])",
       "Carrying something away: かれくさをもっていく (take dried grass away)"
-
     ],
     "cautions": [
       "うちにいく is ungrammatical for going to one's own home — use うちにかえる",
@@ -583,7 +582,7 @@
       "bunpro:代わりに",
       "dbjg:kawari-ni"
     ],
-    "summary": "代わりに means 'instead of,' 'in place of,' or 'to make up for.' The pattern is [A] の 代わりに [B], where B substitutes for or compensates for A. A can be a noun phrase (Nounの代わりに) or a verb clause (verb dictionary form + 代わりに).",
+    "summary": "代わりに means 'instead of,' 'in place of,' or 'to make up for.' The pattern is [A] の代わりに [B], where B substitutes for or compensates for A. A can be a noun phrase (Nounの代わりに) or a verb clause (verb dictionary form + 代わりに). Word order rule: the noun immediately before の代わりに is always the original thing being replaced (the unavailable or less desirable item); the substitute appears after 代わりに, typically as the subject or object of the verb.",
     "subUses": [
       "Noun substitution: バターの代わりにマーガリンを使った (I used margarine instead of butter)",
       "Role substitution: 私の代わりに発表してもらえますか (Could you present in my place?)",
@@ -591,7 +590,8 @@
     ],
     "cautions": [
       "代わりに expresses direct substitution or compensation; for a preferred alternative without a one-for-one replacement, むしろ ('rather') is more appropriate",
-      "に代わって is a formal variant used for taking over someone's official role or speaking on their behalf — accept it as correct but note the register difference"
+      "に代わって is a formal variant used for taking over someone's official role or speaking on their behalf — accept it as correct but note the register difference",
+      "Word order is critical: the noun before の代わりに must be the thing being replaced, not the substitute. Always double-check that [replaced thing]の代わりに [substitute] reads correctly. Example: 私のコンピュータの代わりに友人のラップトップを使った — 'my computer' is the replaced item, 'friend's laptop' is the substitute."
     ]
   },
   {
