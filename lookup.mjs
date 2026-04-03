@@ -4,6 +4,8 @@ import {
   idsToWords,
   readingBeginning,
   kanjiBeginning,
+  readingAnywhere,
+  kanjiAnywhere,
 } from "jmdict-simplified-node";
 import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
 
@@ -14,22 +16,25 @@ if (!lookup) {
 }
 
 var { db } = await setup("jmdict.sqlite");
-var words;
+var words = [];
+
+var ids = new Set();
+var mapper = (word) => {
+  if (!ids.has(word.id)) {
+    words.push(word);
+    ids.add(word.id);
+  }
+};
+
 if (lookup.match(/^[0-9]+$/)) {
   console.log("ID?");
   words = idsToWords(db, [lookup]);
 } else if (lookup.endsWith("*")) {
-  words = [];
-  const ids = new Set();
-
-  const mapper = (word) => {
-    if (!ids.has(word.id)) {
-      words.push(word);
-      ids.add(word.id);
-    }
-  };
   readingBeginning(db, lookup.slice(0, -1)).forEach(mapper);
   kanjiBeginning(db, lookup.slice(0, -1)).forEach(mapper);
+} else if (lookup.startsWith("*")) {
+  readingAnywhere(db, lookup.slice(1)).forEach(mapper);
+  kanjiAnywhere(db, lookup.slice(1)).forEach(mapper);
 } else {
   words = findExact(db, lookup);
 }
