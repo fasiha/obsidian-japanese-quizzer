@@ -496,7 +496,7 @@ rendered as paragraph breaks rather than silently dropped.
 ## See also
 
 - [CLAUDE.md](CLAUDE.md) — detailed architecture notes for Claude (iOS quiz facets, grammar tiers, tool schemas)
-- [TESTING.md](TESTING.md) — TestHarness build instructions and modes
+- [TESTING.md](docs/TESTING.md) — TestHarness build instructions and modes
 
 ## Acknowledgements
 
