@@ -198,31 +198,46 @@ The lexicalized tail is not enumerated here — Pass 3 derives it as
 
 **2. LLM Pass 2: Assign Compounds to Meanings (`compound-verbs/assign-examples.mjs`)**
 
-One LLM call per productive meaning identified in Pass 1. Each call asks: given this
-meaning description and all the compounds for this suffix, which compounds (and which
-of their senses) exemplify this meaning?
+One LLM call for all meanings at once. The model sees the full list of meanings and
+the full compound list, and assigns each compound to whichever meaning(s) it fits.
+A compound may legitimately appear under more than one meaning (e.g. 打ち返す fits
+both "reverse an action" and "reciprocate"). Compounds assigned to no meaning become
+the lexicalized tail in Pass 3 — no additional prompt needed.
 
-Input: the meanings file from Pass 1 plus the survey file. The prompt quotes the
-meaning description verbatim from the Pass 1 output so the wording is consistent
-across runs and easy to trace.
+Input: the meanings file from Pass 1 plus the survey file. The prompt quotes all
+meaning descriptions verbatim from the Pass 1 output.
 
-Running one call per meaning (rather than one big assignment call) keeps each prompt
-focused and makes it easy to re-run a single meaning if the examples look wrong.
+**Prompt design notes (from testing on 返す):**
+- One call for all meanings avoids cross-call conservatism: with per-meaning calls,
+  Haiku already globally categorizes all compounds in its reasoning for call 1, then
+  hedges on borderline words in later calls ("belongs to another meaning"), causing
+  valid assignments to be missed. One call makes the same global decision explicitly.
+- Rare compounds (BCCWJ frequency = 0 or no JMDict ID) should be augmented inline
+  with their NINJAL gloss so the model can categorize them confidently:
+  `誘い返す（invite back in return）`. Common compounds Haiku already knows from
+  training data do not need the gloss.
+- The prompt should explicitly permit a compound to appear under multiple meanings.
 
-Compounds that no meaning call claims become the lexicalized tail in Pass 3 — no
-additional prompt needed.
+**Multi-run voting:** the archive `.txt` files (one per run) are the source of truth
+for individual calls. The canonical `assignments.json` is always a flat object — the
+best current result for Pass 3. If vote aggregation across multiple runs is desired,
+a separate script reads N archive `.txt` files, tallies assignments, and writes the
+merged `assignments.json`. This keeps the format simple and the aggregation auditable.
+Do not store arrays of arrays in `assignments.json` — you cannot distinguish "same
+prompt sampled N times" from "N different prompt experiments" without storing the
+full prompt alongside each run, which the `.txt` archives already do.
 
-Output: `compound-verbs/clusters/出す-assignments-<timestamp>-<model>.json` (archive)
-plus canonical `compound-verbs/clusters/出す-assignments.json` (latest run).
+Output: `compound-verbs/clusters/<v2>-assignments-<timestamp>-<model>.txt` (archive
+that includes flags, prompt, and model output) plus canonical
+`compound-verbs/clusters/<v2>-assignments.json` (latest run).
 ```json
 {
   "start to V suddenly":            ["言い出す", "走り出す", "泣き出す"],
-  "V outward, bring something forth": ["引き出す", "取り出す"]
+  "V outward, bring something forth": ["引き出す", "取り出す", "言い出す"]
 }
 ```
-Keys are verbatim meaning strings from `出す-meanings.json`. A compound may appear
-under more than one meaning if different senses of the same headword evince different
-suffix meanings.
+Keys are verbatim meaning strings from `<v2>-meanings.json`. A compound may appear
+under more than one meaning key.
 
 **3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)**
 
@@ -328,7 +343,7 @@ Runs as a final check and as a pre-commit gate:
   running classification scripts. Link to http://doi.org/10.15084/00003214
 - [x] **Write `compound-verbs/cluster-meanings.mjs`** (Pass 1) — written and tested on 出す
 - [ ] **Run Pass 1 on target suffixes** (込む, 上げる, 出す, 付ける, 上がる, 入れる) — use `--simple --no-productivity --allow-reasoning` (standard invocation)
-- [ ] **Write `compound-verbs/assign-examples.mjs`** (Pass 2)
+- [ ] **Rewrite `compound-verbs/assign-examples.mjs`** (Pass 2) — first version written and tested on 返す; needs: (a) collapse to one LLM call for all meanings, (b) augment rare/unknown compounds with NINJAL gloss inline, (c) permit multi-meaning assignment explicitly in prompt
 
 ---
 
