@@ -48,11 +48,12 @@ try {
 const args = process.argv.slice(2);
 const v2 = args.find((a) => !a.startsWith("--"));
 const dryRun = args.includes("--dry-run");
+const useSharpened = args.includes("--use-sharpened");
 const modelFlagIndex = args.indexOf("--model");
 const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
 
 if (!v2) {
-  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--model MODEL]");
+  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--use-sharpened] [--model MODEL]");
   process.exit(1);
 }
 
@@ -68,7 +69,18 @@ const survey = JSON.parse(readFileSync(surveyPath, "utf8"));
 
 // --- Load meanings file ---
 
-const meaningsPath = join(__dirname, "clusters", `${v2}-meanings.json`);
+const sharpenedMeaningsPath = join(__dirname, "clusters", `${v2}-meanings-sharpened.json`);
+const defaultMeaningsPath = join(__dirname, "clusters", `${v2}-meanings.json`);
+
+if (useSharpened) {
+  if (!existsSync(sharpenedMeaningsPath)) {
+    console.error(`Sharpened meanings file not found: ${sharpenedMeaningsPath}`);
+    console.error(`Run: node compound-verbs/sharpen-meanings.mjs ${v2}`);
+    process.exit(1);
+  }
+}
+
+const meaningsPath = useSharpened ? sharpenedMeaningsPath : defaultMeaningsPath;
 if (!existsSync(meaningsPath)) {
   console.error(`Meanings file not found: ${meaningsPath}`);
   console.error(`Run: node compound-verbs/cluster-meanings.mjs ${v2}`);
@@ -133,6 +145,7 @@ console.log(
   `${v2}: ${survey.length} compounds total, sending ${trimCount} to LLM` +
   ` (top-90%-by-freq=${count90pct}, cap-100=${cap100}, using higher=${trimCount})`
 );
+console.log(`Using meanings: ${useSharpened ? "sharpened" : "original"} (${meaningsPath})`);
 
 // --- Build compound list, augmenting rare/unknown entries with NINJAL gloss ---
 // Compounds with BCCWJ frequency = 0 or no JMDict ID may be unfamiliar to the
