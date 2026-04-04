@@ -217,6 +217,12 @@ meaning descriptions verbatim from the Pass 1 output.
   `誘い返す（invite back in return）`. Common compounds Haiku already knows from
   training data do not need the gloss.
 - The prompt should explicitly permit a compound to appear under multiple meanings.
+- When a compound is ambiguous between two meanings, the prompt should direct the model
+  to assign it to both rather than omit it. Omission should be reserved for compounds
+  where the role of the suffix is genuinely unpredictable (opaque or fully lexicalized).
+  Without this distinction, the model conflates "ambiguous between meanings" with
+  "opaque", inflating the lexicalized tail with compositional compounds that just happen
+  to fit more than one meaning.
 
 **Multi-run voting:** the archive `.txt` files (one per run) are the source of truth
 for individual calls. The canonical `assignments.json` is always a flat object — the

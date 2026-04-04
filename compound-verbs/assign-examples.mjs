@@ -2,9 +2,9 @@
  * compound-verbs/assign-examples.mjs
  *
  * LLM Pass 2: Given the suffix meanings discovered in Pass 1, asks the LLM to
- * assign compounds to each meaning. One LLM call per meaning, run serially.
- * Each call sees ALL meanings for context to avoid cross-call duplication, but
- * is asked to assign compounds to only ONE specific meaning per call.
+ * assign compounds to meanings in a single call. The model sees all meanings at
+ * once and returns a JSON object mapping each meaning to the compounds that fit
+ * it. A compound may appear under more than one meaning.
  *
  * Usage:
  *   node compound-verbs/assign-examples.mjs 出す
@@ -15,13 +15,11 @@
  *   compound-verbs/survey/<v2>.json              (from survey.mjs)
  *   compound-verbs/clusters/<v2>-meanings.json   (from cluster-meanings.mjs)
  *
- * Output per meaning call:
- *   compound-verbs/clusters/<v2>-assignments-<timestamp>-<model>-<index>.txt
- *     (flags + prompt + raw response, one file per LLM call)
- *
- * Final canonical output:
+ * Output:
+ *   compound-verbs/clusters/<v2>-assignments-<timestamp>-<model>.txt
+ *     (flags + prompt + raw response, one file per run)
  *   compound-verbs/clusters/<v2>-assignments.json
- *     (object keyed by verbatim meaning string → array of headword strings)
+ *     (canonical: object keyed by verbatim meaning string → array of headword strings)
  *
  * Requires ANTHROPIC_API_KEY in .env
  * Requires compound-verbs/bccwj.sqlite (build with: node compound-verbs/build-bccwj-db.mjs)
@@ -111,7 +109,7 @@ withFreq.sort((a, b) => b.bccwjFrequency - a.bccwjFrequency);
 // --- Frequency trimming: top ~90% by cumulative frequency, or top 100, whichever includes more ---
 // Pass 2 uses broader coverage than Pass 1 (90%/100 vs 75%/50) so the lexicalized
 // tail has more candidates to fall out from — compounds not assigned to any meaning
-// in Pass 2 become the opaque/lexicalized sense in Pass 3.
+// become the opaque/lexicalized sense in Pass 3.
 
 const totalFrequency = withFreq.reduce((sum, e) => sum + e.bccwjFrequency, 0);
 
@@ -136,161 +134,185 @@ console.log(
   ` (top-90%-by-freq=${count90pct}, cap-100=${cap100}, using higher=${trimCount})`
 );
 
+// --- Build compound list, augmenting rare/unknown entries with NINJAL gloss ---
+// Compounds with BCCWJ frequency = 0 or no JMDict ID may be unfamiliar to the
+// model. Appending their NINJAL English definition inline lets the model categorize
+// them confidently without adding noise for well-known words.
+
+const compoundLines = trimmed.map((entry) => {
+  const needsGloss = entry.bccwjFrequency === 0 || !entry.jmdictId;
+  if (needsGloss && entry.ninjal_senses?.[0]?.definition_en) {
+    return `${entry.headword}（${entry.ninjal_senses[0].definition_en}）`;
+  }
+  return entry.headword;
+});
+
+const compoundListText = compoundLines.join("\n");
+
 // --- Build the set of known headwords for hallucination detection ---
 
 const knownHeadwords = new Set(trimmed.map((e) => e.headword));
 
-// --- Prepare shared prompt components ---
-
-const headwordList = trimmed.map((e) => e.headword).join("、");
+// --- Build meanings block and expected JSON keys ---
 
 const meaningsBlock = meanings
   .map((m, i) => `  ${i + 1}. "${m.meaning}"`)
   .join("\n");
 
-// --- Output directory setup ---
+const exampleOutputEntries = meanings.map((m) => `  "${m.meaning}": ["headword1", "headword2"]`).join(",\n");
+
+// --- Build prompt ---
+
+const prompt = `You are helping a Japanese learner understand the suffix -${v2} in compound verbs.
+
+-${v2} has these distinct meanings when appended to a verb:
+${meaningsBlock}
+
+Your task: for each compound below, assign it to whichever meaning(s) -${v2} clearly contributes in it.
+
+Rules:
+- Assign a compound to a meaning if -${v2} contributes that meaning in a way a learner could see from the parts.
+- Only assign a compound to multiple meanings if each assignment is as obvious as a single-meaning case; do not stretch a meaning to avoid omitting a compound.
+- Omit a compound only if -${v2}'s role in it is opaque or fully lexicalized (the compound must be memorized as a whole).
+
+Compounds ending in -${v2} (${trimmed.length} most common, sorted by corpus frequency; rare or lesser-known entries include an English gloss):
+${compoundListText}
+
+Reason through each compound. Then end your response with a JSON object whose keys are the exact meaning strings above and whose values are arrays of matching headword strings (kanji only, no glosses). Omit a key entirely if no compounds clearly fit that meaning.
+
+Example output shape (keys must be verbatim from the list above):
+{
+${exampleOutputEntries}
+}`;
+
+// --- Dry run: print prompt and exit ---
+
+if (dryRun) {
+  console.log("\n========== [DRY RUN] Prompt ==========\n");
+  console.log(prompt);
+  console.log("\n========== End of prompt ==========\n");
+  console.log(`Would send ${trimmed.length} compounds to ${model}`);
+  bccwjDb.close();
+  process.exit(0);
+}
+
+// --- Call LLM ---
+
+console.log(`Calling ${model}...`);
+
+const client = new Anthropic();
+const message = await client.messages.create({
+  model,
+  max_tokens: 4096,
+  messages: [{ role: "user", content: prompt }],
+});
+
+const responseText = message.content[0].text.trim();
+
+// --- Write archive .txt ---
 
 const clustersDir = join(__dirname, "clusters");
 mkdirSync(clustersDir, { recursive: true });
 
 const isoString = new Date().toISOString();
 const timestamp = isoString.replace(/[:.]/g, "-").replace("T", "_").replace("Z", "");
+const archiveTxtPath = join(clustersDir, `${v2}-assignments-${timestamp}-${model}.txt`);
 const canonicalPath = join(clustersDir, `${v2}-assignments.json`);
 
-// --- Process each meaning ---
+const flagsSummary = [
+  `suffix: ${v2}`,
+  `model: ${model}`,
+  `compounds-sent: ${trimmed.length}`,
+  `timestamp: ${isoString}`,
+  `args: node compound-verbs/assign-examples.mjs ${args.join(" ")}`,
+].join("\n");
 
-const client = dryRun ? null : new Anthropic();
-const assignments = {}; // meaning string → array of headword strings
+writeFileSync(
+  archiveTxtPath,
+  [
+    "========== FLAGS ==========",
+    flagsSummary,
+    "",
+    "========== PROMPT ==========",
+    prompt,
+    "",
+    "========== RESPONSE ==========",
+    responseText,
+  ].join("\n"),
+  "utf8"
+);
 
-for (let i = 0; i < meanings.length; i++) {
-  const targetMeaning = meanings[i].meaning;
+// --- Parse JSON object from response ---
+// The model reasons before the JSON, so extract the last {...} block.
 
-  const prompt = `You are helping a Japanese learner understand the suffix -${v2} in compound verbs.
+let parsed;
+try {
+  const allObjectLineMatches = [...responseText.matchAll(/^\s*\{/gm)];
+  const lastObjectStart = allObjectLineMatches.at(-1);
+  const jsonText = lastObjectStart
+    ? responseText.slice(lastObjectStart.index).replace(/\n?```$/, "").trim()
+    : responseText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+  parsed = JSON.parse(jsonText);
+} catch (err) {
+  console.error("ERROR: Could not parse LLM response as JSON.");
+  console.error(`Raw response saved to: ${archiveTxtPath}`);
+  process.exit(1);
+}
 
--${v2} has these distinct meanings when appended to a verb:
-${meaningsBlock}
+if (typeof parsed !== "object" || Array.isArray(parsed) || parsed === null) {
+  console.error("ERROR: LLM returned a non-object response.");
+  console.error(`Raw response saved to: ${archiveTxtPath}`);
+  process.exit(1);
+}
 
-Your task: from the list of compounds below, identify only those that clearly exemplify meaning ${i + 1}: "${targetMeaning}"
+// --- Validate: keys must be known meaning strings, values must be arrays of known headwords ---
 
-Rules:
-- Include only clear, prototypical examples where the suffix carries this meaning.
-- If a compound better fits a different meaning (${meanings.filter((_, j) => j !== i).map((m, j) => `meaning ${j < i ? j + 1 : j + 2}: "${m.meaning}"`).join("; ")}), skip it here — it will be captured in that meaning's call.
-- If a compound is opaque or lexicalized (its meaning cannot be predicted from its parts), skip it entirely — do not assign it to any meaning.
-- When uncertain, leave it out.
+const knownMeanings = new Set(meanings.map((m) => m.meaning));
+const assignments = {};
 
-Compounds ending in -${v2} (${trimmed.length} most common, sorted by corpus frequency):
-${headwordList}
-
-Remember: you are only assigning compounds to meaning ${i + 1}: "${targetMeaning}"
-
-Think through the patterns briefly, then end your response with a JSON array of matching headword strings (use the exact kanji forms above). If none clearly fit, return an empty array [].`;
-
-  if (dryRun) {
-    console.log(`\n========== [DRY RUN] Prompt for meaning ${i + 1}/${meanings.length} ==========\n`);
-    console.log(prompt);
-    console.log(`\n========== End of prompt for meaning ${i + 1} ==========\n`);
+for (const [key, value] of Object.entries(parsed)) {
+  if (!knownMeanings.has(key)) {
+    console.warn(`WARNING: LLM returned unknown meaning key "${key}" — skipping`);
     continue;
   }
-
-  console.log(`\nCalling ${model} for meaning ${i + 1}/${meanings.length}: "${targetMeaning}"...`);
-
-  const message = await client.messages.create({
-    model,
-    max_tokens: 2048,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const responseText = message.content[0].text.trim();
-
-  // --- Write archive .txt for this call ---
-
-  const archiveTxtPath = join(
-    clustersDir,
-    `${v2}-assignments-${timestamp}-${model}-${i + 1}.txt`
-  );
-
-  const flagsSummary = [
-    `suffix: ${v2}`,
-    `model: ${model}`,
-    `meaning-index: ${i + 1} of ${meanings.length}`,
-    `meaning: ${targetMeaning}`,
-    `compounds-sent: ${trimmed.length}`,
-    `timestamp: ${isoString}`,
-    `args: node compound-verbs/assign-examples.mjs ${args.join(" ")}`,
-  ].join("\n");
-
-  writeFileSync(
-    archiveTxtPath,
-    [
-      "========== FLAGS ==========",
-      flagsSummary,
-      "",
-      "========== PROMPT ==========",
-      prompt,
-      "",
-      "========== RESPONSE ==========",
-      responseText,
-    ].join("\n"),
-    "utf8"
-  );
-
-  // --- Parse JSON array from response ---
-  // The model reasons before the JSON array, so extract the last [...] block.
-
-  let parsed;
-  try {
-    const allArrayLineMatches = [...responseText.matchAll(/^\s*\[/gm)];
-    const lastArrayStart = allArrayLineMatches.at(-1);
-    const jsonText = lastArrayStart
-      ? responseText.slice(lastArrayStart.index).replace(/\n?```$/, "").trim()
-      : responseText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
-    parsed = JSON.parse(jsonText);
-  } catch (err) {
-    console.error(`ERROR: Could not parse LLM response as JSON for meaning ${i + 1}.`);
-    console.error(`Raw response saved to: ${archiveTxtPath}`);
-    console.error("Skipping this meaning — re-run to retry.");
+  if (!Array.isArray(value)) {
+    console.warn(`WARNING: Value for meaning "${key}" is not an array — skipping`);
     continue;
   }
-
-  if (!Array.isArray(parsed)) {
-    console.error(`ERROR: LLM returned a non-array for meaning ${i + 1}. Skipping.`);
-    console.error(`Raw response saved to: ${archiveTxtPath}`);
-    continue;
-  }
-
-  // --- Validate headwords; warn loudly on hallucinations ---
-
   const valid = [];
-  for (const headword of parsed) {
+  for (const headword of value) {
     if (typeof headword !== "string") {
-      console.warn(`WARNING: Non-string entry in LLM response for meaning ${i + 1}: ${JSON.stringify(headword)} — skipping`);
+      console.warn(`WARNING: Non-string entry under "${key}": ${JSON.stringify(headword)} — skipping`);
       continue;
     }
     if (!knownHeadwords.has(headword)) {
-      console.warn(`WARNING: LLM hallucinated headword "${headword}" for meaning ${i + 1} — not in survey, skipping`);
+      console.warn(`WARNING: LLM hallucinated headword "${headword}" under "${key}" — not in survey, skipping`);
       continue;
     }
     valid.push(headword);
   }
-
-  assignments[targetMeaning] = valid;
-  console.log(`  → ${valid.length} compound(s) assigned: ${valid.join("、") || "(none)"}`);
-}
-
-if (dryRun) {
-  console.log(`\nDry run complete. ${meanings.length} prompt(s) shown. No LLM calls made.`);
-  bccwjDb.close();
-  process.exit(0);
+  assignments[key] = valid;
 }
 
 // --- Write canonical assignments JSON ---
 
-writeFileSync(canonicalPath, JSON.stringify(assignments, null, 2), "utf8");
+const output = {
+  _metadata: {
+    suffix: v2,
+    model,
+    timestamp: isoString,
+    compounds_sent: trimmed.map((e) => e.headword),
+  },
+  ...assignments,
+};
+
+writeFileSync(canonicalPath, JSON.stringify(output, null, 2), "utf8");
 
 console.log(`\n✓ Assignments written to: ${canonicalPath}`);
-console.log(`  ${Object.keys(assignments).length} meaning(s) processed`);
+console.log(`  ${Object.keys(assignments).length} meaning(s) with assignments`);
 for (const [meaning, headwords] of Object.entries(assignments)) {
-  console.log(`  "${meaning}": ${headwords.length} compound(s)`);
+  console.log(`  "${meaning}": ${headwords.length} compound(s) — ${headwords.join("、") || "(none)"}`);
 }
+console.log(`\nArchive: ${archiveTxtPath}`);
 
 bccwjDb.close();

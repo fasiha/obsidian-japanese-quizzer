@@ -3,3 +3,5 @@ classify/
 clusters/*-meanings-*.json
 clusters/*-meanings-*.txt
 clusters/*-meanings.json
+clusters/*-assignments-*.txt
+clusters/*-assignments.json
