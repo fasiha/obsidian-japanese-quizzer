@@ -9,7 +9,13 @@
  *   node compound-verbs/cluster-meanings.mjs 出す --dry-run
  *   node compound-verbs/cluster-meanings.mjs 出す --model claude-sonnet-4-6
  *   node compound-verbs/cluster-meanings.mjs 出す --meanings-range 3 7
+ *   node compound-verbs/cluster-meanings.mjs 出す --example
+ *   node compound-verbs/cluster-meanings.mjs 出す --simple
+ *   node compound-verbs/cluster-meanings.mjs 出す --simple-with-senses jmdict
+ *   node compound-verbs/cluster-meanings.mjs 出す --simple-with-senses ninjal
+ *   node compound-verbs/cluster-meanings.mjs 出す --simple-with-senses both
  *   node compound-verbs/cluster-meanings.mjs 出す --include-freq
+ *   node compound-verbs/cluster-meanings.mjs 出す --no-min-max
  *
  * Output:
  *   compound-verbs/clusters/<v2>-meanings.json          (canonical, latest run)
@@ -48,13 +54,22 @@ const includeFreq = args.includes("--include-freq");
 const modelFlagIndex = args.indexOf("--model");
 const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
 
+const noMinMax = args.includes("--no-min-max");
+const useExample = args.includes("--example");
+const simple = args.includes("--simple");
+const simpleWithSensesIndex = args.indexOf("--simple-with-senses");
+const simpleWithSenses = simpleWithSensesIndex >= 0 ? args[simpleWithSensesIndex + 1] : null;
+if (simpleWithSenses !== null && !["jmdict", "ninjal", "both"].includes(simpleWithSenses)) {
+  console.error(`--simple-with-senses requires an argument: jmdict, ninjal, or both`);
+  process.exit(1);
+}
 const meaningRangeIndex = args.indexOf("--meanings-range");
 const meaningsMin = meaningRangeIndex >= 0 ? parseInt(args[meaningRangeIndex + 1]) : 3;
 const meaningsMax = meaningRangeIndex >= 0 ? parseInt(args[meaningRangeIndex + 2]) : 7;
 
 if (!v2) {
   console.error(
-    "Usage: node compound-verbs/cluster-meanings.mjs <v2> [--dry-run] [--model MODEL] [--meanings-range MIN MAX] [--include-freq]"
+    "Usage: node compound-verbs/cluster-meanings.mjs <v2> [--dry-run] [--model MODEL] [--meanings-range MIN MAX] [--no-min-max] [--include-freq]"
   );
   process.exit(1);
 }
@@ -127,7 +142,8 @@ console.log(
 
 // --- Build the prompt ---
 
-function formatEntry(entry, index) {
+// senseSources controls which senses appear: "jmdict", "ninjal", or "both"
+function formatEntry(entry, index, senseSources = "both") {
   const freqNote =
     includeFreq
       ? entry.bccwjFrequency > 0
@@ -138,30 +154,67 @@ function formatEntry(entry, index) {
   const lines = [`${index + 1}. ${entry.headword} (${entry.reading}) — v1: ${entry.v1}`];
   if (freqNote) lines.push(`   ${freqNote}`);
 
-  if (entry.jmdictMeanings && entry.jmdictMeanings.length > 0) {
+  if (senseSources !== "ninjal" && entry.jmdictMeanings && entry.jmdictMeanings.length > 0) {
     for (const [i, glosses] of entry.jmdictMeanings.entries()) {
       lines.push(`   JMDict sense ${i + 1}: ${glosses.join("; ")}`);
     }
   }
 
-  for (const [i, sense] of entry.ninjal_senses.entries()) {
-    const exPart = sense.example_ja
-      ? ` (e.g. ${sense.example_ja} → ${sense.example_en})`
-      : "";
-    lines.push(`   NINJAL sense ${i + 1}: ${sense.definition_en}${exPart}`);
+  if (senseSources !== "jmdict") {
+    for (const [i, sense] of entry.ninjal_senses.entries()) {
+      const exPart = sense.example_ja
+        ? ` (e.g. ${sense.example_ja} → ${sense.example_en})`
+        : "";
+      lines.push(`   NINJAL sense ${i + 1}: ${sense.definition_en}${exPart}`);
+    }
   }
 
   return lines.join("\n");
 }
 
-const compoundBlock = trimmed.map(formatEntry).join("\n\n");
+const headwordList = trimmed.map((e) => e.headword).join("、");
+const compoundBlock = trimmed.map((e, i) => formatEntry(e, i, "both")).join("\n\n");
 
-const rangeInstruction =
-  meaningsMin === meaningsMax
-    ? `Identify exactly ${meaningsMin} distinct meanings.`
-    : `Identify between ${meaningsMin} and ${meaningsMax} distinct meanings.`;
+const rangeInstruction = noMinMax
+  ? `Identify as many distinct roles as a learner would find useful — no minimum or maximum.`
+  : meaningsMin === meaningsMax
+    ? `Identify exactly ${meaningsMin} distinct roles.`
+    : `Identify between ${meaningsMin} and ${meaningsMax} distinct roles.`;
 
-const prompt = `You are a Japanese linguistics expert analyzing the suffix verb ${v2} (${trimmed[0]?.v2_reading ?? ""}) as it appears in compound verbs (複合動詞).
+const simpleCorpusLine = `Here are the ${trimmed.length} most common compound verbs ending in -${v2} in our Japanese learner corpus, to help ground your answer:`;
+
+const simplePromptBase = `Make a short list (2-4) of what appending -${v2} to a verb does to it.
+
+For example: there are hundreds of compound verbs ending in -込む, but they fall into roughly four categories: (1) to <verb> and go inside, (2) to <verb> and put inside, (3) to keep <verb>ing as is, (4) to <verb> enough/thoroughly.
+
+${simpleCorpusLine}`;
+
+const simplePrompt = `${simplePromptBase}
+${headwordList}
+
+Respond with a JSON array and nothing else (no markdown fences):
+[
+  { "meaning": "<what -${v2} does to the verb>", "productivity": "high" },
+  { "meaning": "<what -${v2} does to the verb>", "productivity": "medium" }
+]
+
+Use "high" for roles where the compound meaning is fully predictable from the base verb, "medium" where the pattern is real but less transparent.`;
+
+const simpleWithSensesBlock = trimmed.map((e, i) => formatEntry(e, i, simpleWithSenses ?? "both")).join("\n\n");
+
+const simpleWithSensesPrompt = `${simplePromptBase}
+
+${simpleWithSensesBlock}
+
+Respond with a JSON array and nothing else (no markdown fences):
+[
+  { "meaning": "<what -${v2} does to the verb>", "productivity": "high" },
+  { "meaning": "<what -${v2} does to the verb>", "productivity": "medium" }
+]
+
+Use "high" for roles where the compound meaning is fully predictable from the base verb, "medium" where the pattern is real but less transparent.`;
+
+const fullPrompt = `You are helping build a Japanese learning app. Your output will be shown to learners to help them orient themselves to the suffix verb ${v2} (${trimmed[0]?.v2_reading ?? ""}) and understand how it behaves across different compound verbs (複合動詞).
 
 Below are ${trimmed.length} compound verbs that use ${v2} as their suffix (v2 component), listed in descending order by BCCWJ corpus frequency. Each entry shows its JMDict senses and NINJAL VV Lexicon senses.
 
@@ -171,14 +224,31 @@ ${compoundBlock}
 
 ## Your task
 
-A suffix meaning is *productive* when knowing it lets a learner predict the compound's meaning from the base verb alone. Productive meanings come in two grades:
-- "high" — fully predictable: a learner who knows the base verb and this suffix role can derive the compound's meaning
-- "medium" — partially predictable: the pattern exists but is restricted to certain verb types or contexts, making it less transparent
+A suffix role is *productive* when knowing it lets a learner predict many compounds' meanings from their base verbs alone — it must be a genuine recurring pattern across multiple compounds, not a description that fits only one or two cases. Productive roles come in two grades:
+- "high" — fully predictable across multiple compounds: a learner who knows the base verb and this suffix role can derive each compound's meaning
+- "medium" — partially predictable across multiple compounds: the pattern recurs but is restricted to certain verb types or contexts, making it less transparent
 
-Analyze the senses above and identify the distinct productive roles that ${v2} plays as a suffix component across all these compounds.
+Analyze the senses above and identify the distinct productive roles that ${v2} plays as a suffix component across all these compounds. Your goal is to help learners orient themselves — prefer broad roles that cover many compounds over narrow roles that fit only a few. Err on the side of merging.
 
-${rangeInstruction} Merge roles that are essentially the same pattern even if worded differently across compounds. Split roles only when the suffix is genuinely contributing something structurally different.
+${rangeInstruction} Merge roles that are essentially the same pattern even if worded differently across compounds. Split roles only when the suffix is genuinely contributing something structurally different that a learner would benefit from knowing separately.
 
+Two constraints:
+- Each role must cover at least 3 compounds from the input list. A role that fits fewer than 3 compounds is not a learner-useful pattern — omit it entirely.
+- Assign each compound to at most one role — the role that best describes the suffix's contribution for its primary sense. Roles must be disjoint.
+${useExample ? `
+## Example of the desired granularity
+
+Here is a well-calibrated example for a different suffix, 込む (こむ), to show the level of breadth and abstraction we are aiming for:
+
+[
+  { "meaning": "going into or inside something (e.g. 飛び込む to plunge in, 転がり込む to roll in, 攻め込む to invade)", "productivity": "high" },
+  { "meaning": "putting or pressing something inside (e.g. 詰め込む to cram in, 追い込む to corner into, 誘い込む to entice into)", "productivity": "high" },
+  { "meaning": "remaining in a state or becoming settled (e.g. 座り込む to sit down and stay, 塞ぎ込む to mope, 老け込む to age)", "productivity": "medium" },
+  { "meaning": "doing something thoroughly or to completion (e.g. 煮込む to boil well, 教え込む to drill into someone)", "productivity": "medium" }
+]
+
+Notice: four broad roles, each covering many compounds. Not fine-grained distinctions like "entering a building" vs "entering a container" — those would be merged into one role.
+` : ""}
 For each distinct suffix role:
 - Write a short English description of what the suffix contributes (not the compound's meaning as a whole)
 - Rate it as "high" or "medium" as defined above
@@ -189,6 +259,8 @@ Respond with a JSON array and nothing else (no markdown fences, no explanation o
   { "meaning": "<suffix meaning description>", "productivity": "medium" }
 ]`;
 
+const prompt = simple ? simplePrompt : simpleWithSenses ? simpleWithSensesPrompt : fullPrompt;
+
 // --- Dry run: print prompt and exit ---
 
 if (dryRun) {
@@ -196,7 +268,8 @@ if (dryRun) {
   console.log(prompt);
   console.log("\n========== End of prompt ==========\n");
   console.log(`Would send ${trimmed.length} compounds to ${model}`);
-  console.log(`Meanings range: ${meaningsMin}–${meaningsMax}`);
+  console.log(`Prompt mode: ${simple ? "simple" : simpleWithSenses ? `simple-with-senses:${simpleWithSenses}` : `full${useExample ? " + example" : ""}`}`);
+  console.log(`Meanings range: ${noMinMax ? "unconstrained (--no-min-max)" : `${meaningsMin}–${meaningsMax}`}`);
   console.log(`Include frequency in prompt: ${includeFreq}`);
   process.exit(0);
 }

@@ -155,31 +155,40 @@ For each v2 (default: all 470; in practice filtered to the target ~15):
 The script is designed to run for all v2s so that future expansion requires no
 code changes — just running it again and feeding more output files to the LLM.
 
-**1. LLM Pass 1: Discover Suffix Meanings (`compound-verbs/cluster-meanings.mjs`)**
-
-Given all compounds for a suffix (with all their JMDict and NINJAL senses), ask the
-LLM to identify the distinct meanings the suffix contributes as a component.
+**1. LLM Pass 1: Discover Suffix Meanings (`compound-verbs/cluster-meanings.mjs`)** — script written
 
 Input: one survey file (e.g. `compound-verbs/survey/出す.json`), trimmed to the top ~75%
 or top 50 (whichever is larger) by cumulative BCCWJ frequency for large suffixes. (`python3
 plot-one.py v2 込む` can output the table of compounds sorted by frequency and cumulative
 %.)
 
-The prompt presents every compound with all its senses (JMDict and NINJAL together,
-with BCCWJ frequency noted). The LLM returns a short list of distinct suffix-meaning
-descriptions — for example, for 立てる: "do V vigorously or intensely", "bring into
-an upright or established state", "raise or put up forcefully". These are the
-productive meanings the suffix can contribute across all its compounds.
+The LLM is asked: "what does appending -V2 to a verb do to it?" — framed as a learner
+orientation task, not a corpus analysis. The prompt opens with an 込む few-shot example
+(Imabi's four usages: go inside / put inside / remain as-is / do thoroughly) to calibrate
+the desired abstraction level — broad roles covering many compounds, not fine-grained
+sense distinctions.
+
+The script has several prompt modes selectable by flag:
+- `--simple` — sends only the headword list; relies on the LLM's own knowledge of the compounds
+- `--simple-with-senses jmdict|ninjal|both` — sends headwords plus selected sense sources
+- (default, no flag) full prompt — sends complete JMDict + NINJAL senses with detailed instructions
+
+In practice, `--simple` and `--simple-with-senses ninjal` produced the cleanest learner-oriented
+output in testing on 出す. The full prompt tends to over-split when unconstrained. The right
+mode for rare suffixes (where the LLM has less prior knowledge) is an open question.
+
+The prompt instructs the LLM to prefer broad roles and err on the side of merging. Each role
+must be a genuine recurring pattern, not a description that fits only one or two compounds.
 
 Output: `compound-verbs/clusters/出す-meanings-<timestamp>-<model>.json` (timestamped
 archive) plus a canonical `compound-verbs/clusters/出す-meanings.json` (latest run).
-All LLM pass scripts follow this same caching convention so run history is preserved
-for comparison without overwriting prior results.
+The raw LLM response text is also saved as a `.txt` file alongside each archive.
 
 ```json
 [
-  { "meaning": "start to V suddenly", "productivity": "high" },
-  { "meaning": "V outward, bring something forth", "productivity": "medium" }
+  { "meaning": "to bring/take out or extract something from a place or state", "productivity": "high" },
+  { "meaning": "to begin or start an action, often with a sense of initiative", "productivity": "high" },
+  { "meaning": "to reveal, expose, or produce something previously hidden", "productivity": "medium" }
 ]
 ```
 
@@ -296,13 +305,14 @@ Runs as a final check and as a pre-commit gate:
   gets trimmed. In practice this may never matter — but if Pass 1 results look confused
   for less common v1s, try including their JMDict senses in the prompt.
 
-- **How many distinct meanings should Pass 1 return?** This is an open research
-  question — too few meanings collapse genuinely different patterns; too many produce
-  hairsplitting distinctions that are not useful to learners. The script should
-  accept a `--meanings-range MIN MAX` argument (e.g. `--meanings-range 3 7`) so the
-  range can be varied and results compared across runs. What the right range is for a
-  given suffix size is unknown and worth experimenting on the first few suffixes before
-  fixing defaults.
+- **How many distinct meanings should Pass 1 return, and which prompt mode to use?**
+  Tested on 出す: `--simple` (no sense data, LLM uses prior knowledge) and
+  `--simple-with-senses ninjal` both produced 3 clean, broad roles. The full prompt
+  with no constraint produced 10–13 meanings, many over-split. The `--meanings-range`
+  flag exists to constrain the full prompt, but `--simple` and `--simple-with-senses`
+  avoid the problem more cleanly by changing what the LLM sees. The open question is
+  whether `--simple` holds up for rare v2s where the LLM has less training data — in
+  that case `--simple-with-senses ninjal` or `both` may be necessary.
 
 - How many suffixes to ship in v1? Suggest starting with the top 6 by NINJAL
   frequency (込む, 上げる, 出す, 付ける, 上がる, 入れる) and expanding based on
@@ -313,7 +323,8 @@ Runs as a final check and as a pre-commit gate:
 - [ ] **Update README.md** with requirement to download and place
   `BCCWJ_frequencylist_luw2_ver1_0.tsv` in the `compound-verbs/` directory before
   running classification scripts. Link to http://doi.org/10.15084/00003214
-- [ ] **Write `compound-verbs/cluster-meanings.mjs`** (Pass 1)
+- [x] **Write `compound-verbs/cluster-meanings.mjs`** (Pass 1) — written and tested on 出す
+- [ ] **Run Pass 1 on target suffixes** (込む, 上げる, 出す, 付ける, 上がる, 入れる) — evaluate `--simple` vs `--simple-with-senses ninjal` for each
 - [ ] **Write `compound-verbs/assign-examples.mjs`** (Pass 2)
 
 ---
