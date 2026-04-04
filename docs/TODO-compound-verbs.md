@@ -62,7 +62,9 @@ A secondary view: from within the CompoundVerbDetailSheet, browsing by prefix
   (e.g. 込む with 255), trim to the top ~75% by cumulative BCCWJ frequency before
   sending to LLM passes. This keeps prompts manageable without losing coverage of
   common words. For 込む, the top 75% is approximately the top 44 compounds by
-  BCCWJ frequency.
+  BCCWJ frequency. The cap is "top 75% or top 50, whichever is higher" — so for
+  a suffix with only 20 compounds, all 20 are sent rather than artificially
+  cutting to 15.
 
 ## Data Sources
 
@@ -159,7 +161,7 @@ Given all compounds for a suffix (with all their JMDict and NINJAL senses), ask 
 LLM to identify the distinct meanings the suffix contributes as a component.
 
 Input: one survey file (e.g. `compound-verbs/survey/出す.json`), trimmed to the top ~75%
-or top 50 (whichever is lower) by cumulative BCCWJ frequency for large suffixes. (`python3
+or top 50 (whichever is larger) by cumulative BCCWJ frequency for large suffixes. (`python3
 plot-one.py v2 込む` can output the table of compounds sorted by frequency and cumulative
 %.)
 
@@ -169,7 +171,11 @@ descriptions — for example, for 立てる: "do V vigorously or intensely", "br
 an upright or established state", "raise or put up forcefully". These are the
 productive meanings the suffix can contribute across all its compounds.
 
-Output: `compound-verbs/clusters/出す-meanings.json`
+Output: `compound-verbs/clusters/出す-meanings-<timestamp>-<model>.json` (timestamped
+archive) plus a canonical `compound-verbs/clusters/出す-meanings.json` (latest run).
+All LLM pass scripts follow this same caching convention so run history is preserved
+for comparison without overwriting prior results.
+
 ```json
 [
   { "meaning": "start to V suddenly", "productivity": "high" },
@@ -177,11 +183,8 @@ Output: `compound-verbs/clusters/出す-meanings.json`
 ]
 ```
 
-Node generates stable kebab-case `id` slugs from the meaning text when writing
-the final `compound-verbs.json`; the LLM need not produce them.
-
-The lexicalized tail is not enumerated here — it falls out automatically in Pass 3
-as the set of compounds not assigned to any productive meaning cluster.
+The lexicalized tail is not enumerated here — Pass 3 derives it as
+`allCompounds − union(all meaning assignment arrays)`, with no LLM prompt surface.
 
 **2. LLM Pass 2: Assign Compounds to Meanings (`compound-verbs/assign-examples.mjs`)**
 
@@ -189,25 +192,27 @@ One LLM call per productive meaning identified in Pass 1. Each call asks: given 
 meaning description and all the compounds for this suffix, which compounds (and which
 of their senses) exemplify this meaning?
 
-Input: the meanings file from Pass 1 plus the survey file.
+Input: the meanings file from Pass 1 plus the survey file. The prompt quotes the
+meaning description verbatim from the Pass 1 output so the wording is consistent
+across runs and easy to trace.
 
 Running one call per meaning (rather than one big assignment call) keeps each prompt
 focused and makes it easy to re-run a single meaning if the examples look wrong.
 
-Compounds that no meaning call claims become the lexicalized tail automatically.
+Compounds that no meaning call claims become the lexicalized tail in Pass 3 — no
+additional prompt needed.
 
-Output: `compound-verbs/clusters/出す-assignments.json`
+Output: `compound-verbs/clusters/出す-assignments-<timestamp>-<model>.json` (archive)
+plus canonical `compound-verbs/clusters/出す-assignments.json` (latest run).
 ```json
 {
-  "dasu-start-suddenly": ["言い出す", "走り出す", "泣き出す"],
-  "dasu-bring-outward":  ["引き出す", "取り出す"],
-  "lexicalized":         ["言い出す", "見出す"]
+  "start to V suddenly":            ["言い出す", "走り出す", "泣き出す"],
+  "V outward, bring something forth": ["引き出す", "取り出す"]
 }
 ```
-
-Note: a compound may appear under more than one meaning (e.g. if different senses
-of the same headword evince different suffix meanings), and may also appear in the
-lexicalized bucket for its opaque senses.
+Keys are verbatim meaning strings from `出す-meanings.json`. A compound may appear
+under more than one meaning if different senses of the same headword evince different
+suffix meanings.
 
 **3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)**
 
@@ -282,6 +287,14 @@ Runs as a final check and as a pre-commit gate:
   their v1 stem is. This is resolved by the `compoundV1` / `compoundV2` fields in
   vocab.json (see Decisions above): the app groups corpus entries by `compoundV1` at
   runtime to build the prefix browser, no additional data needed.
+
+- **How many distinct meanings should Pass 1 return?** This is an open research
+  question — too few meanings collapse genuinely different patterns; too many produce
+  hairsplitting distinctions that are not useful to learners. The script should
+  accept a `--meanings-range MIN MAX` argument (e.g. `--meanings-range 3 7`) so the
+  range can be varied and results compared across runs. What the right range is for a
+  given suffix size is unknown and worth experimenting on the first few suffixes before
+  fixing defaults.
 
 - How many suffixes to ship in v1? Suggest starting with the top 6 by NINJAL
   frequency (込む, 上げる, 出す, 付ける, 上がる, 入れる) and expanding based on
