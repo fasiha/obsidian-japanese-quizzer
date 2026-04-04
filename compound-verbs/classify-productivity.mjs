@@ -7,6 +7,7 @@
  * Usage:
  *   node compound-verbs/classify-productivity.mjs 立てる
  *   node compound-verbs/classify-productivity.mjs 立てる --max-compounds 3
+ *   node compound-verbs/classify-productivity.mjs 立てる --only 言い立てる,走り立てる
  *   node compound-verbs/classify-productivity.mjs 立てる --dry-run
  *   node compound-verbs/classify-productivity.mjs 立てる --model claude-opus-4-6
  *
