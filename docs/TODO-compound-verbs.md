@@ -288,6 +288,14 @@ Runs as a final check and as a pre-commit gate:
   vocab.json (see Decisions above): the app groups corpus entries by `compoundV1` at
   runtime to build the prefix browser, no additional data needed.
 
+- **Should Pass 1 include JMDict senses for the v1 (base verb) of each compound?**
+  The purpose of Pass 1 is to identify what the suffix v2 *adds* to the base verb v1.
+  If the model does not know v1, seeing only the compound sense may not let it
+  decompose the contribution correctly. Counterargument: the top-50 by BCCWJ frequency
+  tend to have common, well-known v1s; rare v1s cluster in the low-frequency tail that
+  gets trimmed. In practice this may never matter — but if Pass 1 results look confused
+  for less common v1s, try including their JMDict senses in the prompt.
+
 - **How many distinct meanings should Pass 1 return?** This is an open research
   question — too few meanings collapse genuinely different patterns; too many produce
   hairsplitting distinctions that are not useful to learners. The script should
