@@ -41,12 +41,12 @@ def plot(role):
           f"ignored: {total_compounds - total_matched} "
           f"({100*(total_compounds - total_matched)/total_compounds:.1f}%)")
     print(f"Unique {role} values with at least one BCCWJ match: {len(sorted_matched)}")
-    print(f"\nTop 40 (ignored % = share of that {role}'s compounds not in BCCWJ):")
-    for key, matched in sorted_matched[:40]:
+    print(f"\nTop (ignored % = share of that {role}'s compounds not in BCCWJ):")
+    for key, matched in sorted_matched:
         total = counts_total.get(key, 0)
         ignored = total - matched
         print(f"  {key:<8} {matched} matched / {total} total  "
-              f"({100*ignored/total:.0f}% ignored)  freq sum: {freq_sums.get(key, 0)}")
+              f"({100*ignored/total:.0f}% ignored)  freq sum: {freq_sums.get(key, 0)} (avg {freq_sums.get(key, 0)/matched:.1f} per compound)")
     print()
 
     top = sorted_matched[:80]
