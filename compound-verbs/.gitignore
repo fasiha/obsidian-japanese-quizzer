@@ -1,2 +1,4 @@
 survey/
 classify/
+clusters/*-meanings-*.json
+clusters/*-meanings-*.txt

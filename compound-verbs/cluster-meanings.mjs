@@ -16,6 +16,8 @@
  *   node compound-verbs/cluster-meanings.mjs 出す --simple-with-senses both
  *   node compound-verbs/cluster-meanings.mjs 出す --include-freq
  *   node compound-verbs/cluster-meanings.mjs 出す --no-min-max
+ *   node compound-verbs/cluster-meanings.mjs 出す --no-productivity
+ *   node compound-verbs/cluster-meanings.mjs 出す --allow-reasoning
  *
  * Output:
  *   compound-verbs/clusters/<v2>-meanings.json          (canonical, latest run)
@@ -55,6 +57,8 @@ const modelFlagIndex = args.indexOf("--model");
 const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
 
 const noMinMax = args.includes("--no-min-max");
+const noProductivity = args.includes("--no-productivity");
+const allowReasoning = args.includes("--allow-reasoning");
 const useExample = args.includes("--example");
 const simple = args.includes("--simple");
 const simpleWithSensesIndex = args.indexOf("--simple-with-senses");
@@ -181,24 +185,55 @@ const rangeInstruction = noMinMax
     ? `Identify exactly ${meaningsMin} distinct roles.`
     : `Identify between ${meaningsMin} and ${meaningsMax} distinct roles.`;
 
+// --- Prompt building helpers ---
+
+// Returns the JSON schema line(s) used in the "Respond with..." block.
+function jsonSchemaExample(suffix) {
+  if (noProductivity) {
+    return `[\n  { "meaning": "<what -${suffix} does to the verb>" },\n  { "meaning": "<what -${suffix} does to the verb>" }\n]`;
+  }
+  return `[\n  { "meaning": "<what -${suffix} does to the verb>", "productivity": "high" },\n  { "meaning": "<what -${suffix} does to the verb>", "productivity": "medium" }\n]`;
+}
+
+// Returns the closing instruction that asks the model to emit JSON.
+function respondInstruction(schemaExample) {
+  if (allowReasoning) {
+    return `Think through the patterns before committing to an answer. End your response with a JSON array (no markdown fences):\n${schemaExample}`;
+  }
+  return `Respond with a JSON array and nothing else (no markdown fences):\n${schemaExample}`;
+}
+
 const simpleCorpusLine = `Here are the ${trimmed.length} most common compound verbs ending in -${v2} in our Japanese learner corpus, to help ground your answer:`;
 
-const simplePromptBase = `Make a short list (2-4) of what appending -${v2} to a verb does to it.
+const komuSimpleExample = noProductivity
+  ? `[
+  { "meaning": "to <verb> and go inside" },
+  { "meaning": "to <verb> and put inside" },
+  { "meaning": "to keep <verb>ing / become settled in a state" },
+  { "meaning": "to <verb> thoroughly or to completion" }
+]`
+  : `[
+  { "meaning": "to <verb> and go inside", "productivity": "high" },
+  { "meaning": "to <verb> and put inside", "productivity": "high" },
+  { "meaning": "to keep <verb>ing / become settled in a state", "productivity": "medium" },
+  { "meaning": "to <verb> thoroughly or to completion", "productivity": "medium" }
+]`;
 
-For example: there are hundreds of compound verbs ending in -込む, but they fall into roughly four categories: (1) to <verb> and go inside, (2) to <verb> and put inside, (3) to keep <verb>ing as is, (4) to <verb> enough/thoroughly.
+const simplePromptBase = `Make a short list (2-4) of what appending -${v2} to a verb does to it. This is for Japanese learners at the N4–N5 level.
+
+For example, -込む falls into roughly four categories:
+${komuSimpleExample}
 
 ${simpleCorpusLine}`;
+
+const simpleProductivityLine = noProductivity
+  ? ""
+  : `\nUse "high" for roles where the compound meaning is fully predictable from the base verb, "medium" where the pattern is real but less transparent.`;
 
 const simplePrompt = `${simplePromptBase}
 ${headwordList}
 
-Respond with a JSON array and nothing else (no markdown fences):
-[
-  { "meaning": "<what -${v2} does to the verb>", "productivity": "high" },
-  { "meaning": "<what -${v2} does to the verb>", "productivity": "medium" }
-]
-
-Use "high" for roles where the compound meaning is fully predictable from the base verb, "medium" where the pattern is real but less transparent.`;
+${respondInstruction(jsonSchemaExample(v2))}${simpleProductivityLine}`;
 
 const simpleWithSensesBlock = trimmed.map((e, i) => formatEntry(e, i, simpleWithSenses ?? "both")).join("\n\n");
 
@@ -206,13 +241,38 @@ const simpleWithSensesPrompt = `${simplePromptBase}
 
 ${simpleWithSensesBlock}
 
-Respond with a JSON array and nothing else (no markdown fences):
-[
-  { "meaning": "<what -${v2} does to the verb>", "productivity": "high" },
-  { "meaning": "<what -${v2} does to the verb>", "productivity": "medium" }
-]
+${respondInstruction(jsonSchemaExample(v2))}${simpleProductivityLine}`;
 
-Use "high" for roles where the compound meaning is fully predictable from the base verb, "medium" where the pattern is real but less transparent.`;
+// 込む example entries, with or without productivity labels.
+const komuExampleEntries = noProductivity
+  ? `[
+  { "meaning": "going into or inside something (e.g. 飛び込む to plunge in, 転がり込む to roll in, 攻め込む to invade)" },
+  { "meaning": "putting or pressing something inside (e.g. 詰め込む to cram in, 追い込む to corner into, 誘い込む to entice into)" },
+  { "meaning": "remaining in a state or becoming settled (e.g. 座り込む to sit down and stay, 塞ぎ込む to mope, 老け込む to age)" },
+  { "meaning": "doing something thoroughly or to completion (e.g. 煮込む to boil well, 教え込む to drill into someone)" }
+]`
+  : `[
+  { "meaning": "going into or inside something (e.g. 飛び込む to plunge in, 転がり込む to roll in, 攻め込む to invade)", "productivity": "high" },
+  { "meaning": "putting or pressing something inside (e.g. 詰め込む to cram in, 追い込む to corner into, 誘い込む to entice into)", "productivity": "high" },
+  { "meaning": "remaining in a state or becoming settled (e.g. 座り込む to sit down and stay, 塞ぎ込む to mope, 老け込む to age)", "productivity": "medium" },
+  { "meaning": "doing something thoroughly or to completion (e.g. 煮込む to boil well, 教え込む to drill into someone)", "productivity": "medium" }
+]`;
+
+const fullSchemaExample = noProductivity
+  ? `[\n  { "meaning": "<suffix meaning description>" },\n  { "meaning": "<suffix meaning description>" }\n]`
+  : `[\n  { "meaning": "<suffix meaning description>", "productivity": "high" },\n  { "meaning": "<suffix meaning description>", "productivity": "medium" }\n]`;
+
+const productivityGradesBlock = noProductivity
+  ? ""
+  : `Productive roles come in two grades:
+- "high" — fully predictable across multiple compounds: a learner who knows the base verb and this suffix role can derive each compound's meaning
+- "medium" — partially predictable across multiple compounds: the pattern recurs but is restricted to certain verb types or contexts, making it less transparent
+
+`;
+
+const rateProductivityLine = noProductivity
+  ? ""
+  : `\n- Rate it as "high" or "medium" as defined above`;
 
 const fullPrompt = `You are helping build a Japanese learning app. Your output will be shown to learners to help them orient themselves to the suffix verb ${v2} (${trimmed[0]?.v2_reading ?? ""}) and understand how it behaves across different compound verbs (複合動詞).
 
@@ -224,11 +284,7 @@ ${compoundBlock}
 
 ## Your task
 
-A suffix role is *productive* when knowing it lets a learner predict many compounds' meanings from their base verbs alone — it must be a genuine recurring pattern across multiple compounds, not a description that fits only one or two cases. Productive roles come in two grades:
-- "high" — fully predictable across multiple compounds: a learner who knows the base verb and this suffix role can derive each compound's meaning
-- "medium" — partially predictable across multiple compounds: the pattern recurs but is restricted to certain verb types or contexts, making it less transparent
-
-Analyze the senses above and identify the distinct productive roles that ${v2} plays as a suffix component across all these compounds. Your goal is to help learners orient themselves — prefer broad roles that cover many compounds over narrow roles that fit only a few. Err on the side of merging.
+A suffix role is *productive* when knowing it lets a learner predict many compounds' meanings from their base verbs alone — it must be a genuine recurring pattern across multiple compounds, not a description that fits only one or two cases. ${productivityGradesBlock}Analyze the senses above and identify the distinct productive roles that ${v2} plays as a suffix component across all these compounds. Your goal is to help learners orient themselves — prefer broad roles that cover many compounds over narrow roles that fit only a few. Err on the side of merging.
 
 ${rangeInstruction} Merge roles that are essentially the same pattern even if worded differently across compounds. Split roles only when the suffix is genuinely contributing something structurally different that a learner would benefit from knowing separately.
 
@@ -240,24 +296,14 @@ ${useExample ? `
 
 Here is a well-calibrated example for a different suffix, 込む (こむ), to show the level of breadth and abstraction we are aiming for:
 
-[
-  { "meaning": "going into or inside something (e.g. 飛び込む to plunge in, 転がり込む to roll in, 攻め込む to invade)", "productivity": "high" },
-  { "meaning": "putting or pressing something inside (e.g. 詰め込む to cram in, 追い込む to corner into, 誘い込む to entice into)", "productivity": "high" },
-  { "meaning": "remaining in a state or becoming settled (e.g. 座り込む to sit down and stay, 塞ぎ込む to mope, 老け込む to age)", "productivity": "medium" },
-  { "meaning": "doing something thoroughly or to completion (e.g. 煮込む to boil well, 教え込む to drill into someone)", "productivity": "medium" }
-]
+${komuExampleEntries}
 
 Notice: four broad roles, each covering many compounds. Not fine-grained distinctions like "entering a building" vs "entering a container" — those would be merged into one role.
 ` : ""}
 For each distinct suffix role:
-- Write a short English description of what the suffix contributes (not the compound's meaning as a whole)
-- Rate it as "high" or "medium" as defined above
+- Write a short English description of what the suffix contributes (not the compound's meaning as a whole)${rateProductivityLine}
 
-Respond with a JSON array and nothing else (no markdown fences, no explanation outside the JSON):
-[
-  { "meaning": "<suffix meaning description>", "productivity": "high" },
-  { "meaning": "<suffix meaning description>", "productivity": "medium" }
-]`;
+${respondInstruction(fullSchemaExample)}`;
 
 const prompt = simple ? simplePrompt : simpleWithSenses ? simpleWithSensesPrompt : fullPrompt;
 
@@ -271,6 +317,8 @@ if (dryRun) {
   console.log(`Prompt mode: ${simple ? "simple" : simpleWithSenses ? `simple-with-senses:${simpleWithSenses}` : `full${useExample ? " + example" : ""}`}`);
   console.log(`Meanings range: ${noMinMax ? "unconstrained (--no-min-max)" : `${meaningsMin}–${meaningsMax}`}`);
   console.log(`Include frequency in prompt: ${includeFreq}`);
+  console.log(`No productivity labels: ${noProductivity}`);
+  console.log(`Allow reasoning before JSON: ${allowReasoning}`);
   process.exit(0);
 }
 
@@ -281,7 +329,7 @@ console.log(`Calling ${model}...`);
 const client = new Anthropic();
 const message = await client.messages.create({
   model,
-  max_tokens: 1024,
+  max_tokens: allowReasoning ? 4096 : 1024,
   messages: [{ role: "user", content: prompt }],
 });
 
@@ -292,7 +340,12 @@ const responseText = message.content[0].text.trim();
 
 let parsed;
 try {
-  const jsonText = responseText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+  // When --allow-reasoning the model may reason before the JSON array.
+  // Extract the last [...] block to handle both cases uniformly.
+  const lastArrayMatch = responseText.match(/(\[[\s\S]*\])[^[]*$/);
+  const jsonText = lastArrayMatch
+    ? lastArrayMatch[1].trim()
+    : responseText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
   parsed = JSON.parse(jsonText);
 } catch (err) {
   console.error("ERROR: Could not parse LLM response as JSON.");
@@ -307,9 +360,15 @@ if (!Array.isArray(parsed) || parsed.length === 0) {
 }
 
 for (const item of parsed) {
-  if (typeof item.meaning !== "string" || !["high", "medium"].includes(item.productivity)) {
+  const meaningOk = typeof item.meaning === "string";
+  const productivityOk = noProductivity || ["high", "medium"].includes(item.productivity);
+  if (!meaningOk || !productivityOk) {
     console.error(`ERROR: Malformed entry in LLM response: ${JSON.stringify(item)}`);
-    console.error('Each entry must have a "meaning" string and "productivity" of "high" or "medium".');
+    console.error(
+      noProductivity
+        ? 'Each entry must have a "meaning" string.'
+        : 'Each entry must have a "meaning" string and "productivity" of "high" or "medium".'
+    );
     process.exit(1);
   }
 }
@@ -325,7 +384,31 @@ const archivePath = join(clustersDir, `${v2}-meanings-${timestamp}-${model}.json
 const canonicalPath = join(clustersDir, `${v2}-meanings.json`);
 const rawResponsePath = join(clustersDir, `${v2}-meanings-${timestamp}-${model}.txt`);
 
-writeFileSync(rawResponsePath, responseText, "utf8");
+const flagsSummary = [
+  `suffix: ${v2}`,
+  `model: ${model}`,
+  `prompt-mode: ${simple ? "simple" : simpleWithSenses ? `simple-with-senses:${simpleWithSenses}` : `full${useExample ? "+example" : ""}`}`,
+  `meanings-range: ${noMinMax ? "unconstrained (--no-min-max)" : `${meaningsMin}–${meaningsMax}`}`,
+  `include-freq: ${includeFreq}`,
+  `no-productivity: ${noProductivity}`,
+  `allow-reasoning: ${allowReasoning}`,
+  `compounds-sent: ${trimmed.length}`,
+  `timestamp: ${isoString}`,
+  `args: node compound-verbs/cluster-meanings.mjs ${args.join(" ")}`,
+].join("\n");
+
+const rawResponseContent = [
+  "========== FLAGS ==========",
+  flagsSummary,
+  "",
+  "========== PROMPT ==========",
+  prompt,
+  "",
+  "========== RESPONSE ==========",
+  responseText,
+].join("\n");
+
+writeFileSync(rawResponsePath, rawResponseContent, "utf8");
 const output = JSON.stringify(parsed, null, 2);
 writeFileSync(archivePath, output, "utf8");
 writeFileSync(canonicalPath, output, "utf8");

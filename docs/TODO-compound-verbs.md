@@ -184,6 +184,7 @@ Output: `compound-verbs/clusters/出す-meanings-<timestamp>-<model>.json` (time
 archive) plus a canonical `compound-verbs/clusters/出す-meanings.json` (latest run).
 The raw LLM response text is also saved as a `.txt` file alongside each archive.
 
+Example output from `--simple` (Haiku, headwords only, no sense data):
 ```json
 [
   { "meaning": "to bring/take out or extract something from a place or state", "productivity": "high" },
@@ -306,13 +307,15 @@ Runs as a final check and as a pre-commit gate:
   for less common v1s, try including their JMDict senses in the prompt.
 
 - **How many distinct meanings should Pass 1 return, and which prompt mode to use?**
-  Tested on 出す: `--simple` (no sense data, LLM uses prior knowledge) and
-  `--simple-with-senses ninjal` both produced 3 clean, broad roles. The full prompt
-  with no constraint produced 10–13 meanings, many over-split. The `--meanings-range`
-  flag exists to constrain the full prompt, but `--simple` and `--simple-with-senses`
-  avoid the problem more cleanly by changing what the LLM sees. The open question is
-  whether `--simple` holds up for rare v2s where the LLM has less training data — in
-  that case `--simple-with-senses ninjal` or `both` may be necessary.
+  Tested on 出す, 立てる, 返す across Haiku, Sonnet, and Opus: `--simple --no-productivity
+  --allow-reasoning` (no sense data, LLM uses prior knowledge, no productivity labels,
+  reasoning before JSON) consistently produced 3–4 clean broad roles and the models
+  converged closely. The full prompt tends to over-split when unconstrained. Haiku
+  is good enough and much cheaper; variation between models looks like sampling noise
+  rather than a capability gap. **Standard invocation for Pass 1:**
+  `node compound-verbs/cluster-meanings.mjs <v2> --simple --no-productivity --allow-reasoning`
+  The open question is whether `--simple` holds up for rare v2s where the LLM has less
+  training data — in that case `--simple-with-senses ninjal` or `both` may be necessary.
 
 - How many suffixes to ship in v1? Suggest starting with the top 6 by NINJAL
   frequency (込む, 上げる, 出す, 付ける, 上がる, 入れる) and expanding based on
@@ -324,7 +327,7 @@ Runs as a final check and as a pre-commit gate:
   `BCCWJ_frequencylist_luw2_ver1_0.tsv` in the `compound-verbs/` directory before
   running classification scripts. Link to http://doi.org/10.15084/00003214
 - [x] **Write `compound-verbs/cluster-meanings.mjs`** (Pass 1) — written and tested on 出す
-- [ ] **Run Pass 1 on target suffixes** (込む, 上げる, 出す, 付ける, 上がる, 入れる) — evaluate `--simple` vs `--simple-with-senses ninjal` for each
+- [ ] **Run Pass 1 on target suffixes** (込む, 上げる, 出す, 付ける, 上がる, 入れる) — use `--simple --no-productivity --allow-reasoning` (standard invocation)
 - [ ] **Write `compound-verbs/assign-examples.mjs`** (Pass 2)
 
 ---
