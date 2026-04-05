@@ -504,5 +504,40 @@
         "specializedMeaning": "to move while exhibiting or qualified by a manner of motion, emotional state, or non-agentive condition described by <verb>, where the prefix lexicalizes a property of the walking itself rather than a discrete action or carrying relation; excludes compounds involving carrying (meaning 1), location-specific accomplishments (meaning 2), and iterative actions (meaning 3)"
       }
     ]
+  },
+  {
+    "id": "nukeru-suffix",
+    "kanji": "抜ける",
+    "reading": "ぬける",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to <verb> all the way through",
+        "examples": [
+          1433010,
+          1244820,
+          1402520,
+          1846480
+        ],
+        "specializedMeaning": "to <verb> all the way through a space, path, or duration, emphasizing completion or fullness of the action across the entire defined extent (excludes meaning 2: does not focus on overcoming a blocking obstacle; excludes meaning 3: does not involve escaping a predicament)"
+      },
+      {
+        "meaning": "to <verb> past or beyond an obstacle",
+        "examples": [
+          1298880,
+          1456820,
+          1985150
+        ],
+        "specializedMeaning": "to <verb> past, beyond, or around a physical obstacle or blocking entity in a spatial or navigational context (e.g., a barrier, a crowd, a narrow opening), emphasizing the navigation or penetration of resistance (excludes meaning 1: the obstacle, not the extent of the space, is the focus; excludes meaning 3: the obstacle is inherent to space/navigation, not a situational predicament)"
+      },
+      {
+        "meaning": "to escape from or get out of (a difficult situation) by <verb>ing",
+        "examples": [
+          1384620,
+          1985150
+        ],
+        "specializedMeaning": "to escape from, resolve, or exit an unwanted predicament or difficult state by <verb>ing, where the action serves as a means of extricating oneself from the situation (excludes meaning 1: involves a predicament, not mere completion of action; excludes meaning 2: the obstacle is a situation or state requiring exit, not a physical barrier in a spatial context)"
+      }
+    ]
   }
 ]
