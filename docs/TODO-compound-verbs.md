@@ -44,17 +44,27 @@ A secondary view: from within the CompoundVerbDetailSheet, browsing by prefix
   Linking corpus words to compound verb entries is done at runtime or in the
   prepare-publish step, not stored in this file.
 
-- **Small addition to vocab.json entries.** Each vocab entry may gain two optional
-  fields: `"compoundV1"` and `"compoundV2"`, both strings (kanji form of the
-  component verb). These are populated during the prepare-publish step by matching
-  the entry's kanji form against `headwords.json`. Their presence confirms the word
-  is in the VV Lexicon and provides the component verbs without requiring a runtime
-  join against headwords data. Example:
-  ```json
-  { "id": 1234567, "compoundV1": "歩く", "compoundV2": "出す" }
-  ```
-  WordDetailSheet uses `compoundV2` to look up the suffix entry in
-  `compound-verbs.json`; the prefix browser uses `compoundV1` to group siblings.
+- **No changes to vocab.json for compound verb data.** `compound-verbs.json` is
+  bundled in the app (like `transitive-pairs.json`). iOS builds a reverse map at
+  startup — JMDict ID → (suffix entry, sense index) — so `WordDetailSheet` just
+  does a single lookup. `vocab.json` stays untouched. The v1 stem needed by the
+  prefix browser is derived at runtime by stripping the v2 suffix kanji from the
+  compound's kanji form; no stored field is needed.
+
+- **Compound verbs not in VV Lexicon.** Some JMDict verb entries are compound verbs
+  that NINJAL did not include in their lexicon — e.g. 震え出す (JMDict 1633520,
+  "to begin to tremble") is a perfectly regular compound of 震える + 出す but is
+  absent from `headwords.json`. To handle these, a Node.js script runs MeCab on
+  every verb entry in the corpus that is not already in `compound-verbs.json`. If
+  MeCab tokenizes the kanji form as `[動詞-一般][動詞-非自立可能]` (general verb +
+  bound verb) and the second token's dictionary form matches a known suffix in
+  `compound-verbs.json`, the compound is assigned a sense via a lightweight Haiku
+  classification call, then added to `compound-verbs.json` as
+  `{ "id": "<jmdict-id>", "source": "pug-inferred" }` in the matched sense's
+  examples array. If the second token is not a known suffix, the word is skipped
+  with a warning (unknown suffix — out of scope for now). Because the inferred
+  examples live in `compound-verbs.json`, iOS picks them up through the same reverse
+  map with no special handling.
 
 - **Senses within each suffix.** A suffix like 出す has multiple distinct meanings
   (sudden start; bring outward) and a tail of opaque lexicalized forms. Each sense
@@ -125,16 +135,25 @@ File: `compound-verbs.json`
       {
         "meaning": "start to V suddenly",
         "specializedMeaning": "For the subject to begin <verb>-ing abruptly or spontaneously…",
-        "examples": [1234567, 2345678, 3456789]
+        "examples": [
+          { "id": "1234567", "source": "vvlexicon", "v1Id": "1111111" },
+          { "id": "2345678", "source": "vvlexicon", "v1Id": "2222222" }
+        ]
       },
       {
         "meaning": "V outward, bring something forth",
         "specializedMeaning": "For something previously internal or concealed to <verb> outward…",
-        "examples": [4567890, 5678901, 6789012]
+        "examples": [
+          { "id": "4567890", "source": "vvlexicon", "v1Id": "4444444" },
+          { "id": "5678901", "source": "pug-inferred", "v1Id": "5555555" }
+        ]
       },
       {
         "meaning": "",
-        "examples": [7890123, 8901234, 9012345, 1023456, 1123456, 1223456]
+        "examples": [
+          { "id": "7890123", "source": "vvlexicon", "v1Id": "7777777" },
+          { "id": "8901234", "source": "vvlexicon", "v1Id": "8888888" }
+        ]
       }
     ]
   }
@@ -144,6 +163,7 @@ File: `compound-verbs.json`
 Field notes:
 - `id` — stable kebab-case identifier, used to link from vocab metadata if needed later
 - `kanji` / `reading` — display forms; reading is hiragana only (no kanji)
+- `jmdictId` — JMDict entry ID string for the suffix verb itself; null if not found
 - `role` — always `"suffix"` for now; `"prefix"` reserved for future expansion
 - `senses` — ordered array of meaning senses, with a final lexicalized sense at the end
   if any compounds were unassigned. Multiple productive senses are expected (e.g. 出す has
@@ -156,8 +176,21 @@ Field notes:
   classification rule written by Pass 1b. Omitted when sharpened and original strings are
   identical, and omitted on the lexicalized sense. Useful for future LLM passes and for
   debugging classification decisions; not intended as primary display text.
-- `senses[].examples` — array of JMDict entry IDs (integers), ordered by BCCWJ frequency
-  descending. Compounds without JMDict IDs are excluded.
+- `senses[].examples` — array of `{id, source, v1Id?}` objects, ordered by BCCWJ
+  frequency descending. Compounds without JMDict IDs are excluded. All ID fields are
+  decimal strings (strings are used rather than integers because some JMDict IDs
+  exceed JavaScript's `Number.MAX_SAFE_INTEGER`). `source` is one of:
+  - `"vvlexicon"` — compound appears in the NINJAL VV Lexicon (`headwords.json`)
+  - `"pug-inferred"` — not in VV Lexicon; v1/v2 split inferred via MeCab, sense
+    assigned via LLM classification against the known suffix senses
+- `senses[].examples[].v1Id` — optional JMDict entry ID string for the base verb (v1).
+  Present whenever v1 was found in JMDict — which is attempted for every entry
+  regardless of whether the compound itself is in JMDict. vvlexicon sometimes stores
+  multiple kanji spellings for v1 as a comma-separated string (e.g. `擦る,摺る,摩る`);
+  survey.mjs tries each in turn. Some v1s are genuinely absent from JMDict (archaic,
+  colloquial, or kana-only verbs). Missing `v1Id` always produces a warning, never an
+  error. Enables iOS to link to the base verb's WordDetailSheet and to group
+  prefix-browser siblings by base verb rather than raw masu-stem string.
 
 ## Work Plan
 
@@ -360,6 +393,36 @@ Runs as a final check and as a pre-commit gate on the finished `compound-verbs.j
 
 Note: this is distinct from Pass 2b (`validate-assignments.mjs`), which validates semantic correctness of LLM assignments before they reach `compound-verbs.json`.
 
+**6. Inferred compound detection (`compound-verbs/infer-from-corpus.mjs`)** — not yet written
+
+A standalone script (not part of prepare-publish but possibly run by prepare-publish.mjs) that scans the corpus vocab for
+verb entries not already covered by `compound-verbs.json`, infers any compound verb
+decompositions via MeCab, and writes the results back into `compound-verbs.json`.
+Run this whenever new vocabulary is added to the corpus, before publishing.
+
+Steps:
+1. Build a set of all JMDict IDs already present in `compound-verbs.json` examples (already in compound-verbs.json).
+2. For each verb entry in `vocab.json` not in that set, run MeCab on its kanji form.
+3. If the output is exactly two tokens with POS `動詞-一般` then `動詞-非自立可能`,
+   treat it as a compound verb candidate. Otherwise skip — not a compound verb.
+4. Look up the second token's dictionary form in `compound-verbs.json`. If not found,
+   emit a warning and skip (unknown suffix — out of scope for now).
+5. Batch all candidates for a given suffix together and send one Haiku call to assign
+   each to a sense. The prompt provides the suffix's senses from `compound-verbs.json`
+   and each candidate's JMDict gloss; asks for the best-fit sense index (or `null` for
+   opaque/unclassifiable).
+6. Add each inferred compound to the appropriate suffix entry in `compound-verbs.json`
+   as `{ "id": "<jmdict-id>", "source": "pug-inferred" }` in the matched sense's
+   examples array (or the lexicalized tail if unclassified).
+
+The LLM call in step 5 is lightweight — classification only, not meaning discovery.
+No survey file, no BCCWJ ranking, no multi-pass sharpening. The existing suffix senses
+serve as the classifier. iOS picks up inferred compounds through the same reverse map
+as vvlexicon compounds — no special handling needed.
+
+**Known gap:** 震え出す (JMDict 1633520, "to begin to tremble") is the first observed
+example: in JMDict, not in `headwords.json`, MeCab tokenizes it as 震える + 出す.
+
 ### Phase 2 — iOS (Swift / SwiftUI)
 
 1. **Load compound-verbs.json.** Add `compound-verbs.json` to the app bundle.
@@ -502,6 +565,10 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
 
 ## Action Items
 
+- [ ] **Write `compound-verbs/infer-from-corpus.mjs`** (Phase 1 step 6):
+  MeCab tokenization of corpus verb entries not already in compound-verbs.json,
+  batched Haiku sense assignment, add `pug-inferred` examples to compound-verbs.json.
+  First test case: 震え出す (JMDict 1633520).
 - [ ] **Update README.md** with requirement to download and place
   `BCCWJ_frequencylist_luw2_ver1_0.tsv` in the `compound-verbs/` directory before
   running classification scripts. Link to http://doi.org/10.15084/00003214

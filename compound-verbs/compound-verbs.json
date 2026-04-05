@@ -3,86 +3,291 @@
     "id": "agaru-suffix",
     "kanji": "上がる",
     "reading": "あがる",
+    "jmdictId": "1352290",
     "role": "suffix",
     "senses": [
       {
-        "meaning": "to move upward / to rise up",
+        "meaning": "to <verb> upward / rise up",
         "examples": [
-          1551370,
-          1497350,
-          1223650,
-          1429690,
-          1497390,
-          1499080,
-          1315800,
-          1244790,
-          1601010,
-          2025500,
-          2862365,
-          1358900,
-          2827648,
-          1538430,
-          1211160,
-          2572310,
-          2274660,
-          1679910,
-          2829433,
-          2829433
+          {
+            "id": "1551370",
+            "source": "vvlexicon",
+            "v1Id": "1597040"
+          },
+          {
+            "id": "1497350",
+            "source": "vvlexicon",
+            "v1Id": "1497430"
+          },
+          {
+            "id": "1223650",
+            "source": "vvlexicon",
+            "v1Id": "1223640"
+          },
+          {
+            "id": "1429690",
+            "source": "vvlexicon",
+            "v1Id": "1429700"
+          },
+          {
+            "id": "1497390",
+            "source": "vvlexicon",
+            "v1Id": "1497420"
+          },
+          {
+            "id": "1499080",
+            "source": "vvlexicon",
+            "v1Id": "1499100"
+          },
+          {
+            "id": "1315800",
+            "source": "vvlexicon",
+            "v1Id": "1315720"
+          },
+          {
+            "id": "1244790",
+            "source": "vvlexicon",
+            "v1Id": "1244720"
+          },
+          {
+            "id": "1601010",
+            "source": "vvlexicon",
+            "v1Id": "1429620"
+          },
+          {
+            "id": "2025500",
+            "source": "vvlexicon",
+            "v1Id": "1474200"
+          },
+          {
+            "id": "2862365",
+            "source": "vvlexicon",
+            "v1Id": "1370760"
+          },
+          {
+            "id": "1358900",
+            "source": "vvlexicon",
+            "v1Id": "1358870"
+          },
+          {
+            "id": "2827648",
+            "source": "vvlexicon",
+            "v1Id": "1408810"
+          },
+          {
+            "id": "1538430",
+            "source": "vvlexicon",
+            "v1Id": "1538445"
+          },
+          {
+            "id": "1211160",
+            "source": "vvlexicon",
+            "v1Id": "1211200"
+          },
+          {
+            "id": "2572310",
+            "source": "vvlexicon",
+            "v1Id": "1384860"
+          },
+          {
+            "id": "2274660",
+            "source": "vvlexicon",
+            "v1Id": "2131580"
+          },
+          {
+            "id": "1679910",
+            "source": "vvlexicon",
+            "v1Id": "1478200"
+          },
+          {
+            "id": "2829433",
+            "source": "vvlexicon",
+            "v1Id": "1633150"
+          },
+          {
+            "id": "2829433",
+            "source": "vvlexicon",
+            "v1Id": "1633150"
+          }
         ],
         "specializedMeaning": "For the subject or object to <verb> to a higher spatial location, with emphasis on translocation along a vertical or upward-sloping path."
       },
       {
-        "meaning": "to be completed / to be finished",
+        "meaning": "to <verb> and be completed / finish",
         "examples": [
-          1340610,
-          1305130,
-          2763150,
-          2826227,
-          2828978,
-          1601410,
-          1376490,
-          2832435,
-          1298600,
-          2827913
+          {
+            "id": "1340610",
+            "source": "vvlexicon",
+            "v1Id": "1340450"
+          },
+          {
+            "id": "1305130",
+            "source": "vvlexicon",
+            "v1Id": "1157170"
+          },
+          {
+            "id": "2763150",
+            "source": "vvlexicon",
+            "v1Id": "1350600"
+          },
+          {
+            "id": "2826227",
+            "source": "vvlexicon",
+            "v1Id": "1571470"
+          },
+          {
+            "id": "2828978",
+            "source": "vvlexicon",
+            "v1Id": "1596830"
+          },
+          {
+            "id": "1601410",
+            "source": "vvlexicon",
+            "v1Id": "1212010"
+          },
+          {
+            "id": "1376490",
+            "source": "vvlexicon",
+            "v1Id": "1376470"
+          },
+          {
+            "id": "2832435",
+            "source": "vvlexicon",
+            "v1Id": "1397590"
+          },
+          {
+            "id": "1298600",
+            "source": "vvlexicon",
+            "v1Id": "1298670"
+          },
+          {
+            "id": "2827913",
+            "source": "vvlexicon",
+            "v1Id": "1434120"
+          }
         ],
         "specializedMeaning": "For the action denoted by <verb> to reach completion, finality, or a fully finished state; the culmination point of a process."
       },
       {
-        "meaning": "to swell up / to increase in size or intensity",
+        "meaning": "to <verb> and swell / increase in size or intensity",
         "examples": [
-          1379690,
-          1905800,
-          1469600,
-          1499080,
-          1366320,
-          1328920,
-          1501680,
-          2862365,
-          1309290,
-          2476560,
-          2070770,
-          1375590,
-          1337550,
-          1600710,
-          1495970,
-          1850940,
-          2248930,
-          2002520,
-          1358830
+          {
+            "id": "1379690",
+            "source": "vvlexicon",
+            "v1Id": "1379730"
+          },
+          {
+            "id": "1905800",
+            "source": "vvlexicon",
+            "v1Id": "1602550"
+          },
+          {
+            "id": "1469600",
+            "source": "vvlexicon",
+            "v1Id": "1469570"
+          },
+          {
+            "id": "1499080",
+            "source": "vvlexicon",
+            "v1Id": "1499100"
+          },
+          {
+            "id": "1366320",
+            "source": "vvlexicon",
+            "v1Id": "1366310"
+          },
+          {
+            "id": "1328920",
+            "source": "vvlexicon",
+            "v1Id": "1328910"
+          },
+          {
+            "id": "1501680",
+            "source": "vvlexicon",
+            "v1Id": "1606680"
+          },
+          {
+            "id": "2862365",
+            "source": "vvlexicon",
+            "v1Id": "1370760"
+          },
+          {
+            "id": "1309290",
+            "source": "vvlexicon",
+            "v1Id": "1589350"
+          },
+          {
+            "id": "2476560",
+            "source": "vvlexicon",
+            "v1Id": "1346150"
+          },
+          {
+            "id": "2070770",
+            "source": "vvlexicon",
+            "v1Id": "1475720"
+          },
+          {
+            "id": "1375590",
+            "source": "vvlexicon",
+            "v1Id": "1375610"
+          },
+          {
+            "id": "1337550",
+            "source": "vvlexicon",
+            "v1Id": "1337560"
+          },
+          {
+            "id": "1600710",
+            "source": "vvlexicon",
+            "v1Id": "1455420"
+          },
+          {
+            "id": "1495970",
+            "source": "vvlexicon",
+            "v1Id": "1495770"
+          },
+          {
+            "id": "1850940",
+            "source": "vvlexicon",
+            "v1Id": "1247040"
+          },
+          {
+            "id": "2248930",
+            "source": "vvlexicon",
+            "v1Id": "1570220"
+          },
+          {
+            "id": "2002520",
+            "source": "vvlexicon",
+            "v1Id": "1227110"
+          },
+          {
+            "id": "1358830",
+            "source": "vvlexicon",
+            "v1Id": "1358850"
+          }
         ],
         "specializedMeaning": "For the subject to <verb> such that something swells, surges, or intensifies in a non-spatial, non-completive sense — excludes upward spatial movement (meaning 1) and excludes processes that simply reach exhaustion or completion (meaning 2); the subject becomes more extreme or pronounced in volume, emotional intensity, or magnitude."
       },
       {
-        "meaning": "to come to the surface / to emerge or appear",
+        "meaning": "to <verb> and emerge / rise from below",
         "examples": [
-          1497350
+          {
+            "id": "1497350",
+            "source": "vvlexicon",
+            "v1Id": "1497430"
+          }
         ],
         "specializedMeaning": "For something previously hidden, internal, contained, or subjacent to <verb> such that it becomes visible, exposed, revealed, or brought to the surface; a change from concealment to manifestation."
       },
       {
         "meaning": "",
         "examples": [
-          1346370
+          {
+            "id": "1346370",
+            "source": "vvlexicon",
+            "v1Id": "1346450"
+          }
         ]
       }
     ]
@@ -91,84 +296,277 @@
     "id": "tsuku-suffix",
     "kanji": "付く",
     "reading": "つく",
+    "jmdictId": "1495740",
     "role": "suffix",
     "senses": [
       {
-        "meaning": "to stick or cling to; to attach to",
+        "meaning": "to <verb> and stick/become attached to something",
         "examples": [
-          1254640,
-          1003860,
-          1005470,
-          1665010,
-          1485400,
-          1446260,
-          1209220,
-          1847880,
-          2086370,
-          1350560,
-          1548510,
-          2797990,
-          1646690,
-          1011350,
-          1211180,
-          1228250,
-          1446220,
-          1358260,
-          1350760,
-          1299650,
-          1229760,
-          1611350,
-          1350640,
-          1498680,
-          1397550,
-          2648800,
-          1850540,
-          2082590,
-          1851770,
-          1575570,
-          2793520,
-          2780960,
-          1570560,
-          1664140,
-          1664140
+          {
+            "id": "1254640",
+            "source": "vvlexicon",
+            "v1Id": "1254670"
+          },
+          {
+            "id": "1003860",
+            "source": "vvlexicon",
+            "v1Id": "1003860"
+          },
+          {
+            "id": "1005470",
+            "source": "vvlexicon",
+            "v1Id": "2826405"
+          },
+          {
+            "id": "1665010",
+            "source": "vvlexicon",
+            "v1Id": "1427900"
+          },
+          {
+            "id": "1485400",
+            "source": "vvlexicon",
+            "v1Id": "1429700"
+          },
+          {
+            "id": "1446260",
+            "source": "vvlexicon",
+            "v1Id": "1593100"
+          },
+          {
+            "id": "1209220",
+            "source": "vvlexicon",
+            "v1Id": "1209240"
+          },
+          {
+            "id": "1847880",
+            "source": "vvlexicon",
+            "v1Id": "1584090"
+          },
+          {
+            "id": "2086370",
+            "source": "vvlexicon",
+            "v1Id": "1566080"
+          },
+          {
+            "id": "1350560",
+            "source": "vvlexicon",
+            "v1Id": "1350600"
+          },
+          {
+            "id": "1548510",
+            "source": "vvlexicon",
+            "v1Id": "1548520"
+          },
+          {
+            "id": "2797990",
+            "source": "vvlexicon",
+            "v1Id": "1592100"
+          },
+          {
+            "id": "1646690",
+            "source": "vvlexicon",
+            "v1Id": "1391120"
+          },
+          {
+            "id": "1011350",
+            "source": "vvlexicon",
+            "v1Id": "1011360"
+          },
+          {
+            "id": "1211180",
+            "source": "vvlexicon",
+            "v1Id": "1211200"
+          },
+          {
+            "id": "1228250",
+            "source": "vvlexicon",
+            "v1Id": "1228260"
+          },
+          {
+            "id": "1446220",
+            "source": "vvlexicon",
+            "v1Id": "1446210"
+          },
+          {
+            "id": "1358260",
+            "source": "vvlexicon",
+            "v1Id": "1592410"
+          },
+          {
+            "id": "1350760",
+            "source": "vvlexicon",
+            "v1Id": "1350730"
+          },
+          {
+            "id": "1299650",
+            "source": "vvlexicon",
+            "v1Id": "1299640"
+          },
+          {
+            "id": "1229760",
+            "source": "vvlexicon",
+            "v1Id": "1229840"
+          },
+          {
+            "id": "1611350",
+            "source": "vvlexicon",
+            "v1Id": "1169250"
+          },
+          {
+            "id": "1350640",
+            "source": "vvlexicon",
+            "v1Id": "1350610"
+          },
+          {
+            "id": "1498680",
+            "source": "vvlexicon"
+          },
+          {
+            "id": "1397550",
+            "source": "vvlexicon",
+            "v1Id": "1397590"
+          },
+          {
+            "id": "2648800",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1850540",
+            "source": "vvlexicon",
+            "v1Id": "1469700"
+          },
+          {
+            "id": "2082590",
+            "source": "vvlexicon",
+            "v1Id": "1603420"
+          },
+          {
+            "id": "1851770",
+            "source": "vvlexicon",
+            "v1Id": "1366290"
+          },
+          {
+            "id": "1575570",
+            "source": "vvlexicon",
+            "v1Id": "1610640"
+          },
+          {
+            "id": "2793520",
+            "source": "vvlexicon",
+            "v1Id": "1005670"
+          },
+          {
+            "id": "2780960",
+            "source": "vvlexicon",
+            "v1Id": "2859078"
+          },
+          {
+            "id": "1570560",
+            "source": "vvlexicon",
+            "v1Id": "1610010"
+          },
+          {
+            "id": "1664140",
+            "source": "vvlexicon",
+            "v1Id": "1440940"
+          },
+          {
+            "id": "1664140",
+            "source": "vvlexicon"
+          }
         ],
         "specializedMeaning": "to cause a <verb> action to physically adhere, cling, or affix to a surface or object (resultative: the object of <verb> becomes attached)"
       },
       {
-        "meaning": "to come to / reach / arrive at",
+        "meaning": "to <verb> and become established or settled (in a state, place, or habit)",
         "examples": [
-          1588810,
-          1326900,
-          1590840,
-          1219660,
-          2643630,
-          1296380
+          {
+            "id": "1588810",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1326900",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1590840",
+            "source": "vvlexicon",
+            "v1Id": "1281020"
+          },
+          {
+            "id": "1219660",
+            "source": "vvlexicon",
+            "v1Id": "1219680"
+          },
+          {
+            "id": "2643630",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1296380",
+            "source": "vvlexicon",
+            "v1Id": "1296400"
+          }
         ],
         "specializedMeaning": "to succeed in <verb>-ing through effort or pursuit, reaching or arriving at an achieved goal or a target location"
       },
       {
-        "meaning": "to settle into a state; to become accustomed to",
+        "meaning": "to <verb> into or assume a new state, condition, or habit, with inchoative aspect marking the entry into that state",
         "examples": [
-          1360280,
-          1490190,
-          1469620,
-          1446200
-        ],
-        "specializedMeaning": "to <verb> into or assume a new state, condition, or habit, with inchoative aspect marking the entry into that state"
+          {
+            "id": "1360280",
+            "source": "vvlexicon",
+            "v1Id": "1360010"
+          },
+          {
+            "id": "1490190",
+            "source": "vvlexicon",
+            "v1Id": "1490210"
+          },
+          {
+            "id": "1469620",
+            "source": "vvlexicon",
+            "v1Id": "1469570"
+          },
+          {
+            "id": "1446200",
+            "source": "vvlexicon",
+            "v1Id": "1446180"
+          }
+        ]
       },
       {
-        "meaning": "to come up with / occur to (someone)",
+        "meaning": "to <verb> an idea, solution, or concept spontaneously into consciousness (mental occurrence, not physical action)",
         "examples": [
-          1589330,
-          1590840
-        ],
-        "specializedMeaning": "to <verb> an idea, solution, or concept spontaneously into consciousness (mental occurrence, not physical action)"
+          {
+            "id": "1589330",
+            "source": "vvlexicon",
+            "v1Id": "1589350"
+          },
+          {
+            "id": "1590840",
+            "source": "vvlexicon",
+            "v1Id": "1281020"
+          }
+        ]
       },
       {
         "meaning": "",
         "examples": [
-          1314770,
-          1378680
+          {
+            "id": "1314770",
+            "source": "vvlexicon",
+            "v1Id": "1314600"
+          },
+          {
+            "id": "1378680",
+            "source": "vvlexicon",
+            "v1Id": "1378690"
+          }
         ]
       }
     ]
@@ -177,153 +575,624 @@
     "id": "dasu-suffix",
     "kanji": "出す",
     "reading": "だす",
+    "jmdictId": "1338180",
     "role": "suffix",
     "senses": [
       {
         "meaning": "to <verb> and come out / become visible or apparent",
         "examples": [
-          1485350,
-          1354940,
-          1450390,
-          1456680,
-          1478220,
-          1602500,
-          1402680,
-          1450170,
-          1607990,
-          1589160,
-          1590100,
-          1552170,
-          1427840,
-          2776930,
-          2033720,
-          2615790,
-          2012860,
-          1501670,
-          1850900,
-          2158570,
-          1847940,
-          2158570,
-          2522840,
-          1519320,
-          2015790,
-          2841812,
-          1850660,
-          2252330,
-          1568900
+          {
+            "id": "1485350",
+            "source": "vvlexicon",
+            "v1Id": "1429700"
+          },
+          {
+            "id": "1354940",
+            "source": "vvlexicon",
+            "v1Id": "1355120"
+          },
+          {
+            "id": "1450390",
+            "source": "vvlexicon",
+            "v1Id": "1450330"
+          },
+          {
+            "id": "1456680",
+            "source": "vvlexicon",
+            "v1Id": "1456890"
+          },
+          {
+            "id": "1478220",
+            "source": "vvlexicon",
+            "v1Id": "1478200"
+          },
+          {
+            "id": "1602500",
+            "source": "vvlexicon",
+            "v1Id": "1370760"
+          },
+          {
+            "id": "1402680",
+            "source": "vvlexicon",
+            "v1Id": "1402730"
+          },
+          {
+            "id": "1450170",
+            "source": "vvlexicon",
+            "v1Id": "1450270"
+          },
+          {
+            "id": "1607990",
+            "source": "vvlexicon",
+            "v1Id": "1588330"
+          },
+          {
+            "id": "1589160",
+            "source": "vvlexicon",
+            "v1Id": "1180470"
+          },
+          {
+            "id": "1590100",
+            "source": "vvlexicon",
+            "v1Id": "1244720"
+          },
+          {
+            "id": "1552170",
+            "source": "vvlexicon",
+            "v1Id": "1552140"
+          },
+          {
+            "id": "1427840",
+            "source": "vvlexicon",
+            "v1Id": "1427900"
+          },
+          {
+            "id": "2776930",
+            "source": "vvlexicon",
+            "v1Id": "1350840"
+          },
+          {
+            "id": "2033720",
+            "source": "vvlexicon",
+            "v1Id": "1223640"
+          },
+          {
+            "id": "2615790",
+            "source": "vvlexicon",
+            "v1Id": "1546070"
+          },
+          {
+            "id": "2012860",
+            "source": "vvlexicon",
+            "v1Id": "1474200"
+          },
+          {
+            "id": "1501670",
+            "source": "vvlexicon",
+            "v1Id": "1606685"
+          },
+          {
+            "id": "1850900",
+            "source": "vvlexicon",
+            "v1Id": "1400530"
+          },
+          {
+            "id": "2158570",
+            "source": "vvlexicon",
+            "v1Id": "1391120"
+          },
+          {
+            "id": "1847940",
+            "source": "vvlexicon",
+            "v1Id": "1497420"
+          },
+          {
+            "id": "2158570",
+            "source": "vvlexicon",
+            "v1Id": "1568800"
+          },
+          {
+            "id": "2522840",
+            "source": "vvlexicon",
+            "v1Id": "1605330"
+          },
+          {
+            "id": "1519320",
+            "source": "vvlexicon",
+            "v1Id": "1519330"
+          },
+          {
+            "id": "2015790",
+            "source": "vvlexicon",
+            "v1Id": "1552120"
+          },
+          {
+            "id": "2841812",
+            "source": "vvlexicon",
+            "v1Id": "2013060"
+          },
+          {
+            "id": "1850660",
+            "source": "vvlexicon",
+            "v1Id": "1429620"
+          },
+          {
+            "id": "2252330",
+            "source": "vvlexicon",
+            "v1Id": "1167610"
+          },
+          {
+            "id": "1568900",
+            "source": "vvlexicon",
+            "v1Id": "1568910"
+          }
         ],
         "specializedMeaning": "to <verb> and come out / become visible or apparent — the object of <verb> emerges from a location (bounded or unbounded) or becomes sensorily perceptible or cognitively apparent, without requiring extraction from a discrete source or creation of something that did not previously exist. Excludes: compounds where the source is a bounded container and extraction is the primary sense (meaning 2); compounds where creation of something new is primary (meaning 3); compounds where abstract initiation or proposal is primary (meaning 4)."
       },
       {
         "meaning": "to <verb> and take out / extract from a place",
         "examples": [
-          1309260,
-          1326770,
-          1291230,
-          1601660,
-          1315600,
-          1266350,
-          1444140,
-          1580950,
-          1432350,
-          1169450,
-          1559330,
-          1505820,
-          1246660,
-          1848680,
-          1411130,
-          1478160,
-          1172650,
-          1594610,
-          1229040,
-          1392150,
-          1416100,
-          1419350,
-          1541880,
-          1448430,
-          1328720,
-          1344470,
-          1323740,
-          1322590,
-          1433640,
-          1332540,
-          1652120,
-          1850550,
-          1346350,
-          2089590,
-          1689450,
-          1399720,
-          1851850,
-          1382920,
-          1851480,
-          1392170,
-          2453670,
-          1226180,
-          2106930,
-          2035660,
-          2436940
+          {
+            "id": "1309260",
+            "source": "vvlexicon",
+            "v1Id": "1589350"
+          },
+          {
+            "id": "1326770",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1291230",
+            "source": "vvlexicon",
+            "v1Id": "1291330"
+          },
+          {
+            "id": "1601660",
+            "source": "vvlexicon",
+            "v1Id": "1169250"
+          },
+          {
+            "id": "1315600",
+            "source": "vvlexicon",
+            "v1Id": "1315720"
+          },
+          {
+            "id": "1266350",
+            "source": "vvlexicon",
+            "v1Id": "1266440"
+          },
+          {
+            "id": "1444140",
+            "source": "vvlexicon",
+            "v1Id": "1444150"
+          },
+          {
+            "id": "1580950",
+            "source": "vvlexicon",
+            "v1Id": "1384830"
+          },
+          {
+            "id": "1432350",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1169450",
+            "source": "vvlexicon",
+            "v1Id": "1601900"
+          },
+          {
+            "id": "1559330",
+            "source": "vvlexicon",
+            "v1Id": "1559290"
+          },
+          {
+            "id": "1505820",
+            "source": "vvlexicon",
+            "v1Id": "1591110"
+          },
+          {
+            "id": "1246660",
+            "source": "vvlexicon",
+            "v1Id": "1246690"
+          },
+          {
+            "id": "1848680",
+            "source": "vvlexicon",
+            "v1Id": "1594520"
+          },
+          {
+            "id": "1411130",
+            "source": "vvlexicon",
+            "v1Id": "1411160"
+          },
+          {
+            "id": "1478160",
+            "source": "vvlexicon",
+            "v1Id": "1478190"
+          },
+          {
+            "id": "1172650",
+            "source": "vvlexicon",
+            "v1Id": "1172660"
+          },
+          {
+            "id": "1594610",
+            "source": "vvlexicon",
+            "v1Id": "1436570"
+          },
+          {
+            "id": "1229040",
+            "source": "vvlexicon",
+            "v1Id": "1229060"
+          },
+          {
+            "id": "1392150",
+            "source": "vvlexicon",
+            "v1Id": "1588730"
+          },
+          {
+            "id": "1416100",
+            "source": "vvlexicon",
+            "v1Id": "1416170"
+          },
+          {
+            "id": "1419350",
+            "source": "vvlexicon",
+            "v1Id": "1419360"
+          },
+          {
+            "id": "1541880",
+            "source": "vvlexicon",
+            "v1Id": "1541900"
+          },
+          {
+            "id": "1448430",
+            "source": "vvlexicon",
+            "v1Id": "1448440"
+          },
+          {
+            "id": "1328720",
+            "source": "vvlexicon",
+            "v1Id": "1244840"
+          },
+          {
+            "id": "1344470",
+            "source": "vvlexicon",
+            "v1Id": "1344410"
+          },
+          {
+            "id": "1323740",
+            "source": "vvlexicon",
+            "v1Id": "1323900"
+          },
+          {
+            "id": "1322590",
+            "source": "vvlexicon",
+            "v1Id": "1322540"
+          },
+          {
+            "id": "1433640",
+            "source": "vvlexicon",
+            "v1Id": "1433650"
+          },
+          {
+            "id": "1332540",
+            "source": "vvlexicon",
+            "v1Id": "1332570"
+          },
+          {
+            "id": "1652120",
+            "source": "vvlexicon",
+            "v1Id": "1228260"
+          },
+          {
+            "id": "1850550",
+            "source": "vvlexicon",
+            "v1Id": "1418140"
+          },
+          {
+            "id": "1346350",
+            "source": "vvlexicon",
+            "v1Id": "1346450"
+          },
+          {
+            "id": "2089590",
+            "source": "vvlexicon",
+            "v1Id": "1333400"
+          },
+          {
+            "id": "1689450",
+            "source": "vvlexicon",
+            "v1Id": "1501620"
+          },
+          {
+            "id": "1399720",
+            "source": "vvlexicon",
+            "v1Id": "1399760"
+          },
+          {
+            "id": "1851850",
+            "source": "vvlexicon",
+            "v1Id": "1399970"
+          },
+          {
+            "id": "1382920",
+            "source": "vvlexicon",
+            "v1Id": "1382970"
+          },
+          {
+            "id": "1851480",
+            "source": "vvlexicon",
+            "v1Id": "1567610"
+          },
+          {
+            "id": "1392170",
+            "source": "vvlexicon",
+            "v1Id": "1612210"
+          },
+          {
+            "id": "2453670",
+            "source": "vvlexicon",
+            "v1Id": "1369940"
+          },
+          {
+            "id": "1226180",
+            "source": "vvlexicon",
+            "v1Id": "1226200"
+          },
+          {
+            "id": "2106930",
+            "source": "vvlexicon",
+            "v1Id": "2009700"
+          },
+          {
+            "id": "2035660",
+            "source": "vvlexicon",
+            "v1Id": "1592180"
+          },
+          {
+            "id": "2436940",
+            "source": "vvlexicon",
+            "v1Id": "1585570"
+          }
         ],
         "specializedMeaning": "to <verb> and take out / extract from a place — the object of <verb> already exists and is removed from a discrete, bounded source location (container, enclosure, pocket, stored state, body of another entity), with the source location being semantically salient. Excludes: compounds involving spatial emergence without source-confinement salience (meaning 1); compounds where the object is newly created rather than pre-existing (meaning 3); compounds where abstract initiation is primary (meaning 4)."
       },
       {
         "meaning": "to <verb> and bring into existence / create or cause",
         "examples": [
-          1378720,
-          1297300,
-          1447040,
-          1516510,
-          1246990,
-          1490110,
-          1357060,
-          1281050,
-          1453670,
-          1207790,
-          1511910,
-          1419350,
-          1418240,
-          1390870,
-          2462180,
-          1851630,
-          2266200,
-          2413160,
-          1391170,
-          2266210
+          {
+            "id": "1378720",
+            "source": "vvlexicon",
+            "v1Id": "1588410"
+          },
+          {
+            "id": "1297300",
+            "source": "vvlexicon",
+            "v1Id": "1597890"
+          },
+          {
+            "id": "1447040",
+            "source": "vvlexicon",
+            "v1Id": "1447000"
+          },
+          {
+            "id": "1516510",
+            "source": "vvlexicon",
+            "v1Id": "1516530"
+          },
+          {
+            "id": "1246990",
+            "source": "vvlexicon",
+            "v1Id": "1247040"
+          },
+          {
+            "id": "1490110",
+            "source": "vvlexicon",
+            "v1Id": "1583460"
+          },
+          {
+            "id": "1357060",
+            "source": "vvlexicon",
+            "v1Id": "1357070"
+          },
+          {
+            "id": "1281050",
+            "source": "vvlexicon",
+            "v1Id": "1281020"
+          },
+          {
+            "id": "1453670",
+            "source": "vvlexicon",
+            "v1Id": "1453680"
+          },
+          {
+            "id": "1207790",
+            "source": "vvlexicon",
+            "v1Id": "1208000"
+          },
+          {
+            "id": "1511910",
+            "source": "vvlexicon",
+            "v1Id": "1511950"
+          },
+          {
+            "id": "1419350",
+            "source": "vvlexicon",
+            "v1Id": "1419360"
+          },
+          {
+            "id": "1418240",
+            "source": "vvlexicon",
+            "v1Id": "1418260"
+          },
+          {
+            "id": "1390870",
+            "source": "vvlexicon",
+            "v1Id": "1390930"
+          },
+          {
+            "id": "2462180",
+            "source": "vvlexicon",
+            "v1Id": "1194450"
+          },
+          {
+            "id": "1851630",
+            "source": "vvlexicon",
+            "v1Id": "1357420"
+          },
+          {
+            "id": "2266200",
+            "source": "vvlexicon",
+            "v1Id": "2840038"
+          },
+          {
+            "id": "2413160",
+            "source": "vvlexicon",
+            "v1Id": "1298090"
+          },
+          {
+            "id": "1391170",
+            "source": "vvlexicon",
+            "v1Id": "1391160"
+          },
+          {
+            "id": "2266210",
+            "source": "vvlexicon"
+          }
         ],
         "specializedMeaning": "to <verb> and bring into existence / create or cause — the object of <verb> did not exist beforehand and is produced, generated, manufactured, or caused into being through the action, including tangible objects, abstract conditions, qualities, or relationships. Excludes: compounds where extraction of pre-existing things from locations is primary (meaning 2); compounds where abstract discourse initiation or proposal is primary (meaning 4); compounds involving inchoative or spatial emergence (meaning 1)."
       },
       {
         "meaning": "to <verb> and put forth / initiate or propose",
         "examples": [
-          1291230,
-          1264080,
-          1408670,
-          1580950,
-          1473860,
-          1361240,
-          1850550
+          {
+            "id": "1291230",
+            "source": "vvlexicon",
+            "v1Id": "1291330"
+          },
+          {
+            "id": "1264080",
+            "source": "vvlexicon",
+            "v1Id": "1587040"
+          },
+          {
+            "id": "1408670",
+            "source": "vvlexicon",
+            "v1Id": "1408810"
+          },
+          {
+            "id": "1580950",
+            "source": "vvlexicon",
+            "v1Id": "1384830"
+          },
+          {
+            "id": "1473860",
+            "source": "vvlexicon",
+            "v1Id": "1473950"
+          },
+          {
+            "id": "1361240",
+            "source": "vvlexicon",
+            "v1Id": "1361330"
+          },
+          {
+            "id": "1850550",
+            "source": "vvlexicon",
+            "v1Id": "1418140"
+          }
         ],
         "specializedMeaning": "to <verb> and put forth / initiate or propose — the object of <verb> is an abstract entity (idea, proposal, plan, statement, question, discourse act, or communicative move) that is introduced, announced, broached, or formally put forward for consideration or action. Excludes: compounds involving tangible object creation (meaning 3); compounds involving physical extraction (meaning 2); compounds involving spatial or sensory emergence (meaning 1)."
       },
       {
         "meaning": "",
         "examples": [
-          1541910,
-          2098510,
-          1285860,
-          1418220,
-          1005300,
-          1298590,
-          1523990,
-          2056260,
-          1391440,
-          2841878,
-          1437040,
-          1434000,
-          1601060,
-          1427840,
-          1848980,
-          1469510,
-          1634270
+          {
+            "id": "1541910",
+            "source": "vvlexicon",
+            "v1Id": "2832734"
+          },
+          {
+            "id": "2098510",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1285860",
+            "source": "vvlexicon",
+            "v1Id": "1285890"
+          },
+          {
+            "id": "1418220",
+            "source": "vvlexicon",
+            "v1Id": "1593670"
+          },
+          {
+            "id": "1005300",
+            "source": "vvlexicon"
+          },
+          {
+            "id": "1298590",
+            "source": "vvlexicon",
+            "v1Id": "1298670"
+          },
+          {
+            "id": "1523990",
+            "source": "vvlexicon",
+            "v1Id": "1595910"
+          },
+          {
+            "id": "2056260",
+            "source": "vvlexicon",
+            "v1Id": "1234050"
+          },
+          {
+            "id": "1391440",
+            "source": "vvlexicon",
+            "v1Id": "1391410"
+          },
+          {
+            "id": "2841878",
+            "source": "vvlexicon",
+            "v1Id": "1596830"
+          },
+          {
+            "id": "1437040",
+            "source": "vvlexicon",
+            "v1Id": "1598080"
+          },
+          {
+            "id": "1434000",
+            "source": "vvlexicon",
+            "v1Id": "1434020"
+          },
+          {
+            "id": "1601060",
+            "source": "vvlexicon",
+            "v1Id": "1575020"
+          },
+          {
+            "id": "1427840",
+            "source": "vvlexicon",
+            "v1Id": "1427900"
+          },
+          {
+            "id": "1848980",
+            "source": "vvlexicon",
+            "v1Id": "1169000"
+          },
+          {
+            "id": "1469510",
+            "source": "vvlexicon",
+            "v1Id": "1469530"
+          },
+          {
+            "id": "1634270",
+            "source": "vvlexicon",
+            "v1Id": "1604570"
+          }
         ]
       }
     ]
@@ -332,76 +1201,264 @@
     "id": "tateru-suffix",
     "kanji": "立てる",
     "reading": "たてる",
+    "jmdictId": "1551530",
     "role": "suffix",
     "senses": [
       {
         "meaning": "to <verb> and construct/assemble",
         "examples": [
-          1397580,
-          1382960,
-          1524530
+          {
+            "id": "1397580",
+            "source": "vvlexicon",
+            "v1Id": "1397590"
+          },
+          {
+            "id": "1382960",
+            "source": "vvlexicon",
+            "v1Id": "1382970"
+          },
+          {
+            "id": "1524530",
+            "source": "vvlexicon",
+            "v1Id": "1524490"
+          }
         ],
         "specializedMeaning": "to <verb> by assembling or combining multiple discrete parts or materials into a unified whole or structure; excludes placing something in a fixed institutional position (meaning 2) and excludes causing forward motion or action against resistance (meaning 3) and excludes intensifying the manner or frequency of an action (meaning 4)"
       },
       {
         "meaning": "to <verb> and set upright/establish",
         "examples": [
-          1305560,
-          1363070,
-          1260150,
-          1326960,
-          1849330,
-          1456880,
-          1180440,
-          1697440,
-          1849680,
-          1852850
+          {
+            "id": "1305560",
+            "source": "vvlexicon",
+            "v1Id": "1157170"
+          },
+          {
+            "id": "1363070",
+            "source": "vvlexicon",
+            "v1Id": "1363090"
+          },
+          {
+            "id": "1260150",
+            "source": "vvlexicon",
+            "v1Id": "1259290"
+          },
+          {
+            "id": "1326960",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1849330",
+            "source": "vvlexicon",
+            "v1Id": "1408810"
+          },
+          {
+            "id": "1456880",
+            "source": "vvlexicon",
+            "v1Id": "1456890"
+          },
+          {
+            "id": "1180440",
+            "source": "vvlexicon",
+            "v1Id": "1180470"
+          },
+          {
+            "id": "1697440",
+            "source": "vvlexicon",
+            "v1Id": "1327120"
+          },
+          {
+            "id": "1849680",
+            "source": "vvlexicon",
+            "v1Id": "1456890"
+          },
+          {
+            "id": "1852850",
+            "source": "vvlexicon",
+            "v1Id": "1180470"
+          }
         ],
         "specializedMeaning": "to <verb> by placing, positioning, or setting something upright, in a stable position, or into an institutional/established role or state (a durative or stative establishment of something new or existent); excludes combining parts into a structure (meaning 1) and excludes causing repeated or intensified action (meaning 4), and excludes primarily marking causative forward motion (meaning 3)"
       },
       {
         "meaning": "to <verb> and drive forward/urge on",
         "examples": [
-          1399950,
-          1326960,
-          1601640,
-          1244830,
-          1432400,
-          1228620,
-          1180440,
-          2462940,
-          1849950
+          {
+            "id": "1399950",
+            "source": "vvlexicon",
+            "v1Id": "1399970"
+          },
+          {
+            "id": "1326960",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1601640",
+            "source": "vvlexicon",
+            "v1Id": "1169250"
+          },
+          {
+            "id": "1244830",
+            "source": "vvlexicon",
+            "v1Id": "1244840"
+          },
+          {
+            "id": "1432400",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1228620",
+            "source": "vvlexicon",
+            "v1Id": "2010760"
+          },
+          {
+            "id": "1180440",
+            "source": "vvlexicon",
+            "v1Id": "1180470"
+          },
+          {
+            "id": "2462940",
+            "source": "vvlexicon",
+            "v1Id": "1169250"
+          },
+          {
+            "id": "1849950",
+            "source": "vvlexicon",
+            "v1Id": "1291330"
+          }
         ],
         "specializedMeaning": "to <verb> in such a way as to cause or drive an agent or object forward, onward, or into action/motion, typically against resistance, inertia, or reluctance; marked by causative aspect and directional or goal-oriented sense; excludes spatial positioning into a state (meaning 2) and excludes combining components (meaning 1) and excludes manner-intensification or pluractional iteration (meaning 4)"
       },
       {
         "meaning": "to <verb> repeatedly or vehemently",
         "examples": [
-          1322650,
-          1403030,
-          1357200,
-          1508410,
-          1264340,
-          1383170,
-          1343920,
-          2218630,
-          1651680,
-          2786960,
-          1901070,
-          1361320,
-          2854086,
-          2830230,
-          1266420,
-          1846290,
-          1671710,
-          1599330,
-          1512740,
-          1444260,
-          1390910,
-          2517910,
-          1517970,
-          1257790,
-          1917610
+          {
+            "id": "1322650",
+            "source": "vvlexicon",
+            "v1Id": "1322540"
+          },
+          {
+            "id": "1403030",
+            "source": "vvlexicon",
+            "v1Id": "1403040"
+          },
+          {
+            "id": "1357200",
+            "source": "vvlexicon",
+            "v1Id": "1357210"
+          },
+          {
+            "id": "1508410",
+            "source": "vvlexicon",
+            "v1Id": "1508390"
+          },
+          {
+            "id": "1264340",
+            "source": "vvlexicon",
+            "v1Id": "1587040"
+          },
+          {
+            "id": "1383170",
+            "source": "vvlexicon",
+            "v1Id": "1383160"
+          },
+          {
+            "id": "1343920",
+            "source": "vvlexicon",
+            "v1Id": "1343950"
+          },
+          {
+            "id": "2218630",
+            "source": "vvlexicon",
+            "v1Id": "1391630"
+          },
+          {
+            "id": "1651680",
+            "source": "vvlexicon",
+            "v1Id": "1279130"
+          },
+          {
+            "id": "2786960",
+            "source": "vvlexicon",
+            "v1Id": "1603420"
+          },
+          {
+            "id": "1901070",
+            "source": "vvlexicon",
+            "v1Id": "1340820"
+          },
+          {
+            "id": "1361320",
+            "source": "vvlexicon",
+            "v1Id": "1361330"
+          },
+          {
+            "id": "2854086",
+            "source": "vvlexicon",
+            "v1Id": "1519330"
+          },
+          {
+            "id": "2830230",
+            "source": "vvlexicon",
+            "v1Id": "1532870"
+          },
+          {
+            "id": "1266420",
+            "source": "vvlexicon",
+            "v1Id": "1266440"
+          },
+          {
+            "id": "1846290",
+            "source": "vvlexicon",
+            "v1Id": "1372900"
+          },
+          {
+            "id": "1671710",
+            "source": "vvlexicon",
+            "v1Id": "1523940"
+          },
+          {
+            "id": "1599330",
+            "source": "vvlexicon",
+            "v1Id": "1445740"
+          },
+          {
+            "id": "1512740",
+            "source": "vvlexicon",
+            "v1Id": "1512730"
+          },
+          {
+            "id": "1444260",
+            "source": "vvlexicon",
+            "v1Id": "1444270"
+          },
+          {
+            "id": "1390910",
+            "source": "vvlexicon",
+            "v1Id": "1390930"
+          },
+          {
+            "id": "2517910",
+            "source": "vvlexicon",
+            "v1Id": "1378760"
+          },
+          {
+            "id": "1517970",
+            "source": "vvlexicon",
+            "v1Id": "1603550"
+          },
+          {
+            "id": "1257790",
+            "source": "vvlexicon"
+          },
+          {
+            "id": "1917610",
+            "source": "vvlexicon",
+            "v1Id": "1211260"
+          }
         ],
         "specializedMeaning": "to <verb> repeatedly, iteratively, or with exaggerated/emphatic manner (pluractional or manner-intensive aspect); applied especially to speech acts, sounds, or behavioral displays; marked by frequency of action or intensity of performance rather than purposive forward motion; excludes causative driving of an agent (meaning 3) and excludes institutional placement (meaning 2) and excludes physical assembly (meaning 1)"
       }
@@ -411,55 +1468,159 @@
     "id": "kaesu-suffix",
     "kanji": "返す",
     "reading": "かえす",
+    "jmdictId": "1512130",
     "role": "suffix",
     "senses": [
       {
         "meaning": "to <verb> and reverse direction / to <verb> back",
         "examples": [
-          1169140,
-          1601870,
-          1326930,
-          1385900,
-          1402710,
-          1432390,
-          1429670,
-          1370730,
-          1379720,
-          2463100,
-          1350850
+          {
+            "id": "1169140",
+            "source": "vvlexicon",
+            "v1Id": "1169250"
+          },
+          {
+            "id": "1601870",
+            "source": "vvlexicon"
+          },
+          {
+            "id": "1326930",
+            "source": "vvlexicon",
+            "v1Id": "1326980"
+          },
+          {
+            "id": "1385900",
+            "source": "vvlexicon",
+            "v1Id": "1385910"
+          },
+          {
+            "id": "1402710",
+            "source": "vvlexicon",
+            "v1Id": "1402730"
+          },
+          {
+            "id": "1432390",
+            "source": "vvlexicon",
+            "v1Id": "1432410"
+          },
+          {
+            "id": "1429670",
+            "source": "vvlexicon",
+            "v1Id": "1429620"
+          },
+          {
+            "id": "1370730",
+            "source": "vvlexicon",
+            "v1Id": "1370760"
+          },
+          {
+            "id": "1379720",
+            "source": "vvlexicon",
+            "v1Id": "1379730"
+          },
+          {
+            "id": "2463100",
+            "source": "vvlexicon",
+            "v1Id": "1211200"
+          },
+          {
+            "id": "1350850",
+            "source": "vvlexicon",
+            "v1Id": "1350860"
+          }
         ],
         "specializedMeaning": "to <verb> in the opposite direction to the original motion, or to <verb> such that the action or object reverses spatial course / returns to source without necessarily completing a reciprocal exchange. Examples: reverse direction of movement, rebound, reflect. Excludes solo temporal repetition (meaning 2) and interpersonal reciprocal response (meaning 3)."
       },
       {
         "meaning": "to <verb> again / to <verb> over",
         "examples": [
-          1247030,
-          1456320,
-          1309400,
-          1603570,
-          1356890
+          {
+            "id": "1247030",
+            "source": "vvlexicon",
+            "v1Id": "1247040"
+          },
+          {
+            "id": "1456320",
+            "source": "vvlexicon",
+            "v1Id": "1456360"
+          },
+          {
+            "id": "1309400",
+            "source": "vvlexicon",
+            "v1Id": "1589350"
+          },
+          {
+            "id": "1603570",
+            "source": "vvlexicon",
+            "v1Id": "1246690"
+          },
+          {
+            "id": "1356890",
+            "source": "vvlexicon",
+            "v1Id": "1356850"
+          }
         ],
         "specializedMeaning": "to <verb> a second time (or repeatedly) on the same object, process, or target, restarting or continuing an action without change of spatial direction. The agent is repeating the action for their own purposes, not responding to another agent. Excludes spatial directional reversal (meaning 1) and interpersonal reciprocal response (meaning 3)."
       },
       {
         "meaning": "to <verb> and return / to give back by <verb>ing",
         "examples": [
-          1260050,
-          1846930,
-          1180390,
-          1408750,
-          2791900,
-          1456860,
-          1447080,
-          1266400,
-          2836394
+          {
+            "id": "1260050",
+            "source": "vvlexicon",
+            "v1Id": "1259290"
+          },
+          {
+            "id": "1846930",
+            "source": "vvlexicon",
+            "v1Id": "1384830"
+          },
+          {
+            "id": "1180390",
+            "source": "vvlexicon",
+            "v1Id": "1180470"
+          },
+          {
+            "id": "1408750",
+            "source": "vvlexicon",
+            "v1Id": "1408810"
+          },
+          {
+            "id": "2791900",
+            "source": "vvlexicon",
+            "v1Id": "1569880"
+          },
+          {
+            "id": "1456860",
+            "source": "vvlexicon",
+            "v1Id": "1456890"
+          },
+          {
+            "id": "1447080",
+            "source": "vvlexicon",
+            "v1Id": "1447000"
+          },
+          {
+            "id": "1266400",
+            "source": "vvlexicon",
+            "v1Id": "1266440"
+          },
+          {
+            "id": "2836394",
+            "source": "vvlexicon",
+            "v1Id": "1157170"
+          }
         ],
         "specializedMeaning": "to <verb> as an immediate response or counteraction to a prior action performed by another agent, using the verb as the instrument of reciprocation or retaliation. Examples: throw back in response to being thrown at, send back in response to being sent, retaliate through verb-ing. Excludes solo temporal repetition without reciprocal trigger (meaning 2) and impersonal spatial reversals not triggered by an opposing agent (meaning 1)."
       },
       {
         "meaning": "",
         "examples": [
-          1641180
+          {
+            "id": "1641180",
+            "source": "vvlexicon",
+            "v1Id": "1290310"
+          }
         ]
       }
     ]
@@ -468,38 +1629,75 @@
     "id": "aruku-suffix",
     "kanji": "歩く",
     "reading": "あるく",
+    "jmdictId": "1514320",
     "role": "suffix",
     "senses": [
       {
         "meaning": "to <verb> and carry / take along while moving",
         "examples": [
-          1315680,
-          2601340
+          {
+            "id": "1315680",
+            "source": "vvlexicon",
+            "v1Id": "1315720"
+          },
+          {
+            "id": "2601340",
+            "source": "vvlexicon",
+            "v1Id": "1559290"
+          }
         ],
         "specializedMeaning": "to carry/transport <verb> (a discrete entity: object or person) as a traveling companion while moving, where the entity is a separate patient undergoing the carrying relation"
       },
       {
         "meaning": "to <verb> and go around / from place to place",
         "examples": [
-          1473940
+          {
+            "id": "1473940",
+            "source": "vvlexicon",
+            "v1Id": "1473950"
+          }
         ],
         "specializedMeaning": "to <verb> as a goal-oriented action across multiple distinct spatial locations, with the action accomplished or performed at each location; excludes compounds emphasizing iterative repetition (meaning 3) and compounds describing manner of motion or emotional coloring of the walk (meaning 4)"
       },
       {
         "meaning": "to <verb> while moving / do <verb> around town repeatedly",
         "examples": [
-          1444660,
-          1340300,
-          2652780
+          {
+            "id": "1444660",
+            "source": "vvlexicon",
+            "v1Id": "1444680"
+          },
+          {
+            "id": "1340300",
+            "source": "vvlexicon",
+            "v1Id": "1338240"
+          },
+          {
+            "id": "2652780",
+            "source": "vvlexicon",
+            "v1Id": "1169870"
+          }
         ],
         "specializedMeaning": "to <verb> repeatedly in an iterative or consumptive manner across multiple locations, with emphasis on the ongoing or habitual character of the action itself; excludes compounds where the verb accomplishes a specific purpose at each location (meaning 2) and compounds describing manner of motion or emotional state (meaning 4)"
       },
       {
         "meaning": "to <verb> in a particular manner / move while in a state of <verb>ing",
         "examples": [
-          1559130,
-          1851780,
-          1497440
+          {
+            "id": "1559130",
+            "source": "vvlexicon",
+            "v1Id": "1559140"
+          },
+          {
+            "id": "1851780",
+            "source": "vvlexicon",
+            "v1Id": "1552140"
+          },
+          {
+            "id": "1497440",
+            "source": "vvlexicon",
+            "v1Id": "1497370"
+          }
         ],
         "specializedMeaning": "to move while exhibiting or qualified by a manner of motion, emotional state, or non-agentive condition described by <verb>, where the prefix lexicalizes a property of the walking itself rather than a discrete action or carrying relation; excludes compounds involving carrying (meaning 1), location-specific accomplishments (meaning 2), and iterative actions (meaning 3)"
       }
@@ -509,32 +1707,69 @@
     "id": "nukeru-suffix",
     "kanji": "抜ける",
     "reading": "ぬける",
+    "jmdictId": "1478200",
     "role": "suffix",
     "senses": [
       {
         "meaning": "to <verb> all the way through",
         "examples": [
-          1433010,
-          1244820,
-          1402520,
-          1846480
+          {
+            "id": "1433010",
+            "source": "vvlexicon",
+            "v1Id": "1433030"
+          },
+          {
+            "id": "1244820",
+            "source": "vvlexicon",
+            "v1Id": "1244720"
+          },
+          {
+            "id": "1402520",
+            "source": "vvlexicon",
+            "v1Id": "1402540"
+          },
+          {
+            "id": "1846480",
+            "source": "vvlexicon",
+            "v1Id": "1370760"
+          }
         ],
         "specializedMeaning": "to <verb> all the way through a space, path, or duration, emphasizing completion or fullness of the action across the entire defined extent (excludes meaning 2: does not focus on overcoming a blocking obstacle; excludes meaning 3: does not involve escaping a predicament)"
       },
       {
         "meaning": "to <verb> past or beyond an obstacle",
         "examples": [
-          1298880,
-          1456820,
-          1985150
+          {
+            "id": "1298880",
+            "source": "vvlexicon",
+            "v1Id": "1298910"
+          },
+          {
+            "id": "1456820",
+            "source": "vvlexicon",
+            "v1Id": "1456890"
+          },
+          {
+            "id": "1985150",
+            "source": "vvlexicon",
+            "v1Id": "1609710"
+          }
         ],
         "specializedMeaning": "to <verb> past, beyond, or around a physical obstacle or blocking entity in a spatial or navigational context (e.g., a barrier, a crowd, a narrow opening), emphasizing the navigation or penetration of resistance (excludes meaning 1: the obstacle, not the extent of the space, is the focus; excludes meaning 3: the obstacle is inherent to space/navigation, not a situational predicament)"
       },
       {
         "meaning": "to escape from or get out of (a difficult situation) by <verb>ing",
         "examples": [
-          1384620,
-          1985150
+          {
+            "id": "1384620",
+            "source": "vvlexicon",
+            "v1Id": "1384830"
+          },
+          {
+            "id": "1985150",
+            "source": "vvlexicon",
+            "v1Id": "1609710"
+          }
         ],
         "specializedMeaning": "to escape from, resolve, or exit an unwanted predicament or difficult state by <verb>ing, where the action serves as a means of extricating oneself from the situation (excludes meaning 1: involves a predicament, not mere completion of action; excludes meaning 2: the obstacle is a situation or state requiring exit, not a physical barrier in a spatial context)"
       }

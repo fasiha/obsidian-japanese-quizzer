@@ -31,14 +31,13 @@
  * Requires compound-verbs/bccwj.sqlite (build with: node compound-verbs/build-bccwj-db.mjs)
  */
 
-import { readFileSync, writeFileSync, existsSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
 import Database from "better-sqlite3";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const root = join(__dirname, "..");
 const clustersDir = join(__dirname, "clusters");
 const surveyDir = join(__dirname, "survey");
 
@@ -86,7 +85,7 @@ if (meaningKeys.length === 0) {
   process.exit(1);
 }
 
-// --- Load meanings (original display strings) and sharpened strings ---
+// --- Load meanings (original display strings) ---
 
 const meaningsPath = join(clustersDir, `${v2}-meanings.json`);
 if (!existsSync(meaningsPath)) {
@@ -96,47 +95,20 @@ if (!existsSync(meaningsPath)) {
 }
 const originalMeanings = JSON.parse(readFileSync(meaningsPath, "utf8")); // array of { meaning }
 
-const sharpenedPath = join(clustersDir, `${v2}-meanings-sharpened.json`);
-const hasSharpened = existsSync(sharpenedPath);
-const sharpenedMeanings = hasSharpened
-  ? JSON.parse(readFileSync(sharpenedPath, "utf8"))
-  : null;
-
-// Determine which meaning array was used as keys in assignments.json.
-// The keys in assignments.json are verbatim meaning strings from whichever file
-// was passed to assign-examples.mjs. When sharpened meanings exist, that file is
-// used automatically. Match each key back to its original display string by index.
-//
-// Strategy: if all meaningKeys are found in the sharpened array by value, assume
-// sharpened strings were used as keys → match by position to get original strings.
-// Otherwise, assume original strings were used as keys directly.
-
-let displayStrings; // parallel array to meaningKeys: display string for each meaning
-
-if (hasSharpened) {
-  const sharpenedStrings = sharpenedMeanings.map((m) => m.meaning);
-  const allInSharpened = meaningKeys.every((k) => sharpenedStrings.includes(k));
-  if (allInSharpened) {
-    // Keys are sharpened strings — map each to its original by index
-    displayStrings = meaningKeys.map((key) => {
-      const idx = sharpenedStrings.indexOf(key);
-      if (idx === -1 || idx >= originalMeanings.length) {
-        // Fallback: use the sharpened string itself as display
-        console.warn(`WARNING: sharpened meaning not found in original meanings by index: "${key.slice(0, 60)}…"`);
-        return key;
-      }
-      return originalMeanings[idx].meaning;
-    });
-    console.log(`Using sharpened meanings as classifier keys; displaying original meaning strings.`);
-  } else {
-    // Some keys are not in sharpened — assume original strings used directly
-    displayStrings = meaningKeys.map((k) => k);
-    console.log(`Using original meanings (sharpened file exists but keys did not match it fully).`);
-  }
-} else {
-  displayStrings = meaningKeys.map((k) => k);
-  console.log(`Using original meanings (no sharpened file).`);
+// `meaning` always comes from meanings.json by index position — it is the
+// short learner-friendly display string. The assignment key (which may be a
+// sharpened/specialized string) becomes `specializedMeaning` when it differs
+// from the display string. If the counts don't match, warn and fall back to
+// using the assignment key as display for any out-of-range index.
+if (meaningKeys.length !== originalMeanings.length) {
+  console.warn(`WARNING: ${meaningKeys.length} assignment keys but ${originalMeanings.length} meanings in meanings.json — counts differ`);
 }
+
+const displayStrings = meaningKeys.map((key, i) => {
+  if (i < originalMeanings.length) return originalMeanings[i].meaning;
+  console.warn(`WARNING: no original meaning at index ${i} for key "${key.slice(0, 60)}…" — using key as display`);
+  return key;
+});
 
 // --- Load BCCWJ frequency database ---
 
@@ -170,13 +142,18 @@ function resolveAndSort(headwords) {
       continue;
     }
     resolved.push({
-      jmdictId: Number(entry.jmdictId),
+      jmdictId: String(entry.jmdictId),
+      v1JmdictId: entry.v1JmdictId ? String(entry.v1JmdictId) : null,
       frequency: getBccwjFrequency(hw),
     });
   }
   // Sort by frequency descending; ties keep original order
   resolved.sort((a, b) => b.frequency - a.frequency);
-  return resolved.map((r) => r.jmdictId);
+  return resolved.map((r) => {
+    const ex = { id: r.jmdictId, source: "vvlexicon" };
+    if (r.v1JmdictId) ex.v1Id = r.v1JmdictId;
+    return ex;
+  });
 }
 
 // --- Build senses for assigned meanings ---
@@ -294,9 +271,13 @@ function readingToId(kanji, reading) {
   return (ascii || "suffix") + "-suffix";
 }
 
-// Get v2 reading from the first survey entry that matches the v2
+// Get v2 reading and JMDict ID from the first survey entry that has them.
 const anyEntry = survey[0];
 const detectedReading = anyEntry?.v2_reading ?? v2Reading ?? null;
+const v2JmdictId = survey.find((e) => e.v2JmdictId)?.v2JmdictId ?? null;
+if (!v2JmdictId) {
+  console.warn(`WARNING: could not find JMDict ID for v2 "${v2}" in survey file`);
+}
 
 const suffixId = readingToId(v2, detectedReading);
 
@@ -304,6 +285,7 @@ const entry = {
   id: suffixId,
   kanji: v2,
   reading: detectedReading ?? "",
+  jmdictId: v2JmdictId ? String(v2JmdictId) : null,
   role: "suffix",
   senses,
 };

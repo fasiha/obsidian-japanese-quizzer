@@ -73,6 +73,67 @@ for (const v2 of targetV2s) {
         .filter((glosses) => glosses.length > 0);
     }
 
+    // Resolve v1 and v2 JMDict IDs. Always attempted — v1/v2 may be in JMDict even
+    // when the compound itself is not. If the compound is in JMDict but a component
+    // is not, that is unexpected and worth fixing, so fail loudly in that case only.
+    let v1JmdictId = null;
+    let v2JmdictId = null;
+
+    // vvlexicon sometimes stores multiple kanji spellings for v1/v2 as a
+    // comma-separated string (e.g. "擦る,摺る,摩る"). Try each form in turn and
+    // use the first hit. If two forms resolve to *different* JMDict IDs, warn —
+    // that would mean vvlexicon is treating distinct verbs as spelling variants,
+    // which is a data problem worth knowing about. Same ID across forms is normal
+    // (alternate spellings of one entry).
+    // Strip trailing hiragana (okurigana) from a verb form to get its kanji stem.
+    // e.g. "擦る" → "擦", "跳ねる" → "跳ね" ... actually we want just the leading
+    // kanji characters: strip from the first hiragana character onward.
+    function kanjiStem(form) {
+      const match = form.match(/^[\u4e00-\u9fff\u3400-\u4dbf]+/);
+      return match ? match[0] : form;
+    }
+
+    // vvlexicon sometimes stores multiple kanji spellings for v1/v2 as a
+    // comma-separated string (e.g. "擦る,摺る,摩る"). When there are multiple
+    // forms, pick the one whose kanji stem matches the start of the compound
+    // headword — that is the v1 actually used in this compound. Fall back to
+    // first form if none match (shouldn't happen for well-formed vvlexicon data).
+    function lookupComponent(field, compoundHeadword) {
+      const forms = field.split(",").map((f) => f.trim()).filter(Boolean);
+      if (forms.length === 0) return null;
+
+      // Choose canonical form by kanji-stem match against compound headword.
+      const canonical = forms.find((f) => compoundHeadword.startsWith(kanjiStem(f)))
+        ?? forms[0];
+
+      if (forms.length > 1 && canonical !== forms[0]) {
+        console.log(`  info: "${field}" in "${compoundHeadword}" — using "${canonical}" (stem matches compound start)`);
+      } else if (forms.length > 1) {
+        // First form chosen either by match or fallback — no extra noise unless
+        // another form also matched, which would be genuinely ambiguous.
+        const otherMatch = forms.slice(1).find((f) => compoundHeadword.startsWith(kanjiStem(f)));
+        if (otherMatch) {
+          console.warn(`  warning: "${field}" in "${compoundHeadword}" — both "${canonical}" and "${otherMatch}" match compound start; using first`);
+        }
+      }
+
+      const exact = findExact(db, canonical);
+      const componentHit = exact.length > 0 ? exact[0] : kanjiAnywhere(db, canonical)[0] ?? null;
+      return componentHit ? componentHit.id : null;
+    }
+
+    v1JmdictId = lookupComponent(entry.v1, entry.headword1);
+    if (v1JmdictId === null) {
+      // Some vvlexicon v1s are genuinely absent from JMDict (archaic, colloquial,
+      // or kana-only verbs not yet entered). Warn but continue in all cases.
+      console.warn(`  warning: v1 "${entry.v1}" of "${entry.headword1}" not found in JMDict`);
+    }
+
+    v2JmdictId = lookupComponent(entry.v2, entry.headword1);
+    if (v2JmdictId === null) {
+      console.warn(`  warning: v2 "${entry.v2}" of "${entry.headword1}" not found in JMDict`);
+    }
+
     return {
       headword_id: entry.headword_id,
       headword: entry.headword1,
@@ -84,6 +145,8 @@ for (const v2 of targetV2s) {
       jita: entry.jita,
       NLB_link: entry.NLB_link,
       jmdictId,
+      v1JmdictId,
+      v2JmdictId,
       jmdictForms,
       jmdictMeanings,
       ninjal_senses: entry.senses.map((s) => ({

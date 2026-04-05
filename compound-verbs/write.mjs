@@ -64,12 +64,12 @@ function parseSenseIndex(raw) {
 }
 
 function parseJmdictId(raw) {
-  const n = Number(raw);
-  if (!Number.isInteger(n) || n <= 0) {
-    console.error(`jmdict-id must be a positive integer, got: ${raw}`);
+  const s = String(raw).trim();
+  if (!/^\d+$/.test(s) || s === "0") {
+    console.error(`jmdict-id must be a positive integer string, got: ${raw}`);
     process.exit(1);
   }
-  return n;
+  return s;
 }
 
 function parseJsonArg(raw) {
@@ -139,11 +139,11 @@ function opAddExample(args) {
 
   const sense = entry.senses[senseIndex];
   if (!Array.isArray(sense.examples)) sense.examples = [];
-  if (sense.examples.includes(jmdictId)) {
+  if (sense.examples.some((e) => e.id === jmdictId)) {
     console.log(`JMDict ID ${jmdictId} already present in sense ${senseIndex} — no change.`);
     return;
   }
-  sense.examples.push(jmdictId);
+  sense.examples.push({ id: jmdictId, source: "vvlexicon" });
   saveCv(data);
   console.log(`Added ${jmdictId} to ${suffixId} sense[${senseIndex}] ("${sense.meaning.slice(0, 60)}…")`);
 }
@@ -177,17 +177,17 @@ function opMoveExample(args) {
 
   const fromSense = entry.senses[fromIndex];
   if (!Array.isArray(fromSense.examples)) fromSense.examples = [];
-  const pos = fromSense.examples.indexOf(jmdictId);
+  const pos = fromSense.examples.findIndex((e) => e.id === jmdictId);
   if (pos === -1) {
     console.error(`JMDict ID ${jmdictId} not found in sense ${fromIndex}.`);
     process.exit(1);
   }
-  fromSense.examples.splice(pos, 1);
+  const [movedExample] = fromSense.examples.splice(pos, 1);
 
   const toSense = entry.senses[toIndex];
   if (!Array.isArray(toSense.examples)) toSense.examples = [];
-  if (!toSense.examples.includes(jmdictId)) {
-    toSense.examples.push(jmdictId);
+  if (!toSense.examples.some((e) => e.id === jmdictId)) {
+    toSense.examples.push(movedExample);
   }
 
   saveCv(data);
@@ -210,7 +210,7 @@ function opRemoveExample(args) {
   for (let si = 0; si < (entry.senses?.length ?? 0); si++) {
     const sense = entry.senses[si];
     if (!Array.isArray(sense.examples)) continue;
-    const pos = sense.examples.indexOf(jmdictId);
+    const pos = sense.examples.findIndex((e) => e.id === jmdictId);
     if (pos !== -1) {
       sense.examples.splice(pos, 1);
       console.log(`Removed ${jmdictId} from ${suffixId} sense[${si}] ("${sense.meaning.slice(0, 60)}…")`);
