@@ -42,7 +42,7 @@ const args = process.argv.slice(2);
 const v2 = args.find((a) => !a.startsWith("--"));
 const dryRun = args.includes("--dry-run");
 const modelFlagIndex = args.indexOf("--model");
-const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
+const requestedModel = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
 
 if (!v2) {
   console.error("Usage: node compound-verbs/cluster-meanings.mjs <v2> [--dry-run] [--model MODEL]");
@@ -140,22 +140,23 @@ if (dryRun) {
   console.log("\n========== [DRY RUN] Prompt ==========\n");
   console.log(prompt);
   console.log("\n========== End of prompt ==========\n");
-  console.log(`Would send ${trimmed.length} compounds to ${model}`);
+  console.log(`Would send ${trimmed.length} compounds to ${requestedModel}`);
   process.exit(0);
 }
 
 // --- Call LLM ---
 
-console.log(`Calling ${model}...`);
+console.log(`Calling ${requestedModel}...`);
 
 const client = new Anthropic();
 const message = await client.messages.create({
-  model,
+  model: requestedModel,
   max_tokens: 4096,
   messages: [{ role: "user", content: prompt }],
 });
 
 const responseText = message.content[0].text.trim();
+const actualModel = (message.model || requestedModel)?.replaceAll(/\//g, '-');
 
 // --- Write raw response txt (always, even if JSON parsing fails) ---
 
@@ -164,13 +165,13 @@ mkdirSync(clustersDir, { recursive: true });
 
 const isoString = new Date().toISOString();
 const timestamp = isoString.replace(/[:.]/g, "-").replace("T", "_").replace("Z", "");
-const archivePath = join(clustersDir, `${v2}-meanings-${timestamp}-${model}.json`);
+const archivePath = join(clustersDir, `${v2}-meanings-${timestamp}-${actualModel}.json`);
 const canonicalPath = join(clustersDir, `${v2}-meanings.json`);
-const rawResponsePath = join(clustersDir, `${v2}-meanings-${timestamp}-${model}.txt`);
+const rawResponsePath = join(clustersDir, `${v2}-meanings-${timestamp}-${actualModel}.txt`);
 
 const flagsSummary = [
   `suffix: ${v2}`,
-  `model: ${model}`,
+  `model: ${actualModel}`,
   `compounds-sent: ${trimmed.length}`,
   `timestamp: ${isoString}`,
   `args: node compound-verbs/cluster-meanings.mjs ${args.join(" ")}`,
