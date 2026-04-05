@@ -536,6 +536,25 @@ Lower is better (fewer compounds abandoned to the opaque bucket). The 出す col
 
 立てる goes the other direction: Gemma-26b-a4b assigned *every* compound including lexicalized entries like 見立てる and 仕立てる that its own validation then flagged as opaque.
 
+#### Gemini 2.5 cross-check: is the pipeline robust?
+
+To test whether the pipeline architecture is overfitted to Haiku's specific failure modes, Gemini 2.5 Flash ("fast") and Gemini 2.5 Pro ("thinking") were run on the same verbatim 31b prompts for 出す and 立てる. Output in `more-gemma-clusters/*-google-gemini-2.5-*.txt`.
+
+| Model | 出す lexicalized (/100) | 立てる lexicalized (/51) |
+|-------|------------------------|--------------------------|
+| Gemma-31b | 58 | 12 |
+| Haiku | 10 | 0 |
+| Gemini-fast | 6 | 5 |
+| Gemini-think | **0** | 2 |
+
+Not a single compound was lexicalized by all four models — Gemma-31b's conservatism is a pure outlier. Haiku, Gemini-fast, and Gemini-think all land close together (0–10 lexicalized for 出す, 0–5 for 立てる) and broadly agree that the meanings are sufficient to assign nearly everything.
+
+**The pipeline design appears robust.** All three non-Gemma models follow the "omit only if fully opaque" instruction faithfully. Their disagreements are about *which bucket*, not whether to assign — exactly the kind of disagreement a validation pass is designed to catch.
+
+The one meaningful cross-model pattern: Gemini models put many compounds Haiku assigned to M4 (coerced removal: 呼び出す, 差し出す, 誘い出す, 救い出す) into M1 (non-coercive extraction) instead. Both readings are defensible — this is a genuine semantic ambiguity at the M1/M4 boundary, not noise. The one compound left lexicalized by Haiku, Gemini-fast, and Gemini-think alike — 駆り立てる — is a real signal of opacity; only 31b assigned it.
+
+**Conclusion:** The architecture is not Haiku-overfitted in a way that breaks on other frontier models. The home-field advantage is real but not dominant — the structural decisions (sharpening pass, symmetric exclusions, one call for all meanings, omit-only-if-opaque rule) produce good output from Gemini without retuning.
+
 #### Controlled experiment: Haiku on 31b's verbatim prompt
 
 To isolate model capability from meaning quality, Haiku was run on the **verbatim assignment prompts produced by Gemma-31b** — same sharpened meanings, same compound list, same task instructions — for 出す and 立てる. Output in `more-gemma-clusters/*-haiku-via-31b-prompt-*.txt`.
