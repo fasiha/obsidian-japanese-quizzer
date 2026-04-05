@@ -1,0 +1,176 @@
+[
+  {
+    "id": "agaru-suffix",
+    "kanji": "上がる",
+    "reading": "あがる",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to move upward / to rise up",
+        "examples": [
+          1551370,
+          1497350,
+          1223650,
+          1429690,
+          1497390,
+          1499080,
+          1315800,
+          1244790,
+          1601010,
+          2025500,
+          2862365,
+          1358900,
+          2827648,
+          1538430,
+          1211160,
+          2572310,
+          2274660,
+          1679910,
+          2829433,
+          2829433
+        ],
+        "specializedMeaning": "For the subject or object to <verb> to a higher spatial location, with emphasis on translocation along a vertical or upward-sloping path."
+      },
+      {
+        "meaning": "to be completed / to be finished",
+        "examples": [
+          1340610,
+          1305130,
+          2763150,
+          2826227,
+          2828978,
+          1601410,
+          1376490,
+          2832435,
+          1298600,
+          2827913
+        ],
+        "specializedMeaning": "For the action denoted by <verb> to reach completion, finality, or a fully finished state; the culmination point of a process."
+      },
+      {
+        "meaning": "to swell up / to increase in size or intensity",
+        "examples": [
+          1379690,
+          1905800,
+          1469600,
+          1499080,
+          1366320,
+          1328920,
+          1501680,
+          2862365,
+          1309290,
+          2476560,
+          2070770,
+          1375590,
+          1337550,
+          1600710,
+          1495970,
+          1850940,
+          2248930,
+          2002520,
+          1358830
+        ],
+        "specializedMeaning": "For the subject to <verb> such that something swells, surges, or intensifies in a non-spatial, non-completive sense — excludes upward spatial movement (meaning 1) and excludes processes that simply reach exhaustion or completion (meaning 2); the subject becomes more extreme or pronounced in volume, emotional intensity, or magnitude."
+      },
+      {
+        "meaning": "to come to the surface / to emerge or appear",
+        "examples": [
+          1497350
+        ],
+        "specializedMeaning": "For something previously hidden, internal, contained, or subjacent to <verb> such that it becomes visible, exposed, revealed, or brought to the surface; a change from concealment to manifestation."
+      },
+      {
+        "meaning": "",
+        "examples": [
+          1346370
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tsuku-suffix",
+    "kanji": "付く",
+    "reading": "つく",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to stick or cling to; to attach to",
+        "examples": [
+          1254640,
+          1003860,
+          1005470,
+          1665010,
+          1485400,
+          1446260,
+          1209220,
+          1847880,
+          2086370,
+          1350560,
+          1548510,
+          2797990,
+          1646690,
+          1011350,
+          1211180,
+          1228250,
+          1446220,
+          1358260,
+          1350760,
+          1299650,
+          1229760,
+          1611350,
+          1350640,
+          1498680,
+          1397550,
+          2648800,
+          1850540,
+          2082590,
+          1851770,
+          1575570,
+          2793520,
+          2780960,
+          1570560,
+          1664140,
+          1664140
+        ],
+        "specializedMeaning": "to cause a <verb> action to physically adhere, cling, or affix to a surface or object (resultative: the object of <verb> becomes attached)"
+      },
+      {
+        "meaning": "to come to / reach / arrive at",
+        "examples": [
+          1588810,
+          1326900,
+          1590840,
+          1219660,
+          2643630,
+          1296380
+        ],
+        "specializedMeaning": "to succeed in <verb>-ing through effort or pursuit, reaching or arriving at an achieved goal or a target location"
+      },
+      {
+        "meaning": "to settle into a state; to become accustomed to",
+        "examples": [
+          1360280,
+          1490190,
+          1469620,
+          1446200
+        ],
+        "specializedMeaning": "to <verb> into or assume a new state, condition, or habit, with inchoative aspect marking the entry into that state"
+      },
+      {
+        "meaning": "to come up with / occur to (someone)",
+        "examples": [
+          1589330,
+          1590840
+        ],
+        "specializedMeaning": "to <verb> an idea, solution, or concept spontaneously into consciousness (mental occurrence, not physical action)"
+      },
+      {
+        "meaning": "",
+        "examples": [
+          1314770,
+          1378680
+        ]
+      }
+    ]
+  }
+]

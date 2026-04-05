@@ -43,7 +43,7 @@ if (suffixes.length === 0) {
 
 // --- Check compound-verbs.json for finished entries ---
 
-const cvPath = join(root, "compound-verbs.json");
+const cvPath = join(__dirname, "compound-verbs.json");
 const finishedSuffixes = new Set();
 if (existsSync(cvPath)) {
   try {

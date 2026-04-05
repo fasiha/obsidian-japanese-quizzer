@@ -124,14 +124,16 @@ File: `compound-verbs.json`
     "senses": [
       {
         "meaning": "start to V suddenly",
+        "specializedMeaning": "For the subject to begin <verb>-ing abruptly or spontaneously…",
         "examples": [1234567, 2345678, 3456789]
       },
       {
         "meaning": "V outward, bring something forth",
+        "specializedMeaning": "For something previously internal or concealed to <verb> outward…",
         "examples": [4567890, 5678901, 6789012]
       },
       {
-        "meaning": "opaque / lexicalized — learn as vocabulary",
+        "meaning": "",
         "examples": [7890123, 8901234, 9012345, 1023456, 1123456, 1223456]
       }
     ]
@@ -146,7 +148,14 @@ Field notes:
 - `senses` — ordered array of meaning senses, with a final lexicalized sense at the end
   if any compounds were unassigned. Multiple productive senses are expected (e.g. 出す has
   "start suddenly" and "bring outward" as distinct meanings).
-- `senses[].meaning` — meaning description string
+- `senses[].meaning` — learner-friendly display string from Pass 1 (`<v2>-meanings.json`).
+  Empty string `""` for the final lexicalized/opaque sense (the app signals this state by
+  the absence of a meaning label, not by a fixed string).
+- `senses[].specializedMeaning` — optional. Present when a sharpened meanings file was
+  used during Pass 2 (`<v2>-meanings-sharpened.json`). Contains the precise, unambiguous
+  classification rule written by Pass 1b. Omitted when sharpened and original strings are
+  identical, and omitted on the lexicalized sense. Useful for future LLM passes and for
+  debugging classification decisions; not intended as primary display text.
 - `senses[].examples` — array of JMDict entry IDs (integers), ordered by BCCWJ frequency
   descending. Compounds without JMDict IDs are excluded.
 
@@ -299,7 +308,7 @@ The script:
    - `missing-multi-assignment` — adds the compound to the `suggested` meanings while keeping existing assignments
 4. Writes the updated `assignments.json` in-place
 
-**3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)** — not yet written
+**3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)** — written
 
 Reads the corrected `assignments.json` (after Pass 2c), both `<v2>-meanings.json` and
 `<v2>-meanings-sharpened.json` (if present), and the survey file. Builds the final
@@ -310,18 +319,26 @@ Steps:
 2. Load `meanings.json` and `meanings-sharpened.json` — match keys in `assignments.json` to original display strings by index position
 3. For each meaning, collect all assigned compounds, resolve each to its JMDict ID via the survey file, and sort by BCCWJ frequency descending
 4. Derive the lexicalized set: all compounds in the survey file that appear in no meaning key in `assignments.json`; resolve to JMDict IDs and sort by BCCWJ frequency descending
-5. Build the suffix entry object: one sense per meaning (using the original display string as `meaning`), plus a final lexicalized sense if any unassigned compounds had JMDict IDs
-6. Compounds without JMDict IDs are excluded from all senses (they may have informed meaning discovery in Pass 1 but cannot be linked from the app)
+5. Build the suffix entry object: one sense per meaning (using the original display string as `meaning`), plus a final lexicalized sense (`meaning: ""`) if any unassigned compounds had JMDict IDs
+6. When sharpened meanings were used as assignment keys, each productive sense also gets `specializedMeaning` set to the sharpened string
+7. Compounds without JMDict IDs are excluded from all senses (they may have informed meaning discovery in Pass 1 but cannot be linked from the app)
 
 Output: calls `write.mjs replace-entry` to upsert the entry into `compound-verbs.json`.
 
-**4. Writer script (`compound-verbs/write.mjs`)** — not yet written
+Usage:
+```
+node compound-verbs/select-examples.mjs <v2>
+node compound-verbs/select-examples.mjs <v2> --dry-run
+```
+
+**4. Writer script (`compound-verbs/write.mjs`)** — written
 
 A small script that accepts structured operations and applies them to
-`compound-verbs.json`. Operations it supports:
+`compound-verbs.json`. Creates the file as an empty array if it does not exist yet.
+Operations it supports:
 
-- `replace-entry <suffix-id> <entry-json>` — wholesale replace a suffix's entry
-  (used when rerunning any pass)
+- `replace-entry <suffix-id> <entry-json>` — wholesale replace (or insert) a suffix's
+  entry; `<entry-json>` may be a path to a JSON file or an inline JSON string
 - `add-example <suffix-id> <sense-index> <jmdict-id>` — append an example to a sense
 - `move-example <suffix-id> <from-sense-index> <to-sense-index> <jmdict-id>` — reclassify
   an example into a different sense
@@ -469,7 +486,7 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
 5. Human review — edit the validation txt file to remove any flags you disagree with
 6. Pass 2c: `node compound-verbs/apply-validation.mjs clusters/<v2>-validation-<timestamp>.txt`
    (repeat steps 3–6 if major restructuring is needed)
-7. Pass 3: `node compound-verbs/select-examples.mjs <v2>` (not yet written)
+7. Pass 3: `node compound-verbs/select-examples.mjs <v2>`
 8. `validate.mjs` — schema integrity check (not yet written)
 
 ## Action Items
