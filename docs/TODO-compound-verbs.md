@@ -350,46 +350,52 @@ Pass 1 (`cluster-meanings.mjs`) optimises for human comprehension — its output
 
 An optional sharpening pass sits between Pass 1 and Pass 2. It sends the Pass 1 meanings plus the full compound list to the LLM and asks it to rewrite each meaning as an unambiguous classification rule. Technical linguistic terms are explicitly encouraged (precision over learner-friendliness). The sharpened meanings are written to `<v2>-meanings-sharpened.json`, leaving the original `<v2>-meanings.json` untouched for use as user-facing display text.
 
-To use sharpened meanings in Pass 2: `node compound-verbs/assign-examples.mjs <v2> --use-sharpened`
+Pass 2 and Pass 2b automatically use the sharpened meanings file if it exists (`<v2>-meanings-sharpened.json`), logging a bright notice to stdout. If the sharpened file is absent, both scripts fall back to `<v2>-meanings.json` silently.
 
 To promote sharpened meanings to canonical: `cp compound-verbs/clusters/<v2>-meanings-sharpened.json compound-verbs/clusters/<v2>-meanings.json`
 
 **Caveat:** the sharpening pass sees the same compound list it will later classify, which gives it an unfair advantage when evaluated on that same list. Test on a held-out v2 when possible.
 
-### Failure modes observed across 立てる, 出す, 付ける, 上がる, 付く
+### Meaning quality: failure modes and evaluation (observed across 立てる, 出す, 付ける, 上がる, 付く)
 
-**1. Missing `<verb>` placeholder** — the `<verb>` placeholder should appear explicitly in every meaning string (e.g. "to `<verb>` someone into action"). When absent, the semantic role of v1 is ambiguous. Meanings without an explicit `<verb>` slot invite misclassification.
+These are pitfalls in how meanings are worded and how to spot them in assignment output. Wording failures are all fixable in the sharpening pass; evaluation items apply after each assignment run.
 
-**2. Over-broad object type** — a meaning worded as "propel someone/something" lets the model file physical-force compounds (突き立てる) alongside motivational-drive compounds (駆り立てる). Tighten the object type: "propel a person" vs "propel an object into place."
+**1. Missing `<verb>` placeholder** — every meaning string must include `<verb>` explicitly, showing where v1 fits (e.g. "to `<verb>` someone into action"). When absent, the semantic role of v1 is ambiguous and compounds land in the wrong bucket.
+*How to spot:* any meaning where you can't tell from the string what the prefix verb is doing.
 
-**3. Catch-all residual meanings** — any meaning with vague intensifiers ("emphatic," "assertive," "vigorous") or broad qualifiers ("emotional state," "magnitude") risks absorbing compounds that don't fit elsewhere. Symptoms: the largest bucket is disproportionately big, and contains compounds with no clear connection to the meaning's stated criterion. Fix: replace vague qualifiers with concrete observable properties and add explicit negative exclusions referencing the other meanings (e.g. "excludes upward spatial movement (meaning 1) and completive exhaustion (meaning 2)"). This was observed in 付ける meaning 4 and 上がる meaning 3.
+**2. Over-broad object type** — writing "someone/something" as the object of a meaning conflates distinct semantic patterns. Specify the object type precisely: "a person" vs "a physical object" vs "an abstract result." Example: "propel someone/something" merged motivational-drive compounds (駆り立てる) with physical-force compounds (突き立てる).
+*How to spot:* siblings in a bucket have clearly different object types (one is a person, another is a physical thing).
 
-**4. Overly restrictive physical-contact wording** — a meaning that says "adheres or bonds" will exclude tying, placing, and writing, causing those compounds to fall into the lexicalized bucket or a catch-all. Use inclusive wording: "contact with a surface or object, including by tying, applying, placing, or writing onto it."
+**3. Catch-all residual meanings** — vague intensifiers ("emphatic," "assertive") or broad qualifiers ("emotional state," "magnitude") cause a meaning to absorb anything that doesn't fit elsewhere. Fix: replace vague qualifiers with concrete observable properties, and add explicit negative exclusions pointing at adjacent meanings (see item 4).
+*How to spot:* one bucket is disproportionately large; its compounds share no obvious common thread beyond "doesn't fit the others."
 
-**5. Meanings 1/3 conflation on 出す-type suffixes** — when two meanings both involve outward motion, the boundary between "extract something that already existed" and "create something new" must be stated explicitly with a negative constraint: "something that did not previously exist (not extract or reveal something hidden)."
+**4. Adjacent meanings need explicit negative exclusions** — when two meanings share a family resemblance (both involve outward motion, both involve upward change), a positive description alone is not enough. Each meaning must explicitly exclude the adjacent one by name. Examples that worked: "something that did not previously exist (not extract or reveal something hidden)" for 出す meaning 3; "excludes upward spatial movement (meaning 1) and processes that simply reach exhaustion or completion (meaning 2)" for 上がる meaning 3. These exact phrases were later cited in the validator's reasoning when it correctly flagged misclassifications.
+*How to spot:* the same compound plausibly fits two adjacent meanings with no clear tiebreaker.
 
-**6. Sharpening does not always catch catch-all risk** — the sharpening pass successfully tightened boundaries for 出す and 付ける but did not detect the catch-all risk in 上がる meaning 3. The sharpening prompt now explicitly asks the model to identify which meaning risks becoming a residual bucket and to add negative exclusions. Whether this is sufficient will become clear with more v2s.
+**5. Over-inclusive or over-restrictive physical-contact wording** — contact meanings can fail in both directions. Too restrictive: "adheres or bonds" excludes tying, placing, and writing, pushing those compounds into the lexicalized bucket. Too inclusive: the contact type must still be specific enough not to overlap with an adjacent meaning. Use wording that covers the full range of physical contact for the suffix in question (e.g. "including by tying, applying, placing, or writing onto it").
+*How to spot:* compositional compounds end up lexicalized (too restrictive), or physically-different operations share a bucket (too inclusive).
 
-**7. Reasoning/JSON consistency errors** — occasionally the model's reasoning mentions a compound under a meaning but the final JSON omits it or places it differently (observed: 沸き上がる in 上がる). This is an assign-examples.mjs issue, not a meaning definition issue. A downstream validation pass can catch these.
+**6. Bucket size and sibling coherence** — after each assignment run, check: do siblings within a bucket share a clear, equally teachable relationship with v1? If not, meaning wording needs tightening. Zero multi-assignments despite obvious candidates suggests meanings are over-narrow or assignment rules too strict.
 
-### Pass 2b: Validation (`validate-assignments.mjs`) — planned
+**7. Validator flags are advisory** — Pass 2b (validate-assignments.mjs) flags misclassifications, incorrectly lexicalized compounds, and missing multi-assignments. Treat each flag as a question, not a command. Polysemous compounds with both literal and metaphorical uses (e.g. 持ち上がる: "be lifted up" vs "a problem comes up") may be correctly left under one meaning. Apply only flags where the reasoning is unambiguous.
 
-A planned script that reads the assignments JSON and sends it to Sonnet with the meanings and compound list, asking it to flag:
-- Compounds assigned to a meaning they don't fit
-- Compounds in the lexicalized bucket that appear compositional
-- Compounds that belong under multiple meanings but were only assigned to one
-- Reasoning/JSON consistency errors from the assignment run
+### Pass 2b: Validation (`validate-assignments.mjs`)
 
-Sonnet is preferred over Haiku for this pass because the task requires subtle semantic judgment rather than classification throughput.
+Written and tested on 上がる. Reads the assignments JSON and sends it to Sonnet with the meanings, asking it to flag:
+- Compounds assigned to a meaning they don't fit (misclassified)
+- Compounds in the lexicalized bucket that appear compositional (should-be-assigned)
+- Compounds that belong under multiple meanings but were only assigned to one (missing-multi-assignment)
 
-### Checklist for evaluating an assignment run
+Sonnet is preferred over Haiku for this pass because the task requires subtle semantic judgment rather than classification throughput. On the 上がる run: correctly identified 6 misclassifications, 3 incorrectly lexicalized compounds, and 4 missing multi-assignments across 79 compounds.
 
-1. Is the largest bucket disproportionately big? (catch-all signal — compare bucket sizes)
-2. Do siblings within a bucket share a clear, equally teachable relationship with v1?
-3. Do multi-assigned compounds genuinely fit both meanings independently?
-4. Does the lexicalized bucket contain compounds that are actually compositional? (over-restrictive meaning wording)
-5. Are there compounds in a manner/force/intensity bucket that lack the stated property? (over-broad qualifier)
-6. Does the model's written reasoning match its JSON output? (consistency error)
+### Recommended workflow per v2
+
+1. Pass 1: `node compound-verbs/cluster-meanings.mjs <v2> --simple --no-productivity --allow-reasoning`
+2. Pass 1b: `node compound-verbs/sharpen-meanings.mjs <v2>` — review sharpened meanings before continuing
+3. Pass 2: `node compound-verbs/assign-examples.mjs <v2>` (Haiku — auto-uses sharpened meanings if present)
+4. Pass 2b: `node compound-verbs/validate-assignments.mjs <v2>` (Sonnet — auto-uses sharpened meanings if present)
+5. Human review of validation flags — apply clear corrections to assignments.json manually
+6. Pass 3: `node compound-verbs/select-examples.mjs <v2>` (not yet written)
 
 ## Action Items
 

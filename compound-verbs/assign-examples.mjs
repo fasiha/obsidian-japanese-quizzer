@@ -11,6 +11,9 @@
  *   node compound-verbs/assign-examples.mjs 出す --dry-run
  *   node compound-verbs/assign-examples.mjs 出す --model claude-haiku-4-5-20251001
  *
+ * Automatically uses <v2>-meanings-sharpened.json if it exists (logged with a
+ * bright notice), otherwise falls back to <v2>-meanings.json.
+ *
  * Input:
  *   compound-verbs/survey/<v2>.json              (from survey.mjs)
  *   compound-verbs/clusters/<v2>-meanings.json   (from cluster-meanings.mjs)
@@ -30,6 +33,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
+import chalk from "chalk";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
@@ -48,12 +52,11 @@ try {
 const args = process.argv.slice(2);
 const v2 = args.find((a) => !a.startsWith("--"));
 const dryRun = args.includes("--dry-run");
-const useSharpened = args.includes("--use-sharpened");
 const modelFlagIndex = args.indexOf("--model");
 const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
 
 if (!v2) {
-  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--use-sharpened] [--model MODEL]");
+  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--model MODEL]");
   process.exit(1);
 }
 
@@ -72,20 +75,21 @@ const survey = JSON.parse(readFileSync(surveyPath, "utf8"));
 const sharpenedMeaningsPath = join(__dirname, "clusters", `${v2}-meanings-sharpened.json`);
 const defaultMeaningsPath = join(__dirname, "clusters", `${v2}-meanings.json`);
 
-if (useSharpened) {
-  if (!existsSync(sharpenedMeaningsPath)) {
-    console.error(`Sharpened meanings file not found: ${sharpenedMeaningsPath}`);
-    console.error(`Run: node compound-verbs/sharpen-meanings.mjs ${v2}`);
+let meaningsPath;
+if (existsSync(sharpenedMeaningsPath)) {
+  meaningsPath = sharpenedMeaningsPath;
+} else {
+  meaningsPath = defaultMeaningsPath;
+  if (!existsSync(meaningsPath)) {
+    console.error(`Meanings file not found: ${meaningsPath}`);
+    console.error(`Run: node compound-verbs/cluster-meanings.mjs ${v2}`);
     process.exit(1);
   }
+  console.log(chalk.redBright(`No sharpened meanings found — using original: ${meaningsPath}`));
+  console.log(chalk.redBright(`Run sharpen-meanings.mjs ${v2} to improve assignment quality.`));
 }
 
-const meaningsPath = useSharpened ? sharpenedMeaningsPath : defaultMeaningsPath;
-if (!existsSync(meaningsPath)) {
-  console.error(`Meanings file not found: ${meaningsPath}`);
-  console.error(`Run: node compound-verbs/cluster-meanings.mjs ${v2}`);
-  process.exit(1);
-}
+const useSharpened = meaningsPath === sharpenedMeaningsPath;
 const meanings = JSON.parse(readFileSync(meaningsPath, "utf8"));
 
 if (!Array.isArray(meanings) || meanings.length === 0) {
