@@ -500,6 +500,120 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
 
 ---
 
+## Appendix: Gemma 4 Model Evaluation Against Failure Modes (2026-04-05)
+
+### Background
+
+Pass 1b (sharpening) was originally developed and tested with Claude Haiku. Two local Gemma 4 models were then run through the same pipeline on the same five suffixes (出す, 付く, 立てる, 返す, 歩く):
+
+- **google-gemma-4-31b** — dense 31-billion-parameter model, ~3 tokens/second on a local laptop, zero API cost
+- **google-gemma-4-26b-a4b** — mixture-of-experts 26B-active-4B model, ~30 tokens/second locally, zero API cost
+
+Output lives in `compound-verbs/gemma-clusters/`. Haiku runs from the same date are in `compound-verbs/clusters/` (files timestamped `2026-04-05_04-2*`).
+
+### Confound: prompt version difference
+
+The Gemma runs were produced with an **earlier version** of `sharpen-meanings.mjs`. Two instructions present in the Haiku prompt were absent from the Gemma prompt:
+
+1. *"Exclusions between adjacent meanings must be symmetric: if meaning 3 says 'excludes meaning 2', then meaning 2 must also say 'excludes meaning 3'. Check every pair of meanings and ensure the exclusion boundary is stated in both directions."*
+2. *"Before writing your answer, scan the compound list for any compound that does not fit any of the draft meanings. Name it and explain why."*
+
+This means any Gemma weakness on failure mode 4 (missing symmetric exclusions) or on lexicalized-compound detection is at least partly a prompt effect, not purely a model capability difference. A fair model comparison requires re-running all three models with identical prompts. See the re-run plan below.
+
+Additionally, the Gemma and Haiku sharpening runs processed **different draft meanings** as input — because Pass 1 (`cluster-meanings.mjs`) was also run separately for each model, producing different starting clusters for 出す (Haiku produced 4 meanings; Gemma-26b-a4b produced 3; Gemma-31b got 4 but differently worded). This means we are evaluating the whole pipeline (Pass 1 + Pass 1b) per model, not just the sharpening step in isolation.
+
+### Rubric: mapping failure modes to observable signals
+
+The seven failure modes from the main document map to these observable checks on a sharpened-meanings file:
+
+| Check | Failure mode | What to look for in the JSON |
+|-------|-------------|------------------------------|
+| **A** | 1 — missing `<verb>` | Every meaning string contains the literal token `<verb>` |
+| **B** | 2 — over-broad object | No meaning uses "someone/something" as object without further qualification |
+| **C** | 3 — catch-all residual | Reasoning section explicitly names the at-risk meaning and adds concrete exclusions |
+| **D** | 4 — asymmetric exclusions | Every pair of adjacent meanings that one member excludes is also excluded in the other direction |
+| **E** | 5 — contact wording | Meanings about physical attachment mention at least two contact modalities (adhesion, clinging, wrapping, etc.) |
+| **F** | 6 — bucket coherence | Not evaluable without an assignment run; deferred to Phase 2 |
+| **G** | faithfulness | Output count matches input count (no merging or splitting of meanings) |
+
+Checks A–E and G can be scored on the existing files with no additional LLM calls.
+
+### Qualitative scoring of existing files
+
+**`<verb>` placeholder (check A)**
+
+All three models include `<verb>` in their final JSON across all suffixes, but the phrasing style differs:
+
+- *Haiku*: natural active construction — `"to <verb> and come out / become visible"`
+- *Gemma-31b*: natural — `"To <verb> such that a tangible object ... moves"`
+- *Gemma-26b-a4b*: passive frame — `"To cause the prefix <verb> to result in..."` — technically present but the phrase `"prefix <verb>"` is non-standard and could confuse a downstream classifier that substitutes a verb form for `<verb>` literally
+
+**Symmetric exclusions (check D)**
+
+This is the sharpest difference and is at least partly confounded by the prompt version:
+
+- *Haiku* (newer prompt): fully symmetric in all four suffixes reviewed. Explicitly labels directions: `"Excludes: ... (meaning 2); ... (meaning 3)."` and the corresponding reverse exclusions appear in meanings 2 and 3.
+- *Gemma-31b* (older prompt): exclusions appear in reasoning prose but are **inconsistently carried into the final JSON**. For 返す, the final JSON has zero cross-references despite the reasoning identifying the boundary risks. For 立てる, meaning 2 excludes meanings 3 and 4 but meanings 3 and 4 do not exclude meaning 2.
+- *Gemma-26b-a4b* (older prompt): partially symmetric in 立てる (`"excludes purely vertical movement and purely repetitive/noisy temporal patterns"` appears in multiple meanings). For 出す, exclusions appear in prose but only meaning 3 carries them into the JSON.
+
+**Catch-all identification (check C)**
+
+All three models correctly identify the at-risk meaning in their reasoning. Gemma-31b's identification for 立てる is notably narrow — it restricts meaning 2 to *vocalizations and insistent behaviors* only, which likely pushes 煮立てる (bring to a boil) into the lexicalized tail even though it is compositional. Haiku's identification for 立てる correctly notes that the vehemence/intensity meaning risks becoming residual, and gives concrete examples (掻き立てる, 責め立てる, 攻め立てる) to calibrate the boundary.
+
+**Lexicalized compound detection (check implicit)**
+
+Haiku explicitly names 見立てる as fitting none of the 立てる meanings and recommends lexicalized treatment. Neither Gemma model surfaced this — though the older prompt did not ask them to. This check is only meaningful with the updated prompt.
+
+**Meaning faithfulness (check G)**
+
+- *Gemma-31b*: ✓ for all four suffixes reviewed (output count = input count)
+- *Gemma-26b-a4b*: ✓ where input was 3 meanings, output was 3; where input was 4, output was 4 (for 付く)
+- *Haiku*: ✓ generally faithful; for 付く the starting cluster happened to produce only 2 meanings and the sharpened output stayed at 2
+
+**Summary table (existing runs, older prompt for Gemma)**
+
+| | Gemma-31b | Gemma-26b-a4b | Haiku |
+|-|-----------|---------------|-------|
+| A — `<verb>` present | ✓ | partial (passive frame) | ✓ |
+| B — no over-broad object | ✓ | ✓ | ✓ |
+| C — catch-all named | ✓ | ✓ | ✓ (with examples) |
+| D — symmetric exclusions | ✗ (prose only) | partial | ✓ |
+| E — contact wording | ✓ (付く run) | ✓ | ✓ |
+| G — faithful count | ✓ | ✓ | ✓ |
+
+### Re-run plan (normalize the prompt variable)
+
+Before drawing conclusions about model capability, re-run sharpening for 出す, 付く, 立てる, and 返す through both Gemma models using the *current* `sharpen-meanings.mjs` (which includes symmetric-exclusion and lexicalized-compound-scan instructions). Use the **same Pass 1 clusters** as the Haiku runs (copy the canonical `<v2>-meanings.json` files before running) to also eliminate the cluster-input variable.
+
+```bash
+# For each suffix: copy Haiku's cluster as the canonical, then run sharpening with each Gemma model
+node compound-verbs/sharpen-meanings.mjs 出す   # run once per model via --model flag or env var
+node compound-verbs/sharpen-meanings.mjs 付く
+node compound-verbs/sharpen-meanings.mjs 立てる
+node compound-verbs/sharpen-meanings.mjs 返す
+```
+
+Note: `sharpen-meanings.mjs` currently hardcodes the Haiku API. Gemma runs required patching the model endpoint to point at the local LM Studio server. The flag or environment variable to select the model target may need to be formalized in the script before re-running.
+
+### Downstream assignment evaluation (Phase 2)
+
+Rubric scores are a proxy. The ground truth is whether the sharpened meanings lead to fewer misclassifications in Pass 2. For one suffix (出す, 100 compounds), run the full Pass 1b → Pass 2 → Pass 2b chain for each model's sharpened output and count validation flags from Pass 2b (Sonnet):
+
+- Total flags (misclassified + incorrectly-lexicalized + missing-multi-assignment) is the primary metric
+- Breakout: misclassified and incorrectly-lexicalized flags indicate boundary failures; missing-multi-assignment flags indicate over-narrow meanings
+
+This is a roughly 3 × (Pass 2 + Pass 2b) = 6 LLM calls at Haiku and Sonnet prices — under $0.50 total. The Gemma assignment runs can use Haiku for Pass 2 (the assignment step) and Sonnet for Pass 2b (validation), same as the standard workflow.
+
+### Hypothesis and practical recommendation
+
+Based on the existing (older-prompt) runs:
+
+- Gemma-31b produces technically sound output but under-specifies exclusions in the final JSON when the prompt does not explicitly require them. With the updated prompt, it likely performs comparably to Haiku on checks A–E. The 3 tok/s throughput makes it slow for sharpening (one suffix takes ~5 minutes) but perfectly acceptable for an infrequent, one-per-suffix pass.
+- Gemma-26b-a4b's passive phrasing style ("To cause the prefix `<verb>` to result in...") is a consistent stylistic pattern that may confuse a downstream assignment classifier. Worth checking in Phase 2 whether this matters in practice.
+- Haiku remains the default for Pass 1b until Phase 2 evidence suggests otherwise. The cost difference is small (sharpening is one call per suffix, not per compound).
+
+---
+
 ## Appendix: Earlier Pipeline Design (Rejected)
 
 The original plan used a per-compound LLM pass (Pass 1) that rated the productivity

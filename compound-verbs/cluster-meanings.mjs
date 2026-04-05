@@ -114,7 +114,9 @@ console.log(
 
 const headwordList = trimmed.map((e) => e.headword).join("、");
 
-const prompt = `Make a short list (1-4) of what appending -${v2} to a verb does to it. This is for Japanese learners at the N4–N5 level.
+const prompt = `Make a short list of what appending -${v2} to a verb does to it. This is for a Japanese language learning app.
+
+Use 1–4 meanings (4 maximum). Aim for broad recurring roles — not fine-grained sense distinctions, so merge patterns that differ only in degree or nuance. Each meaning must include <verb> explicitly, showing where the prefix verb fits (e.g. "to <verb> and go inside").
 
 For example, -込む has roughly four broad usages:
 [
