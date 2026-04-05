@@ -112,14 +112,14 @@ function checkSuffix(v2) {
   };
 }
 
-function nextStep(s) {
-  if (!s.survey) return "Pass 0: node compound-verbs/survey.mjs <v2>";
-  if (!s.meanings) return "Pass 1: node compound-verbs/cluster-meanings.mjs <v2> --simple --no-productivity --allow-reasoning";
-  if (!s.sharpened) return "Pass 1b: node compound-verbs/sharpen-meanings.mjs <v2>";
-  if (!s.hasAssignments) return "Pass 2: node compound-verbs/assign-examples.mjs <v2>";
-  if (!s.hasValidationTxt) return "Pass 2b: node compound-verbs/validate-assignments.mjs <v2>";
-  if (s.unappliedTxts.length > 0) return `Pass 2c: node compound-verbs/apply-validation.mjs clusters/${s.unappliedTxts[0]}`;
-  if (!s.written) return "Pass 3: node compound-verbs/select-examples.mjs <v2>  [not yet written]";
+function nextStep(s, v2) {
+  if (!s.survey) return `Pass 0: node survey.mjs ${v2}`;
+  if (!s.meanings) return `Pass 1: node cluster-meanings.mjs ${v2}`;
+  if (!s.sharpened) return `Pass 1b: node sharpen-meanings.mjs ${v2}`;
+  if (!s.hasAssignments) return `Pass 2: node assign-examples.mjs ${v2}`;
+  if (!s.hasValidationTxt) return `Pass 2b: node validate-assignments.mjs ${v2}`;
+  if (s.unappliedTxts.length > 0) return `Pass 2c: node apply-validation.mjs clusters/${s.unappliedTxts[0]}`;
+  if (!s.written) return `Pass 3: node select-examples.mjs ${v2}`;
   return null;
 }
 
@@ -145,7 +145,7 @@ for (const v2 of suffixes) {
   ];
 
   const label = v2.padEnd(colWidth);
-  const next = nextStep(s);
+  const next = nextStep(s, v2);
 
   console.log(`${label} ${checks.join("  ")}`);
   if (s.unappliedTxts.length > 0 && s.hasValidationApplied) {

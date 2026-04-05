@@ -434,6 +434,14 @@ To promote sharpened meanings to canonical: `cp compound-verbs/clusters/<v2>-mea
 
 **Caveat:** the sharpening pass sees the same compound list it will later classify, which gives it an unfair advantage when evaluated on that same list. Test on a held-out v2 when possible.
 
+**Prompt decisions (cluster-meanings.mjs):** the Pass 1 prompt was updated based on testing across 立てる, 出す, 付ける, 上がる, 付く, 上げる, 返す:
+- The "N4–N5 level" framing was replaced with "for a Japanese language learning app." The level label was causing the model to silently skip patterns it judged too advanced (including the 上げる honorific use), while the app framing still anchors the desired abstraction level without implying a difficulty ceiling.
+- The hard "1–4" numeric cap is kept (4 maximum), with "err on the side of merging" as the tie-breaking instruction. Raising the cap is tempting when a genuine 5th pattern exists, but in practice the right fix is a manual edit to `<v2>-meanings.json` — letting the model decide to add a 5th meaning produces over-splitting.
+
+**Prompt decisions (sharpen-meanings.mjs):** two bullets were added to the sharpening prompt:
+- *Symmetric exclusions:* if meaning 3 excludes meaning 2, meaning 2 must also exclude meaning 3. Testing showed the model applies this reliably for adjacent, semantically close meaning pairs (where it matters most) but may skip it for distant pairs. Asymmetric exclusions between semantically distant meanings did not cause observable classification errors.
+- *Gap detection:* scan the compound list for any compound that does not fit any draft meaning and name it explicitly. This fires reliably and is the main mechanism for catching honorific-use gaps before Pass 2.
+
 ### Meaning quality: failure modes and evaluation (observed across 立てる, 出す, 付ける, 上がる, 付く)
 
 These are pitfalls in how meanings are worded and how to spot them in assignment output. Wording failures are all fixable in the sharpening pass; evaluation items apply after each assignment run.
@@ -456,6 +464,9 @@ These are pitfalls in how meanings are worded and how to spot them in assignment
 **6. Bucket size and sibling coherence** — after each assignment run, check: do siblings within a bucket share a clear, equally teachable relationship with v1? If not, meaning wording needs tightening. Zero multi-assignments despite obvious candidates suggests meanings are over-narrow or assignment rules too strict.
 
 **7. Validator flags are advisory** — Pass 2b (validate-assignments.mjs) flags misclassifications, incorrectly lexicalized compounds, and missing multi-assignments. Treat each flag as a question, not a command. Polysemous compounds with both literal and metaphorical uses (e.g. 持ち上がる: "be lifted up" vs "a problem comes up") may be correctly left under one meaning. Apply only flags where the reasoning is unambiguous.
+
+**8. Missing honorific/register-marker meaning** — some suffixes (上げる being the clearest case) have a productive honorific or humble-register use (謙譲語/尊敬語) that is semantically distinct from all other meanings and will not be discovered by Pass 1 unless prompted explicitly. The cluster-meanings prompt does not mention keigo — adding such a hint risks spurious honorific meanings for suffixes where one or two edge-case compounds should simply be lexicalized. Instead: after Pass 1, check whether any high-frequency compounds (top 10 by BCCWJ) are unaccounted for by the proposed meanings. If a clear register-marker pattern emerges, add it manually to `<v2>-meanings.json` before running Pass 1b. The sharpening pass will flag unaccounted compounds in its reasoning (due to the gap-detection bullet) but cannot add a meaning on its own.
+*How to spot:* a high-frequency compound like 申し上げる, 差し上げる, or 存じ上げる sits at the top of the corpus list but fits none of the proposed meanings.
 
 ### Pass 2b: Validation (`validate-assignments.mjs`)
 

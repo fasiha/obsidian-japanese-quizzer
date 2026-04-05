@@ -1,8 +1,10 @@
 survey/
 classify/
-clusters/*-meanings-*.json
-clusters/*-meanings-*.txt
-clusters/*-meanings.json
-clusters/*-assignments-*.txt
-clusters/*-assignments.json
-clusters/*-validation-*.txt
+BCCWJ*tsv
+
+*-meanings-*.json
+*-meanings-*.txt
+*-meanings.json
+*-assignments-*.txt
+*-assignments.json
+*-validation-*.txt

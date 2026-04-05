@@ -172,5 +172,337 @@
         ]
       }
     ]
+  },
+  {
+    "id": "dasu-suffix",
+    "kanji": "出す",
+    "reading": "だす",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to <verb> and come out / become visible or apparent",
+        "examples": [
+          1485350,
+          1354940,
+          1450390,
+          1456680,
+          1478220,
+          1602500,
+          1402680,
+          1450170,
+          1607990,
+          1589160,
+          1590100,
+          1552170,
+          1427840,
+          2776930,
+          2033720,
+          2615790,
+          2012860,
+          1501670,
+          1850900,
+          2158570,
+          1847940,
+          2158570,
+          2522840,
+          1519320,
+          2015790,
+          2841812,
+          1850660,
+          2252330,
+          1568900
+        ],
+        "specializedMeaning": "to <verb> and come out / become visible or apparent — the object of <verb> emerges from a location (bounded or unbounded) or becomes sensorily perceptible or cognitively apparent, without requiring extraction from a discrete source or creation of something that did not previously exist. Excludes: compounds where the source is a bounded container and extraction is the primary sense (meaning 2); compounds where creation of something new is primary (meaning 3); compounds where abstract initiation or proposal is primary (meaning 4)."
+      },
+      {
+        "meaning": "to <verb> and take out / extract from a place",
+        "examples": [
+          1309260,
+          1326770,
+          1291230,
+          1601660,
+          1315600,
+          1266350,
+          1444140,
+          1580950,
+          1432350,
+          1169450,
+          1559330,
+          1505820,
+          1246660,
+          1848680,
+          1411130,
+          1478160,
+          1172650,
+          1594610,
+          1229040,
+          1392150,
+          1416100,
+          1419350,
+          1541880,
+          1448430,
+          1328720,
+          1344470,
+          1323740,
+          1322590,
+          1433640,
+          1332540,
+          1652120,
+          1850550,
+          1346350,
+          2089590,
+          1689450,
+          1399720,
+          1851850,
+          1382920,
+          1851480,
+          1392170,
+          2453670,
+          1226180,
+          2106930,
+          2035660,
+          2436940
+        ],
+        "specializedMeaning": "to <verb> and take out / extract from a place — the object of <verb> already exists and is removed from a discrete, bounded source location (container, enclosure, pocket, stored state, body of another entity), with the source location being semantically salient. Excludes: compounds involving spatial emergence without source-confinement salience (meaning 1); compounds where the object is newly created rather than pre-existing (meaning 3); compounds where abstract initiation is primary (meaning 4)."
+      },
+      {
+        "meaning": "to <verb> and bring into existence / create or cause",
+        "examples": [
+          1378720,
+          1297300,
+          1447040,
+          1516510,
+          1246990,
+          1490110,
+          1357060,
+          1281050,
+          1453670,
+          1207790,
+          1511910,
+          1419350,
+          1418240,
+          1390870,
+          2462180,
+          1851630,
+          2266200,
+          2413160,
+          1391170,
+          2266210
+        ],
+        "specializedMeaning": "to <verb> and bring into existence / create or cause — the object of <verb> did not exist beforehand and is produced, generated, manufactured, or caused into being through the action, including tangible objects, abstract conditions, qualities, or relationships. Excludes: compounds where extraction of pre-existing things from locations is primary (meaning 2); compounds where abstract discourse initiation or proposal is primary (meaning 4); compounds involving inchoative or spatial emergence (meaning 1)."
+      },
+      {
+        "meaning": "to <verb> and put forth / initiate or propose",
+        "examples": [
+          1291230,
+          1264080,
+          1408670,
+          1580950,
+          1473860,
+          1361240,
+          1850550
+        ],
+        "specializedMeaning": "to <verb> and put forth / initiate or propose — the object of <verb> is an abstract entity (idea, proposal, plan, statement, question, discourse act, or communicative move) that is introduced, announced, broached, or formally put forward for consideration or action. Excludes: compounds involving tangible object creation (meaning 3); compounds involving physical extraction (meaning 2); compounds involving spatial or sensory emergence (meaning 1)."
+      },
+      {
+        "meaning": "",
+        "examples": [
+          1541910,
+          2098510,
+          1285860,
+          1418220,
+          1005300,
+          1298590,
+          1523990,
+          2056260,
+          1391440,
+          2841878,
+          1437040,
+          1434000,
+          1601060,
+          1427840,
+          1848980,
+          1469510,
+          1634270
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tateru-suffix",
+    "kanji": "立てる",
+    "reading": "たてる",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to <verb> and construct/assemble",
+        "examples": [
+          1397580,
+          1382960,
+          1524530
+        ],
+        "specializedMeaning": "to <verb> by assembling or combining multiple discrete parts or materials into a unified whole or structure; excludes placing something in a fixed institutional position (meaning 2) and excludes causing forward motion or action against resistance (meaning 3) and excludes intensifying the manner or frequency of an action (meaning 4)"
+      },
+      {
+        "meaning": "to <verb> and set upright/establish",
+        "examples": [
+          1305560,
+          1363070,
+          1260150,
+          1326960,
+          1849330,
+          1456880,
+          1180440,
+          1697440,
+          1849680,
+          1852850
+        ],
+        "specializedMeaning": "to <verb> by placing, positioning, or setting something upright, in a stable position, or into an institutional/established role or state (a durative or stative establishment of something new or existent); excludes combining parts into a structure (meaning 1) and excludes causing repeated or intensified action (meaning 4), and excludes primarily marking causative forward motion (meaning 3)"
+      },
+      {
+        "meaning": "to <verb> and drive forward/urge on",
+        "examples": [
+          1399950,
+          1326960,
+          1601640,
+          1244830,
+          1432400,
+          1228620,
+          1180440,
+          2462940,
+          1849950
+        ],
+        "specializedMeaning": "to <verb> in such a way as to cause or drive an agent or object forward, onward, or into action/motion, typically against resistance, inertia, or reluctance; marked by causative aspect and directional or goal-oriented sense; excludes spatial positioning into a state (meaning 2) and excludes combining components (meaning 1) and excludes manner-intensification or pluractional iteration (meaning 4)"
+      },
+      {
+        "meaning": "to <verb> repeatedly or vehemently",
+        "examples": [
+          1322650,
+          1403030,
+          1357200,
+          1508410,
+          1264340,
+          1383170,
+          1343920,
+          2218630,
+          1651680,
+          2786960,
+          1901070,
+          1361320,
+          2854086,
+          2830230,
+          1266420,
+          1846290,
+          1671710,
+          1599330,
+          1512740,
+          1444260,
+          1390910,
+          2517910,
+          1517970,
+          1257790,
+          1917610
+        ],
+        "specializedMeaning": "to <verb> repeatedly, iteratively, or with exaggerated/emphatic manner (pluractional or manner-intensive aspect); applied especially to speech acts, sounds, or behavioral displays; marked by frequency of action or intensity of performance rather than purposive forward motion; excludes causative driving of an agent (meaning 3) and excludes institutional placement (meaning 2) and excludes physical assembly (meaning 1)"
+      }
+    ]
+  },
+  {
+    "id": "kaesu-suffix",
+    "kanji": "返す",
+    "reading": "かえす",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to <verb> and reverse direction / to <verb> back",
+        "examples": [
+          1169140,
+          1601870,
+          1326930,
+          1385900,
+          1402710,
+          1432390,
+          1429670,
+          1370730,
+          1379720,
+          2463100,
+          1350850
+        ],
+        "specializedMeaning": "to <verb> in the opposite direction to the original motion, or to <verb> such that the action or object reverses spatial course / returns to source without necessarily completing a reciprocal exchange. Examples: reverse direction of movement, rebound, reflect. Excludes solo temporal repetition (meaning 2) and interpersonal reciprocal response (meaning 3)."
+      },
+      {
+        "meaning": "to <verb> again / to <verb> over",
+        "examples": [
+          1247030,
+          1456320,
+          1309400,
+          1603570,
+          1356890
+        ],
+        "specializedMeaning": "to <verb> a second time (or repeatedly) on the same object, process, or target, restarting or continuing an action without change of spatial direction. The agent is repeating the action for their own purposes, not responding to another agent. Excludes spatial directional reversal (meaning 1) and interpersonal reciprocal response (meaning 3)."
+      },
+      {
+        "meaning": "to <verb> and return / to give back by <verb>ing",
+        "examples": [
+          1260050,
+          1846930,
+          1180390,
+          1408750,
+          2791900,
+          1456860,
+          1447080,
+          1266400,
+          2836394
+        ],
+        "specializedMeaning": "to <verb> as an immediate response or counteraction to a prior action performed by another agent, using the verb as the instrument of reciprocation or retaliation. Examples: throw back in response to being thrown at, send back in response to being sent, retaliate through verb-ing. Excludes solo temporal repetition without reciprocal trigger (meaning 2) and impersonal spatial reversals not triggered by an opposing agent (meaning 1)."
+      },
+      {
+        "meaning": "",
+        "examples": [
+          1641180
+        ]
+      }
+    ]
+  },
+  {
+    "id": "aruku-suffix",
+    "kanji": "歩く",
+    "reading": "あるく",
+    "role": "suffix",
+    "senses": [
+      {
+        "meaning": "to <verb> and carry / take along while moving",
+        "examples": [
+          1315680,
+          2601340
+        ],
+        "specializedMeaning": "to carry/transport <verb> (a discrete entity: object or person) as a traveling companion while moving, where the entity is a separate patient undergoing the carrying relation"
+      },
+      {
+        "meaning": "to <verb> and go around / from place to place",
+        "examples": [
+          1473940
+        ],
+        "specializedMeaning": "to <verb> as a goal-oriented action across multiple distinct spatial locations, with the action accomplished or performed at each location; excludes compounds emphasizing iterative repetition (meaning 3) and compounds describing manner of motion or emotional coloring of the walk (meaning 4)"
+      },
+      {
+        "meaning": "to <verb> while moving / do <verb> around town repeatedly",
+        "examples": [
+          1444660,
+          1340300,
+          2652780
+        ],
+        "specializedMeaning": "to <verb> repeatedly in an iterative or consumptive manner across multiple locations, with emphasis on the ongoing or habitual character of the action itself; excludes compounds where the verb accomplishes a specific purpose at each location (meaning 2) and compounds describing manner of motion or emotional state (meaning 4)"
+      },
+      {
+        "meaning": "to <verb> in a particular manner / move while in a state of <verb>ing",
+        "examples": [
+          1559130,
+          1851780,
+          1497440
+        ],
+        "specializedMeaning": "to move while exhibiting or qualified by a manner of motion, emotional state, or non-agentive condition described by <verb>, where the prefix lexicalizes a property of the walking itself rather than a discrete action or carrying relation; excludes compounds involving carrying (meaning 1), location-specific accomplishments (meaning 2), and iterative actions (meaning 3)"
+      }
+    ]
   }
 ]

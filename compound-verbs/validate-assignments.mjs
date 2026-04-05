@@ -53,6 +53,9 @@ const dryRun = args.includes("--dry-run");
 const modelFlagIndex = args.indexOf("--model");
 const model =
   modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-sonnet-4-6";
+const reparseJsonIndex = args.indexOf("--reparse-json");
+const reparseJsonPath =
+  reparseJsonIndex >= 0 ? args[reparseJsonIndex + 1] : null;
 
 if (!v2) {
   console.error(
@@ -243,18 +246,25 @@ if (dryRun) {
   process.exit(0);
 }
 
-// --- Call LLM ---
+// --- Call LLM (or reparse from saved JSON) ---
 
-console.log(`Calling ${model}...`);
+let responseText;
 
-const client = new Anthropic();
-const message = await client.messages.create({
-  model,
-  max_tokens: 8192,
-  messages: [{ role: "user", content: prompt }],
-});
-
-const responseText = message.content[0].text.trim();
+if (reparseJsonPath) {
+  console.log(`Reparsing from saved JSON: ${reparseJsonPath}`);
+  const savedJson = readFileSync(reparseJsonPath, "utf8");
+  // Wrap in a fake response so the archive-writing + JSON-parsing logic below works unchanged
+  responseText = savedJson.trim();
+} else {
+  console.log(`Calling ${model}...`);
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model,
+    max_tokens: 16000,
+    messages: [{ role: "user", content: prompt }],
+  });
+  responseText = message.content[0].text.trim();
+}
 
 // --- Write archive .txt ---
 

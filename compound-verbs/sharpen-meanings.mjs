@@ -60,6 +60,8 @@ const v2 = args.find((a) => !a.startsWith("--"));
 const dryRun = args.includes("--dry-run");
 const modelFlagIndex = args.indexOf("--model");
 const requestedModel = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
+const reparseJsonIndex = args.indexOf("--reparse-json");
+const reparseJsonPath = reparseJsonIndex >= 0 ? args[reparseJsonIndex + 1] : null;
 
 if (!v2) {
   console.error("Usage: node compound-verbs/sharpen-meanings.mjs <v2> [--dry-run] [--model MODEL]");
@@ -203,19 +205,26 @@ if (dryRun) {
   process.exit(0);
 }
 
-// --- Call LLM ---
+// --- Call LLM (or reparse from saved JSON) ---
 
-console.log(`Calling ${requestedModel}...`);
+let responseText;
+let actualModel;
 
-const client = new Anthropic();
-const message = await client.messages.create({
-  model: requestedModel,
-  max_tokens: 2048,
-  messages: [{ role: "user", content: prompt }],
-});
-
-const responseText = message.content[0].text.trim();
-const actualModel = (message.model || requestedModel)?.replaceAll(/\//g, '-');
+if (reparseJsonPath) {
+  console.log(`Reparsing from saved JSON: ${reparseJsonPath}`);
+  responseText = readFileSync(reparseJsonPath, "utf8").trim();
+  actualModel = requestedModel;
+} else {
+  console.log(`Calling ${requestedModel}...`);
+  const client = new Anthropic();
+  const message = await client.messages.create({
+    model: requestedModel,
+    max_tokens: 8192,
+    messages: [{ role: "user", content: prompt }],
+  });
+  responseText = message.content[0].text.trim();
+  actualModel = (message.model || requestedModel)?.replaceAll(/\//g, "-");
+}
 
 
 // --- Write archive .txt ---
