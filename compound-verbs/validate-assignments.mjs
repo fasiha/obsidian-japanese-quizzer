@@ -207,9 +207,9 @@ ${lexicalizedBlock}
 
 Your task: carefully review these assignments and flag any that look wrong. Look for:
 
-1. MISCLASSIFIED — a compound is listed under a meaning but -${v2} does not contribute that meaning in it; it belongs somewhere else.
-2. SHOULD-BE-ASSIGNED — a compound is in the lexicalized bucket, but -${v2}'s role in it is actually transparent and it should be assigned to one of the meanings above.
-3. MISSING-MULTI-ASSIGNMENT — a compound is assigned to one meaning but clearly fits a second meaning equally well and is missing from it.
+1. A compound is listed under a meaning but -${v2} does not contribute that meaning in it; it belongs somewhere else.
+2. A compound is in the lexicalized bucket, but -${v2}'s role in it is actually transparent and it should be assigned to one of the meanings above.
+3. A compound is assigned to one meaning but clearly fits a second meaning equally well and is missing from it.
 
 Do not flag trivial or borderline cases. Only flag clear errors.
 
@@ -217,8 +217,7 @@ Reason through the assignments, then output a JSON object with a single key "fla
 
 Each flag object has these fields:
   "headword": the compound in kanji
-  "issue": one of "misclassified", "should-be-assigned", "missing-multi-assignment"
-  "suggested": array of meaning strings it should be under instead (use [] if it should be lexicalized/unassigned)
+  "suggested": the complete list of meanings the compound should be assigned to (including any it is already correctly assigned to). Use [] to indicate the compound should be lexicalized/unassigned.
   "reason": short explanation
 
 The meaning strings in "suggested" must be verbatim from the numbered list above. Use an empty array [] to indicate the compound should be lexicalized.
@@ -228,7 +227,6 @@ Example output shape:
   "flags": [
     {
       "headword": "取り出す",
-      "issue": "misclassified",
       "suggested": ["to <verb> something out; remove or extract it from where it was"],
       "reason": "取り出す means to take something out; -出す here marks extraction, not beginning."
     }
@@ -342,11 +340,6 @@ if (
 // suggested values must be known meaning strings; empty array means lexicalized
 
 const validValues = new Set(knownMeanings);
-const validIssues = new Set([
-  "misclassified",
-  "should-be-assigned",
-  "missing-multi-assignment",
-]);
 
 const validFlags = [];
 
@@ -356,18 +349,11 @@ for (const flag of parsed.flags) {
     continue;
   }
 
-  const { headword, issue, suggested, reason } = flag;
+  const { headword, suggested, reason } = flag;
 
   if (typeof headword !== "string" || !headword) {
     console.warn(
       `WARNING: Flag missing valid "headword" field — skipping: ${JSON.stringify(flag)}`,
-    );
-    continue;
-  }
-
-  if (!validIssues.has(issue)) {
-    console.warn(
-      `WARNING: Flag for "${headword}" has unknown issue "${issue}" — skipping`,
     );
     continue;
   }
@@ -393,7 +379,7 @@ for (const flag of parsed.flags) {
   }
   if (!suggestedOk) continue;
 
-  validFlags.push({ headword, issue, suggested: validSuggested, reason });
+  validFlags.push({ headword, suggested: validSuggested, reason });
 }
 
 // --- Print flags to stdout ---
@@ -406,7 +392,6 @@ if (validFlags.length === 0) {
   console.log(`${validFlags.length} flag(s) found:\n`);
   for (const flag of validFlags) {
     console.log(`  Headword:  ${flag.headword}`);
-    console.log(`  Issue:     ${flag.issue}`);
     if (flag.suggested.length > 0) {
       console.log(
         `  Suggested: ${flag.suggested.map((s) => `"${s}"`).join(", ")}`,

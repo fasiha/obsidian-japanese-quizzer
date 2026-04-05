@@ -1,5 +1,22 @@
 # Compound Verb Browser — Design and Work Plan
 
+- [Compound Verb Browser — Design and Work Plan](#compound-verb-browser--design-and-work-plan)
+  - [Goal](#goal)
+  - [Decisions](#decisions)
+  - [Data Sources](#data-sources)
+  - [Output JSON Schema](#output-json-schema)
+  - [Work Plan](#work-plan)
+    - [Phase 1 — Data preparation (Node.js + LLM)](#phase-1--data-preparation-nodejs--llm)
+    - [Phase 2 — iOS (Swift / SwiftUI)](#phase-2--ios-swift--swiftui)
+  - [Open Questions](#open-questions)
+  - [Meaning Quality — Failure Modes and Validation](#meaning-quality--failure-modes-and-validation)
+    - [Pass 1b: Sharpening (`sharpen-meanings.mjs`)](#pass-1b-sharpening-sharpen-meaningsmjs)
+    - [Meaning quality: failure modes and evaluation (observed across 立てる, 出す, 付ける, 上がる, 付く)](#meaning-quality-failure-modes-and-evaluation-observed-across-立てる-出す-付ける-上がる-付く)
+    - [Pass 2b: Validation (`validate-assignments.mjs`)](#pass-2b-validation-validate-assignmentsmjs)
+    - [Recommended workflow per v2](#recommended-workflow-per-v2)
+  - [Action Items](#action-items)
+  - [Appendix: Earlier Pipeline Design (Rejected)](#appendix-earlier-pipeline-design-rejected)
+
 ## Goal
 
 Japanese compound verbs (複合動詞) are formed by combining the masu-stem of one verb
@@ -107,17 +124,14 @@ File: `compound-verbs.json`
     "senses": [
       {
         "meaning": "start to V suddenly",
-        "productivity": "high",
         "examples": [1234567, 2345678, 3456789]
       },
       {
         "meaning": "V outward, bring something forth",
-        "productivity": "medium",
         "examples": [4567890, 5678901, 6789012]
       },
       {
         "meaning": "opaque / lexicalized — learn as vocabulary",
-        "productivity": "low",
         "examples": [7890123, 8901234, 9012345, 1023456, 1123456, 1223456]
       }
     ]
@@ -129,14 +143,12 @@ Field notes:
 - `id` — stable kebab-case identifier, used to link from vocab metadata if needed later
 - `kanji` / `reading` — display forms; reading is hiragana only (no kanji)
 - `role` — always `"suffix"` for now; `"prefix"` reserved for future expansion
-- `senses` — ordered array; `high` and `medium` entries come first, at most one `low`
-  entry at the end. Multiple `high` / `medium` senses are expected (e.g. 出す has
-  "start suddenly" and "bring outward" as distinct productive meanings).
-- `senses[].meaning` — required for `high` and `medium`; optional for `low` (the app
-  displays a default label "opaque / lexicalized — learn as vocabulary" when absent)
-- `senses[].examples` — array of JMDict entry IDs (integers), ordered by usefulness
-  as illustrations (most prototypical first for `high`/`medium`; most frequent
-  by NLB corpus count first for `low`)
+- `senses` — ordered array of meaning senses, with a final lexicalized sense at the end
+  if any compounds were unassigned. Multiple productive senses are expected (e.g. 出す has
+  "start suddenly" and "bring outward" as distinct meanings).
+- `senses[].meaning` — meaning description string
+- `senses[].examples` — array of JMDict entry IDs (integers), ordered by BCCWJ frequency
+  descending. Compounds without JMDict IDs are excluded.
 
 ## Work Plan
 
@@ -155,7 +167,7 @@ For each v2 (default: all 470; in practice filtered to the target ~15):
 The script is designed to run for all v2s so that future expansion requires no
 code changes — just running it again and feeding more output files to the LLM.
 
-**1. LLM Pass 1: Discover Suffix Meanings (`compound-verbs/cluster-meanings.mjs`)** — script written
+**1. LLM Pass 1: Discover Suffix Meanings (`compound-verbs/cluster-meanings.mjs`)** — written
 
 Input: one survey file (e.g. `compound-verbs/survey/出す.json`), trimmed to the top ~75%
 or top 50 (whichever is larger) by cumulative BCCWJ frequency for large suffixes. (`python3
@@ -187,16 +199,20 @@ The raw LLM response text is also saved as a `.txt` file alongside each archive.
 Example output from `--simple` (Haiku, headwords only, no sense data):
 ```json
 [
-  { "meaning": "to bring/take out or extract something from a place or state", "productivity": "high" },
-  { "meaning": "to begin or start an action, often with a sense of initiative", "productivity": "high" },
-  { "meaning": "to reveal, expose, or produce something previously hidden", "productivity": "medium" }
+  { "meaning": "to bring/take out or extract something from a place or state" },
+  { "meaning": "to begin or start an action, often with a sense of initiative" },
+  { "meaning": "to reveal, expose, or produce something previously hidden" }
 ]
 ```
 
 The lexicalized tail is not enumerated here — Pass 3 derives it as
 `allCompounds − union(all meaning assignment arrays)`, with no LLM prompt surface.
 
-**2. LLM Pass 2: Assign Compounds to Meanings (`compound-verbs/assign-examples.mjs`)**
+**1b. LLM Pass 1b: Sharpen Meanings (`compound-verbs/sharpen-meanings.mjs`)** — written
+
+Rewrites Pass 1 meanings as precise, unambiguous classification rules. See the Meaning Quality section for failure modes this pass addresses. The sharpened meanings are written to `<v2>-meanings-sharpened.json`; the original `<v2>-meanings.json` is preserved as user-facing display text. Use `--use-sharpened` in Pass 2 to classify against the sharpened meanings.
+
+**2. LLM Pass 2: Assign Compounds to Meanings (`compound-verbs/assign-examples.mjs`)** — written
 
 One LLM call for all meanings at once. The model sees the full list of meanings and
 the full compound list, and assigns each compound to whichever meaning(s) it fits.
@@ -245,22 +261,67 @@ that includes flags, prompt, and model output) plus canonical
 Keys are verbatim meaning strings from `<v2>-meanings.json`. A compound may appear
 under more than one meaning key.
 
-**3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)**
+**2b. LLM Pass 2b: Validate Assignments (`compound-verbs/validate-assignments.mjs`)** — written
 
-Merges the meanings and assignments files, resolves headwords to JMDict IDs via the
-survey file, and sorts examples by BCCWJ frequency descending within each sense.
-Compounds without JMDict IDs are excluded from the final output (they may have
-informed the meaning discovery in Pass 1 but cannot be linked from the app).
+Sends the assignments and meanings to Sonnet, which flags misclassifications, incorrectly lexicalized compounds, and missing multi-assignments. Output is advisory — human review required before applying corrections. See the Meaning Quality section for details.
 
-Output: writes the final suffix entry to `compound-verbs.json` via the writer script.
+Output: `compound-verbs/clusters/<v2>-validation-<timestamp>-<model>.txt` — contains the flags header, the full prompt, and the model's reasoning followed by a JSON blob at the end:
+```json
+{
+  "flags": [
+    {
+      "headword": "のし上がる",
+      "issue": "misclassified",
+      "suggested": ["For the subject to <verb> such that something swells…"],
+      "reason": "…"
+    }
+  ]
+}
+```
 
-**4. Writer script (`compound-verbs/write.mjs`)**
+**2c. Apply Validation Flags (`compound-verbs/apply-validation.mjs`)** — not yet written
+
+Bridges the advisory validation flags from Pass 2b into the canonical `assignments.json`.
+Human review happens by editing the validation txt file before running this script —
+delete any flag lines you disagree with, then run the script to apply the rest.
+
+Usage:
+```
+node compound-verbs/apply-validation.mjs <v2>-validation-<timestamp>-<model>.txt
+```
+
+The script:
+1. Parses the JSON blob from the bottom of the txt file (everything after the last `` ` `` ` `` `json` `` ` `` ` `` fence)
+2. Reads `<v2>-assignments.json` (derived from the suffix in the txt file's flags header)
+3. Applies each flag to the assignments:
+   - `misclassified` — removes the compound from all its current meaning keys, adds it to the `suggested` meanings
+   - `should-be-assigned` — adds the compound to the `suggested` meanings (it was absent from all keys)
+   - `missing-multi-assignment` — adds the compound to the `suggested` meanings while keeping existing assignments
+4. Writes the updated `assignments.json` in-place
+
+**3. Enrich and generate JSON (`compound-verbs/select-examples.mjs`)** — not yet written
+
+Reads the corrected `assignments.json` (after Pass 2c), both `<v2>-meanings.json` and
+`<v2>-meanings-sharpened.json` (if present), and the survey file. Builds the final
+suffix entry for `compound-verbs.json`.
+
+Steps:
+1. Load `assignments.json` — keys are the sharpened meaning strings (or original strings if no sharpened file exists)
+2. Load `meanings.json` and `meanings-sharpened.json` — match keys in `assignments.json` to original display strings by index position
+3. For each meaning, collect all assigned compounds, resolve each to its JMDict ID via the survey file, and sort by BCCWJ frequency descending
+4. Derive the lexicalized set: all compounds in the survey file that appear in no meaning key in `assignments.json`; resolve to JMDict IDs and sort by BCCWJ frequency descending
+5. Build the suffix entry object: one sense per meaning (using the original display string as `meaning`), plus a final lexicalized sense if any unassigned compounds had JMDict IDs
+6. Compounds without JMDict IDs are excluded from all senses (they may have informed meaning discovery in Pass 1 but cannot be linked from the app)
+
+Output: calls `write.mjs replace-entry` to upsert the entry into `compound-verbs.json`.
+
+**4. Writer script (`compound-verbs/write.mjs`)** — not yet written
 
 A small script that accepts structured operations and applies them to
 `compound-verbs.json`. Operations it supports:
 
 - `replace-entry <suffix-id> <entry-json>` — wholesale replace a suffix's entry
-  (used when reruns any pass)
+  (used when rerunning any pass)
 - `add-example <suffix-id> <sense-index> <jmdict-id>` — append an example to a sense
 - `move-example <suffix-id> <from-sense-index> <to-sense-index> <jmdict-id>` — reclassify
   an example into a different sense
@@ -268,19 +329,19 @@ A small script that accepts structured operations and applies them to
 - `add-sense <suffix-id> <sense-json>` — append a new sense to a suffix
 - `edit-sense-meaning <suffix-id> <sense-index> <new-meaning>` — update a sense's
   description text
-- `edit-sense-productivity <suffix-id> <sense-index> <productivity>` — change
-  productivity rating
 
-This script is called by pass 3 to write the final JSON, and can be used directly
+This script is called by Pass 3 to write the final JSON, and can be used directly
 by hand for incremental tweaks without rerunning all LLM passes.
 
-**5. Validation script (`compound-verbs/validate.mjs`)**
+**5. Schema integrity check (`compound-verbs/validate.mjs`)** — not yet written
 
-Runs as a final check and as a pre-commit gate:
-- Every JMDict ID in `compound-verbs.json` exists in `jmdict.sqlite`
+Runs as a final check and as a pre-commit gate on the finished `compound-verbs.json`:
+- Every JMDict ID exists in `jmdict.sqlite`
 - No JMDict ID appears more than once within a single suffix entry
 - All required fields present and typed correctly
 - No suffix ID is duplicated at the top level
+
+Note: this is distinct from Pass 2b (`validate-assignments.mjs`), which validates semantic correctness of LLM assignments before they reach `compound-verbs.json`.
 
 ### Phase 2 — iOS (Swift / SwiftUI)
 
@@ -390,12 +451,26 @@ Sonnet is preferred over Haiku for this pass because the task requires subtle se
 
 ### Recommended workflow per v2
 
+Check where you are at any time:
+```
+node compound-verbs/status.mjs <v2>          # one suffix
+node compound-verbs/status.mjs               # all known suffixes
+```
+
+`status.mjs` reads the cluster files for each suffix and prints a checklist of
+completed passes with the exact command to run next. It derives "validation
+applied" from `_metadata.validations_applied` in `assignments.json`, which
+`apply-validation.mjs` stamps on each run.
+
 1. Pass 1: `node compound-verbs/cluster-meanings.mjs <v2> --simple --no-productivity --allow-reasoning`
 2. Pass 1b: `node compound-verbs/sharpen-meanings.mjs <v2>` — review sharpened meanings before continuing
 3. Pass 2: `node compound-verbs/assign-examples.mjs <v2>` (Haiku — auto-uses sharpened meanings if present)
 4. Pass 2b: `node compound-verbs/validate-assignments.mjs <v2>` (Sonnet — auto-uses sharpened meanings if present)
-5. Human review of validation flags — apply clear corrections to assignments.json manually
-6. Pass 3: `node compound-verbs/select-examples.mjs <v2>` (not yet written)
+5. Human review — edit the validation txt file to remove any flags you disagree with
+6. Pass 2c: `node compound-verbs/apply-validation.mjs clusters/<v2>-validation-<timestamp>.txt`
+   (repeat steps 3–6 if major restructuring is needed)
+7. Pass 3: `node compound-verbs/select-examples.mjs <v2>` (not yet written)
+8. `validate.mjs` — schema integrity check (not yet written)
 
 ## Action Items
 
