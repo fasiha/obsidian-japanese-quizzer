@@ -33,7 +33,7 @@ if (!existsSync(FURIGANA_JSON)) {
   process.exit(1);
 }
 
-const db = await openJmdictDb();
+const db = await openJmdictDb({ checkJournalMode: true });
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS furigana (

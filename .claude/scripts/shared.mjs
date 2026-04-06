@@ -30,32 +30,41 @@ export const SCHEMA_VERSION = 1;
 export const EBISU_ALPHA = 1.25;
 
 /**
- * Open (or create) jmdict.sqlite and return the better-sqlite3 Database instance.
- * If the DB already exists, opens it directly (switching from WAL to DELETE journal
- * mode only if needed, to avoid needless disk writes).
- * If it doesn't exist, looks for a jmdict-eng-*.json source file in the project root
- * and builds from it (one-time setup); throws if no source JSON is found.
+ * Open (or build) jmdict.sqlite and return a better-sqlite3 Database instance.
+ *
+ * By default opens read-only, which is safe for concurrent use from multiple
+ * connections in the same process (no write pragmas, no locking conflicts).
+ *
+ * Pass { checkJournalMode: true } when building or preparing the database for
+ * iOS app bundling. This opens read-write and switches the journal mode from
+ * WAL to DELETE if needed — iOS requires the database file to be self-contained
+ * with no WAL sidecar files.
+ *
+ * If the database does not exist, looks for a jmdict-eng-*.json source file in
+ * the project root and builds the database (one-time setup). Throws if none found.
  */
-export async function openJmdictDb() {
-  if (existsSync(JMDICT_DB)) {
+export async function openJmdictDb({ checkJournalMode = false } = {}) {
+  if (!existsSync(JMDICT_DB)) {
+    const sourceFiles = readdirSync(projectRoot).filter(
+      (f) => f.startsWith("jmdict-eng") && f.endsWith(".json"),
+    );
+    if (!sourceFiles.length) {
+      throw new Error(
+        "jmdict.sqlite not found and no jmdict-eng-*.json source found.\n" +
+          "Download from https://github.com/scriptin/jmdict-simplified/releases and place in project root.",
+      );
+    }
+    const { db } = await setup(JMDICT_DB, sourceFiles[0]);
+    db.close();
+  }
+  if (checkJournalMode) {
     const db = new Database(JMDICT_DB);
     if (db.pragma("journal_mode", { simple: true }) === "wal") {
       db.pragma("journal_mode = DELETE");
     }
     return db;
   }
-  const sourceFiles = readdirSync(projectRoot).filter(
-    (f) => f.startsWith("jmdict-eng") && f.endsWith(".json"),
-  );
-  if (!sourceFiles.length) {
-    throw new Error(
-      "jmdict.sqlite not found and no jmdict-eng-*.json source found.\n" +
-        "Download from https://github.com/scriptin/jmdict-simplified/releases and place in project root.",
-    );
-  }
-  const { db } = await setup(JMDICT_DB, sourceFiles[0]);
-  db.pragma("journal_mode = DELETE");
-  return db;
+  return new Database(JMDICT_DB, { readonly: true });
 }
 
 /**

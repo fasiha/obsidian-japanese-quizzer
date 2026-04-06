@@ -56,7 +56,7 @@ function extractVocabBullets(content) {
   return bullets;
 }
 
-const db = await openJmdictDb();
+const db = await openJmdictDb({ checkJournalMode: true });
 const mdFiles = findMdFiles(projectRoot);
 const problems = [];
 let totalChecked = 0;

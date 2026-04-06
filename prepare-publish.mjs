@@ -485,14 +485,15 @@ function stripRuby(text) {
 }
 
 /**
- * Normalize context for cache keying by stripping all HTML tags.
- * This ensures that any HTML changes (ruby annotations, audio files, etc.)
- * don't invalidate cached sense data.
+ * Normalize context for cache keying by stripping all HTML tags and trimming
+ * whitespace. This ensures that HTML changes (ruby annotations, audio files,
+ * etc.) and incidental trailing/leading spaces in the source Markdown don't
+ * invalidate cached sense data.
  * Example: また<ruby>夜<rt>よ</rt></ruby>が明ければ <audio .../> → また夜が明ければ
  */
 function normalizeContextForCache(context) {
   if (!context) return context;
-  return stripRuby(context);
+  return stripRuby(context).trim();
 }
 
 /**
@@ -658,6 +659,7 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
 {
   const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   let refsAnalyzed = 0;
+  let noLlmSkippedCount = 0; // refs that need LLM but were skipped by --no-llm
 
   // Open a reasoning log file so we can review Haiku's chain-of-thought later
   const reasoningLogPath = `/tmp/sense-reasoning-${Date.now()}.log`;
@@ -713,6 +715,7 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
         }
+        noLlmSkippedCount += uncachedRefs.length;
         continue;
       }
 
@@ -753,6 +756,52 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
         stories: stories.map(({ title }) => ({ title })),
         words,
       }, null, 2) + "\n");
+    }
+  }
+
+  // Safety check: refuse to write vocab.json if --no-llm skipped any refs that
+  // need LLM analysis. Writing with missing llm_sense corrupts the cache for all
+  // future runs (they seed from vocab.json, so once an entry is written without
+  // llm_sense it can never be recovered from cache).
+  if (noLlmSkippedCount > 0) {
+    console.error(
+      `\nERROR: --no-llm skipped ${noLlmSkippedCount} ref(s) that need LLM sense analysis.` +
+      `\nvocab.json was NOT written to prevent data loss.` +
+      `\nRun without --no-llm to analyze these refs and write vocab.json.`,
+    );
+    process.exit(1);
+  }
+
+  // Safety check: verify that no ref lost its llm_sense compared to what was in
+  // vocab.json at startup. This catches cache-restoration bugs before they corrupt
+  // the file.
+  {
+    const lostEntries = [];
+    for (const word of words) {
+      for (const refs of Object.values(word.references ?? {})) {
+        for (const ref of refs) {
+          if (!ref.llm_sense) {
+            const computedFrom = refComputedFrom(ref);
+            if (computedFrom.length === 0) continue;
+            const key = `${word.id}|${JSON.stringify(computedFrom)}`;
+            if (existingRefSense.has(key)) {
+              // This ref was in the cache but somehow didn't get restored — this
+              // should never happen and indicates a bug in the cache-restoration logic.
+              const jmWord = jmdictById.get(word.id);
+              const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
+              lostEntries.push(`  ${displayForm} [${Object.keys(word.references ?? {}).join(", ")}:${ref.line}]`);
+            }
+          }
+        }
+      }
+    }
+    if (lostEntries.length > 0) {
+      console.error(
+        `\nERROR: ${lostEntries.length} ref(s) are in the cache but were not restored — this is a bug:`,
+      );
+      for (const entry of lostEntries) console.error(entry);
+      console.error("vocab.json was NOT written to prevent data loss.");
+      process.exit(1);
     }
   }
 }
@@ -896,4 +945,4 @@ console.log(`Wrote ${corpusEntries.length} corpus entries → ${corpusOutPath}`)
 
 // --- Compound verb detection ---
 console.log("\n=== Compound verb detection ===");
-await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs, db });
+await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs });

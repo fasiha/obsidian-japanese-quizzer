@@ -402,7 +402,6 @@ Module exports three functions and integrates into `prepare-publish.mjs` workflo
 
 Integration:
 - Runs automatically at the end of `prepare-publish.mjs` workflow (after vocab/grammar compilation)
-- Accepts optional `db` parameter to reuse prepare-publish's database connection (avoids SQLite locking)
 - Respects `--no-llm` flag to skip LLM calls
 - Supports `--max-compound-verbs N` flag to limit LLM calls per run
 - Usage: `node prepare-publish.mjs [--no-llm] [--max-compound-verbs N]`
@@ -420,7 +419,6 @@ Workflow:
 **v1Id enrichment:** After classifying compounds with Haiku, look up each v1 base form in JMDict to get its JMDict ID and add it as `v1Id` to the example. This ensures pug-inferred compounds have the same structure as vvlexicon examples (which get v1Id from survey files).
 
 **Design decisions:**
-- Database connection is passed from prepare-publish
 - v1Id comes from JMDict lookup (not survey files), making this approach work for verbs not in the NLB study
 - Filtering skips: already-marked non-compounds, IDs already in compound-verbs.json, non-verbs
 - Unknown suffixes emit a warning and skip the verb (compound-verbs.json is manually curated; new suffixes must be added before we can classify)
