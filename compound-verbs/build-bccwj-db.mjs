@@ -1,7 +1,6 @@
-#!/usr/bin/env node
 // Converts BCCWJ_frequencylist_luw2_ver1_0.tsv to bccwj.sqlite
-// Table: bccwj(kanji TEXT, reading TEXT, frequency INTEGER)
-// Index on (kanji, reading) for fast lookups by either key.
+// Table: bccwj(kanji TEXT, reading TEXT, frequency INTEGER, pos TEXT)
+// Index on (kanji, reading) and (pos) for fast lookups.
 //
 // "kanji" is the lemma column (may be kana-only for some entries).
 // "reading" is lForm normalized from katakana to hiragana.
@@ -24,11 +23,12 @@ db.exec(`
   CREATE TABLE bccwj (
     kanji     TEXT NOT NULL,
     reading   TEXT NOT NULL,
-    frequency INTEGER NOT NULL
+    frequency INTEGER NOT NULL,
+    pos       TEXT NOT NULL
   );
 `);
 
-const insert = db.prepare('INSERT INTO bccwj (kanji, reading, frequency) VALUES (?, ?, ?)');
+const insert = db.prepare('INSERT INTO bccwj (kanji, reading, frequency, pos) VALUES (?, ?, ?, ?)');
 
 const rl = createInterface({ input: createReadStream(TSV), crlfDelay: Infinity });
 let headers = null;
@@ -46,8 +46,9 @@ for await (const line of rl) {
   const cols = line.split('\t');
   const lemma = cols[headers.indexOf('lemma')];
   const lForm = cols[headers.indexOf('lForm')];
+  const pos = cols[headers.indexOf('pos')];
   const frequency = parseInt(cols[headers.indexOf('frequency')], 10);
-  batch.push([lemma, toHiragana(lForm), frequency]);
+  batch.push([lemma, toHiragana(lForm), frequency, pos]);
   if (batch.length >= BATCH_SIZE) { insertMany(batch); count += batch.length; batch = []; }
 }
 if (batch.length) { insertMany(batch); count += batch.length; }
@@ -55,6 +56,7 @@ if (batch.length) { insertMany(batch); count += batch.length; }
 db.exec(`
   CREATE INDEX bccwj_kanji   ON bccwj (kanji);
   CREATE INDEX bccwj_reading ON bccwj (reading);
+  CREATE INDEX bccwj_pos     ON bccwj (pos);
 `);
 
 db.close();
