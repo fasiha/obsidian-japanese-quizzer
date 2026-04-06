@@ -7,7 +7,7 @@
  *
  * Usage:
  *   node compound-verbs/write.mjs replace-entry <suffix-id> <entry-json-file>
- *   node compound-verbs/write.mjs add-example <suffix-id> <sense-index> <jmdict-id>
+ *   node compound-verbs/write.mjs add-example <suffix-id> <sense-index> <jmdict-id> [--source vvlexicon|pug-inferred]
  *   node compound-verbs/write.mjs move-example <suffix-id> <from-sense-index> <to-sense-index> <jmdict-id>
  *   node compound-verbs/write.mjs remove-example <suffix-id> <jmdict-id>
  *   node compound-verbs/write.mjs add-sense <suffix-id> <sense-json-file>
@@ -119,12 +119,21 @@ function opReplaceEntry(args) {
   }
 }
 
+const VALID_SOURCES = ["vvlexicon", "pug-inferred"];
+
 function opAddExample(args) {
   if (args.length < 3) {
-    console.error("Usage: add-example <suffix-id> <sense-index> <jmdict-id>");
+    console.error("Usage: add-example <suffix-id> <sense-index> <jmdict-id> [--source vvlexicon|pug-inferred]");
     process.exit(1);
   }
-  const [suffixId, senseIndexRaw, jmdictIdRaw] = args;
+  const sourceFlagIndex = args.indexOf("--source");
+  const source = sourceFlagIndex >= 0 ? args[sourceFlagIndex + 1] : "vvlexicon";
+  if (!VALID_SOURCES.includes(source)) {
+    console.error(`Invalid --source "${source}". Must be one of: ${VALID_SOURCES.join(", ")}`);
+    process.exit(1);
+  }
+  const positional = args.filter((_, i) => i !== sourceFlagIndex && i !== sourceFlagIndex + 1);
+  const [suffixId, senseIndexRaw, jmdictIdRaw] = positional;
   const senseIndex = parseSenseIndex(senseIndexRaw);
   const jmdictId = parseJmdictId(jmdictIdRaw);
 
@@ -143,7 +152,7 @@ function opAddExample(args) {
     console.log(`JMDict ID ${jmdictId} already present in sense ${senseIndex} — no change.`);
     return;
   }
-  sense.examples.push({ id: jmdictId, source: "vvlexicon" });
+  sense.examples.push({ id: jmdictId, source });
   saveCv(data);
   console.log(`Added ${jmdictId} to ${suffixId} sense[${senseIndex}] ("${sense.meaning.slice(0, 60)}…")`);
 }

@@ -1,22 +1,26 @@
 /**
  * prepare-publish.mjs
- * Validates all llm-review Markdown files and compiles a single vocab.json.
+ * Validates all llm-review Markdown files, compiles a single vocab.json,
+ * detects compound verbs, and updates grammar mappings.
  *
  * Requirements per file:
  *   - `llm-review: true` in YAML frontmatter
  *   - All vocab bullets must resolve to exactly one JMDict entry
  *
- * Output: vocab.json at project root
- * {
- *   "generatedAt": "<ISO timestamp>",
- *   "stories": [{ "title": "path/to/File" }],
- *   "words": [{ "id": "1234567", "sources": ["path/to/File"] }]
- * }
+ * Output: vocab.json, grammar.json, corpus.json at project root
  *
- * Words appearing in multiple stories accumulate sources.
- * All other word data (forms, meanings) is derived from bundled jmdict.sqlite in the app.
+ * Workflow:
+ *   1. Validate and extract vocab/grammar from all Markdown files
+ *   2. Run sense analysis on vocab via LLM (unless --no-llm)
+ *   3. Compile grammar equivalence groups
+ *   4. Detect compound verbs and update compound-verbs.json (unless --no-llm)
  *
- * Usage: node prepare-publish.mjs
+ * Flags:
+ *   --no-llm              : skip LLM calls for both sense analysis and compound verb detection
+ *   --max-senses N        : only run sense analysis for at most N words
+ *   --max-compound-verbs N: only run compound verb detection for at most N suffix categories
+ *
+ * Usage: node prepare-publish.mjs [--no-llm] [--max-senses N] [--max-compound-verbs N]
  */
 
 import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
@@ -34,6 +38,7 @@ import {
   loadGrammarDatabases,
   extractGrammarBullets,
 } from "./.claude/scripts/shared.mjs";
+import { checkAndUpdateCompoundVerbs } from "./.claude/scripts/check-compound-verbs.mjs";
 
 // --- JmdictFurigana enrichment ---
 
@@ -283,13 +288,17 @@ function extractVocabBullets(content) {
 }
 
 // --- Command-line flags ---
-// --no-llm   : skip all LLM sense-analysis calls; pass through any existing llm_sense values
-// --max-senses N : only run LLM analysis for at most N words (useful for spot-checking)
+// --no-llm              : skip all LLM sense-analysis calls and compound verb detection
+// --max-senses N        : only run LLM analysis for at most N words (useful for spot-checking)
+// --max-compound-verbs N: only run compound verb LLM analysis for at most N suffixes
 const args = process.argv.slice(2);
 const noLlm = args.includes("--no-llm");
 const maxSensesIdx = args.indexOf("--max-senses");
 const maxSenses =
   maxSensesIdx !== -1 ? parseInt(args[maxSensesIdx + 1], 10) : Infinity;
+const maxCompoundVerbsIdx = args.indexOf("--max-compound-verbs");
+const maxCompoundVerbs =
+  maxCompoundVerbsIdx !== -1 ? parseInt(args[maxCompoundVerbsIdx + 1], 10) : Infinity;
 
 // Define output paths
 const outPath = path.join(projectRoot, "vocab.json");
@@ -884,3 +893,7 @@ const corpusEntries = stories.map(({ title, content: rawMarkdown }) => ({
 const corpusOutPath = path.join(projectRoot, "corpus.json");
 writeFileSync(corpusOutPath, JSON.stringify(corpusEntries, null, 2) + "\n");
 console.log(`Wrote ${corpusEntries.length} corpus entries → ${corpusOutPath}`);
+
+// --- Compound verb detection ---
+console.log("\n=== Compound verb detection ===");
+await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs, db });

@@ -1192,6 +1192,16 @@
             "id": "1634270",
             "source": "vvlexicon",
             "v1Id": "1604570"
+          },
+          {
+            "id": "2859116",
+            "source": "pug-inferred",
+            "v1Id": "1514320"
+          },
+          {
+            "id": "2015690",
+            "source": "pug-inferred",
+            "v1Id": "1538440"
           }
         ]
       }

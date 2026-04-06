@@ -393,32 +393,37 @@ Runs as a final check and as a pre-commit gate on the finished `compound-verbs.j
 
 Note: this is distinct from Pass 2b (`validate-assignments.mjs`), which validates semantic correctness of LLM assignments before they reach `compound-verbs.json`.
 
-**6. Inferred compound detection (`compound-verbs/infer-from-corpus.mjs`)** — not yet written
+**6. Inferred compound detection (`.claude/scripts/check-compound-verbs.mjs`)** — ✅ implemented
 
-A standalone script (not part of prepare-publish but possibly run by prepare-publish.mjs) that scans the corpus vocab for
-verb entries not already covered by `compound-verbs.json`, infers any compound verb
-decompositions via MeCab, and writes the results back into `compound-verbs.json`.
-Run this whenever new vocabulary is added to the corpus, before publishing.
+Module exports three functions and integrates into `prepare-publish.mjs` workflow:
+- `parseMecabOutput(output)` — parse MeCab tokenization output
+- `analyzeWithMecab(kanjiForm)` — detect compound verb structure, returning v1 + suffix forms
+- `checkAndUpdateCompoundVerbs(options)` — main orchestration function
 
-Steps:
-1. Build a set of all JMDict IDs already present in `compound-verbs.json` examples (already in compound-verbs.json).
-2. For each verb entry in `vocab.json` not in that set, run MeCab on its kanji form.
-3. If the output is exactly two tokens with POS `動詞-一般` then `動詞-非自立可能`,
-   treat it as a compound verb candidate. Otherwise skip — not a compound verb.
-4. Look up the second token's dictionary form in `compound-verbs.json`. If not found,
-   emit a warning and skip (unknown suffix — out of scope for now).
-5. Batch all candidates for a given suffix together and send one Haiku call to assign
-   each to a sense. The prompt provides the suffix's senses from `compound-verbs.json`
-   and each candidate's JMDict gloss; asks for the best-fit sense index (or `null` for
-   opaque/unclassifiable).
-6. Add each inferred compound to the appropriate suffix entry in `compound-verbs.json`
-   as `{ "id": "<jmdict-id>", "source": "pug-inferred" }` in the matched sense's
-   examples array (or the lexicalized tail if unclassified).
+Integration:
+- Runs automatically at the end of `prepare-publish.mjs` workflow (after vocab/grammar compilation)
+- Accepts optional `db` parameter to reuse prepare-publish's database connection (avoids SQLite locking)
+- Respects `--no-llm` flag to skip LLM calls
+- Supports `--max-compound-verbs N` flag to limit LLM calls per run
+- Usage: `node prepare-publish.mjs [--no-llm] [--max-compound-verbs N]`
 
-The LLM call in step 5 is lightweight — classification only, not meaning discovery.
-No survey file, no BCCWJ ranking, no multi-pass sharpening. The existing suffix senses
-serve as the classifier. iOS picks up inferred compounds through the same reverse map
-as vvlexicon compounds — no special handling needed.
+Workflow:
+1. Build a set of JMDict IDs already present in `compound-verbs.json` examples.
+2. For each verb entry in `vocab.json` not already flagged as non-compound, run MeCab on its kanji form.
+3. If the output is exactly two tokens with POS `動詞-一般` then `動詞-非自立可能`, treat it as a compound verb candidate. Otherwise skip — mark as `notCompound: true` in vocab.json to avoid re-checking.
+4. Extract the v1 base form (first token dictionary form) from MeCab output.
+5. Look up the v2 (suffix) dictionary form in `compound-verbs.json`. If not found, warn and skip (unknown suffix — out of scope for now).
+6. Batch all candidates for a given suffix together and send one Haiku call to assign each to a sense. The prompt provides the suffix's senses from `compound-verbs.json` and each candidate's JMDict gloss; asks for the best-fit sense index (or `null` for opaque/unclassifiable).
+7. Add each inferred compound to the appropriate suffix entry in `compound-verbs.json` as `{ "id": "<jmdict-id>", "source": "pug-inferred", "v1Id": "<v1-jmdict-id>" }` in the matched sense's examples array (or the lexicalized sense if unclassified).
+8. Persist verbs found to not be compound verbs in `vocab.json` with `notCompound: true` flag so we skip the check next time.
+
+**v1Id enrichment:** After classifying compounds with Haiku, look up each v1 base form in JMDict to get its JMDict ID and add it as `v1Id` to the example. This ensures pug-inferred compounds have the same structure as vvlexicon examples (which get v1Id from survey files).
+
+**Design decisions:**
+- Database connection is passed from prepare-publish
+- v1Id comes from JMDict lookup (not survey files), making this approach work for verbs not in the NLB study
+- Filtering skips: already-marked non-compounds, IDs already in compound-verbs.json, non-verbs
+- Unknown suffixes emit a warning and skip the verb (compound-verbs.json is manually curated; new suffixes must be added before we can classify)
 
 **Known gap:** 震え出す (JMDict 1633520, "to begin to tremble") is the first observed
 example: in JMDict, not in `headwords.json`, MeCab tokenizes it as 震える + 出す.
