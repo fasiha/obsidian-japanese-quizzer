@@ -41,7 +41,7 @@ struct WordDetailSheet: View {
     @State private var kanjiMnemonics: [(kanji: String, text: String)] = []
     @State private var ebisuModels: [EbisuRecord] = []
     @State private var ebisuReviewCounts: [String: Int] = [:]
-    @State private var rescaleRecord: EbisuRecord? = nil
+    @State private var rescaleTarget: RescaleTarget? = nil
 
     var body: some View {
         NavigationStack {
@@ -85,9 +85,9 @@ struct WordDetailSheet: View {
                     scrollToLine: target.lineNumber
                 )
             }
-            .sheet(item: $rescaleRecord) { record in
-                RescaleSheet(currentHalflife: record.t, reviewCount: ebisuReviewCounts[record.id]) { hours in
-                    Task { await doRescale(record: record, hours: hours) }
+            .sheet(item: $rescaleTarget) { target in
+                RescaleSheet(currentHalflife: target.record.t, reviewCount: target.reviewCount) { hours in
+                    Task { await doRescale(record: target.record, hours: hours) }
                 }
             }
             .sheet(item: $pairDetailItem) { pairItem in
@@ -510,7 +510,7 @@ struct WordDetailSheet: View {
 
             ForEach(ebisuModels) { record in
                 Button {
-                    rescaleRecord = record
+                    rescaleTarget = RescaleTarget(record: record, reviewCount: ebisuReviewCounts[record.id])
                 } label: {
                     HStack {
                         Text(facetDisplayName(record.quizType))

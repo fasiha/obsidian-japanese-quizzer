@@ -477,6 +477,14 @@ func formatDuration(_ hours: Double) -> String {
     durationFormatter.string(from: hours * 3600) ?? "—"
 }
 
+/// Bundles an EbisuRecord with its review count so both travel together
+/// through `.sheet(item:)`, avoiding SwiftUI's eager-evaluation of @State.
+struct RescaleTarget: Identifiable {
+    let record: EbisuRecord
+    let reviewCount: Int?
+    var id: String { record.id }
+}
+
 struct RescaleSheet: View {
     let currentHalflife: Double
     let reviewCount: Int?
@@ -519,10 +527,12 @@ struct RescaleSheet: View {
                 Section {
                     LabeledContent("Final halflife", value: formatDuration(targetHours))
                         .font(.headline)
-                    if let count = reviewCount {
-                        Text("\(count) review\(count == 1 ? "" : "s") for this facet")
-                            .foregroundStyle(.secondary)
-                            .font(.footnote)
+                    LabeledContent("Quizzes for this facet") {
+                        if let count = reviewCount {
+                            Text("\(count)")
+                        } else {
+                            Text("—").foregroundStyle(.secondary)
+                        }
                     }
                 }
             }

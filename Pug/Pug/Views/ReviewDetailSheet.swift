@@ -70,6 +70,7 @@ struct ReviewDetailSheet: View {
     let db: QuizDB
     @State private var chat: ReviewChatSession
     @State private var ebisuRecord: EbisuRecord? = nil
+    @State private var reviewCount: Int? = nil
     @State private var showRescaleSheet = false
     @Environment(\.dismiss) private var dismiss
 
@@ -144,7 +145,7 @@ struct ReviewDetailSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .task { await loadEbisuRecord() }
             .sheet(isPresented: $showRescaleSheet) {
-                RescaleSheet(currentHalflife: ebisuRecord?.t ?? 24) { hours in
+                RescaleSheet(currentHalflife: ebisuRecord?.t ?? 24, reviewCount: reviewCount) { hours in
                     Task { await doRescale(hours: hours) }
                 }
             }
@@ -212,6 +213,8 @@ struct ReviewDetailSheet: View {
 
     private func loadEbisuRecord() async {
         ebisuRecord = try? await db.ebisuRecord(
+            wordType: review.wordType, wordId: review.wordId, quizType: review.quizType)
+        reviewCount = try? await db.reviewCount(
             wordType: review.wordType, wordId: review.wordId, quizType: review.quizType)
     }
 
