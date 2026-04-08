@@ -303,10 +303,13 @@ const maxCompoundVerbs =
 // Define output paths
 const outPath = path.join(projectRoot, "vocab.json");
 
-// Load existing vocab.json to seed the in-memory sense cache.
+// Load existing vocab.json to seed the in-memory sense cache and preserve
+// word-level flags (like notCompound) that are written by other scripts.
 // Cache key: "<wordId>|<JSON(sorted deduplicated [context, narration])>"
 // Value: the llm_sense object { sense_indices, computed_from, reasoning? }
 const existingRefSense = new Map();
+// Map from word id → set of word-level boolean flags to carry forward
+const existingWordFlags = new Map();
 if (existsSync(outPath)) {
   try {
     const existing = JSON.parse(readFileSync(outPath, "utf8"));
@@ -320,6 +323,9 @@ if (existsSync(outPath)) {
             existingRefSense.set(key, ref.llm_sense);
           }
         }
+      }
+      if (w.notCompound === true) {
+        existingWordFlags.set(w.id, { notCompound: true });
       }
     }
   } catch {
@@ -448,6 +454,8 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   if (jmWord) {
     entry.writtenForms = buildFuriganaForWord(jmWord, furiganaMap);
   }
+  const flags = existingWordFlags.get(id);
+  if (flags?.notCompound) entry.notCompound = true;
   return entry;
 });
 
