@@ -25,7 +25,7 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 # Personal files
 *.md
 !.claude/commands/*.md
-!TODO-*md
+!TODO*md
 *.webm
 *.ass
 *.srt
