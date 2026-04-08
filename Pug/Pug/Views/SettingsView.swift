@@ -42,6 +42,19 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Distractor source", selection: $prefs.distractorSource) {
+                        ForEach(DistractorSource.allCases) { source in
+                            Text(source.label).tag(source)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Reading-to-meaning wrong answers")
+                } footer: {
+                    Text(preferences.distractorSource.description)
+                }
+
+                Section {
                     if let folderURL = audioFolderURL {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(folderURL.lastPathComponent)

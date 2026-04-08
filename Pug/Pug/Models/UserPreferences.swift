@@ -48,6 +48,29 @@ enum LocalModel: String, CaseIterable, Identifiable {
     }
 }
 
+enum DistractorSource: String, CaseIterable, Identifiable {
+    case ai        = "ai"         // current behaviour: Haiku invents distractors freely
+    case documents = "documents"  // new: pick distractors from corpus vocab
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .ai:        return "Meanings picked by AI"
+        case .documents: return "Meanings from documents"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .ai:
+            return "The AI chooses wrong answers from the same semantic area. Good for testing fine meaning distinctions."
+        case .documents:
+            return "Wrong answers are taken from words in your reading material. Avoids comparing English words you don't know in Japanese."
+        }
+    }
+}
+
 @Observable
 final class UserPreferences {
     var quizStyle: QuizStyle {
@@ -56,6 +79,10 @@ final class UserPreferences {
 
     var localModel: LocalModel {
         didSet { UserDefaults.standard.set(localModel.rawValue, forKey: Keys.localModel) }
+    }
+
+    var distractorSource: DistractorSource {
+        didSet { UserDefaults.standard.set(distractorSource.rawValue, forKey: Keys.distractorSource) }
     }
 
     /// Security-scoped bookmark for the external audio folder (e.g. the Obsidian vault).
@@ -72,11 +99,15 @@ final class UserPreferences {
         localModel = LocalModel(rawValue: storedModel) ?? .haiku
 
         audioFolderBookmark = UserDefaults.standard.data(forKey: Keys.audioFolderBookmark)
+
+        let storedDistractor = UserDefaults.standard.string(forKey: Keys.distractorSource) ?? ""
+        distractorSource = DistractorSource(rawValue: storedDistractor) ?? .ai
     }
 
     private enum Keys {
         static let quizStyle          = "quizStyle"
         static let localModel         = "localModel"
         static let audioFolderBookmark = "audioFolderBookmark"
+        static let distractorSource   = "distractorSource"
     }
 }

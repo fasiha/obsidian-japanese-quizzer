@@ -713,8 +713,22 @@ final class QuizSession {
         phase = .generating
         print("[QuizSession] generating multiple choice question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
+        // For reading-to-meaning in "documents" mode, build a corpus-sourced candidate list.
+        let distractorCandidateList: String?
+        if item.facet == "reading-to-meaning" && preferences.distractorSource == .documents {
+            let candidates = distractorCandidates(for: item)
+            if candidates.isEmpty {
+                distractorCandidateList = nil   // fall back to AI mode gracefully
+            } else {
+                distractorCandidateList = candidates.map { "\($0.display) → \($0.gloss)" }.joined(separator: "\n")
+            }
+        } else {
+            distractorCandidateList = nil
+        }
+
         let system = systemPrompt(for: item, isGenerating: true,
-                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife)
+                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife,
+                                  distractorCandidateList: distractorCandidateList)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
@@ -902,6 +916,13 @@ final class QuizSession {
 
     private func recordReview(item: QuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
+
+        // Append distractor source tag for reading-to-meaning quizzes.
+        var finalNotes = notes
+        if item.facet == "reading-to-meaning" && preferences.distractorSource == .documents {
+            finalNotes += (notes.isEmpty ? "" : " ") + "[documents distractors]"
+        }
+
         let review = Review(
             reviewer: deviceName(),
             timestamp: now,
@@ -910,7 +931,7 @@ final class QuizSession {
             wordText: item.wordText,
             score: score,
             quizType: item.facet,
-            notes: notes.isEmpty ? nil : notes
+            notes: finalNotes.isEmpty ? nil : finalNotes
         )
         try await db.insert(review: review)
 
@@ -1132,6 +1153,112 @@ final class QuizSession {
         }
     }
 
+    /// Collect up to `targetCount` candidate (Japanese display text → English gloss) pairs
+    /// from the corpus for use as reading-to-meaning distractors.
+    ///
+    /// Strategy:
+    ///   1. Find which documents contain the quiz word (via VocabManifest sources).
+    ///   2. Collect all other word IDs that appear in those same documents.
+    ///   3. If fewer than targetCount candidates, expand to documents adjacent in the
+    ///      corpus story list (by index offset ±1, ±2, … until enough or list exhausted).
+    ///   4. For each candidate word ID, take the first gloss of the first corpus-attested sense,
+    ///      falling back to sense index 0.
+    ///   5. Return up to targetCount pairs, excluding the quiz word itself and any word
+    ///      whose gloss is empty.
+    ///
+    /// This is a synchronous, in-memory computation — no database or network calls.
+    private func distractorCandidates(for item: QuizItem, targetCount: Int = 25) -> [(display: String, gloss: String)] {
+        guard let manifest = VocabSync.cached() else { return [] }
+
+        // Build a map from word ID to VocabWordEntry for fast lookup.
+        var entryByID: [String: VocabWordEntry] = [:]
+        for entry in manifest.words { entryByID[entry.id] = entry }
+
+        let storyTitles = manifest.stories.map(\.title)
+
+        // Documents containing the quiz word.
+        let quizSources = Set(entryByID[item.wordId]?.sources ?? [])
+
+        // Collect candidate word IDs from the same documents first, then expand outward.
+        // Only enrolled words are useful candidates (we need their senseExtras for the gloss).
+        let enrolledIDs = Set(allCandidates.map(\.wordId))
+        var candidateIDs: [String] = []
+        var seenIDs = Set<String>([item.wordId])
+
+        // Helper: add enrolled word IDs from a given document title.
+        func collectFrom(title: String) {
+            for entry in manifest.words {
+                guard enrolledIDs.contains(entry.id),
+                      !seenIDs.contains(entry.id),
+                      entry.sources.contains(title) else { continue }
+                seenIDs.insert(entry.id)
+                candidateIDs.append(entry.id)
+            }
+        }
+
+        // Pass 1: documents the quiz word is in.
+        for title in quizSources { collectFrom(title: title) }
+
+        // Pass 2: expand to adjacent documents if still under target.
+        if candidateIDs.count < targetCount {
+            // Indices of the quiz word's source documents in the ordered story list.
+            let sourceIndices = storyTitles.indices.filter { quizSources.contains(storyTitles[$0]) }
+            var offset = 1
+            while candidateIDs.count < targetCount && offset <= storyTitles.count {
+                var added = false
+                for baseIndex in sourceIndices {
+                    for delta in [-offset, offset] {
+                        let idx = baseIndex + delta
+                        guard idx >= 0 && idx < storyTitles.count else { continue }
+                        let title = storyTitles[idx]
+                        guard !quizSources.contains(title) else { continue }
+                        collectFrom(title: title)
+                        added = true
+                    }
+                }
+                if !added { break }
+                offset += 1
+            }
+        }
+
+        // Convert IDs to (display, gloss) pairs using senseExtras already on each QuizItem.
+        // We rely on the items loaded in the session for senseExtras, falling back to the
+        // manifest's written forms for the display text.
+        var result: [(display: String, gloss: String)] = []
+        for wordID in candidateIDs.prefix(targetCount * 2) {   // over-fetch to account for empties
+            // Look up senseExtras from the loaded quiz items (already fetched from JMDict).
+            let senseExtras: [SenseExtra]
+            let corpusIndices: [Int]
+            let writtenTexts: [String]
+            let kanaTexts: [String]
+            // Search all enrolled candidates, not just the current session's items,
+            // so that words not due for review today can still serve as distractors.
+            if let quizItem = allCandidates.first(where: { $0.wordId == wordID }) {
+                senseExtras = quizItem.senseExtras
+                corpusIndices = quizItem.corpusSenseIndices
+                writtenTexts = quizItem.writtenTexts
+                kanaTexts = quizItem.kanaTexts
+            } else {
+                // Word is in the corpus but not enrolled — we have no senseExtras for it.
+                // Skip it; we only use enrolled words whose meanings we can display.
+                continue
+            }
+
+            // Pick a random gloss of a random corpus-attested sense.
+            let activeIndex = corpusIndices.randomElement() ?? 0
+            guard activeIndex < senseExtras.count else { continue }
+            let gloss = senseExtras[activeIndex].glosses.randomElement() ?? ""
+            guard !gloss.isEmpty else { continue }
+
+            // Display text: first written form, or first kana if no written forms.
+            let display = writtenTexts.first ?? kanaTexts.first ?? wordID
+
+            result.append((display: display, gloss: gloss))
+            if result.count >= targetCount { break }
+        }
+        return result
+    }
+
     func runGenerationLoop(for item: QuizItem, system: String,
                                    initMsg: AnthropicMessage, label: String,
                                    tools: [AnthropicTool]? = nil,
@@ -1260,7 +1387,8 @@ final class QuizSession {
 
     func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
-                              postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
+                              postHalflife: Double? = nil, mnemonicBlock: String = "",
+                              distractorCandidateList: String? = nil) -> String {
         let facetRule: String
         let wordLine: String
         // Full entry data injected into every facet so Claude never needs to look up the target word.
@@ -1300,7 +1428,20 @@ final class QuizSession {
         case "reading-to-meaning":
             if isGenerating {
                 let stemKana = item.committedReading ?? item.kanaTexts.first ?? "unknown"
-                facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
+                if let candidateList = distractorCandidateList {
+                    facetRule = """
+                    Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). \
+                    Ask for English meaning. All A/B/C/D options MUST be in English. \
+                    The correct answer is one of: \(allMeanings). \
+                    Choose exactly 3 distractors from this candidate list (Japanese word → English gloss):\n\(candidateList)\n\
+                    Rules for distractor selection:\
+                    \n1. Do NOT choose a candidate whose meaning is too close to the correct answer.\
+                    \n2. Prefer candidates with the same part of speech as the quiz word.\
+                    \n3. If fewer than 3 suitable candidates remain after rule 1, fill remaining slots with any candidate — do not invent new English.
+                    """
+                } else {
+                    facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
+                }
                 wordLine = "Word: \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning). Enrolled senses: \(allMeanings)."
