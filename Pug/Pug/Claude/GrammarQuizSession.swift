@@ -1386,12 +1386,16 @@ nonisolated func fetchAndResolveVocab(
     Japanese text: \(sentence)
     Grammar topic: \(topicId)
 
-    List the nouns, verbs, adjectives, and adverbs in this text that a Japanese learner \
-    just at JLPT level N5 (and likely not N4 or N3) might not know. Use dictionary form for each word.
-    Exclude: particles, copulas (だ/です/ある/いる/する), and the target grammar structure itself.
+    List the nouns, verbs, adjectives, and adverbs in this text that a beginner Japanese learner \
+    might not know or need help reading. If a word uses kanji, include it unless it uses only the most basic\
+    kanji (私, 日, etc.). Use dictionary form for each word (e.g. 編む not 編まれ, \
+    弾く not 弾いて).
+    Exclude only: particles, copulas (だ/です), and pure grammar auxiliaries (e.g. てしまう, ておく, \
+    によって as a grammar marker). Do NOT exclude a verb just because it carries the target grammar \
+    form — 編む in 編まれ and 弾く in 弾いた are still content words and must be listed.
     When in doubt, include the word — it is better to over-include than to omit a word the \
     learner does not know.
-    Aim for 2–6 words. If there are no such words, return [].
+    If there are no such words, return [].
 
     Reply with ONLY a JSON array, nothing else:
     [{"word":"...","gloss":"brief English meaning"},...]
