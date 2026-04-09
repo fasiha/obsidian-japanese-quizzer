@@ -332,32 +332,24 @@
   },
   {
     "topics": [
-      "dbjg:iku1"
+      "bunpro:ておく",
+      "dbjg:oku",
+      "genki:teoku",
+      "kanshudo:ておく"
     ],
-    "summary": "いく marks movement away from the speaker's location or away from the speaker's empathy point. Like くる, this perspectival meaning applies whether いく stands alone or follows a conjunctive て-form verb. In narrative, いく marks departure away from the story's focus point.",
+    "summary": "Attaching おく to the て-form of a verb describes doing something ahead of time so it is ready or in place for a future event. Formation: verb て-form + おく (食べておく, 読んでおく). In casual speech, ておく is regularly contracted to とく (読んどく, 買っとく).",
     "subUses": [
-      "Motion away from speaker: 友達が行った (My friend left)",
-      "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])",
-      "Carrying something away: かれくさをもっていく (take dried grass away)"
+      "Preparatory action — doing something now so it is ready later: 旅行の前にホテルを予約しておいた (reserved a hotel in advance of the trip). This includes preventative actions where the future event is something undesirable: 虫歯にならないように歯を磨いておく (brushing teeth in advance so cavities don't develop).",
+      "Maintaining a state intentionally — leaving something as it is on purpose: 窓を開けておいた (I left the window open [for a reason]); このままにしておいてください (please leave it as it is).",
+      "Causative + ておく — letting someone or something remain in its current state: 疲れているからしばらく寝させておこう (they're tired so let's leave them sleeping for a while).",
+      "Deliberate inaction (ないでおく) — intentionally leaving something undone: フレッドには言わないでおきましょう (Let's leave it unsaid to Fred / Let's not tell Fred). The negative て-form ないで + おく frames the non-action as a conscious, purposeful choice rather than mere omission.",
+      "Tentative or stopgap action — doing something for now even if it is not the ideal solution, often paired with とりあえず: とりあえず、なんか頼んでおく？ (Should we order something to get started [even though not everyone is here yet]?); このトピックはこの辺で終わりにしておきましょう (Let's wrap up this topic here for now).",
+      "Casual contraction とく: 後で読むから、ここに置いといて (I'll read it later, so leave it here)"
     ],
     "cautions": [
-      "うちにいく is ungrammatical for going to one's own home — use うちにかえる",
-      "When the speaker identifies psychologically with the destination, くる replaces いく even across phone calls or in writing — if unsure, ask whether the speaker's empathy is at the destination"
-    ]
-  },
-  {
-    "topics": [
-      "dbjg:kuru1"
-    ],
-    "summary": "くる marks movement toward the speaker's location or toward wherever the speaker has placed their empathy or viewpoint — which need not be the speaker's physical position. This perspectival meaning applies whether くる stands alone or follows a conjunctive て-form verb (the preceding verb describes manner; くる carries the directionality). In narrative, くる marks movement toward the story's empathy center (often a key place or protagonist).",
-    "subUses": [
-      "Motion toward speaker's location: 友達が来た (My friend came [here])",
-      "Visitor adopts host's location as reference: 明日来てもいいですか (May I come tomorrow? — said by the visitor)",
-      "Narrative empathy center: のねずみがかれくさをもってきて、きりかぶにかぶせました (the field mouse brought dried grass and covered the stump [stump is the story's focus point])",
-      "Speaker's \"territory\" includes workplace: 明日、会社に来てください (Please come to my office tomorrow)"
-    ],
-    "cautions": [
-      "The くる/いく choice depends on whose viewpoint the speaker adopts, not physical proximity: use くる when the speaker's empathy is at the destination (movement is toward the speaker's viewpoint); use いく when the speaker's empathy stays at the origin (movement is away from the speaker's viewpoint)"
+      "ておく vs てある: ておく emphasizes preparatory intent (doing the action on purpose for later); てある describes only the resulting state (the thing is in a done state). They are not interchangeable.",
+      "The casual contractions とく/どく (from ておく/でおく) are standard spoken Japanese — do not mark them wrong.",
+      "Causative + ておく can be ambiguous between 'let someone do X for future convenience' and simply 'let someone do X.' For example, 私はボブにビールを飲ませておいた can mean either (A) I let Bob drink beer (for some future purpose) or (B) I simply let Bob drink beer. Context is needed to resolve this."
     ]
   },
   {
@@ -580,6 +572,26 @@
   },
   {
     "topics": [
+      "bunpro:よう-おう",
+      "bunpro:ようと思う-おうと思う",
+      "genki:volitional-form",
+      "kanshudo:volitional"
+    ],
+    "summary": "The plain volitional form expresses a casual invitation or internal decision. Ichidan verbs drop る and add よう (食べる → 食べよう); godan verbs replace the final vowel with the お-row equivalent and add う (行く → 行こう, 話す → 話そう); irregulars: する → しよう, くる → こよう. When combined with と思う or と思っています, the volitional expresses intention rather than invitation.",
+    "subUses": [
+      "Casual suggestion or invitation (informal equivalent of ましょう): カフェでコーヒーを飲もうか (shall we drink coffee at a café?)",
+      "Volitional + か to soften a suggestion or ask for agreement: どこで食べようか (where shall we eat?)",
+      "Volitional + と思います for a decision made just now: 今日から毎日運動しようと思います (I've just decided to exercise daily starting today)",
+      "Volitional + と思っています for an intention formed earlier and still ongoing: 来年日本に留学しようと思っています (I've been planning to study abroad in Japan next year)"
+    ],
+    "cautions": [
+      "Volitional + と思います vs volitional + と思っています: と思います marks a decision made right now in the conversation; と思っています marks an ongoing intention decided earlier. Depending on when the decision was formed, one or the other applies.",
+      "The volitional form + と思います specifically marks *intention* or *decision*. Distinguish this from predictions, which use non-volitional forms (e.g., 雨が降ると思います).",
+      "The volitional is the plain/casual register for suggestions and intentions; ましょう is the polite register. Context determines register choice, not grammatical function."
+    ]
+  },
+  {
+    "topics": [
       "bunpro:代わりに",
       "dbjg:kawari-ni"
     ],
@@ -615,6 +627,36 @@
       "The て-form itself carries no tense — the tense comes from the final verb in the sentence",
       "When linking sequential actions, the て-form implies the actions happen in order — reversing the order changes the meaning",
       "続けて (from 続ける) uses て-form as 'means': 5週続けて増えている = has been increasing for 5 weeks running (continuing by means of consecutive weeks)"
+    ]
+  },
+  {
+    "topics": [
+      "dbjg:iku1"
+    ],
+    "summary": "いく marks movement away from the speaker's location or away from the speaker's empathy point. Like くる, this perspectival meaning applies whether いく stands alone or follows a conjunctive て-form verb. In narrative, いく marks departure away from the story's focus point.",
+    "subUses": [
+      "Motion away from speaker: 友達が行った (My friend left)",
+      "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])",
+      "Carrying something away: かれくさをもっていく (take dried grass away)"
+    ],
+    "cautions": [
+      "うちにいく is ungrammatical for going to one's own home — use うちにかえる",
+      "When the speaker identifies psychologically with the destination, くる replaces いく even across phone calls or in writing — if unsure, ask whether the speaker's empathy is at the destination"
+    ]
+  },
+  {
+    "topics": [
+      "dbjg:kuru1"
+    ],
+    "summary": "くる marks movement toward the speaker's location or toward wherever the speaker has placed their empathy or viewpoint — which need not be the speaker's physical position. This perspectival meaning applies whether くる stands alone or follows a conjunctive て-form verb (the preceding verb describes manner; くる carries the directionality). In narrative, くる marks movement toward the story's empathy center (often a key place or protagonist).",
+    "subUses": [
+      "Motion toward speaker's location: 友達が来た (My friend came [here])",
+      "Visitor adopts host's location as reference: 明日来てもいいですか (May I come tomorrow? — said by the visitor)",
+      "Narrative empathy center: のねずみがかれくさをもってきて、きりかぶにかぶせました (the field mouse brought dried grass and covered the stump [stump is the story's focus point])",
+      "Speaker's \"territory\" includes workplace: 明日、会社に来てください (Please come to my office tomorrow)"
+    ],
+    "cautions": [
+      "The くる/いく choice depends on whose viewpoint the speaker adopts, not physical proximity: use くる when the speaker's empathy is at the destination (movement is toward the speaker's viewpoint); use いく when the speaker's empathy stays at the origin (movement is away from the speaker's viewpoint)"
     ]
   },
   {
