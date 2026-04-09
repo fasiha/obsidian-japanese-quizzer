@@ -13,6 +13,14 @@
 import SwiftUI
 import GRDB
 
+/// Bundles a vocab item with the navigation origin that produced the tap,
+/// so WordDetailSheet can scope sense highlighting to the browsed document.
+struct VocabItemSelection: Identifiable {
+    let item: VocabItem
+    let origin: WordDetailOrigin?
+    var id: String { item.id }
+}
+
 struct VocabBrowserView: View {
     let pairCorpus: TransitivePairCorpus
     let db: QuizDB
@@ -24,7 +32,7 @@ struct VocabBrowserView: View {
     @Environment(CorpusStore.self) private var corpusStore
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
-    @State private var selectedItem: VocabItem? = nil
+    @State private var selectedItem: VocabItemSelection? = nil
     @State private var selectedPair: TransitivePairItem? = nil
 
     @State private var showQuiz = false
@@ -114,9 +122,10 @@ struct VocabBrowserView: View {
                 }
             }
             .searchable(text: $searchText, prompt: "Search kanji, reading, meaning…")
-            .sheet(item: $selectedItem) { item in
-                WordDetailSheet(initialItem: item, db: db,
-                                client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
+            .sheet(item: $selectedItem) { selection in
+                WordDetailSheet(initialItem: selection.item, db: db,
+                                client: session.client, toolHandler: session.toolHandler, jmdict: jmdict,
+                                origin: selection.origin)
             }
             .sheet(item: $selectedPair) { pair in
                 TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict,
@@ -158,7 +167,7 @@ struct VocabBrowserView: View {
                 }
             }
             ForEach(filteredItems) { item in
-                Button { selectedItem = item } label: {
+                Button { selectedItem = VocabItemSelection(item: item, origin: nil) } label: {
                     VocabRowView(item: item)
                 }
                 .buttonStyle(.plain)
@@ -423,7 +432,7 @@ func buildSourceTree(sources: [String], items: [VocabItem]) -> [SourceTreeNode] 
 struct SourceSectionView<SwipeContent: View>: View {
     let node: SourceTreeNode
     @Binding var collapsedSections: Set<String>
-    @Binding var selectedItem: VocabItem?
+    @Binding var selectedItem: VocabItemSelection?
     @ViewBuilder let swipeButtons: (VocabItem) -> SwipeContent
 
     private var isExpanded: Binding<Bool> {
@@ -458,7 +467,9 @@ struct SourceSectionView<SwipeContent: View>: View {
         case .leaf(let title, _, let items):
             DisclosureGroup(isExpanded: isExpanded) {
                 ForEach(items) { item in
-                    Button { selectedItem = item } label: {
+                    Button {
+                        selectedItem = VocabItemSelection(item: item, origin: .document(title: title))
+                    } label: {
                         VocabRowView(item: item)
                     }
                     .buttonStyle(.plain)

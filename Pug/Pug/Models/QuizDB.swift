@@ -152,18 +152,23 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
 /// One row per (word_type, word_id). The furigana field stores the JmdictFurigana
 /// JSON array for the chosen written form; kanjiChars is a JSON array of kanji
 /// characters the user is committing to learn (e.g. ["入","込"]).
+/// senseIndices is a JSON array of Int (e.g. "[0,2]") recording which JMDict senses
+/// the student has enrolled. NULL means "all senses" (legacy state for words committed
+/// before the v10 migration). Newly committed words always get an explicit array.
 struct WordCommitment: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "word_commitment"
     var wordType: String
     var wordId: String
     var furigana: String            // JmdictFurigana JSON array for the chosen form
     var kanjiChars: String?         // JSON array of kanji chars, e.g. ["入","込"]
+    var senseIndices: String?       // JSON array of Int, e.g. "[0,2]", or nil = all senses (legacy)
 
     enum CodingKeys: String, CodingKey {
         case wordType = "word_type"
         case wordId = "word_id"
         case furigana
         case kanjiChars = "kanji_chars"
+        case senseIndices = "sense_indices"
     }
 }
 
@@ -481,6 +486,15 @@ final class QuizDB: Sendable {
                 t.check(sql: "status IN ('learning', 'known')")
             }
         }
+        migrator.registerMigration("v10") { db in
+            // sense_indices: the specific JMDict sense indices the student has committed to
+            // learning for this word. NULL means "all senses" (legacy state for words committed
+            // before this migration). Newly committed words always get an explicit array written
+            // at commit time, even if it covers all senses.
+            try db.alter(table: "word_commitment") { t in
+                t.add(column: "sense_indices", .text)   // JSON array of Int, e.g. "[0,2]", or NULL
+            }
+        }
         try migrator.migrate(pool)
     }
 
@@ -581,9 +595,23 @@ final class QuizDB: Sendable {
 
     /// Upsert a word commitment (user chose a furigana form to study).
     func setCommitment(wordType: String, wordId: String, furigana: String, kanjiChars: String? = nil) async throws {
-        let record = WordCommitment(wordType: wordType, wordId: wordId, furigana: furigana, kanjiChars: kanjiChars)
+        let record = WordCommitment(wordType: wordType, wordId: wordId, furigana: furigana, kanjiChars: kanjiChars, senseIndices: nil)
         try await pool.write { db in try record.save(db) }
         print("[QuizDB] setCommitment \(wordId) kanji=\(kanjiChars ?? "nil")")
+    }
+
+    /// Update the enrolled sense indices for a committed word.
+    /// Pass an explicit array (even if it covers all senses) — never pass nil here;
+    /// nil is reserved as the legacy "all senses" marker for pre-v10 rows.
+    func setCommittedSenseIndices(wordType: String, wordId: String, senseIndices: [Int]) async throws {
+        guard let json = String(data: (try? JSONEncoder().encode(senseIndices)) ?? Data(), encoding: .utf8) else { return }
+        try await pool.write { db in
+            try db.execute(
+                sql: "UPDATE word_commitment SET sense_indices=? WHERE word_type=? AND word_id=?",
+                arguments: [json, wordType, wordId]
+            )
+        }
+        print("[QuizDB] setCommittedSenseIndices \(wordId) senses=\(senseIndices)")
     }
 
     /// Remove a word's commitment and all associated ebisu_models and learned rows.

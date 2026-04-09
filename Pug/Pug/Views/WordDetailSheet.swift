@@ -14,12 +14,25 @@
 import SwiftUI
 import GRDB
 
+/// Where the user navigated from when opening WordDetailSheet.
+/// Used to scope sense highlighting to the specific document or line the student was reading,
+/// rather than showing the corpus-wide union of all senses.
+enum WordDetailOrigin {
+    /// Opened from VocabBrowserView: highlight senses used across the whole document.
+    case document(title: String)
+    /// Opened from DocumentReaderView: highlight senses used on this specific line.
+    case reference(title: String, line: Int)
+}
+
 struct WordDetailSheet: View {
     let initialItem: VocabItem
     let db: QuizDB
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let jmdict: any DatabaseReader
+    /// Navigation origin: used to scope sense highlighting to the document or line the student
+    /// was reading when they opened this sheet. Nil means no specific origin is known.
+    var origin: WordDetailOrigin? = nil
 
     @Environment(VocabCorpus.self) private var corpus
     @Environment(TransitivePairCorpus.self) private var pairCorpus
@@ -30,6 +43,26 @@ struct WordDetailSheet: View {
     /// Falls back to the initial snapshot if the item disappears (e.g. during re-download).
     private var item: VocabItem {
         corpus.items.first { $0.id == initialItem.id } ?? initialItem
+    }
+
+    /// Sense indices relevant to where the student navigated from.
+    /// Used to highlight which senses are present in the student's current reading context,
+    /// independently of which senses they have committed to learning overall.
+    private var originSenseIndices: [Int] {
+        switch origin {
+        case .reference(let title, let line):
+            return item.references[title]?
+                .first(where: { $0.line == line })?.llmSense?.senseIndices ?? []
+        case .document(let title):
+            let refs = item.references[title] ?? []
+            return Array(Set(refs.compactMap(\.llmSense).flatMap(\.senseIndices))).sorted()
+        case .none:
+            // No specific navigation origin: fall back to the corpus-wide union so that
+            // words with corpus coverage show their attested senses at full brightness.
+            // Words with no corpus occurrences at all will have an empty list here too,
+            // which correctly dims everything (there is nothing to highlight).
+            return item.corpusSenseIndices
+        }
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -259,13 +292,32 @@ struct WordDetailSheet: View {
     }
 
     /// Per-sense display using the shared JMDictSenseListView.
+    /// When the word is committed, senses are interactive: the student can tap to
+    /// add or remove senses from their enrolled set.
     private var senseExtrasSection: some View {
-        JMDictSenseListView(
+        let isCommitted = item.readingState != .unknown
+        return JMDictSenseListView(
             senseExtras: item.senseExtras,
-            corpusSenseIndices: item.corpusSenseIndices,
+            originSenseIndices: originSenseIndices,
+            committedSenseIndices: isCommitted ? item.committedSensesForDisplay(totalSenseCount: item.senseExtras.count) : nil,
             writtenTexts: item.writtenTexts,
-            kanaTexts: item.kanaTexts
+            kanaTexts: item.kanaTexts,
+            onToggleSense: isCommitted ? { index in
+                Task { await toggleCommittedSense(index: index) }
+            } : nil
         )
+    }
+
+    /// Toggle a single sense index in the student's committed set.
+    private func toggleCommittedSense(index: Int) async {
+        var current = item.committedSensesForDisplay(totalSenseCount: item.senseExtras.count)
+        if let pos = current.firstIndex(of: index) {
+            current.remove(at: pos)
+        } else {
+            current.append(index)
+            current.sort()
+        }
+        await corpus.setCommittedSenseIndices(wordId: item.id, senseIndices: current, db: db)
     }
 
     @ViewBuilder
@@ -657,8 +709,10 @@ struct WordDetailSheet: View {
 
     private func setReadingState(_ state: FacetState) {
         isWorking = true
+        // Capture origin senses before the async task so they are seeded into the commitment.
+        let seeds = originSenseIndices.isEmpty ? nil : originSenseIndices
         Task {
-            await corpus.setReadingState(state, wordId: item.id, db: db)
+            await corpus.setReadingState(state, wordId: item.id, db: db, senseIndicesToSeed: seeds)
             await loadEbisuModels()
             isWorking = false
         }

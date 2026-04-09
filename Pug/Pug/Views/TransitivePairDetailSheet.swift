@@ -66,7 +66,7 @@ struct TransitivePairDetailSheet: View {
                         member: item.pair.intransitive,
                         furigana: item.intransitiveFurigana,
                         senses: intransitiveSenses,
-                        corpusSenseIndices: vocabCorpus.items.first { $0.id == item.pair.intransitive.jmdictId }?.corpusSenseIndices ?? []
+                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.intransitive.jmdictId }?.corpusSenseIndices ?? []
                     )
 
                     Divider()
@@ -77,7 +77,7 @@ struct TransitivePairDetailSheet: View {
                         member: item.pair.transitive,
                         furigana: item.transitiveFurigana,
                         senses: transitiveSenses,
-                        corpusSenseIndices: vocabCorpus.items.first { $0.id == item.pair.transitive.jmdictId }?.corpusSenseIndices ?? []
+                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.transitive.jmdictId }?.corpusSenseIndices ?? []
                     )
 
                     // Ambiguous reason
@@ -428,7 +428,7 @@ struct TransitivePairDetailSheet: View {
         member: TransitivePairMember,
         furigana: [FuriganaSegment]?,
         senses: [SenseExtra],
-        corpusSenseIndices: [Int]
+        originSenseIndices: [Int]
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(heading)
@@ -459,7 +459,7 @@ struct TransitivePairDetailSheet: View {
 
             // Senses (shared with WordDetailSheet)
             if !senses.isEmpty {
-                JMDictSenseListView(senseExtras: senses, corpusSenseIndices: corpusSenseIndices)
+                JMDictSenseListView(senseExtras: senses, originSenseIndices: originSenseIndices)
             }
         }
         .textSelection(.enabled)

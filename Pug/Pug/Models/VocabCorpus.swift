@@ -36,6 +36,23 @@ struct VocabItem: Identifiable {
     var readingState: FacetState = .unknown  // derived from reading facets
     var kanjiState: FacetState = .unknown    // derived from kanji facets
 
+    /// Sense indices the student has explicitly enrolled for quizzing.
+    /// nil = legacy state (word committed before v10 migration) — treat as "all senses".
+    /// Empty array = explicitly no senses selected — quiz falls back to sense 0.
+    var committedSenseIndices: [Int]? {
+        guard let json = commitment?.senseIndices,
+              let data = json.data(using: .utf8),
+              let indices = try? JSONDecoder().decode([Int].self, from: data)
+        else { return nil }
+        return indices
+    }
+
+    /// Sense indices to display as enrolled in the UI.
+    /// Expands nil (legacy "all senses") to the full index range.
+    func committedSensesForDisplay(totalSenseCount: Int) -> [Int] {
+        committedSenseIndices ?? Array(0 ..< totalSenseCount)
+    }
+
     /// Does this word match the given filter? (OR semantics)
     func matches(filter: VocabFilter) -> Bool {
         switch filter {
@@ -181,6 +198,24 @@ final class VocabCorpus {
         print("[VocabCorpus] loaded \(items.count)/\(manifest.words.count) word(s) " +
               "(\(manifest.words.count - items.count) skipped — not in JMdict)")
 
+        // Seed sense_indices for committed words that were learned before the v10 migration.
+        // Those rows have sense_indices = NULL ("all senses" legacy marker). Rather than
+        // showing every JMDict sense as enrolled, we seed from the corpus-union sense indices
+        // that the publish pipeline computed — the senses actually seen in the student's texts.
+        // This is a one-time upgrade: once written, sense_indices is non-null and this is skipped.
+        for idx in items.indices {
+            guard let c = items[idx].commitment, c.senseIndices == nil else { continue }
+            let seeds = items[idx].corpusSenseIndices
+            guard !seeds.isEmpty else { continue }
+            let wordId = items[idx].id
+            try? await db.setCommittedSenseIndices(wordType: "jmdict", wordId: wordId, senseIndices: seeds)
+            if let json = String(data: (try? JSONEncoder().encode(seeds)) ?? Data(), encoding: .utf8) {
+                var updated = c
+                updated.senseIndices = json
+                items[idx].commitment = updated
+            }
+        }
+
         // Resolve placeholder furigana ('[]') for committed words that now have writtenForms.
         // This handles the migration path where v5 wrote '[]' pending a vocab sync.
         for idx in items.indices {
@@ -211,7 +246,8 @@ final class VocabCorpus {
             try? await db.setCommitment(wordType: "jmdict", wordId: wordId,
                                         furigana: resolved, kanjiChars: kanjiJSON)
             items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
-                                                   furigana: resolved, kanjiChars: kanjiJSON)
+                                                   furigana: resolved, kanjiChars: kanjiJSON,
+                                                   senseIndices: items[idx].commitment?.senseIndices)
         }
     }
 
@@ -240,7 +276,10 @@ final class VocabCorpus {
     // MARK: - Learning actions
 
     /// Set the reading state for a word. Also ensures word_commitment exists.
-    func setReadingState(_ state: FacetState, wordId: String, db: QuizDB) async {
+    /// When transitioning to .learning for the first time, pass senseIndicesToSeed to record
+    /// which senses the student is committing to from their current navigation origin.
+    func setReadingState(_ state: FacetState, wordId: String, db: QuizDB,
+                         senseIndicesToSeed: [Int]? = nil) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
             // Ensure commitment exists
@@ -248,11 +287,21 @@ final class VocabCorpus {
                 let furigana = defaultFuriganaJSON(for: items[idx])
                 try await db.setCommitment(wordType: "jmdict", wordId: wordId, furigana: furigana)
                 items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
-                                                        furigana: furigana, kanjiChars: nil)
+                                                        furigana: furigana, kanjiChars: nil,
+                                                        senseIndices: nil)
             }
             switch state {
             case .learning:
                 try await db.setReadingLearning(wordType: "jmdict", wordId: wordId)
+                // Seed enrolled senses from origin on first commit (when no senses are set yet).
+                if items[idx].commitment?.senseIndices == nil, let seeds = senseIndicesToSeed {
+                    try await db.setCommittedSenseIndices(wordType: "jmdict", wordId: wordId, senseIndices: seeds)
+                    if var c = items[idx].commitment,
+                       let json = String(data: (try? JSONEncoder().encode(seeds)) ?? Data(), encoding: .utf8) {
+                        c.senseIndices = json
+                        items[idx].commitment = c
+                    }
+                }
             case .known:
                 try await db.setReadingKnown(wordType: "jmdict", wordId: wordId)
             case .unknown:
@@ -288,7 +337,8 @@ final class VocabCorpus {
                     try await db.setCommitment(wordType: "jmdict", wordId: wordId,
                                                furigana: furigana, kanjiChars: json)
                     items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
-                                                            furigana: furigana, kanjiChars: json)
+                                                            furigana: furigana, kanjiChars: json,
+                                                            senseIndices: items[idx].commitment?.senseIndices)
                 }
             case .known:
                 try await db.setKanjiKnown(wordType: "jmdict", wordId: wordId)
@@ -310,7 +360,8 @@ final class VocabCorpus {
                 let furigana = defaultFuriganaJSON(for: items[idx])
                 try await db.setCommitment(wordType: "jmdict", wordId: wordId, furigana: furigana)
                 items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
-                                                        furigana: furigana, kanjiChars: nil)
+                                                        furigana: furigana, kanjiChars: nil,
+                                                        senseIndices: nil)
             }
             try await db.setReadingKnown(wordType: "jmdict", wordId: wordId)
             items[idx].readingState = .known
@@ -341,12 +392,30 @@ final class VocabCorpus {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
             let kanjiChars = items[idx].commitment?.kanjiChars
+            let senseIndices = items[idx].commitment?.senseIndices
             try await db.setCommitment(wordType: "jmdict", wordId: wordId,
                                        furigana: furiganaJSON, kanjiChars: kanjiChars)
             items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
-                                                    furigana: furiganaJSON, kanjiChars: kanjiChars)
+                                                    furigana: furiganaJSON, kanjiChars: kanjiChars,
+                                                    senseIndices: senseIndices)
         } catch {
             print("[VocabCorpus] setCommittedFurigana error for \(wordId): \(error)")
+        }
+    }
+
+    /// Update the enrolled sense indices for a committed word.
+    /// Pass an explicit array — never pass nil here; nil is the legacy "all senses" marker.
+    func setCommittedSenseIndices(wordId: String, senseIndices: [Int], db: QuizDB) async {
+        guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
+        do {
+            try await db.setCommittedSenseIndices(wordType: "jmdict", wordId: wordId, senseIndices: senseIndices)
+            if var c = items[idx].commitment,
+               let json = String(data: (try? JSONEncoder().encode(senseIndices)) ?? Data(), encoding: .utf8) {
+                c.senseIndices = json
+                items[idx].commitment = c
+            }
+        } catch {
+            print("[VocabCorpus] setCommittedSenseIndices error for \(wordId): \(error)")
         }
     }
 

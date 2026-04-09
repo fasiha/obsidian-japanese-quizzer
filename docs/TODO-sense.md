@@ -204,14 +204,214 @@ source as `QuizContext`.
 
 ### Step 5 — iOS app: in-app sense enrollment (FUTURE)
 
-After a quiz or in WordDetailSheet, show all JMDict senses with checkboxes. The
-student ticks which senses they are learning. Store in a new
-`word_commitment.sense_indices` DB column (parallel to `kanji_chars`). This
-overrides the vocab.json default from Step 3.
+**Goal:** when the student commits to learning a word, record *which senses* they
+are committing to, seeded from the document they were browsing. After commitment
+they can tap any sense row to add or remove it from their quiz. This replaces
+the current implicit behavior where quizzes use the corpus-wide union of all
+senses the word appears with across all documents.
 
-Not designed in detail. Depends on Steps 1-3 landing first to establish
-`sense_indices` as a first-class field and to give the student a reasonable
-automatic starting point.
+**Depends on:** Step 6 (per-reference `llm_sense`) must be complete so each
+corpus occurrence carries its own `sense_indices`.
+
+**Also requires audit:** all places that currently read enrolled senses
+(`QuizContext`, `QuizSession`, and especially document-sourced reading-to-meaning
+distractors added in commit 2cd96b9) must be updated to prefer
+`word_commitment.sense_indices` over the corpus-wide union.
+
+---
+
+#### Subpart A — DB: add `sense_indices` to `word_commitment`
+
+Add a nullable JSON column `sense_indices` to the `word_commitment` table,
+parallel to `kanji_chars`:
+
+```sql
+ALTER TABLE word_commitment ADD COLUMN sense_indices TEXT; -- JSON array of Int, e.g. "[0,2]"
+```
+
+`NULL` means "not yet migrated" — the word was committed before v10 and has not
+yet been seeded with sense data. On first `VocabCorpus.load()` after the v10
+migration, any committed word with `sense_indices = NULL` is automatically seeded
+from the corpus sense union in vocab.json (the senses the publish pipeline found
+in the student's actual reading texts). Once written, `sense_indices` is non-null
+and the seeding never runs again for that word. Words with no corpus sense data
+(empty `corpusSenseIndices`) are left as NULL and the UI falls back to showing
+all senses.
+
+Newly committed words always get an explicit array written at commit time (see
+Subpart D). Even if the student re-selects every sense, write the full explicit
+array rather than converting back to `NULL` — `NULL` is reserved as the
+"not yet migrated" marker.
+
+Update `WordCommitment` struct in `QuizDB.swift`:
+```swift
+var senseIndices: String?   // JSON array of Int, or nil = all senses (legacy/default)
+```
+
+Add helpers to `QuizDB` (parallel to `setKanjiChars`):
+- `func setCommittedSenseIndices(wordId:senseIndices:)` — write JSON array
+- Access via `corpus.setCommittedSenseIndices(...)` after enrolling
+
+---
+
+#### Subpart B — Origin passing: WordDetailSheet knows its source
+
+`WordDetailSheet` needs to know where it was opened from so it can highlight the
+relevant senses and seed commitment correctly. The term "origin" (like a browser's
+back-navigation origin) reflects that this is an ephemeral piece of navigation
+context, not persistent data.
+
+Add an optional parameter:
+
+```swift
+struct WordDetailSheet: View {
+    let initialItem: VocabItem
+    let db: QuizDB
+    // ... existing params ...
+    let origin: WordDetailOrigin?  // new
+}
+
+enum WordDetailOrigin {
+    case document(title: String)                // opened from VocabBrowserView
+    case reference(title: String, line: Int)    // opened from DocumentReaderView
+}
+```
+
+All callers of `WordDetailSheet` pass their origin. VocabBrowserView passes
+`.document(title:)` for whichever document's words it is currently showing.
+DocumentReaderView passes `.reference(title:line:)` for the tapped word's line.
+
+Derive `originSenseIndices: [Int]` from `origin` lazily inside the sheet:
+- `.reference(title, line)` → find `item.references[title]?.first { $0.line == line }?.llmSense?.senseIndices ?? []`
+- `.document(title)` → union of `senseIndices` across all `item.references[title]` references
+
+---
+
+#### Subpart C — JMDictSenseListView: two-layer sense highlighting
+
+`JMDictSenseListView` currently accepts `corpusSenseIndices: [Int]` and dims
+non-enrolled senses. Replace that single layer with two orthogonal layers:
+
+```swift
+struct JMDictSenseListView: View {
+    var senseExtras: [SenseExtra]
+    var originSenseIndices: [Int] = []      // senses from the navigation origin (doc/line)
+    var committedSenseIndices: [Int]? = nil // nil = all senses; non-nil = user's explicit selection
+    var onToggleSense: ((Int) -> Void)? = nil  // nil = read-only; non-nil = interactive checkboxes
+}
+```
+
+Visual treatment per sense row (when `onToggleSense` is non-nil, i.e. word is committed):
+
+| Condition | Treatment |
+|---|---|
+| In `committedSenseIndices` (or `committedSenseIndices` is nil = all enrolled) | Normal opacity, filled checkmark |
+| In `originSenseIndices` only (not committed) | Normal opacity, empty checkbox ring |
+| In neither | 40% opacity, empty checkbox ring |
+
+When the word is not yet committed (`onToggleSense` is nil), show no checkboxes:
+just dim senses not in `originSenseIndices` to 40% opacity — same as current
+behavior but scoped to the navigation origin rather than the corpus-wide union.
+
+---
+
+#### Subpart D — WordDetailSheet: sense section + commitment flow
+
+**Before commitment (reading state = `.unknown`):**
+- Pass `originSenseIndices` and `committedSenseIndices: nil` to
+  `JMDictSenseListView` — senses from the origin are full brightness, others
+  dimmed. No checkboxes, no toggles.
+- "Learning" button (existing Reading picker → `.learning`) triggers
+  `setReadingState(.learning)` **and** immediately calls
+  `setCommittedSenseIndices(wordId:senseIndices:)` with the `originSenseIndices`.
+  If `originSenseIndices` is empty (the reference had no `llm_sense` data), write
+  an empty array `[]` — not `NULL` — to signal "explicitly no senses selected."
+  The quiz layer treats `[]` as "use sense 0" (existing fallback from Step 1).
+
+**After commitment (reading state = `.learning` or `.known`):**
+- Pass `originSenseIndices`, `committedSenseIndices` (decoded from
+  `item.committedSenseIndices`), and `onToggleSense` to `JMDictSenseListView`.
+- Every sense row shows a checkbox. Tapping calls `toggleCommittedSense(index:)`:
+  - If index is in the current committed set → remove it.
+  - If index is not in the set → add it.
+  - Write updated array back via `corpus.setCommittedSenseIndices(...)`.
+- No "all must be checked" guard — an empty committed array is valid and falls
+  back to sense 0 in quizzes (Step 1 behavior).
+- No explanatory label needed; the checkboxes are self-evident.
+
+**Encountering the word again from a different document:**
+- Senses in `originSenseIndices` that are not in `committedSenseIndices` appear
+  at full brightness with an empty checkbox. The student sees them as unchecked
+  and can tap to add them. No banner or pop-up needed — the visual state is
+  sufficient.
+
+---
+
+#### Subpart E — QuizContext and QuizSession: prefer committed senses
+
+In `QuizContext.build()`, after loading committed words, check
+`word_commitment.sense_indices`:
+- Non-null non-empty array → decode and use as `enrolledSenseIndices`
+- Null (legacy "all senses") → use all sense indices for the word from JMDict
+- Empty array → treat as `[0]` (Step 1 fallback)
+
+```swift
+// In QuizContext.build(), where corpusSensesMap is populated:
+if let committedSensesJSON = commitment?.senseIndices,
+   let committed = try? JSONDecoder().decode([Int].self, from: Data(committedSensesJSON.utf8)) {
+    corpusSensesMap[entry.id] = committed.isEmpty ? [0] : committed
+} else {
+    // NULL: enroll all senses — use full JMDict sense count for this word
+    corpusSensesMap[entry.id] = Array(0 ..< (wordSenseExtras[entry.id]?.count ?? 1))
+}
+```
+
+Also audit `QuizSession.swift` and the document-sourced reading-to-meaning
+distractor logic (added in commit 2cd96b9) — any place that reads
+`corpusSenseIndices` from `VocabItem` or `QuizItem.enrolledSenseIndices` should
+go through this same preference chain, not bypass it by reading vocab.json
+directly.
+
+---
+
+#### Subpart F — VocabCorpus: expose committed senses on VocabItem
+
+Add to `VocabItem`:
+```swift
+/// User's explicitly enrolled sense indices. nil = legacy "all senses" state.
+/// Use committedSensesForDisplay to get the indices to show in the UI.
+var committedSenseIndices: [Int]?
+```
+
+Add a computed helper:
+```swift
+/// Indices to treat as enrolled: the committed array if set, otherwise all indices.
+func committedSensesForDisplay(totalSenseCount: Int) -> [Int] {
+    committedSenseIndices ?? Array(0 ..< totalSenseCount)
+}
+```
+
+Populate from `item.commitment?.senseIndices` in `VocabCorpus` wherever
+`commitment` is already set. This lets `WordDetailSheet` and
+`JMDictSenseListView` read directly from the item rather than decoding JSON
+inline.
+
+---
+
+#### Summary of file changes
+
+| File | Change |
+|---|---|
+| `QuizDB.swift` | Add `senseIndices` to `WordCommitment`; add `setCommittedSenseIndices` helper |
+| `VocabCorpus.swift` | Add `committedSenseIndices` to `VocabItem` + `committedSensesForDisplay` helper; populate in load/refresh |
+| `WordDetailSheet.swift` | Accept `origin: WordDetailOrigin?`; derive `originSenseIndices`; seed committed senses on commit; pass toggles to sense list post-commit |
+| `JMDictSenseListView.swift` | Replace `corpusSenseIndices` with `originSenseIndices` + `committedSenseIndices` + `onToggleSense`; update all callers |
+| `VocabBrowserView.swift` | Pass `.document(title:)` origin when opening `WordDetailSheet` |
+| `DocumentReaderView.swift` | Pass `.reference(title:line:)` origin when opening `WordDetailSheet` |
+| `QuizContext.swift` | Prefer committed senses (non-null) over corpus union; null = all senses |
+| `QuizSession.swift` | Audit: ensure enrolled senses come from committed set, not corpus union |
+| Document-sourced distractor logic (commit 2cd96b9) | Audit: same sense preference chain |
+| DB migration | `ALTER TABLE word_commitment ADD COLUMN sense_indices TEXT` |
 
 ---
 

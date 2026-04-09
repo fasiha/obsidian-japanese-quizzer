@@ -20,6 +20,14 @@ import GRDB
 import Markdown
 import Markdownosaur
 
+/// Bundles a vocab item with the line number where the student tapped it,
+/// so WordDetailSheet can scope sense highlighting to that specific corpus reference.
+private struct VocabWordSelection: Identifiable {
+    let item: VocabItem
+    let lineNumber: Int
+    var id: String { "\(item.id):\(lineNumber)" }
+}
+
 struct DocumentReaderView: View {
     let entry: CorpusEntry
     let db: QuizDB
@@ -34,7 +42,7 @@ struct DocumentReaderView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(ClipPlayer.self) private var clipPlayer
 
-    @State private var selectedWord: VocabItem? = nil
+    @State private var selectedWord: VocabWordSelection? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
     @State private var expandedLines: Set<Int> = []
     @State private var enrolledTopicIds: Set<String> = []
@@ -76,9 +84,10 @@ struct DocumentReaderView: View {
         }
         .navigationTitle(entry.title.components(separatedBy: "/").last ?? entry.title)
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $selectedWord) { item in
-            WordDetailSheet(initialItem: item, db: db,
-                            client: client, toolHandler: toolHandler, jmdict: jmdict)
+        .sheet(item: $selectedWord) { selection in
+            WordDetailSheet(initialItem: selection.item, db: db,
+                            client: client, toolHandler: toolHandler, jmdict: jmdict,
+                            origin: .reference(title: entry.title, line: selection.lineNumber))
         }
         .sheet(item: $selectedTopic) { wrapper in
             if let manifest = grammarStore.manifest {
@@ -222,7 +231,7 @@ struct DocumentReaderView: View {
         }()
 
         return Button {
-            selectedWord = item
+            selectedWord = VocabWordSelection(item: item, lineNumber: lineNumber)
         } label: {
             HStack(spacing: 8) {
                 // Word with furigana if available, plain text otherwise.

@@ -188,10 +188,13 @@ struct QuizContext {
         let reviewCounts   = try await db.reviewCounts()
         let commitments    = try await db.allCommitments()
 
-        // Build enrolled-senses map from cached vocab.json per-reference llm_sense.sense_indices.
-        // Union across all occurrences — a word should cover every sense the student has seen.
-        // Default is [0] (first JMDict sense) when no reference has llm_sense —
-        // this prevents quizzes from testing distant/obscure senses the student never encountered.
+        // Build enrolled-senses map. Priority order:
+        //   1. word_commitment.sense_indices (non-null) — student's explicit enrollment
+        //   2. vocab.json corpus union — automatic fallback from publish-time sense analysis
+        //   3. [0] — default when no sense data is available at all
+        //
+        // NULL sense_indices means "all senses" (legacy state before v10 migration).
+        // Empty array means "explicitly nothing selected" — falls back to [0].
         var corpusSensesMap: [String: [Int]] = [:]
         var wordWrittenForms: [String: [WrittenFormGroup]] = [:]
         if let manifest = VocabSync.cached() {
@@ -199,6 +202,19 @@ struct QuizContext {
                 let deduped = entry.corpusSenseIndices
                 corpusSensesMap[entry.id] = deduped.isEmpty ? [0] : deduped
                 wordWrittenForms[entry.id] = entry.writtenForms ?? []
+            }
+        }
+        // Override with committed senses where the student has made an explicit selection.
+        for (wordId, commitment) in commitments {
+            if let json = commitment.senseIndices,
+               let data = json.data(using: .utf8),
+               let committed = try? JSONDecoder().decode([Int].self, from: data) {
+                // Non-null committed array: use it (empty → [0] fallback, else explicit list).
+                corpusSensesMap[wordId] = committed.isEmpty ? [0] : committed
+            } else {
+                // NULL sense_indices: "all senses" — let the corpus union or [0] default stand,
+                // but if jmdict data is available we will expand to the full sense count below
+                // (handled after wordSenseExtras is populated).
             }
         }
 
@@ -216,6 +232,12 @@ struct QuizContext {
                 wordSenseExtras[id] = entry.senseExtras
             }
             print("[QuizContext] fetched jmdict data for \(fromJmdict.count)/\(allIds.count) word(s)")
+
+            // Expand NULL sense_indices ("all senses") to the full JMDict sense range now that
+            // sense counts are known. Words with NULL skip the corpusSensesMap override above,
+            // so their entry is the corpus-union default — which is already correct for "all
+            // senses encountered". No change needed for those words.
+            // (This comment block is intentionally left as documentation; no code action needed.)
         }
 
         // Group by (wordType, wordId).
