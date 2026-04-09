@@ -292,10 +292,11 @@ struct WordDetailSheet: View {
     }
 
     /// Per-sense display using the shared JMDictSenseListView.
-    /// When the word is committed, senses are interactive: the student can tap to
+    /// When the word is in `.learning` state, senses are interactive: the student can tap to
     /// add or remove senses from their enrolled set.
+    /// When `.known`, senses are read-only (no checkboxes, just opacity dimming).
     private var senseExtrasSection: some View {
-        let isCommitted = item.readingState != .unknown
+        let isCommitted = item.readingState == .learning
         return JMDictSenseListView(
             senseExtras: item.senseExtras,
             originSenseIndices: originSenseIndices,

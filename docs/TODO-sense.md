@@ -202,7 +202,7 @@ source as `QuizContext`.
 
 ---
 
-### Step 5 — iOS app: in-app sense enrollment (FUTURE)
+### Step 5 — iOS app: in-app sense enrollment (done 2026-04-08)
 
 **Goal:** when the student commits to learning a word, record *which senses* they
 are committing to, seeded from the document they were browsing. After commitment
@@ -284,6 +284,9 @@ DocumentReaderView passes `.reference(title:line:)` for the tapped word's line.
 Derive `originSenseIndices: [Int]` from `origin` lazily inside the sheet:
 - `.reference(title, line)` → find `item.references[title]?.first { $0.line == line }?.llmSense?.senseIndices ?? []`
 - `.document(title)` → union of `senseIndices` across all `item.references[title]` references
+- `.none` (nil) → fall back to `item.corpusSenseIndices` (corpus-wide union). This ensures
+  words with corpus coverage are shown at full brightness even when opened without a specific
+  origin, and words with no corpus data show everything equally (empty array)
 
 ---
 
@@ -301,17 +304,23 @@ struct JMDictSenseListView: View {
 }
 ```
 
-Visual treatment per sense row (when `onToggleSense` is non-nil, i.e. word is committed):
+Visual treatment (orthogonal signals):
 
-| Condition | Treatment |
-|---|---|
-| In `committedSenseIndices` (or `committedSenseIndices` is nil = all enrolled) | Normal opacity, filled checkmark |
-| In `originSenseIndices` only (not committed) | Normal opacity, empty checkbox ring |
-| In neither | 40% opacity, empty checkbox ring |
+**Opacity:** purely a function of `originSenseIndices`. When `originSenseIndices`
+is non-empty, senses in it render at full brightness; senses outside it render at
+40% opacity. When `originSenseIndices` is empty, no opacity dimming occurs —
+everything is full brightness. This ensures that words without corpus context
+(or opened from the flat vocab list with no specific origin) show all senses
+equally visible.
 
-When the word is not yet committed (`onToggleSense` is nil), show no checkboxes:
-just dim senses not in `originSenseIndices` to 40% opacity — same as current
-behavior but scoped to the navigation origin rather than the corpus-wide union.
+**Checkbox:** shown for all senses when `onToggleSense` is non-nil (word is committed).
+- Filled checkmark = sense is in `committedSenseIndices`
+- Empty ring = sense is not committed
+- Positioned at the right edge of each sense row (after content via `Spacer()`)
+
+The two signals are now independent: brightness tells you "is this sense relevant
+to where you just navigated from?" while the checkbox tells you "is this sense in
+your quiz rotation?"
 
 ---
 
@@ -328,21 +337,39 @@ behavior but scoped to the navigation origin rather than the corpus-wide union.
   an empty array `[]` — not `NULL` — to signal "explicitly no senses selected."
   The quiz layer treats `[]` as "use sense 0" (existing fallback from Step 1).
 
-**After commitment (reading state = `.learning` or `.known`):**
+**After commitment (reading state = `.learning`):**
 - Pass `originSenseIndices`, `committedSenseIndices` (decoded from
   `item.committedSenseIndices`), and `onToggleSense` to `JMDictSenseListView`.
-- Every sense row shows a checkbox. Tapping calls `toggleCommittedSense(index:)`:
+- Every sense row shows a checkbox (right-aligned). Tapping the row or checkbox
+  calls `toggleCommittedSense(index:)`:
   - If index is in the current committed set → remove it.
   - If index is not in the set → add it.
   - Write updated array back via `corpus.setCommittedSenseIndices(...)`.
+- Opacity still reflects `originSenseIndices` (whether the sense appears in the
+  document/line the student came from), while the checkbox independently shows
+  enrollment state. This way, encountering a word from a new document shows its
+  new senses at full brightness, even if not yet enrolled.
 - No "all must be checked" guard — an empty committed array is valid and falls
   back to sense 0 in quizzes (Step 1 behavior).
-- No explanatory label needed; the checkboxes are self-evident.
+- No explanatory label needed; the checkboxes and brightness contrast are
+  self-evident.
+
+**After marking known (reading state = `.known`):**
+- Pass `originSenseIndices` and `committedSenseIndices`, but `onToggleSense: nil`.
+- No checkboxes appear. Senses are read-only.
+- Opacity still reflects `originSenseIndices` to show which senses are relevant
+  from the current document context, but the student cannot toggle enrollment.
+- If the student wants to adjust sense enrollment, they can move the word back to
+  `.learning` state.
+- This read-only treatment signals that sense selection is finalized for a known word.
 
 **Encountering the word again from a different document:**
-- Senses in `originSenseIndices` that are not in `committedSenseIndices` appear
-  at full brightness with an empty checkbox. The student sees them as unchecked
-  and can tap to add them. No banner or pop-up needed — the visual state is
+- Senses in the new document's `originSenseIndices` that are not in
+  `committedSenseIndices` appear at full brightness with an empty checkbox.
+  The student sees them as unchecked and can tap to add them. Senses from the
+  previous document that are no longer in `originSenseIndices` dim to 40% opacity
+  but remain checked (if enrolled) — indicating "you enrolled this, but you're
+  not seeing it in the current context." No banner needed — the visual state is
   sufficient.
 
 ---
@@ -404,7 +431,7 @@ inline.
 |---|---|
 | `QuizDB.swift` | Add `senseIndices` to `WordCommitment`; add `setCommittedSenseIndices` helper |
 | `VocabCorpus.swift` | Add `committedSenseIndices` to `VocabItem` + `committedSensesForDisplay` helper; populate in load/refresh |
-| `WordDetailSheet.swift` | Accept `origin: WordDetailOrigin?`; derive `originSenseIndices`; seed committed senses on commit; pass toggles to sense list post-commit |
+| `WordDetailSheet.swift` | Accept `origin: WordDetailOrigin?`; derive `originSenseIndices`; seed committed senses on commit; pass toggles to sense list only when `.learning` |
 | `JMDictSenseListView.swift` | Replace `corpusSenseIndices` with `originSenseIndices` + `committedSenseIndices` + `onToggleSense`; update all callers |
 | `VocabBrowserView.swift` | Pass `.document(title:)` origin when opening `WordDetailSheet` |
 | `DocumentReaderView.swift` | Pass `.reference(title:line:)` origin when opening `WordDetailSheet` |
