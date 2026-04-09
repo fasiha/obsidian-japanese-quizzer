@@ -37,6 +37,7 @@ import {
   JMDICT_DB,
   loadGrammarDatabases,
   extractGrammarBullets,
+  extractDetailsBlocks,
 } from "./.claude/scripts/shared.mjs";
 import { checkAndUpdateCompoundVerbs } from "./.claude/scripts/check-compound-verbs.mjs";
 
@@ -217,6 +218,8 @@ function extractContextBefore(content, endIdx) {
   const lines = content.slice(0, endIdx).split("\n");
   let i = lines.length - 1;
   // Skip blank lines and entire <details>...</details> blocks going backward.
+  // Handles both multi-line blocks (last line is bare </details>) and
+  // single-line blocks (entire <details>...</details> on one line).
   while (i >= 0) {
     const trimmed = lines[i].trim();
     if (trimmed === "") {
@@ -224,8 +227,14 @@ function extractContextBefore(content, endIdx) {
       continue;
     }
     if (trimmed === "</details>") {
+      // Multi-line block: scan backward to the opening <details> tag.
       i--;
       while (i >= 0 && !lines[i].trim().startsWith("<details")) i--;
+      i--;
+      continue;
+    }
+    if (trimmed.startsWith("<details")) {
+      // Single-line block: the entire block is on this line, skip it.
       i--;
       continue;
     }
@@ -257,19 +266,14 @@ function extractContextBefore(content, endIdx) {
 // bullet narration text (non-Japanese text after the Japanese tokens), and
 // the context paragraph preceding the <details> block.
 function extractVocabBullets(content) {
-  const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
-  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
   const bullets = [];
-  let match;
-  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
-    const inner = match[1];
-    if (!SUMMARY_REGEXP.test(inner)) continue;
-    const openingTagLen = match[0].length - inner.length - "</details>".length;
+  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
+    const openingTagLen = match[0].length - match[1].length - "</details>".length;
     const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
     // Fallback: use the <details> opening line number if no sentence found above.
     const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
     const line = sentenceLine ?? detailsOpeningLine;
-    const innerLines = inner.split("\n");
+    const innerLines = stripped.split("\n");
     for (const innerLine of innerLines) {
       const trimmed = innerLine.trim();
       if (!trimmed.startsWith("-")) continue;
@@ -561,20 +565,15 @@ function parseSingleSenseResponse(fullText, displayForm, numSenses) {
 }
 
 /**
- * Call Haiku to determine which JMDict sense(s) a single sentence uses the
- * word in. Returns an array of valid 0-based sense indices and the full raw
- * response text (for the reasoning log).
- * Throws on API error or malformed response (caller handles abort).
+ * Build the prompt for a single-reference sense analysis call.
  */
-async function analyzeReferenceSense(anthropic, jmWord, ref) {
-  const { displayForm, wordLine, senseList } = buildSensePromptHeader(jmWord);
-
+function buildSingleSensePrompt(jmWord, ref) {
+  const { wordLine, senseList } = buildSensePromptHeader(jmWord);
   const parts = [];
   if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
   if (ref.narration) parts.push(`Note: ${ref.narration}`);
   const contextBlock = parts.join("\n");
-
-  const prompt =
+  return (
     `You are helping a Japanese language learner understand which sense of a word is used in a specific sentence.\n\n` +
     `${wordLine}\n\n` +
     `JMDict senses (0-indexed):\n${senseList}\n\n` +
@@ -583,7 +582,19 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
     `A sentence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
     `Use an empty array if the context is insufficient to determine. ` +
     `Think step by step, then end your response with a JSON code block:\n` +
-    "```json\n{\"sense_indices\": [0]}\n```";
+    "```json\n{\"sense_indices\": [0]}\n```"
+  );
+}
+
+/**
+ * Call Haiku to determine which JMDict sense(s) a single sentence uses the
+ * word in. Returns an array of valid 0-based sense indices and the full raw
+ * response text (for the reasoning log).
+ * Throws on API error or malformed response (caller handles abort).
+ */
+async function analyzeReferenceSense(anthropic, jmWord, ref) {
+  const { displayForm } = buildSensePromptHeader(jmWord);
+  const prompt = buildSingleSensePrompt(jmWord, ref);
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -716,12 +727,14 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
       if (refsAnalyzed >= maxSenses) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
+          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref).replaceAll(/\n/g, '\n    > ')}\n`);
         }
         continue;
       }
       if (noLlm) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
+          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref).replaceAll(/\n/g, '\n    > ')}\n`);
         }
         noLlmSkippedCount += uncachedRefs.length;
         continue;

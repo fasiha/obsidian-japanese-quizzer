@@ -130,18 +130,27 @@ export function intersectSets(sets) {
   return result;
 }
 
+// Helper: extract <details> blocks matching a summary type, with summary tags stripped.
+// Yields { match, inner, stripped } for each matching block.
+export function* extractDetailsBlocks(content, summaryType) {
+  const summaryRegex = new RegExp(`<summary>\\s*${summaryType}\\s*<\\/summary>`, "i");
+  const detailsRegex = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
+  let match;
+  while ((match = detailsRegex.exec(content)) !== null) {
+    const inner = match[1];
+    if (!summaryRegex.test(inner)) continue;
+    const stripped = inner.replace(/<summary>[\s\S]*?<\/summary>/i, "");
+    yield { match, inner, stripped };
+  }
+}
+
 // Extract bullet text from all <details><summary>Vocab</summary> blocks in a file.
 // Returns plain strings (no line numbers). Used by get-quiz-context.mjs.
 // check-vocab.mjs has its own version that also tracks line numbers.
 export function extractVocabBullets(content) {
-  const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
-  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
   const bullets = [];
-  let match;
-  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
-    const inner = match[1];
-    if (!SUMMARY_REGEXP.test(inner)) continue;
-    for (const line of inner.split("\n")) {
+  for (const { stripped } of extractDetailsBlocks(content, "Vocab")) {
+    for (const line of stripped.split("\n")) {
       const trimmed = line.trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
@@ -278,18 +287,9 @@ export function loadGrammarDatabases() {
  * and note is any free text after it.
  */
 export function extractGrammarBullets(content) {
-  const SUMMARY_REGEXP = /<summary>\s*Grammar\s*<\/summary>/i;
-  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
   const bullets = [];
-  let match;
-  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
-    const inner = match[1];
-    if (!SUMMARY_REGEXP.test(inner)) continue;
-
-    // Strip the <summary>...</summary> tag so bullets on the same line are visible
-    const stripped = inner.replace(/<summary>[\s\S]*?<\/summary>/i, "");
-
-    const openingTagLen = match[0].length - inner.length - "</details>".length;
+  for (const { match, stripped } of extractDetailsBlocks(content, "Grammar")) {
+    const openingTagLen = match[0].length - match[1].length - "</details>".length;
     const innerStartIdx = match.index + openingTagLen;
     const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
 

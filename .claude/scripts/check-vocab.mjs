@@ -21,6 +21,7 @@ import {
   parseFrontmatter,
   projectRoot,
   openJmdictDb,
+  extractDetailsBlocks,
 } from "./shared.mjs";
 
 // Extract bullets (with 1-indexed line numbers) from all Vocab details blocks.
@@ -30,22 +31,14 @@ import {
 // the 1-indexed line number of the first character of the inner block, then
 // add the 0-indexed line offset within the block for each bullet.
 function extractVocabBullets(content) {
-  const SUMMARY_REGEXP = /<summary>\s*Vocab\s*<\/summary>/i;
-  const DETAILS_REGEXP = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
   const bullets = [];
-  let match;
-  while ((match = DETAILS_REGEXP.exec(content)) !== null) {
-    const inner = match[1];
-    if (!SUMMARY_REGEXP.test(inner)) continue;
-
-    // inner starts at: match.index + (opening tag length)
-    // opening tag length = match[0].length - inner.length - '</details>'.length
-    const openingTagLen = match[0].length - inner.length - "</details>".length;
+  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
+    const openingTagLen = match[0].length - match[1].length - "</details>".length;
     const innerStartIdx = match.index + openingTagLen;
-    // Line number (1-indexed) of the first character of inner
+    // Line number (1-indexed) of the first character of the stripped content
     const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
 
-    const innerLines = inner.split("\n");
+    const innerLines = stripped.split("\n");
     for (let i = 0; i < innerLines.length; i++) {
       const trimmed = innerLines[i].trim();
       if (!trimmed.startsWith("-")) continue;
