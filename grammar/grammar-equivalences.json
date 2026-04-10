@@ -92,21 +92,26 @@
     "topics": [
       "bunpro:verb-た-noun",
       "dbjg:relative-clause",
-      "genki:qualifying-nouns-with-verbs-and-adjectives"
+      "genki:qualifying-nouns-with-verbs-and-adjectives",
+      "genki:using-sentences-to-qualify-nouns",
+      "kanshudo:relative-clause"
     ],
-    "summary": "In Japanese, verbs and adjectives modify nouns by directly preceding them in plain (short) form — no relative pronoun like 'that' or 'which' is needed. The modifying clause can use any plain-form tense: dictionary form for habitual or future actions, た-form for completed or past actions, and ている-form for ongoing or resultant states. Adjectives also follow this pattern: い-adjectives precede the noun unchanged, while な-adjectives drop だ and take な.",
+    "summary": "In Japanese, verbs and adjectives modify nouns by directly preceding them in plain (short) form — no relative pronoun like 'that' or 'which' is needed. The modifying clause can use any plain-form tense: dictionary form for habitual or future actions, た-form for completed or past actions, and ている-form for ongoing or resultant states. Adjectives follow the same pattern: い-adjectives precede the noun unchanged, while な-adjectives drop だ and take な. When the embedded clause has an explicit subject, it is marked with が, not は.",
     "subUses": [
       "Non-past verb (habitual/future): 毎朝走る人 (a person who runs every morning)",
       "Past-action (た-form): 昨日読んだ本 (the book I read yesterday)",
       "Ongoing state (ている-form): 眠っている子供 (a sleeping child / a child who is sleeping)",
-      "い-adjective with embedded subject: 目が青い人 (a person with blue eyes)",
+      "Potential verb: 泳げる子供 (a child who can swim)",
+      "い-adjective: 目が青い人 (a person with blue eyes)",
       "な-adjective: 静かな場所 (a quiet place)",
-      "Gap noun as object of the embedded verb: 妹が作ったケーキ (the cake my sister made — ケーキ is the object of 作った)"
+      "Gap noun as object of the embedded verb: 妹が作ったケーキ (the cake my sister made — ケーキ is the object of 作った)",
+      "Gap noun as indirect object or recipient: 友達にもらった本 (the book I received from a friend — 本 is the received item)"
     ],
     "cautions": [
       "Never use ます-form in a relative clause: 住んでいる人 is correct; 住んでいます人 is ungrammatical",
       "な-adjectives drop だ and add な directly before the noun: 元気な子 not 元気だ子",
-      "The noun being modified can fill any argument role in the embedded clause — subject, object, location, instrument, etc. The position is implied; no gap marker is used"
+      "The noun being modified can fill any argument role in the embedded clause — subject, object, location, recipient, etc. The position is implied; no gap marker is used",
+      "The embedded clause subject takes が, not は: 犬が好きな人 (a person who likes dogs) — は cannot replace が here"
     ]
   },
   {
@@ -676,22 +681,6 @@
       "できる (potential of する) is a standalone verb, not a conjugation pattern — it takes が for the object: 料理ができる (can cook)",
       "Do not use させられる in quiz sentences for this topic — させられる is causative-passive ('being forced to do'), which is a confusing form that belongs to a different grammar topic. Stick to clear potential forms like 書ける, 食べられる, できる"
     ]
-  },
-  {
-    "topics": [
-      "genki:using-sentences-to-qualify-nouns"
-    ],
-    "summary": "Genki II Chapter 15 extends basic noun modification to cases where the embedded clause contains a noun or な-adjective as its predicate. Because nouns and な-adjectives cannot directly precede another noun, the copula forms の/な/だった/だった are used: noun/な-adj + な + noun (non-past attributive) or noun/な-adj + だった + noun (past). This completes the pattern started in Genki I Ch.9, which covered verb and い-adjective modifiers.",
-    "subUses": [
-      "な-adjective as predicate (non-past): 有名な選手が来た (a famous player came — 有名 modifies 選手 via な)",
-      "Noun as predicate (non-past): 医者の友達がいる (I have a friend who is a doctor — の links the predicate noun to the head noun)",
-      "Past copula (だった): 子供だった頃の話 (a story from the time when I was a child)"
-    ],
-    "cautions": [
-      "Non-past noun/な-adjective predicates inside a relative clause use な (not だ): 先生な人 is wrong; 先生の人 or restructuring the sentence is needed — の is used for noun predicates, な for な-adjectives",
-      "Do not confuse の here (noun predicate in relative clause) with possessive の — context and clause structure distinguish them"
-    ],
-    "stub": true
   },
   {
     "topics": [
