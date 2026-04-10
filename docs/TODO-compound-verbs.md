@@ -659,13 +659,87 @@ All three models identify the catch-all risk in their reasoning. Key differences
 
 The `more-gemma-clusters/` runs used the updated prompt (with symmetric-exclusion and compound-scan requirements). With the updated prompt, Gemma-31b carries symmetric exclusions correctly into the JSON — the earlier weakness was purely a prompt effect and 31b is now at Haiku quality for sharpening. Gemma-26b-a4b also handles exclusions correctly with the updated prompt, but its Pass 1 cluster step produces fewer, broader meanings (3 for 出す vs. Haiku's 4), so the sharpening pass is working from a weaker starting point regardless of prompt quality.
 
-### Verdict (setting hardware aside)
+### Verdict (setting hardware aside) — original 2026-04-05
 
 **Gemma-26b-a4b** is not competitive. Drop it. Its assignment behavior on complex suffixes is broken — it abandons rather than decides — and its validation output is unreliable at the point where it matters most (出す, the suffix with the most overlapping meanings).
 
 **Gemma-31b** is a credible model but a step behind at each pass. For Pass 2 (assignment) it is more conservative than Haiku — it makes fewer errors but also assigns fewer compounds, leaving a larger opaque tail that requires more human correction. For Pass 2b (validation) Sonnet is noticeably better: its reasoning is sharper, it identifies more flags, and it doesn't second-guess itself mid-response. For Pass 1b (sharpening) Gemma-31b is roughly comparable to Haiku.
 
 **Practical conclusion:** Haiku for Pass 2, Sonnet for Pass 2b. Gemma-31b could substitute for Haiku on Pass 1b (sharpening) if API access is unavailable, but it offers no quality advantage over Haiku there either.
+
+### Re-evaluation with glosses and temperature tuning (2026-04-10)
+
+The original evaluation was unfair to the Gemma models in two compounding ways:
+
+1. **Kanji-to-meaning knowledge was an uncontrolled variable.** The original prompts only glossed rare/unknown compounds (those with zero BCCWJ frequency or no JMDict ID). Haiku, Sonnet, and Gemini know Japanese well enough to classify 組み立てる without an English definition; the Gemma models often don't. The evaluation was testing kanji recall, not classification reasoning.
+
+2. **Temperature 1.0 is suboptimal for Gemma 4.** Community benchmarks consistently show Gemma 4 performing better at temperature 1.2–1.5 with min-p 0.05.
+
+To isolate classification reasoning from kanji knowledge, all models were re-run on the same 31b sharpened meanings with `--all-glosses` (every compound gets a JMDict English gloss). Gemma models were run locally via llama.cpp at temperatures 1.2 and 1.5 with `--reasoning-format deepseek`. The original Gemma runs at temperature 1.0 without glosses are included as a baseline.
+
+Validation script: `node compound-verbs/validate-comparison.mjs`
+
+**立てる (51 compounds)**
+
+| Model | M1 (vertical) | M2 (intensity) | M3 (formal) | M4 (transform) | Unassigned |
+|---|---|---|---|---|---|
+| Gemini-think (rare glosses only) | 6 | 35 | 2 | 7 | **2** |
+| Gemini-think (all glosses) | 10 | 33 | 3 | 3 | **4** |
+| Gemini-fast (rare glosses only) | 5 | 27 | 6 | 8 | **5** |
+| Gemini-fast (all glosses) | 8 | 33 | 3 | 6 | **1** |
+| Sonnet (rare glosses only) | 6 | 32 | 2 | 11 | **0** |
+| Sonnet (all glosses) | 9 | 32 | 3 | 7 | **0** |
+| Haiku (rare glosses only) | 8 | 29 | 7 | 7 | **0** |
+| Haiku (all glosses) | 9 | 24 | 4 | 11 | **3** |
+| 31b @ 1.2 (all glosses) | 9 | 33 | 2 | 2 | **6** |
+| 31b @ 1.5 (all glosses) | 9 | 33 | 3 | 3 | **4** |
+| 26b-a4b @ 1.2 (all glosses) | 5 | 29 | 3 | 7 | **7** |
+| 26b-a4b @ 1.5 (all glosses) | 4 | 29 | 4 | 3 | **11** |
+| 31b @ 1.0 (rare glosses only, orig) | 6 | 25 | 3 | 6 | **12** |
+| 26b-a4b @ 1.0 (rare glosses only, orig) | 6 | 31 | 4 | 10 | **0** |
+
+**出す (100 compounds)**
+
+| Model | M1 (extract) | M2 (begin) | M3 (create) | M4 (force) | Unassigned |
+|---|---|---|---|---|---|
+| Gemini-think (rare glosses only) | 60 | 12 | 23 | 11 | **0** |
+| Gemini-think (all glosses) | 71 | 12 | 16 | 7 | **2** |
+| Gemini-fast (rare glosses only) | 55 | 14 | 14 | 13 | **6** |
+| Gemini-fast (all glosses) | 58 | 9 | 18 | 9 | **6** |
+| Sonnet (rare glosses only) | 33 | 17 | 23 | 26 | **1** |
+| Sonnet (all glosses) | 26 | 11 | 13 | 11 | **39** |
+| Haiku (rare glosses only) | 39 | 12 | 15 | 19 | **15** |
+| Haiku (all glosses) | 33 | 12 | 15 | 17 | **23** |
+| 31b @ 1.2 (all glosses) | 60 | 11 | 12 | 14 | **3** |
+| 31b @ 1.5 (all glosses) | 63 | 11 | 15 | 12 | **1** |
+| 26b-a4b @ 1.2 (all glosses) | 53 | 13 | 19 | 10 | **12** |
+| 26b-a4b @ 1.5 (all glosses) | 59 | 17 | 15 | 14 | **5** |
+| 31b @ 1.0 (rare glosses only, orig) | 18 | 12 | 5 | 7 | **58** |
+| 26b-a4b @ 1.0 (rare glosses only, orig) | 12 | 12 | 6 | 2 | **68** |
+
+#### Observations
+
+**Glosses transformed the Gemma results.** For 出す, 31b went from 58 unassigned to 1–3; 26b-a4b went from 68 to 5–12. The original "not competitive" verdict was measuring kanji recall, not classification capability.
+
+**Glosses hurt the Claude models on 出す but not Gemini.** Sonnet went from 1 unassigned to 39; Haiku went from 15 to 23. Gemini-think went from 0 to 2; Gemini-fast stayed at 6. The explicit English definitions make Claude dramatically more cautious, but Gemini shrugs them off. This is a Claude-specific behavioral pattern, not a general property of strong-Japanese models.
+
+**31b with glosses matches Gemini-think** on 出す (1–3 unassigned versus 0) and is comparable on 立てる.
+
+**26b-a4b with glosses is competitive with Gemini-fast** on 出す at temperature 1.5 (5 unassigned versus 6), running at 48 tokens/second locally.
+
+**Temperature effects are modest compared to glosses.** For 31b, the difference between temp 1.2 and 1.5 is 1–2 compounds. For 26b-a4b the spread is wider (5–12 on 出す) but still dwarfed by the gloss effect.
+
+**The M1 (extraction) bucket is the main divergence point for 出す.** Gemma and Gemini models assign 53–63 compounds to M1; Claude models assign 26–39. The total assignment counts for M2/M3 are similar across all models. The disagreement is not about whether compounds are assignable but about the M1/M4 boundary — Claude is more willing to read force/coercion into compounds that other models treat as simple extraction.
+
+#### Revised verdict
+
+The original verdict that "Gemma-26b-a4b is not competitive — drop it" is **retracted**. With glosses and appropriate temperature:
+
+- **31b** is a strong Pass 2 model — on par with Gemini-think for assignment coverage, stable across temperatures. At ~12 tokens/second locally it is practical for batch runs.
+- **26b-a4b** is viable for Pass 2 at temperature 1.5 with glosses. At ~48 tokens/second it is the fastest option for rapid iteration.
+- **Sonnet with rare glosses only** is the best single-call model (1 unassigned on 出す, 0 on 立てる) — but adding all glosses paradoxically degrades it.
+
+**Updated practical conclusion:** Use `--all-glosses` for local Gemma runs. Do not use `--all-glosses` for Claude API runs — it makes them worse on 出す. Sonnet with rare glosses only for production Pass 2; local 31b with all glosses as a free alternative that matches Gemini-think quality.
 
 ---
 

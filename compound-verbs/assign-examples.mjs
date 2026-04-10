@@ -10,6 +10,7 @@
  *   node compound-verbs/assign-examples.mjs 出す
  *   node compound-verbs/assign-examples.mjs 出す --dry-run
  *   node compound-verbs/assign-examples.mjs 出す --model claude-haiku-4-5-20251001
+ *   node compound-verbs/assign-examples.mjs 立てる --all-glosses --local --temperature 1.3
  *
  * Automatically uses <v2>-meanings-sharpened.json if it exists (logged with a
  * bright notice), otherwise falls back to <v2>-meanings.json.
@@ -31,6 +32,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { Agent } from "undici";
 import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
 import chalk from "chalk";
@@ -52,11 +54,15 @@ try {
 const args = process.argv.slice(2);
 const v2 = args.find((a) => !a.startsWith("--"));
 const dryRun = args.includes("--dry-run");
+const allGlosses = args.includes("--all-glosses");
+const useLocal = args.includes("--local");
 const modelFlagIndex = args.indexOf("--model");
 const model = modelFlagIndex >= 0 ? args[modelFlagIndex + 1] : "claude-haiku-4-5-20251001";
+const tempFlagIndex = args.indexOf("--temperature");
+const temperature = tempFlagIndex >= 0 ? parseFloat(args[tempFlagIndex + 1]) : undefined;
 
 if (!v2) {
-  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--model MODEL]");
+  console.error("Usage: node compound-verbs/assign-examples.mjs <v2> [--dry-run] [--model MODEL] [--all-glosses] [--local] [--temperature N]");
   process.exit(1);
 }
 
@@ -157,9 +163,13 @@ console.log(`Using meanings: ${useSharpened ? "sharpened" : "original"} (${meani
 // them confidently without adding noise for well-known words.
 
 const compoundLines = trimmed.map((entry) => {
-  const needsGloss = entry.bccwjFrequency === 0 || !entry.jmdictId;
-  if (needsGloss && entry.ninjal_senses?.[0]?.definition_en) {
-    return `${entry.headword}（${entry.ninjal_senses[0].definition_en}）`;
+  const needsGloss = allGlosses || entry.bccwjFrequency === 0 || !entry.jmdictId;
+  if (needsGloss) {
+    // Prefer JMDict meanings (first sense, joined), fall back to NINJAL definition
+    const jmdictGloss = entry.jmdictMeanings?.[0]?.join("; ");
+    const ninjalGloss = entry.ninjal_senses?.[0]?.definition_en;
+    const gloss = jmdictGloss || ninjalGloss;
+    if (gloss) return `${entry.headword}（${gloss}）`;
   }
   return entry.headword;
 });
@@ -192,7 +202,7 @@ Rules:
 - Only assign a compound to multiple meanings if each assignment is as obvious as a single-meaning case; do not stretch a meaning to avoid omitting a compound.
 - Omit a compound only if -${v2}'s role in it is opaque or fully lexicalized (the compound must be memorized as a whole).
 
-Compounds ending in -${v2} (${trimmed.length} most common, sorted by corpus frequency; rare or lesser-known entries include an English gloss):
+Compounds ending in -${v2} (${trimmed.length} most common, sorted by corpus frequency${allGlosses ? "; each entry includes an English gloss" : "; rare or lesser-known entries include an English gloss"}):
 ${compoundListText}
 
 Reason through each compound. Then end your response with a JSON object whose keys are the exact meaning strings above and whose values are arrays of matching headword strings (kanji only, no glosses). Omit a key entirely if no compounds clearly fit that meaning.
@@ -215,16 +225,71 @@ if (dryRun) {
 
 // --- Call LLM ---
 
-console.log(`Calling ${model}...`);
+let responseText;
+let parseText; // text to extract JSON from (may differ from responseText for local models)
+let actualModel = model;
+let serverProps;
 
-const client = new Anthropic();
-const message = await client.messages.create({
-  model,
-  max_tokens: 4096,
-  messages: [{ role: "user", content: prompt }],
-});
+if (useLocal) {
+  const localBaseUrl = process.env.LOCAL_LLM_URL || "http://localhost:8080";
 
-const responseText = message.content[0].text.trim();
+  // Preflight: query server props for model info and default settings
+  try {
+    const propsRes = await fetch(`${localBaseUrl}/props`);
+    serverProps = await propsRes.json();
+  } catch (e) {
+    console.error(`Cannot reach local LLM at ${localBaseUrl}/props — is the server running?`);
+    process.exit(1);
+  }
+  const serverTemp = serverProps.default_generation_settings?.params?.temperature;
+  const effectiveTemp = temperature ?? serverTemp;
+  console.log(`Local server: model loaded, server default temperature=${serverTemp}`);
+  console.log(`Effective temperature for this run: ${effectiveTemp}${temperature != null ? " (overridden by --temperature)" : " (server default)"}`);
+
+  const body = {
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 16384,
+  };
+  if (temperature != null) body.temperature = temperature;
+  const longTimeoutAgent = new Agent({
+    headersTimeout: 30 * 60 * 1000,  // 30 min to first byte (thinking takes a while)
+    bodyTimeout: 30 * 60 * 1000,
+  });
+  const res = await fetch(`${localBaseUrl}/v1/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    dispatcher: longTimeoutAgent,
+    signal: AbortSignal.timeout(30 * 60 * 1000),
+  });
+  if (!res.ok) {
+    console.error(`Local LLM error: ${res.status} ${res.statusText}`);
+    const errBody = await res.text();
+    console.error(errBody);
+    process.exit(1);
+  }
+  const json = await res.json();
+  actualModel = json.model || "local-unknown";
+  const msg = json.choices[0].message;
+  const reasoningText = msg.reasoning_content || msg.thinking || "";
+  const contentText = (msg.content || "").trim();
+  // For archive: always save both sections
+  responseText = reasoningText
+    ? `========== THINKING ==========\n${reasoningText.trim()}\n\n========== ANSWER ==========\n${contentText}`
+    : contentText;
+  // For JSON parsing: try content first, fall back to combined if content has no JSON
+  parseText = contentText || reasoningText.trim();
+  console.log(`Local model reported: ${actualModel}`);
+  if (reasoningText) console.log(`Reasoning/thinking output captured (${reasoningText.length} chars)`);
+  if (!contentText && reasoningText) console.log(`WARNING: content was empty, will parse JSON from thinking output`);
+} else {
+  console.log(`Calling ${model}...`);
+  const client = new Anthropic();
+  const apiParams = { model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] };
+  if (temperature != null) apiParams.temperature = temperature;
+  const message = await client.messages.create(apiParams);
+  responseText = message.content[0].text.trim();
+}
 
 // --- Write archive .txt ---
 
@@ -233,15 +298,21 @@ mkdirSync(clustersDir, { recursive: true });
 
 const isoString = new Date().toISOString();
 const timestamp = isoString.replace(/[:.]/g, "-").replace("T", "_").replace("Z", "");
-const archiveTxtPath = join(clustersDir, `${v2}-assignments-${timestamp}-${model}.txt`);
+const safeModelName = actualModel.replace(/[/:]/g, "-");
+const archiveTxtPath = join(clustersDir, `${v2}-assignments-${timestamp}-${safeModelName}.txt`);
 const canonicalPath = join(clustersDir, `${v2}-assignments.json`);
 
 const flagsSummary = [
   `suffix: ${v2}`,
-  `model: ${model}`,
+  `model: ${actualModel}`,
   `compounds-sent: ${trimmed.length}`,
   `timestamp: ${isoString}`,
   `args: node compound-verbs/assign-examples.mjs ${args.join(" ")}`,
+  ...(temperature != null ? [`temperature: ${temperature}`] : []),
+  ...(allGlosses ? [`all-glosses: true`] : []),
+  ...(serverProps ? [`server-temperature: ${serverProps.default_generation_settings?.params?.temperature}`,
+    `server-min-p: ${serverProps.default_generation_settings?.params?.min_p}`,
+    `server-top-k: ${serverProps.default_generation_settings?.params?.top_k}`] : []),
 ].join("\n");
 
 writeFileSync(
@@ -264,11 +335,12 @@ writeFileSync(
 
 let parsed;
 try {
-  const allObjectLineMatches = [...responseText.matchAll(/^\s*\{/gm)];
+  const textToParse = parseText || responseText;
+  const allObjectLineMatches = [...textToParse.matchAll(/^\s*\{/gm)];
   const lastObjectStart = allObjectLineMatches.at(-1);
   const jsonText = lastObjectStart
-    ? responseText.slice(lastObjectStart.index).replace(/\n?```$/, "").trim()
-    : responseText.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
+    ? textToParse.slice(lastObjectStart.index).replace(/\n?```$/, "").trim()
+    : textToParse.replace(/^```(?:json)?\n?/i, "").replace(/\n?```$/, "").trim();
   parsed = JSON.parse(jsonText);
 } catch (err) {
   console.error("ERROR: Could not parse LLM response as JSON.");
@@ -316,8 +388,10 @@ for (const [key, value] of Object.entries(parsed)) {
 const output = {
   _metadata: {
     suffix: v2,
-    model,
+    model: actualModel,
     timestamp: isoString,
+    ...(temperature != null && { temperature }),
+    ...(allGlosses && { allGlosses: true }),
     compounds_sent: trimmed.map((e) => e.headword),
   },
   ...assignments,
