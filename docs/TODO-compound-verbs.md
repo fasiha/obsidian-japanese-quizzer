@@ -581,199 +581,124 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
 
 ---
 
-## Appendix: Gemma 4 Model Evaluation — Full Pipeline Results (2026-04-05)
+## Appendix: Model Comparison for Pass 2 (Assignment)
 
-Two local Gemma 4 models were run through the entire pipeline (Pass 1 through Pass 2b) on five suffixes (出す, 付く, 立てる, 返す, 歩く) and evaluated against each other and against Haiku + Sonnet:
+### Background
 
-- **google-gemma-4-31b** — dense 31B model, ~3 tokens/second on a local laptop
-- **google-gemma-4-26b-a4b** — mixture-of-experts 26B-active-4B model, ~30 tokens/second locally
+Pass 2 asks an LLM to assign each compound to one or more suffix meanings, or to omit it as lexicalized/opaque. 12 model configurations were evaluated on 立てる (51 compounds, 4 meanings) and 出す (100 compounds, 4 meanings):
 
-Each model ran its own Pass 1 (cluster discovery), so the sharpening inputs differed per model — this is a whole-pipeline comparison, not just a sharpening comparison. Output in `compound-verbs/more-gemma-clusters/`; Haiku/Sonnet runs in `compound-verbs/clusters/`.
+- **Gemini 2.5 Flash and Pro** ("fast" and "think") — ran with rare glosses only and with all glosses
+- **Claude Sonnet 4 and Haiku 4.5** — ran with rare glosses only and with all glosses
+- **Gemma 4 31b** (dense, ~12 tokens/second locally) — ran with all glosses at temperatures 1.2 and 1.5
+- **Gemma 4 26b-a4b** (mixture-of-experts, ~48 tokens/second locally) — ran with all glosses at temperatures 1.2 and 1.5
 
-### Pass 2 — Assignment quality
+Earlier Gemma runs at temperature 1.0 with rare glosses only are excluded from the comparison. Those runs had two confounding problems: Gemma 4 performs substantially better at temperature 1.2–1.5 (per Reddit anecdotes), and without glosses the Gemma models lack the kanji-to-meaning knowledge needed to classify most compounds — they were failing at word recognition, not classification reasoning.
 
-The clearest signal is how many compounds each model assigned to productive meanings versus leaving in the opaque/lexicalized bucket:
+Raw bucket-size tables: `node compound-verbs/validate-comparison.mjs`
 
-| Suffix | # compounds | Haiku | Gemma-26b-a4b | Gemma-31b |
-|--------|-------------|-------|---------------|-----------|
-| 出す | 100 | 20 lexicalized | **80 lexicalized** | 58 lexicalized |
-| 付く | 51 | 11 | 11 | 7 |
-| 立てる | 51 | 5 | **0** | 12 |
-| 返す | 27 | 1 | 2 | 6 |
-| 歩く | 10 | 0 | 0 | 0 |
+### Why glosses matter (and why they help some models but hurt others)
 
-Lower is better (fewer compounds abandoned to the opaque bucket). The 出す column is the most telling: it has 4 partially-overlapping meanings, which forces difficult boundary calls. Gemma-26b-a4b put 80% of compounds in opaque rather than commit. Haiku over-assigned instead (putting M1/M2 compounds into M3), which at least produces a correctable set of flags.
+Adding English glosses to all compounds (`--all-glosses`) dramatically improved Gemma results: 31b went from 58 unassigned to 1–3 on 出す; 26b-a4b went from 68 to 5–12. This confirmed that the original evaluation was testing kanji recall, not classification capability.
 
-立てる goes the other direction: Gemma-26b-a4b assigned *every* compound including lexicalized entries like 見立てる and 仕立てる that its own validation then flagged as opaque.
+The same glosses *hurt* Claude on 出す: Sonnet went from 1 unassigned to 39; Haiku went from 15 to 23. Gemini was unaffected (0→2 for think, 6→6 for fast). This is a Claude-specific pattern — the English definitions appear to introduce hesitation that Claude's Japanese intuition would otherwise resolve confidently. For Gemma, which lacks that Japanese intuition, the glosses provide essential information.
 
-#### Gemini 2.5 cross-check: is the pipeline robust?
+**Practical consequence:** use `--all-glosses` for local Gemma runs; do not use it for Claude API runs.
 
-To test whether the pipeline architecture is overfitted to Haiku's specific failure modes, Gemini 2.5 Flash ("fast") and Gemini 2.5 Pro ("thinking") were run on the same verbatim 31b prompts for 出す and 立てる. Output in `more-gemma-clusters/*-google-gemini-2.5-*.txt`.
+### Principled evaluation: binary Dawid-Skene
 
-| Model | 出す lexicalized (/100) | 立てる lexicalized (/51) |
-|-------|------------------------|--------------------------|
-| Gemma-31b | 58 | 12 |
-| Haiku | 10 | 0 |
-| Gemini-fast | 6 | 5 |
-| Gemini-think | **0** | 2 |
+Counting unassigned compounds is a poor metric — a model that assigns everything is not necessarily better than one that omits a few genuinely opaque items. To compare models properly, we use inter-annotator reliability methods from the multi-annotator labeling literature.
 
-Not a single compound was lexicalized by all four models — Gemma-31b's conservatism is a pure outlier. Haiku, Gemini-fast, and Gemini-think all land close together (0–10 lexicalized for 出す, 0–5 for 立てる) and broadly agree that the meanings are sufficient to assign nearly everything.
+Each compound is decomposed into 4 independent binary questions: "does -立てる/-出す contribute meaning M_k in this compound? yes or no." A compound assigned to M1+M2 contributes "yes" to M1 and M2, "no" to M3 and M4. An omitted compound contributes "no" to all four. This avoids modeling "omit" as a special class and naturally handles multi-label assignments.
 
-**The pipeline design appears robust.** All three non-Gemma models follow the "omit only if fully opaque" instruction faithfully. Their disagreements are about *which bucket*, not whether to assign — exactly the kind of disagreement a validation pass is designed to catch.
+For each binary problem we compute:
 
-The one meaningful cross-model pattern: Gemini models put many compounds Haiku assigned to M4 (coerced removal: 呼び出す, 差し出す, 誘い出す, 救い出す) into M1 (non-coercive extraction) instead. Both readings are defensible — this is a genuine semantic ambiguity at the M1/M4 boundary, not noise. The one compound left lexicalized by Haiku, Gemini-fast, and Gemini-think alike — 駆り立てる — is a real signal of opacity; only 31b assigned it.
+1. **Krippendorff's Alpha** — measures inter-rater agreement beyond chance. Tells us how well-defined each meaning is as a classification target, independent of which models we're using.
+2. **Dawid-Skene EM** — jointly estimates the true latent label for each compound and a sensitivity/specificity profile for each rater. Down-weights unreliable raters rather than treating all models as equally credible.
 
-**Conclusion:** The architecture is not Haiku-overfitted in a way that breaks on other frontier models. The home-field advantage is real but not dominant — the structural decisions (sharpening pass, symmetric exclusions, one call for all meanings, omit-only-if-opaque rule) produce good output from Gemini without retuning.
+Full output: `compound-verbs/analysis.md`
+Script: `python3 compound-verbs/annotator-analysis.py`
 
-#### Controlled experiment: Haiku on 31b's verbatim prompt
+### Per-meaning task quality (Krippendorff's Alpha)
 
-To isolate model capability from meaning quality, Haiku was run on the **verbatim assignment prompts produced by Gemma-31b** — same sharpened meanings, same compound list, same task instructions — for 出す and 立てる. Output in `more-gemma-clusters/*-haiku-via-31b-prompt-*.txt`.
+**立てる** — mean α = 0.751
 
-| Suffix | Haiku on 31b's prompt | Gemma-31b on its own prompt | Overlap in lexicalized |
-|--------|----------------------|-----------------------------|------------------------|
-| 出す (100) | **10 lexicalized** | 58 lexicalized | 8 compounds both left opaque |
-| 立てる (51) | **0 lexicalized** | 12 lexicalized | 1 compound both left opaque |
+| Meaning | α | Interpretation |
+|---------|---|----------------|
+| M1 (vertical/pile) | 0.757 | acceptable |
+| M2 (intensity/repetition) | 0.788 | acceptable |
+| M3 (formal/legal) | 1.000 | perfect agreement |
+| M4 (transform/status) | 0.458 | tentative — needs sharper definition |
 
-Haiku assigned 51 compounds to meanings that 31b left opaque for 出す, and 12 for 立てる. Only 3 compounds that 31b assigned did Haiku leave opaque — and all three (考え出す, 拾い出す, 掻い出す) are defensible calls in either direction.
+**出す** — mean α = 0.590
 
-This partially falsifies the home-field-advantage hypothesis as a complete explanation: even given 31b's own sharpened meanings, Haiku is dramatically more willing to commit. The gap is a genuine behavioral difference — 31b treats boundary ambiguity as a reason to lexicalize; Haiku treats it as a reason to pick the best fit. Whether Haiku's assignments are *correct* requires a validation pass, but the conservatism is clearly intrinsic to Gemma-31b, not an artifact of unfamiliar prompt language.
+| Meaning | α | Interpretation |
+|---------|---|----------------|
+| M1 (extract) | 0.455 | tentative |
+| M2 (sudden begin) | 0.584 | tentative |
+| M3 (create/produce) | 0.700 | acceptable |
+| M4 (forced removal) | 0.620 | tentative |
 
-### Pass 2b — Validation output quality
+立てる M3 (formal/legal) has perfect agreement — every model classifies 申し立てる and 打ち立てる the same way. 立てる M4 (transformation) and 出す M1 (extraction) are the weakest — these are the meanings whose definitions would benefit most from further sharpening.
 
-| Suffix | Gemma-26b-a4b | Gemma-31b | Sonnet |
-|--------|---------------|-----------|--------|
-| 出す | ❌ internally contradictory — `suggested` and `reason` fields point at different meanings in the same flag | ✓ consistent, actionable | ✓ excellent |
-| 付く | ✓ acceptable | ✓ good | ✓ excellent |
-| 立てる | ✓ acceptable | ✓ good | n/a |
-| 返す | ✓ acceptable | ✓ with minor self-correction | ✓ clean |
+The low α for 出す M1 (0.455) is the dominant issue: extraction is the largest bucket and the one with the most boundary disputes against M4 (forced removal). Models disagree on whether 投げ出す, 引っ張り出す, 救い出す, etc. involve force or not.
 
-The Gemma-26b-a4b 出す validation is the most serious failure: it flags あふれ出す as belonging to Meaning 3 (create/produce) while the reason says "classic example of Meaning 2 (sudden onset)" — the opposite meaning. If fed into `apply-validation.mjs` it would corrupt the assignments file silently.
+### Per-model quality (Dawid-Skene balanced accuracy)
 
-### Pass 1b — Sharpening quality
+**立てる** — ranked by mean of (sensitivity + specificity) / 2 across all four meanings:
 
-All three models identify the catch-all risk in their reasoning. Key differences:
+| Rank | Model | Balanced accuracy |
+|------|-------|-------------------|
+| 1 | Sonnet (rare glosses only) | 82% |
+| 2 | Haiku (all glosses) | 79% |
+| 3 | Sonnet (all glosses) | 79% |
+| 4 | Gemini-fast (all glosses) | 79% |
+| 5 | Gemini-think (rare glosses only) | 77% |
+| 6–7 | Haiku (rare glosses only), 31b@1.2 | 77% |
+| 8–9 | Gemini-think (all glosses), 31b@1.5 | 75% |
+| 10 | Gemini-fast (rare glosses only) | 74% |
+| 11 | 26b-a4b@1.2 | 73% |
+| 12 | 26b-a4b@1.5 | 70% |
 
-- **Gemma-26b-a4b** uses a passive frame (`"To cause the prefix <verb> to result in..."`) consistently. Technically includes `<verb>` but the phrasing is non-standard and could confuse a downstream classifier.
-- **Gemma-31b** writes crisp active-voice meanings but under-specifies exclusions — boundaries appear in reasoning prose but often don't make it into the final JSON.
-- **Haiku** carries symmetric exclusions into the JSON in both directions, and names specific borderline compounds (e.g. 掻き立てる, 責め立てる for 立てる) to calibrate the boundary rather than just describing it abstractly.
+**出す** — same metric:
 
-The `more-gemma-clusters/` runs used the updated prompt (with symmetric-exclusion and compound-scan requirements). With the updated prompt, Gemma-31b carries symmetric exclusions correctly into the JSON — the earlier weakness was purely a prompt effect and 31b is now at Haiku quality for sharpening. Gemma-26b-a4b also handles exclusions correctly with the updated prompt, but its Pass 1 cluster step produces fewer, broader meanings (3 for 出す vs. Haiku's 4), so the sharpening pass is working from a weaker starting point regardless of prompt quality.
+| Rank | Model | Balanced accuracy |
+|------|-------|-------------------|
+| 1 | 26b-a4b@1.5 (all glosses) | 91% |
+| 2 | 26b-a4b@1.2 (all glosses) | 88% |
+| 3 | 31b@1.5 (all glosses) | 86% |
+| 4 | Sonnet (rare glosses only) | 86% |
+| 5 | 31b@1.2 (all glosses) | 85% |
+| 6–7 | Haiku (all glosses), Haiku (rare glosses only) | 84% |
+| 8–10 | Gemini-think (rare), Gemini-think (all), Gemini-fast (rare) | 81% |
+| 11 | Gemini-fast (all glosses) | 80% |
+| 12 | Sonnet (all glosses) | 78% |
 
-### Verdict (setting hardware aside) — original 2026-04-05
+The rankings differ strikingly between suffixes. 26b-a4b is last on 立てる but first on 出す. This is not noise — the sensitivity/specificity breakdown reveals why:
 
-**Gemma-26b-a4b** is not competitive. Drop it. Its assignment behavior on complex suffixes is broken — it abandons rather than decides — and its validation output is unreliable at the point where it matters most (出す, the suffix with the most overlapping meanings).
+- For **立てる**, 26b-a4b has very low M4 sensitivity (25%) — it almost never detects functional transformation. It defaults to M2 (intensity) for ambiguous cases. The M1/M4 distinction in 立てる requires Japanese semantic intuition about spatial vs. functional metaphor that goes beyond what the English gloss conveys.
+- For **出す**, all four meanings map more directly onto the English glosses ("extract," "begin suddenly," "create," "force out"), so 26b-a4b's reliance on gloss-based reasoning is not a liability. Its high specificity across the board (≥80%) means when it does assign, it's usually right.
 
-**Gemma-31b** is a credible model but a step behind at each pass. For Pass 2 (assignment) it is more conservative than Haiku — it makes fewer errors but also assigns fewer compounds, leaving a larger opaque tail that requires more human correction. For Pass 2b (validation) Sonnet is noticeably better: its reasoning is sharper, it identifies more flags, and it doesn't second-guess itself mid-response. For Pass 1b (sharpening) Gemma-31b is roughly comparable to Haiku.
+### Systematic biases
 
-**Practical conclusion:** Haiku for Pass 2, Sonnet for Pass 2b. Gemma-31b could substitute for Haiku on Pass 1b (sharpening) if API access is unavailable, but it offers no quality advantage over Haiku there either.
+The Dawid-Skene confusion matrices reveal consistent patterns:
 
-### Re-evaluation with glosses and temperature tuning (2026-04-10)
+- **31b and 26b-a4b** have a "M4→omit" bias on 立てる (57% of true-M4 compounds are omitted). These models are blind to functional transformation for this suffix.
+- **Sonnet** has the opposite bias: "omit→M4" (100% — when a compound should be omitted, Sonnet assigns it to M4 instead). Sonnet over-assigns transformation.
+- **Claude models** (Sonnet and Haiku) show high M4 sensitivity for 出す but also push many M1 (extraction) compounds into M4 (forced removal) — they read coercion into compounds other models treat as simple extraction.
+- **Gemini models** tend to collapse multi-label compounds into M1 only, missing the secondary meaning.
 
-The original evaluation was unfair to the Gemma models in two compounding ways:
+### Dawid-Skene vs. majority vote
 
-1. **Kanji-to-meaning knowledge was an uncontrolled variable.** The original prompts only glossed rare/unknown compounds (those with zero BCCWJ frequency or no JMDict ID). Haiku, Sonnet, and Gemini know Japanese well enough to classify 組み立てる without an English definition; the Gemma models often don't. The evaluation was testing kanji recall, not classification reasoning.
+Dawid-Skene disagrees with majority vote on 9 items for 立てる and 22 for 出す. Nearly all disagreements involve D-S finding a multi-label assignment where majority vote picks one:
 
-2. **Temperature 1.0 is suboptimal for Gemma 4.** Community benchmarks consistently show Gemma 4 performing better at temperature 1.2–1.5 with min-p 0.05.
+Examples from 立てる: 組み立てる → D-S says M1+M4 ("both structural assembly and transformation to finished product"), majority says M1 only. 塗り立てる → D-S says M2+M4 ("both intensity and transformation"), majority says M2 only.
 
-To isolate classification reasoning from kanji knowledge, all models were re-run on the same 31b sharpened meanings with `--all-glosses` (every compound gets a JMDict English gloss). Gemma models were run locally via llama.cpp at temperatures 1.2 and 1.5 with `--reasoning-format deepseek`. The original Gemma runs at temperature 1.0 without glosses are included as a baseline.
+These multi-label findings are arguably more pedagogically useful — showing a learner that 組み立てる involves *both* structural building and transformation to a usable product is more accurate than forcing one meaning.
 
-Validation script: `node compound-verbs/validate-comparison.mjs`
+### Practical conclusions
 
-**立てる (51 compounds)**
-
-| Model | M1 (vertical) | M2 (intensity) | M3 (formal) | M4 (transform) | Unassigned |
-|---|---|---|---|---|---|
-| Gemini-think (rare glosses only) | 6 | 35 | 2 | 7 | **2** |
-| Gemini-think (all glosses) | 10 | 33 | 3 | 3 | **4** |
-| Gemini-fast (rare glosses only) | 5 | 27 | 6 | 8 | **5** |
-| Gemini-fast (all glosses) | 8 | 33 | 3 | 6 | **1** |
-| Sonnet (rare glosses only) | 6 | 32 | 2 | 11 | **0** |
-| Sonnet (all glosses) | 9 | 32 | 3 | 7 | **0** |
-| Haiku (rare glosses only) | 8 | 29 | 7 | 7 | **0** |
-| Haiku (all glosses) | 9 | 24 | 4 | 11 | **3** |
-| 31b @ 1.2 (all glosses) | 9 | 33 | 2 | 2 | **6** |
-| 31b @ 1.5 (all glosses) | 9 | 33 | 3 | 3 | **4** |
-| 26b-a4b @ 1.2 (all glosses) | 5 | 29 | 3 | 7 | **7** |
-| 26b-a4b @ 1.5 (all glosses) | 4 | 29 | 4 | 3 | **11** |
-| 31b @ 1.0 (rare glosses only, orig) | 6 | 25 | 3 | 6 | **12** |
-| 26b-a4b @ 1.0 (rare glosses only, orig) | 6 | 31 | 4 | 10 | **0** |
-
-**出す (100 compounds)**
-
-| Model | M1 (extract) | M2 (begin) | M3 (create) | M4 (force) | Unassigned |
-|---|---|---|---|---|---|
-| Gemini-think (rare glosses only) | 60 | 12 | 23 | 11 | **0** |
-| Gemini-think (all glosses) | 71 | 12 | 16 | 7 | **2** |
-| Gemini-fast (rare glosses only) | 55 | 14 | 14 | 13 | **6** |
-| Gemini-fast (all glosses) | 58 | 9 | 18 | 9 | **6** |
-| Sonnet (rare glosses only) | 33 | 17 | 23 | 26 | **1** |
-| Sonnet (all glosses) | 26 | 11 | 13 | 11 | **39** |
-| Haiku (rare glosses only) | 39 | 12 | 15 | 19 | **15** |
-| Haiku (all glosses) | 33 | 12 | 15 | 17 | **23** |
-| 31b @ 1.2 (all glosses) | 60 | 11 | 12 | 14 | **3** |
-| 31b @ 1.5 (all glosses) | 63 | 11 | 15 | 12 | **1** |
-| 26b-a4b @ 1.2 (all glosses) | 53 | 13 | 19 | 10 | **12** |
-| 26b-a4b @ 1.5 (all glosses) | 59 | 17 | 15 | 14 | **5** |
-| 31b @ 1.0 (rare glosses only, orig) | 18 | 12 | 5 | 7 | **58** |
-| 26b-a4b @ 1.0 (rare glosses only, orig) | 12 | 12 | 6 | 2 | **68** |
-
-#### Observations
-
-**Glosses transformed the Gemma results.** For 出す, 31b went from 58 unassigned to 1–3; 26b-a4b went from 68 to 5–12. The original "not competitive" verdict was measuring kanji recall, not classification capability.
-
-**Glosses hurt the Claude models on 出す but not Gemini.** Sonnet went from 1 unassigned to 39; Haiku went from 15 to 23. Gemini-think went from 0 to 2; Gemini-fast stayed at 6. The explicit English definitions make Claude dramatically more cautious, but Gemini shrugs them off. This is a Claude-specific behavioral pattern, not a general property of strong-Japanese models.
-
-**31b with glosses matches Gemini-think** on 出す (1–3 unassigned versus 0) and is comparable on 立てる.
-
-**26b-a4b with glosses is competitive with Gemini-fast** on 出す at temperature 1.5 (5 unassigned versus 6), running at 48 tokens/second locally.
-
-**Temperature effects are modest compared to glosses.** For 31b, the difference between temp 1.2 and 1.5 is 1–2 compounds. For 26b-a4b the spread is wider (5–12 on 出す) but still dwarfed by the gloss effect.
-
-**The M1 (extraction) bucket is the main divergence point for 出す.** Gemma and Gemini models assign 53–63 compounds to M1; Claude models assign 26–39. The total assignment counts for M2/M3 are similar across all models. The disagreement is not about whether compounds are assignable but about the M1/M4 boundary — Claude is more willing to read force/coercion into compounds that other models treat as simple extraction.
-
-#### Revised verdict
-
-The original verdict that "Gemma-26b-a4b is not competitive — drop it" is **retracted**. With glosses and appropriate temperature:
-
-- **31b** is a strong Pass 2 model — on par with Gemini-think for assignment coverage, stable across temperatures. At ~12 tokens/second locally it is practical for batch runs.
-- **26b-a4b** is viable for Pass 2 at temperature 1.5 with glosses. At ~48 tokens/second it is the fastest option for rapid iteration.
-- **Sonnet with rare glosses only** is the best single-call model (1 unassigned on 出す, 0 on 立てる) — but adding all glosses paradoxically degrades it.
-
-**Updated practical conclusion:** Use `--all-glosses` for local Gemma runs. Do not use `--all-glosses` for Claude API runs — it makes them worse on 出す. Sonnet with rare glosses only for production Pass 2; local 31b with all glosses as a free alternative that matches Gemini-think quality.
-
----
-
-## Appendix: Earlier Pipeline Design (Rejected)
-
-The original plan used a per-compound LLM pass (Pass 1) that rated the productivity
-of each sense of each compound individually, followed by clustering passes (Pass 2a/2b)
-that grouped compounds by suffix meaning.
-
-**Why it was rejected:**
-
-1. **Pass 1 was redundant.** Rating productivity per-compound requires the same
-   holistic judgment about suffix meanings that the clustering step needs anyway.
-   There is no clean intermediate output: the per-sense ratings get collapsed to a
-   single compound-level label immediately, discarding the reasoning, and the
-   clustering step has to re-derive suffix meanings from scratch.
-
-2. **Inconsistent role descriptions across independent calls.** Because each compound
-   was processed in isolation, the same underlying suffix meaning could be described
-   differently for different compounds ("adds vigorous force" vs "intensifies the
-   action"). The clustering step then had to reconcile inconsistently-worded
-   descriptions rather than clustering raw senses — harder than doing the clustering
-   in one pass.
-
-3. **Per-sense rating of a single compound is not the goal.** The student-facing
-   output is a list of suffix meanings with example compounds, not a per-compound
-   productivity score. Classifying each sense of each compound individually is more
-   work than the final output requires.
-
-4. **A single compound can evince multiple suffix meanings across its senses.**
-   Collapsing to "max productivity" loses this signal entirely. The new design
-   handles this naturally: a compound can appear under more than one meaning cluster
-   in Pass 2.
-
-The old scripts (`compound-verbs/classify-productivity.mjs` and the planned
-`cluster-productive.mjs`, `cluster-medium.mjs`, `assemble-lexicalized.mjs`) are
-superseded by the two-pass design above.
+1. **No single model dominates.** Sonnet (rare glosses only) is best for 立てる; 26b-a4b (all glosses) is best for 出す. Model selection should depend on the suffix's characteristics.
+2. **Use `--all-glosses` for Gemma, rare glosses only for Claude.** This single prompt decision is more impactful than model choice or temperature.
+3. **The biggest quality gains come from better meaning definitions, not better models.** 立てる M4 (α=0.458) and 出す M1 (α=0.455) are where human effort should focus.
+4. **Multi-label assignment is real.** Dawid-Skene identifies ~10–20% of compounds per suffix as genuinely belonging to two meanings. The pipeline should preserve this rather than forcing single-label.
+5. **Local Gemma 4 models are competitive** for Pass 2 when given glosses and appropriate temperature. 26b-a4b at ~48 tokens/second is practical for rapid iteration; 31b at ~12 tokens/second is more reliable across suffix types.
