@@ -545,7 +545,9 @@ Sonnet is preferred over Haiku for this pass because the task requires subtle se
 
 ### Proposed Pass 2 redesign: per-compound assignment with full semantic context
 
-**Background.** The original Pass 2 (`assign-examples.mjs`) sends all compounds for a suffix to the LLM in a single prompt with one-line glosses (or no glosses). Testing revealed three problems:
+#### Background: problems with the original joint approach
+
+The original Pass 2 (`assign-examples.mjs`) sends all compounds for a suffix to the LLM in a single prompt with one-line glosses (or no glosses). Testing revealed three problems:
 
 1. **Single-sense glosses mislead classification.** The `--all-glosses` flag only showed the first JMDict sense. For compounds with multiple senses mapping to different suffix meanings (38% of 出す compounds), this biased the model. Example: 弾き出す shown as "to flick out" hid "to calculate" (lexicalized) and "to expel" (M4). This likely explains why all-glosses runs hurt Claude — incomplete glosses were worse than no glosses.
 
@@ -553,32 +555,71 @@ Sonnet is preferred over Haiku for this pass because the task requires subtle se
 
 3. **Joint prompts don't produce cross-compound reasoning.** Analysis of thinking traces from the validation experiment showed models reason compound-by-compound even when given all compounds together. The joint context intended to help calibration goes largely unused.
 
-**New approach: `assign-per-compound.py`.** Each compound gets a prompt containing:
+#### New approach: `assign-per-compound.py`
+
+Each compound gets a prompt containing:
 - All suffix meanings (from the sharpened meanings file, as before)
 - All JMDict senses of the compound verb (not just the first)
 - All JMDict senses of the prefix verb (v1), looked up by both kanji and reading to disambiguate homographs (e.g., 弾く はじく "to flick" vs ひく "to play an instrument")
 
 The model compares compound senses against prefix verb senses to determine what -出す adds per sense. A compound sense that matches a prefix verb sense exactly is lexicalized for that sense. A compound can be assigned to multiple meanings if different senses reflect different suffix contributions, and still be lexicalized for other senses.
 
-Compounds are processed in batches (default 25 per prompt) with rate-limit retry logic. The suffix verb's own dictionary senses are *not* included — the sharpened meanings are the classification authority and the raw dictionary senses can conflict with them.
+Compounds are processed in batches (default 25 per prompt) with rate-limit retry logic and exponential backoff. The suffix verb's own dictionary senses are *not* included — the sharpened meanings are the classification authority and the raw dictionary senses can conflict with them.
 
-**Tested on 出す with Haiku (25 compounds, 5 runs: 1 solo + 4 batch).**
+Output is saved to `clusters/per-compound/` as timestamped archive files with prompt, response (including thinking traces for local models), parsed JSON, and elapsed time.
 
-Reasoning quality: dramatically better than the original joint approach. The model correctly identified lexicalized senses that no previous run caught:
+Script: `compound-verbs/assign-per-compound.py`
+Analysis: `compound-verbs/per-compound-analysis.py`
+Full output: `compound-verbs/per-compound-analysis.md`
+
+#### Batching calibration (25 compounds, Haiku)
+
+Tested solo (1 compound per prompt) vs batch (25 per prompt) across 5 runs (1 solo + 4 batch). Solo-vs-batch variance: **47% exact agreement.** Batch-vs-batch variance: **50% exact agreement.** These are statistically indistinguishable — batching does not introduce systematic bias beyond normal temperature noise.
+
+Reasoning quality is maintained in batches: the model still does per-sense comparison against the prefix verb, correctly identifies lexicalized senses, and produces structured per-compound reasoning. Examples of correct lexicalized detection:
 - 弾き出す sense 2 "to calculate" → lexicalized (弾く already means "to calculate")
 - 切り出す sense 3 "to start a fire" → lexicalized (切る sense 22 is identical)
 - 思い出す "to recall" → lexicalized (思う sense 8 is "to recall; to remember")
 
-Solo-vs-batch variance: **47% exact agreement.** Batch-vs-batch variance: **50% exact agreement.** These are statistically indistinguishable — batching does not introduce systematic bias beyond normal temperature noise. 11/25 compounds (44%) were stable across all 5 runs (4+ of 5 agreeing); the remaining 14 are genuinely ambiguous.
+#### Full 100-compound evaluation on 出す (5 classifiers)
 
-**Proposed production workflow:**
+Ran the top 100 出す compounds by BCCWJ frequency through 5 classifiers:
+- 3× Haiku (batches of 25, separate runs)
+- 1× Gemma 4 31b (local, temperature 1.2)
+- 1× Gemma 4 26b-a4b (local, temperature 1.2)
+
+Krippendorff's Alpha comparison — **old joint approach vs new per-compound approach:**
+
+| Meaning | Old α | New α | Δ |
+|---------|-------|-------|---|
+| M1 (extract) | 0.455 | 0.587 | +0.132 |
+| M2 (sudden begin) | 0.584 | 0.880 | +0.296 |
+| M3 (create/produce) | 0.700 | 0.580 | −0.120 |
+| M4 (forced removal) | 0.620 | 0.690 | +0.070 |
+| **Mean** | **0.590** | **0.684** | **+0.094** |
+
+Mean alpha improved from 0.590 to **0.684**. M2 (sudden begin) jumped from tentative to good (0.880). M1 and M4 both improved substantially. M3 dipped slightly — the richer context makes models more discerning about what counts as "creating something new" vs extracting something that already exists.
+
+Per-annotator balanced accuracy ranged from 87% (Gemma models) to 93% (Haiku), up from the 70–91% range in the old approach.
+
+Dawid-Skene consensus: 30 compounds assigned M1 only, 16 M3 only, 10 lexicalized, 10 M1+M2, and various multi-label combinations. 7 compounds had uncertain posteriors (between 0.2 and 0.8 for at least one meaning).
+
+#### Open issues
+
+**1. "Coincidental match" problem.** The model sometimes assigns a meaning because a lexicalized compound sense superficially matches a meaning definition, even though the prefix verb already has that sense. Example: 投げる already means "to abandon"; 投げ出す also means "to abandon"; but Haiku assigns M4 (forced removal) because "abandon" sounds like "forceful removal." The prompt instructs the model to check for this, but enforcement is inconsistent. A stronger prompt directive may help: "Even if a compound sense superficially matches a meaning definition, if the prefix verb already has that sense on its own, -出す is not contributing that meaning."
+
+**2. Per-compound vs per-compound-sense classification.** The current output is per-compound: `投げ出す → [M1, M2, M3, M4]`. But the model's reasoning is already per-sense — it examines each dictionary sense individually. Collapsing to per-compound loses the distinction between "the suffix contributes M1 in sense 1 and M2 in sense 4" and "the suffix contributes M1+M2 blended in a single sense." More importantly, it hides which senses are lexicalized. A learner seeing 投げ出す tagged with all four meanings doesn't know that the common "to abandon" sense is actually opaque. Changing the output format to per-compound-sense (e.g., `{"投げ出す": {"to throw down": [1], "to abandon": [], "to give freely": [1], "to start to throw": [2]}}`) would let the app show per-sense suffix contributions and skip lexicalized senses. This would also multiply the number of classification items for Dawid-Skene (each compound-sense tuple is a separate item), producing finer-grained confidence estimates.
+
+**3. Additional classifiers.** Running 2–4 Gemini Flash calls alongside 3 Haiku runs would add diversity at minimal cost. The current 5-classifier setup (3× Haiku + 2× Gemma local) already shows that cross-model variance is comparable to within-model variance, so additional API models are not strictly necessary but would improve D-S estimates for borderline items.
+
+#### Proposed production workflow
 
 1. Pass 1 + 1b: generate and sharpen meanings (unchanged)
-2. Pass 2: `python3 compound-verbs/assign-per-compound.py --suffix <v2> --all --batch-size 25` — run 3 times with Haiku
-3. Dawid-Skene consensus across the 3 runs: stable compounds (3/3 agree) ship directly; unstable compounds (split votes) are flagged for optional human review
-4. Skip Pass 2b (validation) — the validation experiment showed self-validation does not improve D-S consensus, and D-S on 3 raw runs provides a natural confidence signal
+2. Pass 2: `python3 compound-verbs/assign-per-compound.py --suffix <v2> --all --batch-size 25` — run 3× Haiku (optionally add Gemma or Gemini runs)
+3. Dawid-Skene consensus across runs: stable items ship directly; uncertain items (posterior between 0.2 and 0.8) flagged for optional human review
+4. Skip Pass 2b (validation) — the validation experiment showed self-validation does not improve D-S consensus
 
-This eliminates Pass 2b, Pass 2c, and human review of validation flags from the workflow. The only human review point is the meanings themselves (Pass 1b) and optionally the unstable compounds from D-S.
+This eliminates Pass 2b, Pass 2c, and human review of validation flags from the workflow. The only human review point is the meanings themselves (Pass 1b) and optionally the uncertain items from D-S.
 
 **Cost estimate for all suffixes:** ~470 suffixes × ~30 compounds average × 3 runs ÷ 25 per batch ≈ 1,700 Haiku calls. At Haiku pricing this is approximately $2–5 total, completing in ~15 minutes of parallelized API time.
 

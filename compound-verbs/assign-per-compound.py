@@ -88,6 +88,25 @@ LOCAL_URL = args.local_url or os.environ.get("LOCAL_LLM_URL", "http://localhost:
 if not args.compounds and not args.all:
     parser.error("Provide --compounds or --all")
 
+# For local models, query /props to get the actual model name for filenames
+ACTUAL_MODEL = MODEL
+if MODEL == "local" and not args.dry_run:
+    import requests as _req
+    try:
+        props = _req.get(f"{LOCAL_URL}/props", timeout=5).json()
+        ACTUAL_MODEL = (props.get("model_alias")
+                        or props.get("default_generation_settings", {}).get("model")
+                        or "local-unknown")
+        server_temp = props.get("default_generation_settings", {}).get("params", {}).get("temperature")
+        effective_temp = args.temperature if args.temperature is not None else server_temp
+        print(f"Local server: model={ACTUAL_MODEL}, server temperature={server_temp}")
+        print(f"Effective temperature: {effective_temp}"
+              f"{' (overridden)' if args.temperature is not None else ' (server default)'}")
+    except Exception as e:
+        print(f"WARNING: Cannot reach local server at {LOCAL_URL}/props — {e}")
+        print("Files will be saved with model name 'local-unknown'")
+        ACTUAL_MODEL = "local-unknown"
+
 # ---------------------------------------------------------------------------
 # Load data sources
 # ---------------------------------------------------------------------------
@@ -405,7 +424,7 @@ def save_result(suffix: str, compounds: list[dict], prompt: str,
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime())
     ts_file = (timestamp.replace(":", "-").replace("T", "_")
                .replace("Z", "").replace(".", "-"))
-    safe_model = MODEL.replace("/", "-").replace(":", "-")
+    safe_model = ACTUAL_MODEL.replace("/", "-").replace(":", "-")
 
     if len(compounds) == 1:
         label = compounds[0]["headword"]
@@ -419,7 +438,7 @@ def save_result(suffix: str, compounds: list[dict], prompt: str,
         "========== FLAGS ==========",
         f"suffix: {suffix}",
         f"compounds: {', '.join(c['headword'] for c in compounds)}",
-        f"model: {MODEL}",
+        f"model: {ACTUAL_MODEL}",
         f"temperature: {args.temperature}",
         f"batch-size: {len(compounds)}",
         f"elapsed-seconds: {elapsed:.1f}",
