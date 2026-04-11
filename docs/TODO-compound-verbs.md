@@ -543,7 +543,48 @@ Written and tested on 上がる. Reads the assignments JSON and sends it to Sonn
 
 Sonnet is preferred over Haiku for this pass because the task requires subtle semantic judgment rather than classification throughput. On the 上がる run: correctly identified 6 misclassifications, 3 incorrectly lexicalized compounds, and 4 missing multi-assignments across 79 compounds.
 
-### Recommended workflow per v2
+### Proposed Pass 2 redesign: per-compound assignment with full semantic context
+
+**Background.** The original Pass 2 (`assign-examples.mjs`) sends all compounds for a suffix to the LLM in a single prompt with one-line glosses (or no glosses). Testing revealed three problems:
+
+1. **Single-sense glosses mislead classification.** The `--all-glosses` flag only showed the first JMDict sense. For compounds with multiple senses mapping to different suffix meanings (38% of 出す compounds), this biased the model. Example: 弾き出す shown as "to flick out" hid "to calculate" (lexicalized) and "to expel" (M4). This likely explains why all-glosses runs hurt Claude — incomplete glosses were worse than no glosses.
+
+2. **No prefix verb context.** Without seeing what the prefix verb (v1) alone means, the model cannot distinguish "suffix adds meaning" from "suffix adds nothing." 弾く already means "to calculate"; 弾き出す also means "to calculate" — so -出す contributes nothing for that sense. But the model sees the compound's gloss and tries to assign a suffix meaning anyway.
+
+3. **Joint prompts don't produce cross-compound reasoning.** Analysis of thinking traces from the validation experiment showed models reason compound-by-compound even when given all compounds together. The joint context intended to help calibration goes largely unused.
+
+**New approach: `assign-per-compound.py`.** Each compound gets a prompt containing:
+- All suffix meanings (from the sharpened meanings file, as before)
+- All JMDict senses of the compound verb (not just the first)
+- All JMDict senses of the prefix verb (v1), looked up by both kanji and reading to disambiguate homographs (e.g., 弾く はじく "to flick" vs ひく "to play an instrument")
+
+The model compares compound senses against prefix verb senses to determine what -出す adds per sense. A compound sense that matches a prefix verb sense exactly is lexicalized for that sense. A compound can be assigned to multiple meanings if different senses reflect different suffix contributions, and still be lexicalized for other senses.
+
+Compounds are processed in batches (default 25 per prompt) with rate-limit retry logic. The suffix verb's own dictionary senses are *not* included — the sharpened meanings are the classification authority and the raw dictionary senses can conflict with them.
+
+**Tested on 出す with Haiku (25 compounds, 5 runs: 1 solo + 4 batch).**
+
+Reasoning quality: dramatically better than the original joint approach. The model correctly identified lexicalized senses that no previous run caught:
+- 弾き出す sense 2 "to calculate" → lexicalized (弾く already means "to calculate")
+- 切り出す sense 3 "to start a fire" → lexicalized (切る sense 22 is identical)
+- 思い出す "to recall" → lexicalized (思う sense 8 is "to recall; to remember")
+
+Solo-vs-batch variance: **47% exact agreement.** Batch-vs-batch variance: **50% exact agreement.** These are statistically indistinguishable — batching does not introduce systematic bias beyond normal temperature noise. 11/25 compounds (44%) were stable across all 5 runs (4+ of 5 agreeing); the remaining 14 are genuinely ambiguous.
+
+**Proposed production workflow:**
+
+1. Pass 1 + 1b: generate and sharpen meanings (unchanged)
+2. Pass 2: `python3 compound-verbs/assign-per-compound.py --suffix <v2> --all --batch-size 25` — run 3 times with Haiku
+3. Dawid-Skene consensus across the 3 runs: stable compounds (3/3 agree) ship directly; unstable compounds (split votes) are flagged for optional human review
+4. Skip Pass 2b (validation) — the validation experiment showed self-validation does not improve D-S consensus, and D-S on 3 raw runs provides a natural confidence signal
+
+This eliminates Pass 2b, Pass 2c, and human review of validation flags from the workflow. The only human review point is the meanings themselves (Pass 1b) and optionally the unstable compounds from D-S.
+
+**Cost estimate for all suffixes:** ~470 suffixes × ~30 compounds average × 3 runs ÷ 25 per batch ≈ 1,700 Haiku calls. At Haiku pricing this is approximately $2–5 total, completing in ~15 minutes of parallelized API time.
+
+**Remaining bottleneck:** Only 5 of 470 suffixes have meanings files. The meanings pipeline (Pass 1 + 1b) needs to run for the remaining suffixes before per-compound assignment can proceed. Most suffixes have fewer compounds than 出す and simpler semantics; batch generation with spot-check review of the top 20 suffixes by compound count is likely sufficient.
+
+### Recommended workflow per v2 (original, see above for proposed replacement)
 
 Check where you are at any time:
 ```
@@ -702,3 +743,28 @@ These multi-label findings are arguably more pedagogically useful — showing a 
 3. **The biggest quality gains come from better meaning definitions, not better models.** 立てる M4 (α=0.458) and 出す M1 (α=0.455) are where human effort should focus.
 4. **Multi-label assignment is real.** Dawid-Skene identifies ~10–20% of compounds per suffix as genuinely belonging to two meanings. The pipeline should preserve this rather than forcing single-label.
 5. **Local Gemma 4 models are competitive** for Pass 2 when given glosses and appropriate temperature. 26b-a4b at ~48 tokens/second is practical for rapid iteration; 31b at ~12 tokens/second is more reliable across suffix types.
+
+### Appendix: Validation experiment (Pass 2b vs Dawid-Skene)
+
+**Question:** Does adding a validation pass (Pass 2b) improve consensus labels, or can we skip it and rely on Dawid-Skene over raw multi-classifier assignments?
+
+**Setup:** `compound-verbs/validation-experiment.py` runs self-validation: each annotator's assignments are sent back to the same model as a validation prompt, flags are applied, and Krippendorff's alpha is compared before and after. Tested on 出す and 立てる with Gemma 26b-a4b (temperatures 1.2 and 1.5) and 31b (temperature 1.2).
+
+**Findings:**
+
+1. **Self-validation does not improve Dawid-Skene consensus.** Mean alpha was flat or slightly negative across every run tested (range: -0.008 to +0.003). The validator improves its own balanced accuracy (+2–3%) while degrading other annotators' accuracy (-1–4%), indicating it's homogenizing toward its own biases rather than correcting genuine errors.
+
+2. **The validator reasons compound-by-compound.** Despite seeing all assignments grouped by meaning, the model's thinking trace shows independent per-compound reasoning with no systematic cross-compound comparisons. The joint context intended to help the model compare siblings within a bucket goes unused.
+
+3. **Glosses significantly affect flag quality.** Runs without glosses produced fewer flags; runs with glosses produced more but also surfaced a deeper problem (see item 4). The model's reasoning quality improved with glosses — less hallucination about what compounds mean — but this didn't translate to better consensus.
+
+4. **Single-sense glosses actively mislead classification.** The original `--all-glosses` flag in assign-examples.mjs only showed the first JMDict sense. For compounds with multiple senses mapping to different suffix meanings (38% of 出す compounds), this biased both assignment and validation. Example: 弾き出す shown as "to flick out" (sense 1 → M1) hid "to calculate" (sense 2 → lexicalized) and "to expel" (sense 3 → M4). This likely explains why all-glosses runs *hurt* Claude in the assignment benchmarks — incomplete glosses were worse than no glosses.
+
+5. **Missing prefix verb context.** Without seeing what the prefix verb (v1) alone means, the model cannot distinguish "suffix adds meaning" from "suffix adds nothing." 弾く already means "to calculate"; 弾き出す also means "to calculate" — so -出す contributes nothing here (lexicalized). But the model sees the compound's gloss and tries to assign a suffix meaning anyway.
+
+**Conclusion:** Skip the validation pass for production. Use Dawid-Skene directly on 3–4 raw classifier outputs. Invest effort instead in improving the assignment prompt: show all JMDict senses (not just the first) and include prefix verb glosses so the model can identify what the suffix actually contributes.
+
+**Open questions:**
+- Would cross-validation (a *different* model reviewing assignments) help more than self-validation? The self-validation trap (model agrees with itself) might not apply.
+- Would per-compound validation (asking about one compound at a time with full context) produce better reasoning than the current all-at-once prompt?
+- After fixing the all-senses gloss issue, do the "rare glosses only" vs "all glosses" rankings change for Claude?

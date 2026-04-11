@@ -3,8 +3,6 @@ classify/
 BCCWJ*tsv
 
 *-meanings-*.json
-*-meanings-*.txt
 *-meanings.json
-*-assignments-*.txt
 *-assignments.json
-*-validation-*.txt
+*txt
