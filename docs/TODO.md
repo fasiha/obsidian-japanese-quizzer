@@ -50,3 +50,11 @@ A real multi-user system needs a proper preferences store
 - [x] fast swipe -> "learn" should be fast, just learn reading. Replace "known" with "learn reading+Kanji". Default to the first furigana. Don't bring up the details view. Same concept with grammar: swipe-learn should be fast.
 - [ ] translation table and display
 - [x] move debug/share sqlite to settings
+
+- [x] We want images
+- [x] We want reading-to-meaning to not be in the same semantic universe basically giving away the answer
+- [x] We want per-sense enrollment
+- [x] We want Memrise-style per-doc planting/learning
+- [ ] we want compound verbs in iOS
+- [ ] improve compound verb detection (compounds not in vvlexicon, compounds in jmdict, etc.: research topic)
+
