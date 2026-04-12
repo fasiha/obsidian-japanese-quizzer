@@ -26,6 +26,7 @@ struct VocabBrowserView: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let session: QuizSession
+    let plantingSession: PlantingSession
     let onSync: () async -> Void
 
     @Environment(VocabCorpus.self) private var corpus
@@ -38,6 +39,7 @@ struct VocabBrowserView: View {
 
     @State private var showQuiz = false
     @State private var showSettings = false
+    @State private var showPlanting = false
     @State private var isSyncing = false
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
@@ -142,6 +144,10 @@ struct VocabBrowserView: View {
             }
 
             .sheet(isPresented: $showSettings) { SettingsView(db: db) }
+            .sheet(isPresented: $showPlanting) {
+                PlantView(session: plantingSession, jmdict: jmdict,
+                          client: session.client, toolHandler: session.toolHandler)
+            }
             .navigationDestination(isPresented: $showQuiz) {
                 QuizView(session: session, pairCorpus: pairCorpus, jmdict: jmdict)
             }
@@ -157,8 +163,22 @@ struct VocabBrowserView: View {
     // MARK: - Quiz launch
 
     private func startQuiz(filter: QuizSession.QuizFilter) {
+        session.documentScope = nil
         session.quizFilter = filter
         showQuiz = true
+    }
+
+    /// Launch a quiz restricted to words sourced from a single document.
+    private func startDocumentQuiz(documentTitle: String) {
+        session.documentScope = documentTitle
+        session.quizFilter = .vocabOnly
+        showQuiz = true
+    }
+
+    /// Launch the planting flow for a single document.
+    private func startPlanting(documentTitle: String) {
+        plantingSession.start(documentTitle: documentTitle, allWords: corpus.items)
+        showPlanting = true
     }
 
     // MARK: - Word list (flat — used when search is active)
@@ -209,10 +229,11 @@ struct VocabBrowserView: View {
                 SourceSectionView(
                     node: node,
                     collapsedSections: $collapsedSections,
-                    selectedItem: $selectedItem
-                ) { item in
-                    swipeButtons(for: item)
-                }
+                    selectedItem: $selectedItem,
+                    swipeButtons: { item in swipeButtons(for: item) },
+                    onLearn: { title in startPlanting(documentTitle: title) },
+                    onDocumentQuiz: { title in startDocumentQuiz(documentTitle: title) }
+                )
             }
         }
         .listStyle(.plain)
@@ -438,11 +459,15 @@ func buildSourceTree(sources: [String], items: [VocabItem]) -> [SourceTreeNode] 
 
 /// Renders one node of the source tree: a DisclosureGroup for directories and
 /// leaf sections, each containing word rows with swipe actions.
+/// `onLearn` and `onDocumentQuiz` are optional callbacks fired from leaf section headers;
+/// they receive the full document title (e.g. "genki-app/L13").
 struct SourceSectionView<SwipeContent: View>: View {
     let node: SourceTreeNode
     @Binding var collapsedSections: Set<String>
     @Binding var selectedItem: VocabItemSelection?
     @ViewBuilder let swipeButtons: (VocabItem) -> SwipeContent
+    var onLearn: ((String) -> Void)? = nil
+    var onDocumentQuiz: ((String) -> Void)? = nil
 
     private var isExpanded: Binding<Bool> {
         Binding(
@@ -463,7 +488,9 @@ struct SourceSectionView<SwipeContent: View>: View {
                         node: child,
                         collapsedSections: $collapsedSections,
                         selectedItem: $selectedItem,
-                        swipeButtons: swipeButtons
+                        swipeButtons: swipeButtons,
+                        onLearn: onLearn,
+                        onDocumentQuiz: onDocumentQuiz
                     )
                 }
             } label: {
@@ -487,11 +514,38 @@ struct SourceSectionView<SwipeContent: View>: View {
                     }
                 }
             } label: {
-                // Show only the last path component as the section header.
-                Text(title.components(separatedBy: "/").last ?? title)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .textCase(nil)
+                // Show only the last path component as the section header,
+                // with Learn and Quiz buttons when callbacks are provided.
+                HStack(spacing: 8) {
+                    Text(title.components(separatedBy: "/").last ?? title)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .textCase(nil)
+                    Spacer()
+                    let hasUnknownWords = items.contains { $0.matches(filter: .notYetLearning) }
+                    if let onLearn, hasUnknownWords {
+                        Button {
+                            onLearn(title)
+                        } label: {
+                            Label("Learn", systemImage: "leaf.fill")
+                                .font(.caption)
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.green)
+                    }
+                    if let onDocumentQuiz {
+                        Button {
+                            onDocumentQuiz(title)
+                        } label: {
+                            Label("Quiz", systemImage: "brain")
+                                .font(.caption)
+                                .labelStyle(.titleAndIcon)
+                        }
+                        .buttonStyle(.borderless)
+                        .foregroundStyle(.blue)
+                    }
+                }
             }
         }
     }

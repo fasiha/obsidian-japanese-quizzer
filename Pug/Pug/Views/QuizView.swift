@@ -85,6 +85,12 @@ struct QuizView: View {
     }
 
     // MARK: - Awaiting tap (multiple choice buttons)
+    //
+    // Visual grammar is shared with PlantView.drillView (PlantView.swift).
+    // Differences that are intentional:
+    //   • PlantView omits the uncertainty buttons and the Skip button — planting drills
+    //     have no SRS halflife to hedge, and skipping happens on the introduce card.
+    //   • PlantView shows "N of M introduced" instead of the SRS queue fraction.
 
     private func awaitingTapView(multipleChoice: QuizSession.MultipleChoiceQuestion) -> some View {
         ScrollView {

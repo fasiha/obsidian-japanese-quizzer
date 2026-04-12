@@ -73,6 +73,10 @@ final class QuizSession {
 
     var quizFilter: QuizFilter = .all
 
+    /// When set, the quiz is restricted to words whose source list includes this document title.
+    /// Reset to nil before launching a global (non-document-scoped) quiz session.
+    var documentScope: String? = nil
+
     var pairCorpus: TransitivePairCorpus? = nil
     var pairIntransitiveInput: String = ""
     var pairTransitiveInput: String = ""
@@ -536,7 +540,7 @@ final class QuizSession {
         do {
             statusMessage = "Loading items…"
             let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus)
-            let candidates: [QuizItem]
+            var candidates: [QuizItem]
             switch quizFilter {
             case .all:
                 candidates = allBuilt
@@ -545,6 +549,13 @@ final class QuizSession {
             case .pairsOnly:
                 candidates = allBuilt.filter { $0.wordType == "transitive-pair" }
             }
+
+            // Restrict to a specific document when documentScope is set.
+            if let scope = documentScope, let manifest = VocabSync.cached() {
+                let scopedIds = Set(manifest.words.filter { $0.sources.contains(scope) }.map(\.id))
+                candidates = candidates.filter { scopedIds.contains($0.wordId) }
+            }
+
             allCandidates = candidates
             print("[QuizSession] loadItems: \(candidates.count) candidate(s)")
             if candidates.isEmpty { phase = .noItems; return }

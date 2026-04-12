@@ -20,6 +20,7 @@ struct AppRootView: View {
     @State private var preferences = UserPreferences()
     @State private var clipPlayer = ClipPlayer()
     @State private var session: QuizSession? = nil
+    @State private var plantingSession: PlantingSession? = nil
     @State private var grammarSession: GrammarAppSession? = nil
     @State private var grammarStore = GrammarStore()
     @State private var corpus = VocabCorpus()
@@ -33,12 +34,12 @@ struct AppRootView: View {
 
     var body: some View {
         Group {
-            if let session, let grammarSession, let db, let jmdict {
+            if let session, let plantingSession, let grammarSession, let db, let jmdict {
                 let isConfigured = !SetupHandler.resolvedApiKey().isEmpty
                                 && VocabSync.resolvedURL() != nil
                 if isConfigured {
-                    HomeView(session: session, pairCorpus: pairCorpus,
-                             db: db, jmdict: jmdict,
+                    HomeView(session: session, plantingSession: plantingSession,
+                             pairCorpus: pairCorpus, db: db, jmdict: jmdict,
                              grammarSession: grammarSession,
                              onSync: { await redownloadAll() })
                         .environment(preferences)
@@ -123,12 +124,13 @@ struct AppRootView: View {
             })
 
             // Publish core state so HomeView can render immediately.
-            db             = quizDB
-            jmdict         = toolHandler.jmdict
-            session        = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
-                                         preferences: preferences)
-            grammarSession = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
-                                              jmdict: toolHandler.jmdict)
+            db              = quizDB
+            jmdict          = toolHandler.jmdict
+            session         = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
+                                          preferences: preferences)
+            plantingSession = PlantingSession(db: quizDB)
+            grammarSession  = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
+                                               jmdict: toolHandler.jmdict)
 
             // Load vocab corpus, pair corpus, grammar manifest, and corpus entries concurrently.
             async let grammarLoad = loadGrammarManifest()
