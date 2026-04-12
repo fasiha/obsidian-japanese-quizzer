@@ -39,7 +39,8 @@ struct AppRootView: View {
                 if isConfigured {
                     HomeView(session: session, pairCorpus: pairCorpus,
                              db: db, jmdict: jmdict,
-                             grammarSession: grammarSession)
+                             grammarSession: grammarSession,
+                             onSync: { await redownloadAll() })
                         .environment(preferences)
                         .environment(corpus)
                         .environment(pairCorpus)
@@ -145,31 +146,78 @@ struct AppRootView: View {
         }
     }
 
-    /// Load grammar manifest: try cached first, then attempt a background sync.
+    // MARK: - Launch loaders (cache-first; network only when cache is absent)
+
+    /// Load grammar manifest: use the on-disk cache when present; download only on first launch.
     private func loadGrammarManifest() async -> GrammarManifest? {
-        // Always load equivalences from cache (may be nil on first launch).
+        let manifest = GrammarSync.cached()
+        let equivalences = GrammarSync.cachedEquivalences()
+
+        // Both cached — skip the network entirely on launch.
+        if var m = manifest, let eq = equivalences {
+            GrammarSync.mergeDescriptions(into: &m, from: eq)
+            return m
+        }
+
+        // Cache absent or incomplete — fetch from network.
+        return await forceDownloadGrammar()
+    }
+
+    /// Load corpus entries: use the on-disk cache when present; download only on first launch.
+    private func loadCorpusEntries() async -> CorpusManifest {
+        let cached = CorpusSync.cachedManifest()
+        guard cached.entries.isEmpty else { return cached }
+
+        if CorpusSync.resolvedURL() != nil {
+            do {
+                let manifest = try await CorpusSync.downloadManifest()
+                print("[Setup] corpus fetched: \(manifest.entries.count) document(s), \(manifest.images?.count ?? 0) image(s)")
+                return manifest
+            } catch {
+                print("[Setup] corpus sync failed (no cache available): \(error)")
+            }
+        }
+        return cached
+    }
+
+    // MARK: - Redownload (force-fetches everything, ignoring the on-disk cache)
+
+    /// Force-download all remote data and update every store. Called by the Redownload button.
+    func redownloadAll() async {
+        guard let db, let jmdict else { return }
+        // Run vocab, pairs, grammar, and corpus downloads concurrently.
+        async let vocabReload: () = corpus.load(db: db, jmdict: jmdict, download: true)
+        async let pairsReload: () = pairCorpus.load(db: db, jmdict: jmdict, download: true)
+        async let grammarReload = forceDownloadGrammar()
+        async let corpusReload: () = forceDownloadCorpus()
+        await vocabReload
+        await pairsReload
+        if let m = await grammarReload { grammarStore.manifest = m }
+        await corpusReload
+    }
+
+    /// Force-download grammar manifest and equivalences, merge them, and return the result.
+    private func forceDownloadGrammar() async -> GrammarManifest? {
         var manifest = GrammarSync.cached()
         var equivalences = GrammarSync.cachedEquivalences()
 
-        // Attempt a network sync. Failures are non-fatal — cached data is still usable.
         if GrammarSync.resolvedURL() != nil {
             do {
                 manifest = try await GrammarSync.sync()
-                print("[Setup] grammar manifest synced: \(manifest?.topics.count ?? 0) topic(s)")
+                print("[Sync] grammar manifest fetched: \(manifest?.topics.count ?? 0) topic(s)")
             } catch {
-                print("[Setup] grammar sync failed (using cache): \(error)")
+                print("[Sync] grammar sync failed: \(error)")
             }
         }
         if GrammarSync.equivalencesURL() != nil {
             do {
                 equivalences = try await GrammarSync.syncEquivalences()
-                print("[Setup] grammar equivalences synced: \(equivalences?.count ?? 0) group(s)")
+                print("[Sync] grammar equivalences fetched: \(equivalences?.count ?? 0) group(s)")
             } catch {
-                print("[Setup] grammar equivalences sync failed (using cache): \(error)")
+                print("[Sync] grammar equivalences sync failed: \(error)")
             }
         }
 
-        // Merge description fields from equivalences into manifest.
         if var m = manifest, let eq = equivalences {
             GrammarSync.mergeDescriptions(into: &m, from: eq)
             return m
@@ -177,18 +225,15 @@ struct AppRootView: View {
         return manifest
     }
 
-    /// Load corpus entries: try cached first, then attempt a background sync.
-    private func loadCorpusEntries() async -> CorpusManifest {
-        var manifest = CorpusSync.cachedManifest()
-
-        if CorpusSync.resolvedURL() != nil {
-            do {
-                manifest = try await CorpusSync.downloadManifest()
-                print("[Setup] corpus synced: \(manifest.entries.count) document(s), \(manifest.images?.count ?? 0) image(s)")
-            } catch {
-                print("[Setup] corpus sync failed (using cache): \(error)")
-            }
+    /// Force-download corpus manifest and apply it to corpusStore.
+    private func forceDownloadCorpus() async {
+        guard CorpusSync.resolvedURL() != nil else { return }
+        do {
+            let manifest = try await CorpusSync.downloadManifest()
+            corpusStore.apply(manifest: manifest)
+            print("[Sync] corpus fetched: \(manifest.entries.count) document(s), \(manifest.images?.count ?? 0) image(s)")
+        } catch {
+            print("[Sync] corpus sync failed: \(error)")
         }
-        return manifest
     }
 }

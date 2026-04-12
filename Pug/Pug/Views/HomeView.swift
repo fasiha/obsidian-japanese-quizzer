@@ -12,6 +12,7 @@ struct HomeView: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let grammarSession: GrammarAppSession
+    let onSync: () async -> Void
 
     @Environment(VocabCorpus.self) private var corpus
     @Environment(GrammarStore.self) private var grammarStore
@@ -45,10 +46,9 @@ struct HomeView: View {
                 db: db,
                 jmdict: jmdict,
                 client: session.client,
-                toolHandler: session.toolHandler
-            ) {
-                corpusStore.apply(manifest: try await CorpusSync.downloadManifest())
-            }
+                toolHandler: session.toolHandler,
+                onSync: onSync
+            )
             .tabItem { Label("Reader", systemImage: "book.pages") }
         }
     }

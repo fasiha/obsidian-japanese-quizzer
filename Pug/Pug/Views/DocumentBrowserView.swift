@@ -16,13 +16,14 @@ struct DocumentBrowserView: View {
     let jmdict: any DatabaseReader
     let client: AnthropicClient
     let toolHandler: ToolHandler?
-    let onDownload: () async throws -> Void
+    /// Called when the user initiates a sync (first-time Download or Redownload).
+    /// Refreshes vocab, grammar, transitive pairs, and corpus.
+    let onSync: () async -> Void
 
     @Environment(CorpusStore.self) private var corpusStore
 
     @State private var collapsedSections: Set<String> = []
-    @State private var isDownloading = false
-    @State private var downloadError: String?
+    @State private var isSyncing = false
 
     var body: some View {
         NavigationStack {
@@ -34,6 +35,23 @@ struct DocumentBrowserView: View {
                 }
             }
             .navigationTitle("Reader")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    if isSyncing {
+                        ProgressView()
+                    } else {
+                        Button {
+                            Task {
+                                isSyncing = true
+                                await onSync()
+                                isSyncing = false
+                            }
+                        } label: {
+                            Label("Redownload", systemImage: "arrow.clockwise")
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -46,29 +64,17 @@ struct DocumentBrowserView: View {
                 systemImage: "book.pages",
                 description: Text("Download the corpus to browse annotated documents.")
             )
-            if isDownloading {
+            if isSyncing {
                 ProgressView("Downloading…")
             } else {
                 Button("Download") {
                     Task {
-                        isDownloading = true
-                        downloadError = nil
-                        do {
-                            try await onDownload()
-                        } catch {
-                            downloadError = error.localizedDescription
-                        }
-                        isDownloading = false
+                        isSyncing = true
+                        await onSync()
+                        isSyncing = false
                     }
                 }
                 .buttonStyle(.borderedProminent)
-            }
-            if let error = downloadError {
-                Text(error)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
             }
         }
     }
