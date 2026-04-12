@@ -30,6 +30,9 @@ parser.add_argument("--per-sense-only", action="store_true",
                     help="Only include files with per-sense format (array of arrays)")
 parser.add_argument("--batch-size", type=int, default=None,
                     help="Only include files from a specific batch size (e.g. 10, 25)")
+parser.add_argument("--collapse-model", action="store_true",
+                    help="Run D-S for every combination of one-run-per-model, "
+                         "so models with multiple runs don't dominate")
 args = parser.parse_args()
 
 SUFFIX = args.suffix
@@ -248,142 +251,204 @@ def dawid_skene_binary(annotations: np.ndarray, max_iter=50, tol=1e-4):
 
 
 # ---------------------------------------------------------------------------
-# Analysis
+# Analysis function
 # ---------------------------------------------------------------------------
 
 meaning_classes = ["M1", "M2", "M3", "M4"]
 meaning_names = MEANING_NAMES.get(SUFFIX, {f"M{i+1}": f"meaning {i+1}" for i in range(4)})
 
-print(f"\n## {SUFFIX} — Per-sense assignment ({n_ann} annotators, {n_items} items from {n_compounds} compounds)\n")
 
-# Per-meaning analysis
-all_alphas = {}
-all_ds = {}
+def run_analysis(runs: list[tuple[str, dict[ItemKey, set[str]]]], title: str = ""):
+    """Run D-S + Krippendorff analysis on a set of annotator runs."""
+    # Build item list from these runs
+    all_run_items: set[ItemKey] = set()
+    for _, run in runs:
+        all_run_items.update(run.keys())
+    items = sorted(all_run_items)
+    n_i = len(items)
+    n_a = len(runs)
+    n_c = len({k[0] for k in items})
 
-for mk in meaning_classes:
-    # Build binary matrix: -1 = missing, 0 = not assigned, 1 = assigned
-    ann_matrix = np.full((n_ann, n_items), -1, dtype=float)
-    for j, (label, run) in enumerate(annotator_runs):
-        for i, item in enumerate(item_list):
+    if title:
+        print(f"\n## {title}\n")
+    else:
+        print(f"\n## {SUFFIX} — Per-sense assignment ({n_a} annotators, {n_i} items from {n_c} compounds)\n")
+
+    all_alphas = {}
+    all_ds = {}
+
+    for mk in meaning_classes:
+        ann_matrix = np.full((n_a, n_i), -1, dtype=float)
+        for j, (label, run) in enumerate(runs):
+            for i, item in enumerate(items):
+                if item in run:
+                    ann_matrix[j, i] = 1 if mk in run[item] else 0
+
+        alpha_data = ann_matrix.copy()
+        alpha_data[alpha_data < 0] = np.nan
+        try:
+            alpha = krippendorff.alpha(alpha_data, level_of_measurement="nominal")
+        except ValueError:
+            alpha = 1.0
+        all_alphas[mk] = alpha
+
+        ds_matrix = ann_matrix.astype(int)
+        T, sensitivity, specificity = dawid_skene_binary(ds_matrix)
+        all_ds[mk] = (T, sensitivity, specificity)
+
+    return items, runs, all_alphas, all_ds
+
+def print_results(items, runs, all_alphas, all_ds, full_table=True):
+    """Print alpha table, per-annotator quality, consensus labels, uncertain items,
+    and optionally the full assignment table."""
+    n_a = len(runs)
+
+    # Alpha table
+    print("### Krippendorff's Alpha per meaning\n")
+    print("| Meaning | α | Interpretation |")
+    print("|---------|---|----------------|")
+    for mk in meaning_classes:
+        a = all_alphas[mk]
+        interp = "good" if a >= 0.8 else "acceptable" if a >= 0.667 else "tentative" if a >= 0.4 else "poor"
+        print(f"| {mk} ({meaning_names[mk]}) | {a:.3f} | {interp} |")
+    overall = np.mean(list(all_alphas.values()))
+    print(f"\nMean α across meanings: **{overall:.3f}**")
+
+    # Per-annotator quality
+    print(f"\n### Per-annotator Dawid-Skene quality\n")
+    header = "| Annotator |"
+    sep = "|-----------|"
+    for mk in meaning_classes:
+        header += f" {mk} sens | {mk} spec |"
+        sep += "--------|--------|"
+    header += " Bal acc |"
+    sep += "---------|"
+    print(header)
+    print(sep)
+
+    for j, (label, _) in enumerate(runs):
+        row = f"| {label} |"
+        vals = []
+        for mk in meaning_classes:
+            _, sensitivity, specificity = all_ds[mk]
+            row += f" {sensitivity[j]:.0%} | {specificity[j]:.0%} |"
+            vals.append((sensitivity[j] + specificity[j]) / 2)
+        bal_acc = np.mean(vals)
+        row += f" {bal_acc:.0%} |"
+        print(row)
+
+    # D-S consensus labels
+    print(f"\n### Dawid-Skene consensus labels\n")
+    ds_labels = {}
+    for i, item in enumerate(items):
+        labels = set()
+        for mk in meaning_classes:
+            T, _, _ = all_ds[mk]
+            if T[i] >= 0.5:
+                labels.add(mk)
+        ds_labels[item] = labels
+
+    from collections import Counter
+    pattern_counts = Counter()
+    for item, labels in ds_labels.items():
+        pattern = "+".join(sorted(labels)) if labels else "lexicalized"
+        pattern_counts[pattern] += 1
+    print("| Pattern | Count |")
+    print("|---------|-------|")
+    for pattern, count in pattern_counts.most_common():
+        print(f"| {pattern} | {count} |")
+
+    # Uncertain items
+    print(f"\n### Uncertain items (Dawid-Skene posterior between 0.2 and 0.8)\n")
+    print("| Item | Meaning | D-S P(yes) | Annotator votes |")
+    print("|------|---------|------------|-----------------|")
+    for mk in meaning_classes:
+        T, _, _ = all_ds[mk]
+        for i, item in enumerate(items):
+            if 0.2 < T[i] < 0.8:
+                yes = sum(1 for j in range(n_a)
+                          if item in runs[j][1] and mk in runs[j][1][item])
+                total = sum(1 for j in range(n_a) if item in runs[j][1])
+                compound, si = item
+                item_label = f"{compound} s{si+1}" if si >= 0 else compound
+                print(f"| {item_label} | {mk} ({meaning_names[mk]}) | {T[i]:.0%} | {yes}/{total} |")
+
+    if not full_table:
+        return
+
+    # Full label table
+    print(f"\n### Full assignment table\n")
+    header = f"| {'Item':<20} |"
+    for label, _ in runs:
+        short = label[:12]
+        header += f" {short:<12} |"
+    header += " D-S | Posteriors |"
+    print(header)
+    print("|" + "-" * 22 + "|" + ("" + "-" * 14 + "|") * n_a + "-" * 15 + "|" + "-" * 40 + "|")
+
+    for i, item in enumerate(items):
+        compound, si = item
+        item_label = f"{compound} s{si+1}" if si >= 0 else compound
+        row = f"| {item_label:<20} |"
+        for j, (label, run) in enumerate(runs):
             if item in run:
-                ann_matrix[j, i] = 1 if mk in run[item] else 0
+                labels = run[item]
+                cell = "+".join(sorted(labels)) if labels else "lex"
+            else:
+                cell = "—"
+            row += f" {cell:<12} |"
+        ds = ds_labels[item]
+        ds_str = "+".join(sorted(ds)) if ds else "lex"
+        posteriors = []
+        for mk in meaning_classes:
+            T, _, _ = all_ds[mk]
+            posteriors.append(f"{mk}={T[i]:.2f}")
+        post_str = " ".join(posteriors)
+        row += f" {ds_str:<13} | {post_str} |"
+        print(row)
 
-    # Krippendorff's alpha (treat -1 as missing)
-    alpha_data = ann_matrix.copy()
-    alpha_data[alpha_data < 0] = np.nan
-    try:
-        alpha = krippendorff.alpha(alpha_data, level_of_measurement="nominal")
-    except ValueError:
-        alpha = 1.0
-    all_alphas[mk] = alpha
 
-    # Dawid-Skene
-    ds_matrix = ann_matrix.astype(int)  # -1 stays as missing marker
-    T, sensitivity, specificity = dawid_skene_binary(ds_matrix)
-    all_ds[mk] = (T, sensitivity, specificity)
+# ---------------------------------------------------------------------------
+# Run analysis
+# ---------------------------------------------------------------------------
 
-# Output: Alpha table
-print("### Krippendorff's Alpha per meaning\n")
-print("| Meaning | α | Interpretation |")
-print("|---------|---|----------------|")
-for mk in meaning_classes:
-    a = all_alphas[mk]
-    interp = "good" if a >= 0.8 else "acceptable" if a >= 0.667 else "tentative" if a >= 0.4 else "poor"
-    print(f"| {mk} ({meaning_names[mk]}) | {a:.3f} | {interp} |")
-overall = np.mean(list(all_alphas.values()))
-print(f"\nMean α across meanings: **{overall:.3f}**")
+if args.collapse_model:
+    # Group annotator runs by model (strip #N suffix)
+    from itertools import product
 
-# Output: Per-annotator quality
-print(f"\n### Per-annotator Dawid-Skene quality\n")
-header = "| Annotator |"
-sep = "|-----------|"
-for mk in meaning_classes:
-    header += f" {mk} sens | {mk} spec |"
-    sep += "--------|--------|"
-header += " Bal acc |"
-sep += "---------|"
-print(header)
-print(sep)
+    runs_by_model: dict[str, list[tuple[str, dict]]] = defaultdict(list)
+    for label, run in annotator_runs:
+        base_model = label.split("#")[0]
+        runs_by_model[base_model].append((label, run))
 
-for j, (label, _) in enumerate(annotator_runs):
-    row = f"| {label} |"
-    vals = []
-    for mk in meaning_classes:
-        _, sensitivity, specificity = all_ds[mk]
-        row += f" {sensitivity[j]:.0%} | {specificity[j]:.0%} |"
-        vals.append((sensitivity[j] + specificity[j]) / 2)
-    bal_acc = np.mean(vals)
-    row += f" {bal_acc:.0%} |"
-    print(row)
+    model_names = sorted(runs_by_model.keys())
+    model_run_lists = [runs_by_model[m] for m in model_names]
 
-# Output: D-S consensus labels
-print(f"\n### Dawid-Skene consensus labels\n")
+    print(f"\nModels: {', '.join(f'{m} ({len(runs_by_model[m])} runs)' for m in model_names)}")
+    combos = list(product(*model_run_lists))
+    print(f"Generating {len(combos)} combinations (one run per model)\n")
 
-ds_labels = {}
-for i, item in enumerate(item_list):
-    labels = set()
-    for mk in meaning_classes:
-        T, _, _ = all_ds[mk]
-        if T[i] >= 0.5:
-            labels.add(mk)
-    ds_labels[item] = labels
+    # Summary table across all combinations
+    all_combo_alphas = []
 
-# Count by label pattern
-from collections import Counter
-pattern_counts = Counter()
-for item, labels in ds_labels.items():
-    pattern = "+".join(sorted(labels)) if labels else "lexicalized"
-    pattern_counts[pattern] += 1
+    for ci, combo in enumerate(combos):
+        combo_runs = list(combo)
+        combo_label = " + ".join(label for label, _ in combo_runs)
+        title = f"Combination {ci+1}/{len(combos)}: {combo_label}"
+        items, runs, alphas, ds = run_analysis(combo_runs, title)
+        print_results(items, runs, alphas, ds, full_table=False)
+        all_combo_alphas.append((combo_label, alphas))
 
-print("| Pattern | Count |")
-print("|---------|-------|")
-for pattern, count in pattern_counts.most_common():
-    print(f"| {pattern} | {count} |")
-
-# Uncertain items
-print(f"\n### Uncertain items (Dawid-Skene posterior between 0.2 and 0.8)\n")
-print("| Item | Meaning | D-S P(yes) | Annotator votes |")
-print("|------|---------|------------|-----------------|")
-
-for mk in meaning_classes:
-    T, _, _ = all_ds[mk]
-    for i, item in enumerate(item_list):
-        if 0.2 < T[i] < 0.8:
-            yes = sum(1 for j in range(n_ann)
-                      if item in annotator_runs[j][1]
-                      and mk in annotator_runs[j][1][item])
-            total = sum(1 for j in range(n_ann) if item in annotator_runs[j][1])
-            compound, si = item
-            item_label = f"{compound} s{si+1}" if si >= 0 else compound
-            print(f"| {item_label} | {mk} ({meaning_names[mk]}) | {T[i]:.0%} | {yes}/{total} |")
-
-# Full label table
-print(f"\n### Full assignment table\n")
-header = f"| {'Item':<20} |"
-for label, _ in annotator_runs:
-    short = label[:12]
-    header += f" {short:<12} |"
-header += " D-S | Posteriors |"
-print(header)
-print("|" + "-" * 22 + "|" + ("" + "-" * 14 + "|") * n_ann + "-" * 15 + "|" + "-" * 40 + "|")
-
-for i, item in enumerate(item_list):
-    compound, si = item
-    item_label = f"{compound} s{si+1}" if si >= 0 else compound
-    row = f"| {item_label:<20} |"
-    for j, (label, run) in enumerate(annotator_runs):
-        if item in run:
-            labels = run[item]
-            cell = "+".join(sorted(labels)) if labels else "lex"
-        else:
-            cell = "—"
-        row += f" {cell:<12} |"
-    ds = ds_labels[item]
-    ds_str = "+".join(sorted(ds)) if ds else "lex"
-    posteriors = []
-    for mk in meaning_classes:
-        T, _, _ = all_ds[mk]
-        posteriors.append(f"{mk}={T[i]:.2f}")
-    post_str = " ".join(posteriors)
-    row += f" {ds_str:<13} | {post_str} |"
-    print(row)
+    # Summary comparison
+    print(f"\n## Summary: mean α across all {len(combos)} combinations\n")
+    print(f"| Combination | M1 α | M2 α | M3 α | M4 α | Mean α |")
+    print(f"|-------------|------|------|------|------|--------|")
+    for label, alphas in all_combo_alphas:
+        mean_a = np.mean(list(alphas.values()))
+        row = f"| {label} | "
+        row += " | ".join(f"{alphas[mk]:.3f}" for mk in meaning_classes)
+        row += f" | **{mean_a:.3f}** |"
+        print(row)
+else:
+    items, runs, all_alphas, all_ds = run_analysis(annotator_runs)
+    print_results(items, runs, all_alphas, all_ds)

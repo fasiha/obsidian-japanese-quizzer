@@ -543,13 +543,13 @@ Written and tested on 上がる. Reads the assignments JSON and sends it to Sonn
 
 Sonnet is preferred over Haiku for this pass because the task requires subtle semantic judgment rather than classification throughput. On the 上がる run: correctly identified 6 misclassifications, 3 incorrectly lexicalized compounds, and 4 missing multi-assignments across 79 compounds.
 
-### Proposed Pass 2 redesign: per-compound assignment with full semantic context
+### Pass 2 redesign: per-sense assignment with full semantic context
 
-#### Background: problems with the original joint approach
+#### Problems with the original joint approach
 
 The original Pass 2 (`assign-examples.mjs`) sends all compounds for a suffix to the LLM in a single prompt with one-line glosses (or no glosses). Testing revealed three problems:
 
-1. **Single-sense glosses mislead classification.** The `--all-glosses` flag only showed the first JMDict sense. For compounds with multiple senses mapping to different suffix meanings (38% of 出す compounds), this biased the model. Example: 弾き出す shown as "to flick out" hid "to calculate" (lexicalized) and "to expel" (M4). This likely explains why all-glosses runs hurt Claude — incomplete glosses were worse than no glosses.
+1. **Single-sense glosses mislead classification.** The `--all-glosses` flag only showed the first JMDict sense. For compounds with multiple senses mapping to different suffix meanings (38% of 出す compounds), this biased the model. Example: 弾き出す shown as "to flick out" hid "to calculate" (lexicalized) and "to expel" (M4). This likely explains why all-glosses runs hurt Claude in the original benchmarks — incomplete glosses were worse than no glosses.
 
 2. **No prefix verb context.** Without seeing what the prefix verb (v1) alone means, the model cannot distinguish "suffix adds meaning" from "suffix adds nothing." 弾く already means "to calculate"; 弾き出す also means "to calculate" — so -出す contributes nothing for that sense. But the model sees the compound's gloss and tries to assign a suffix meaning anyway.
 
@@ -561,71 +561,111 @@ Each compound gets a prompt containing:
 - All suffix meanings (from the sharpened meanings file, as before)
 - All JMDict senses of the compound verb (not just the first)
 - All JMDict senses of the prefix verb (v1), looked up by both kanji and reading to disambiguate homographs (e.g., 弾く はじく "to flick" vs ひく "to play an instrument")
+- The suffix verb's own dictionary senses are *not* included — the sharpened meanings are the classification authority and the raw dictionary senses can conflict with them
 
-The model compares compound senses against prefix verb senses to determine what -出す adds per sense. A compound sense that matches a prefix verb sense exactly is lexicalized for that sense. A compound can be assigned to multiple meanings if different senses reflect different suffix contributions, and still be lexicalized for other senses.
+The model classifies each dictionary sense of the compound individually, comparing it against the prefix verb's senses to determine what the suffix adds. The output is per-sense: `{"弾き出す": [[1], [], [4], []]}` where each inner array corresponds to one compound sense in order, containing meaning numbers or empty for lexicalized.
 
-Compounds are processed in batches (default 25 per prompt) with rate-limit retry logic and exponential backoff. The suffix verb's own dictionary senses are *not* included — the sharpened meanings are the classification authority and the raw dictionary senses can conflict with them.
+**The key test** (from the prompt): a compound verb sense should combine the prefix verb's contribution AND the suffix's contribution — "to \<prefix verb action\> and \<suffix meaning contribution\>." Both parts must be present. If a compound sense matches a prefix verb sense with no additional contribution from the suffix, it is lexicalized for that sense, even if the compound's definition superficially resembles one of the meaning definitions.
 
-Output is saved to `clusters/per-compound/` as timestamped archive files with prompt, response (including thinking traces for local models), parsed JSON, and elapsed time.
+Compounds are processed in batches of 10 per prompt (see batch size findings below) with rate-limit retry and exponential backoff. Output is saved to `clusters/per-compound/` as timestamped archive files with prompt, response (including thinking traces for local models), parsed JSON, elapsed time, and thinking configuration.
 
 Script: `compound-verbs/assign-per-compound.py`
 Analysis: `compound-verbs/per-compound-analysis.py`
-Full output: `compound-verbs/per-compound-analysis.md`
+Full output: `compound-verbs/per-sense-analysis-7classifiers.md`
 
-#### Batching calibration (25 compounds, Haiku)
+#### Why per-sense instead of per-compound
 
-Tested solo (1 compound per prompt) vs batch (25 per prompt) across 5 runs (1 solo + 4 batch). Solo-vs-batch variance: **47% exact agreement.** Batch-vs-batch variance: **50% exact agreement.** These are statistically indistinguishable — batching does not introduce systematic bias beyond normal temperature noise.
+The original approach collapsed all senses into one label: `投げ出す → [M1, M2, M3, M4]`. But 投げ出す has a common "to abandon" sense that is fully lexicalized (投げる already means "to abandon"). A learner seeing all four meanings tagged without knowing that the most common sense is opaque gets a misleading picture.
 
-Reasoning quality is maintained in batches: the model still does per-sense comparison against the prefix verb, correctly identifies lexicalized senses, and produces structured per-compound reasoning. Examples of correct lexicalized detection:
-- 弾き出す sense 2 "to calculate" → lexicalized (弾く already means "to calculate")
-- 切り出す sense 3 "to start a fire" → lexicalized (切る sense 22 is identical)
-- 思い出す "to recall" → lexicalized (思う sense 8 is "to recall; to remember")
+Per-sense output preserves this distinction:
+```
+投げ出す sense 1 "to throw down" → M1 (extraction)
+投げ出す sense 2 "to abandon" → lexicalized (投げる already means this)
+投げ出す sense 3 "to give freely" → M3 (create/produce)
+投げ出す sense 4 "to start to throw" → M2 (sudden begin)
+```
 
-#### Full 100-compound evaluation on 出す (5 classifiers)
+The app can show per-sense suffix contributions and skip lexicalized senses. Each (compound, sense) tuple is also a separate classification item for Dawid-Skene, producing finer-grained confidence estimates.
 
-Ran the top 100 出す compounds by BCCWJ frequency through 5 classifiers:
-- 3× Haiku (batches of 25, separate runs)
-- 1× Gemma 4 31b (local, temperature 1.2)
-- 1× Gemma 4 26b-a4b (local, temperature 1.2)
+#### Batch size: 10 is the sweet spot for per-sense
 
-Krippendorff's Alpha comparison — **old joint approach vs new per-compound approach:**
+Tested batch sizes 1, 6, 10, 12, and 25 on Haiku with the per-sense prompt.
 
-| Meaning | Old α | New α | Δ |
-|---------|-------|-------|---|
-| M1 (extract) | 0.455 | 0.587 | +0.132 |
-| M2 (sudden begin) | 0.584 | 0.880 | +0.296 |
-| M3 (create/produce) | 0.700 | 0.580 | −0.120 |
-| M4 (forced removal) | 0.620 | 0.690 | +0.070 |
-| **Mean** | **0.590** | **0.684** | **+0.094** |
+**Batch 1 vs batch 6:** Perfect agreement on all tested compounds. Per-sense reasoning quality identical.
 
-Mean alpha improved from 0.590 to **0.684**. M2 (sudden begin) jumped from tentative to good (0.880). M1 and M4 both improved substantially. M3 dipped slightly — the richer context makes models more discerning about what counts as "creating something new" vs extracting something that already exists.
+**Batch 10 vs batch 12:** Batch 12 mostly correct but showed occasional drift on borderline lexicalization calls (切り出す sense 4 shifted from M1 to M3).
 
-Per-annotator balanced accuracy ranged from 87% (Gemma models) to 93% (Haiku), up from the 70–91% range in the old approach.
+**Batch 25:** Significant quality degradation. The model stopped properly checking prefix verb overlap and defaulted to assigning meanings rather than marking senses as lexicalized. Examples: 弾き出す sense 2 "calculate" incorrectly assigned M3 (was correctly lexicalized at smaller batch sizes); 切り出す sense 3 "start fire" incorrectly assigned M3; hallucinated M5 on one compound. The per-sense format demands more cross-referencing per output decision than per-compound, and batch 25 pushes the relevant prefix verb senses too far from the meaning definitions in the prompt.
 
-Dawid-Skene consensus: 30 compounds assigned M1 only, 16 M3 only, 10 lexicalized, 10 M1+M2, and various multi-label combinations. 7 compounds had uncertain posteriors (between 0.2 and 0.8 for at least one meaning).
+**Recommendation:** Batch size 10 for per-sense classification. The original per-compound format was fine at batch 25 because each compound needed only one summary judgment; per-sense asks for ~3× more output decisions.
 
-#### Open issues
+#### Full 100-compound evaluation on 出す
 
-**1. "Coincidental match" problem.** The model sometimes assigns a meaning because a lexicalized compound sense superficially matches a meaning definition, even though the prefix verb already has that sense. Example: 投げる already means "to abandon"; 投げ出す also means "to abandon"; but Haiku assigns M4 (forced removal) because "abandon" sounds like "forceful removal." The prompt instructs the model to check for this, but enforcement is inconsistent. A stronger prompt directive may help: "Even if a compound sense superficially matches a meaning definition, if the prefix verb already has that sense on its own, -出す is not contributing that meaning."
+Ran the top 100 出す compounds (by BCCWJ frequency) through 7 classifier runs:
+- 4× Claude Haiku 4.5 (batches of 10, separate runs)
+- 1× Claude Sonnet 4 (batches of 10)
+- 1× Gemma 4 31b (local via llama.cpp, temperature 1.2)
+- 1× Gemma 4 26b-a4b (local via omlx, temperature 1.2)
+- 1× Gemini 3 Flash Preview (medium thinking)
 
-**2. Per-compound vs per-compound-sense classification.** The current output is per-compound: `投げ出す → [M1, M2, M3, M4]`. But the model's reasoning is already per-sense — it examines each dictionary sense individually. Collapsing to per-compound loses the distinction between "the suffix contributes M1 in sense 1 and M2 in sense 4" and "the suffix contributes M1+M2 blended in a single sense." More importantly, it hides which senses are lexicalized. A learner seeing 投げ出す tagged with all four meanings doesn't know that the common "to abandon" sense is actually opaque. Changing the output format to per-compound-sense (e.g., `{"投げ出す": {"to throw down": [1], "to abandon": [], "to give freely": [1], "to start to throw": [2]}}`) would let the app show per-sense suffix contributions and skip lexicalized senses. This would also multiply the number of classification items for Dawid-Skene (each compound-sense tuple is a separate item), producing finer-grained confidence estimates.
+**Krippendorff's Alpha — fair comparison (one run per model, 5 annotators):**
 
-**3. Additional classifiers.** Running 2–4 Gemini Flash calls alongside 3 Haiku runs would add diversity at minimal cost. The current 5-classifier setup (3× Haiku + 2× Gemma local) already shows that cross-model variance is comparable to within-model variance, so additional API models are not strictly necessary but would improve D-S estimates for borderline items.
+To avoid inflating Haiku's apparent reliability by giving it 4× the votes, the analysis was run with `--collapse-model`, which generates all combinations of one-run-per-model and reports each separately. With 4 Haiku runs × 1 each of the other 4 models = 4 combinations of 5 annotators each.
 
-#### Proposed production workflow
+| Meaning | Old joint α | Per-sense α (range across 4 combos) |
+|---------|-------------|--------------------------------------|
+| M1 (extract) | 0.455 | 0.550–0.608 |
+| M2 (sudden begin) | 0.584 | 0.833–0.866 |
+| M3 (create/produce) | 0.700 | 0.556–0.589 |
+| M4 (forced removal) | 0.620 | 0.684–0.725 |
+| **Mean** | **0.590** | **0.659–0.690** |
 
-1. Pass 1 + 1b: generate and sharpen meanings (unchanged)
-2. Pass 2: `python3 compound-verbs/assign-per-compound.py --suffix <v2> --all --batch-size 25` — run 3× Haiku (optionally add Gemma or Gemini runs)
-3. Dawid-Skene consensus across runs: stable items ship directly; uncertain items (posterior between 0.2 and 0.8) flagged for optional human review
-4. Skip Pass 2b (validation) — the validation experiment showed self-validation does not improve D-S consensus
+Mean alpha improved from 0.590 to **~0.68** with the new approach. M2 (sudden begin) improved dramatically to 0.83–0.87 (good). M4 improved to acceptable. M1 improved but remains tentative. M3 dipped from the old approach — the richer per-sense context makes models more discerning about what counts as "creating something new," surfacing genuine ambiguity that the old approach papered over.
 
-This eliminates Pass 2b, Pass 2c, and human review of validation flags from the workflow. The only human review point is the meanings themselves (Pass 1b) and optionally the uncertain items from D-S.
+**Per-annotator balanced accuracy (fair, one vote each):**
 
-**Cost estimate for all suffixes:** ~470 suffixes × ~30 compounds average × 3 runs ÷ 25 per batch ≈ 1,700 Haiku calls. At Haiku pricing this is approximately $2–5 total, completing in ~15 minutes of parallelized API time.
+| Model | Bal acc |
+|-------|---------|
+| Claude Sonnet 4 | 89% |
+| Claude Haiku 4.5 | 87–89% |
+| Gemini 3 Flash | 89% |
+| Gemma 4 31b | 88% |
+| Gemma 4 26b-a4b | 88% |
 
-**Remaining bottleneck:** Only 5 of 470 suffixes have meanings files. The meanings pipeline (Pass 1 + 1b) needs to run for the remaining suffixes before per-compound assignment can proceed. Most suffixes have fewer compounds than 出す and simpler semantics; batch generation with spot-check review of the top 20 suffixes by compound count is likely sufficient.
+**All five models perform within 1–2% of each other.** No single model dominates. This is a stark contrast to the old approach where model rankings varied dramatically by suffix and gloss style. The improved prompt (prefix verb comparison, all senses, lexicalization guidance) matters far more than model choice.
 
-### Recommended workflow per v2 (original, see above for proposed replacement)
+**D-S caveat with duplicate runs:** Running the same model N times and treating each as an independent annotator inflates D-S reliability estimates. D-S doesn't know these are the same classifier with temperature noise — it sees N corroborating annotators and weights them heavily. When Haiku had 4 runs vs 1 for each other model, Haiku appeared to have 90–93% balanced accuracy vs others at 83–88%. With fair representation (1 run each), the gap disappears. For production, use majority vote when aggregating runs of the same model, and reserve D-S for combining different models.
+
+**Systematic bias patterns (consistent across old and new approaches):**
+- 31b and Gemini 3 Flash share nearly identical sensitivity/specificity profiles: high M1 sensitivity (~95%), low M1 specificity (~70–85%), weak M3 sensitivity (~50–55%). They add minimal diversity to each other as D-S annotators.
+- 26b-a4b has a different profile: better M3 sensitivity (74–87%) but weaker M4 sensitivity (59–67%). It adds genuine diversity.
+- Claude models (Haiku and Sonnet) are the most balanced across all meanings.
+
+#### Production workflow
+
+1. Pass 1: `node compound-verbs/cluster-meanings.mjs <v2> --simple --no-productivity --allow-reasoning`
+2. Pass 1b: `node compound-verbs/sharpen-meanings.mjs <v2>` — review sharpened meanings before continuing
+3. Pass 2: `python3 compound-verbs/assign-per-compound.py --suffix <v2> --all --batch-size 10` — run with multiple models (see below)
+4. Aggregate: majority vote within same-model runs, then Dawid-Skene across different models. Uncertain items (posterior 0.2–0.8) flagged for optional human review.
+5. Pass 3: `node compound-verbs/select-examples.mjs <v2>`
+
+Pass 2b (validation), Pass 2c (apply validation), and human review of validation flags are eliminated. The validation experiment showed self-validation does not improve D-S consensus (see Validation Experiment appendix).
+
+**Recommended classifier set:** 3× Haiku (cheap, fast, majority-vote within) + 1× Gemma 26b-a4b (free, different bias profile) + optionally 1× Sonnet or Gemini 3 Flash for additional diversity. The 31b and Gemini 3 Flash have redundant bias profiles — running both adds little value.
+
+**Cost estimate for all suffixes:** ~470 suffixes × ~30 compounds average ÷ 10 per batch × 3 Haiku runs ≈ 4,200 Haiku calls. At Haiku pricing this is approximately $5–15 total, completing in ~30 minutes of serial API time (parallelizable to ~5 minutes).
+
+**Remaining bottleneck:** Only 5 of 470 suffixes have meanings files. The meanings pipeline (Pass 1 + 1b) needs to run for the remaining suffixes before per-sense assignment can proceed.
+
+#### Remaining open questions
+
+1. **M1/M3 boundary.** The weakest alphas are M1 (extract) and M3 (create/produce). Some compounds genuinely sit on the boundary (聞き出す "extract information" — is the information extracted or produced?). Better meaning definitions could help, but some ambiguity is inherent.
+
+2. **Rare senses and the long tail.** The batch-10 format occasionally drops senses when the compound has many (5+) dictionary entries. Monitoring for sense count mismatches across runs would catch this.
+
+3. **Suffixes beyond 出す.** All testing was done on 出す (4 meanings, 100 compounds). Suffixes with fewer meanings (e.g., 2) or simpler semantics may permit larger batch sizes. Suffixes with more abstract meanings may need smaller batches or stronger prompts.
+
+### Original workflow per v2 (superseded — retained for reference)
 
 Check where you are at any time:
 ```
@@ -650,6 +690,7 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
 
 ## Action Items
 
+- [ ] **Run Pass 1 on remaining suffixes** — only 5 of 470 have meanings files. Batch generation with spot-check review of top 20 by compound count.
 - [ ] **Write `compound-verbs/infer-from-corpus.mjs`** (Phase 1 step 6):
   MeCab tokenization of corpus verb entries not already in compound-verbs.json,
   batched Haiku sense assignment, add `pug-inferred` examples to compound-verbs.json.
@@ -658,8 +699,8 @@ applied" from `_metadata.validations_applied` in `assignments.json`, which
   `BCCWJ_frequencylist_luw2_ver1_0.tsv` in the `compound-verbs/` directory before
   running classification scripts. Link to http://doi.org/10.15084/00003214
 - [x] **Write `compound-verbs/cluster-meanings.mjs`** (Pass 1) — written and tested on 出す
-- [ ] **Run Pass 1 on target suffixes** (込む, 上げる, 出す, 付ける, 上がる, 入れる) — use `--simple --no-productivity --allow-reasoning` (standard invocation)
-- [ ] **Rewrite `compound-verbs/assign-examples.mjs`** (Pass 2) — first version written and tested on 返す; needs: (a) collapse to one LLM call for all meanings, (b) augment rare/unknown compounds with NINJAL gloss inline, (c) permit multi-meaning assignment explicitly in prompt
+- [x] **Write `compound-verbs/assign-per-compound.py`** (Pass 2) — per-sense assignment with prefix verb context, tested on 出す with 5 models
+- [x] **Write `compound-verbs/per-compound-analysis.py`** — Dawid-Skene + Krippendorff analysis with `--collapse-model` for fair multi-model comparison
 
 ---
 
@@ -777,13 +818,15 @@ Examples from 立てる: 組み立てる → D-S says M1+M4 ("both structural as
 
 These multi-label findings are arguably more pedagogically useful — showing a learner that 組み立てる involves *both* structural building and transformation to a usable product is more accurate than forcing one meaning.
 
-### Practical conclusions
+### Practical conclusions (from original joint approach — see "Pass 2 redesign" section for updated findings)
 
-1. **No single model dominates.** Sonnet (rare glosses only) is best for 立てる; 26b-a4b (all glosses) is best for 出す. Model selection should depend on the suffix's characteristics.
-2. **Use `--all-glosses` for Gemma, rare glosses only for Claude.** This single prompt decision is more impactful than model choice or temperature.
-3. **The biggest quality gains come from better meaning definitions, not better models.** 立てる M4 (α=0.458) and 出す M1 (α=0.455) are where human effort should focus.
-4. **Multi-label assignment is real.** Dawid-Skene identifies ~10–20% of compounds per suffix as genuinely belonging to two meanings. The pipeline should preserve this rather than forcing single-label.
-5. **Local Gemma 4 models are competitive** for Pass 2 when given glosses and appropriate temperature. 26b-a4b at ~48 tokens/second is practical for rapid iteration; 31b at ~12 tokens/second is more reliable across suffix types.
+The conclusions below applied to the original `assign-examples.mjs` joint approach. The per-sense redesign changes the picture significantly: with the improved prompt, all models perform within 1–2% of each other and the gloss-style distinction (rare vs all) is no longer relevant since the new approach shows all JMDict senses for every compound.
+
+1. **No single model dominates.** Sonnet (rare glosses only) is best for 立てる; 26b-a4b (all glosses) is best for 出す. Model selection should depend on the suffix's characteristics. *(Update: with the per-sense approach, all tested models achieve 87–89% balanced accuracy regardless of suffix.)*
+2. **Use `--all-glosses` for Gemma, rare glosses only for Claude.** This single prompt decision is more impactful than model choice or temperature. *(Update: the per-sense approach always shows all senses, making this distinction obsolete.)*
+3. **The biggest quality gains come from better meaning definitions, not better models.** 立てる M4 (α=0.458) and 出す M1 (α=0.455) are where human effort should focus. *(Still true — M1 and M3 remain the weakest meanings even with the improved prompt.)*
+4. **Multi-label assignment is real.** Dawid-Skene identifies ~10–20% of compounds per suffix as genuinely belonging to two meanings. The pipeline should preserve this rather than forcing single-label. *(Still true, and the per-sense approach handles this more cleanly by assigning meanings to individual senses.)*
+5. **Local Gemma 4 models are competitive** for Pass 2 when given glosses and appropriate temperature. 26b-a4b at ~48 tokens/second is practical for rapid iteration; 31b at ~12 tokens/second is more reliable across suffix types. *(Still true. With the per-sense prompt, Gemma models match Claude models in balanced accuracy.)*
 
 ### Appendix: Validation experiment (Pass 2b vs Dawid-Skene)
 

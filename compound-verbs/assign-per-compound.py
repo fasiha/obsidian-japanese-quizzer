@@ -478,12 +478,25 @@ def save_result(suffix: str, compounds: list[dict], prompt: str,
     filename = f"{suffix}-{label}-{ts_file}-{safe_model}.txt"
     path = OUTDIR / filename
 
+    # Record thinking config for reproducibility
+    if MODEL.startswith("gemini-3"):
+        thinking_note = "gemini-3 thinking_level=medium"
+    elif MODEL.startswith("gemini-") and ("thinking" in MODEL or "pro" in MODEL):
+        thinking_note = "gemini thinking_budget=8000"
+    elif MODEL == "local":
+        thinking_note = "local model native thinking (deepseek format)"
+    elif MODEL.startswith("claude-"):
+        thinking_note = "claude default (extended thinking not enabled)"
+    else:
+        thinking_note = "none"
+
     header_lines = [
         "========== FLAGS ==========",
         f"suffix: {suffix}",
         f"compounds: {', '.join(c['headword'] for c in compounds)}",
         f"model: {ACTUAL_MODEL}",
         f"temperature: {args.temperature}",
+        f"thinking: {thinking_note}",
         f"batch-size: {len(compounds)}",
         f"elapsed-seconds: {elapsed:.1f}",
         f"timestamp: {timestamp}",
