@@ -110,9 +110,11 @@ OR
     const choice = data.choices[0].message;
     const contentResponse = choice.content;
 
+    const parsed = JSON.parse(contentResponse);
+
     // Save audit log
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logPath = path.join(process.cwd(), `grammar/suggest-grammar-matches-${timestamp}.txt`);
+    const logPath = path.join(process.cwd(), `grammar/suggest-grammar-matches-${timestamp}.md`);
     const logContent = `# FLAGS
 Model: ${MODEL}
 Timestamp: ${new Date().toISOString()}
@@ -122,14 +124,13 @@ ${prompt}
 
 # RESPONSE
 Reasoning:
-${choice.reasoning_content || 'N/A'}
+${parsed.reasoning || choice.reasoning_content || 'N/A'}
 
 Content:
-${contentResponse}
+${JSON.stringify(parsed, null, 2)}
 `;
     fs.writeFileSync(logPath, logContent);
 
-    const parsed = JSON.parse(contentResponse);
 
     if (parsed.error) {
       console.error(`\x1b[31mLLM reported irrelevant content: ${parsed.error}\x1b[0m`);
