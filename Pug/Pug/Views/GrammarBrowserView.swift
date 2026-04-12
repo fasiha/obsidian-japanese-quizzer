@@ -21,6 +21,7 @@ struct GrammarBrowserView: View {
     let client: AnthropicClient
     let toolHandler: ToolHandler?
     let jmdict: any DatabaseReader
+    let onSync: () async -> Void
 
     @State private var enrollmentStatus: [String: Bool] = [:]   // topicId → enrolled
     @State private var searchText = ""
@@ -29,17 +30,22 @@ struct GrammarBrowserView: View {
     @State private var showQuiz = false
     @State private var isLoadingEnrollment = true
     @State private var showSettings = false
-    @State private var lastSyncedAt: String? = nil
+    @State private var lastSyncedAt: String?
+    @State private var isSyncing = false
+
+    @Environment(GrammarStore.self) private var grammarStore
 
     init(manifest: GrammarManifest, db: QuizDB, grammarSession: GrammarAppSession,
          client: AnthropicClient, toolHandler: ToolHandler? = nil,
-         jmdict: any DatabaseReader) {
+         jmdict: any DatabaseReader, onSync: @escaping () async -> Void) {
         self._manifest = State(initialValue: manifest)
+        self._lastSyncedAt = State(initialValue: manifest.generatedAt)
         self.db = db
         self._grammarSession = State(initialValue: grammarSession)
         self.client = client
         self.toolHandler = toolHandler
         self.jmdict = jmdict
+        self.onSync = onSync
     }
 
     enum EnrollmentFilter: String, CaseIterable {
@@ -108,7 +114,14 @@ struct GrammarBrowserView: View {
                             db: db,
                             client: client,
                             lastSyncedAt: lastSyncedAt,
-                            onRedownload: { Task { await redownloadGrammar() } }
+                            isDownloading: isSyncing,
+                            onRedownload: {
+                                Task {
+                                    isSyncing = true
+                                    await syncAll()
+                                    isSyncing = false
+                                }
+                            }
                         )
                     }
                 }
@@ -291,18 +304,13 @@ struct GrammarBrowserView: View {
         isLoadingEnrollment = false
     }
 
-    private func redownloadGrammar() async {
-        do {
-            var fresh = try await GrammarSync.sync()
-            if let equivalences = try? await GrammarSync.syncEquivalences() {
-                GrammarSync.mergeDescriptions(into: &fresh, from: equivalences)
-            }
-            manifest = fresh
+    private func syncAll() async {
+        await onSync()
+        // onSync updates grammarStore.manifest via AppRootView; pull the new value into local state.
+        if let updated = grammarStore.manifest {
+            manifest = updated
             lastSyncedAt = ISO8601DateFormatter().string(from: Date())
-        } catch {
-            print("[GrammarBrowserView] redownload failed: \(error)")
         }
-        _ = try? await CorpusSync.download()
     }
 }
 

@@ -26,6 +26,7 @@ struct VocabBrowserView: View {
     let db: QuizDB
     let jmdict: any DatabaseReader
     let session: QuizSession
+    let onSync: () async -> Void
 
     @Environment(VocabCorpus.self) private var corpus
     @Environment(GrammarStore.self) private var grammarStore
@@ -37,6 +38,7 @@ struct VocabBrowserView: View {
 
     @State private var showQuiz = false
     @State private var showSettings = false
+    @State private var isSyncing = false
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
     @State private var collapsedSections: Set<String> = []  // path keys of collapsed nodes
@@ -116,7 +118,14 @@ struct VocabBrowserView: View {
                             db: db,
                             client: session.client,
                             lastSyncedAt: corpus.lastSyncedAt,
-                            onRedownload: { Task { await corpus.redownload(db: db, jmdict: jmdict); await pairCorpus.redownload(db: db, jmdict: jmdict); _ = try? await CorpusSync.download() } }
+                            isDownloading: isSyncing,
+                            onRedownload: {
+                                Task {
+                                    isSyncing = true
+                                    await onSync()
+                                    isSyncing = false
+                                }
+                            }
                         )
                     }
                 }

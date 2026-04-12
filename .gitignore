@@ -29,6 +29,7 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 *.webm
 *.ass
 *.srt
+*.jpg
 
 vocab.json
 grammar.json

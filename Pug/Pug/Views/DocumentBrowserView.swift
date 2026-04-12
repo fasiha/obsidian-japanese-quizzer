@@ -24,6 +24,8 @@ struct DocumentBrowserView: View {
 
     @State private var collapsedSections: Set<String> = []
     @State private var isSyncing = false
+    @State private var lastSyncedAt: String?
+    @State private var showSettings = false
 
     var body: some View {
         NavigationStack {
@@ -37,21 +39,24 @@ struct DocumentBrowserView: View {
             .navigationTitle("Reader")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    if isSyncing {
-                        ProgressView()
-                    } else {
-                        Button {
+                    BrowserToolbarMenu(
+                        showSettings: $showSettings,
+                        db: db,
+                        client: client,
+                        lastSyncedAt: lastSyncedAt,
+                        isDownloading: isSyncing,
+                        onRedownload: {
                             Task {
                                 isSyncing = true
                                 await onSync()
+                                lastSyncedAt = ISO8601DateFormatter().string(from: Date())
                                 isSyncing = false
                             }
-                        } label: {
-                            Label("Redownload", systemImage: "arrow.clockwise")
                         }
-                    }
+                    )
                 }
             }
+            .sheet(isPresented: $showSettings) { SettingsView(db: db) }
         }
     }
 
