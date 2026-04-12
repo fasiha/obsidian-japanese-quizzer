@@ -107,9 +107,22 @@ for (const { repoPath: imageDest } of images) {
   copyFileSync(absLocalPath, destPath);
 }
 
-// --- Commit and push ---
+// --- Stage only the files we copied, not any stray files in the repo ---
 
-run(`git -C "${repoPath}" add -A`);
+const stagedPaths = [
+  ...filesToPublish.map(({ dest }) => dest),
+  ...images.map(({ repoPath: imageDest }) => imageDest),
+];
+if (stagedPaths.length > 0) {
+  // Stage in chunks to avoid argument-list limits on very large image sets.
+  const chunkSize = 50;
+  for (let i = 0; i < stagedPaths.length; i += chunkSize) {
+    const chunk = stagedPaths.slice(i, i + chunkSize).map(p => `"${p}"`).join(" ");
+    run(`git -C "${repoPath}" add ${chunk}`);
+  }
+}
+
+// --- Commit and push ---
 
 const diff = execSync(`git -C "${repoPath}" diff --cached --name-only`, {
   encoding: "utf8",

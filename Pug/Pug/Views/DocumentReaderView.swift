@@ -546,17 +546,13 @@ struct ImageLineView: View {
                 loadedImage = nil
                 loadFailed = false
                 do {
-                    let (data, response) = try await URLSession.shared.data(for: request)
-                    let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    print("[ImageLineView] fetch \(request.url?.lastPathComponent ?? "?") status=\(status) bytes=\(data.count)")
+                    let (data, _) = try await URLSession.shared.data(for: request)
                     if let uiImage = UIImage(data: data) {
                         loadedImage = SwiftUI.Image(uiImage: uiImage)
                     } else {
-                        print("[ImageLineView] UIImage init failed — response body: \(String(data: data.prefix(200), encoding: .utf8) ?? "<binary>")")
                         loadFailed = true
                     }
                 } catch {
-                    print("[ImageLineView] network error: \(error)")
                     loadFailed = true
                 }
                 isLoading = false
