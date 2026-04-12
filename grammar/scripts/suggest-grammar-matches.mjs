@@ -10,7 +10,9 @@ import path from 'path';
 function getSourcePrefix(fileName) {
   const match = fileName.match(/grammar-(.*?)\.tsv|kanshudo-grammar\.tsv/);
   if (!match) return '';
-  return match[1] || 'kanshudo';
+  let prefix = match[1] || 'kanshudo';
+  if (prefix === 'stolaf-genki') prefix = 'genki';
+  return prefix;
 }
 
 function readTSV(filePath) {
@@ -38,11 +40,6 @@ function readTSV(filePath) {
     data.push(entry);
   }
   return data;
-}
-
-function fuzzyMatch(text, query) {
-  if (!text || !query) return false;
-  return text.includes(query);
 }
 
 // 1. Load new topics
@@ -109,22 +106,22 @@ newTopics.forEach(target => {
     if (score > 0) {
       candidates.push({
         id: item.id,
-        reason: `Score: ${score} (Matches: ${target.titleJP} / ${target.titleEN})`
+        score,
+        reason: `Matches on: ${target.titleJP || 'N/A'} / ${target.titleEN || 'N/A'}`
       });
     }
   }
 
   // Sort candidates by score (descending) and take top N
-  candidates.sort((a, b) => {
-    const scoreA = parseInt(a.reason.match(/\d+/)[0]);
-    const scoreB = parseInt(b.reason.match(/\d+/)[0]);
-    return scoreB - scoreA;
-  });
+  candidates.sort((a, b) => b.score - a.score);
 
   if (candidates.length > 0) {
     potentialMatches.push({
       target: target.id,
-      candidates: candidates.slice(0, 5) // Limit to top 5 candidates
+      candidates: candidates.slice(0, 5).map(c => ({
+        id: c.id,
+        reason: c.reason
+      }))
     });
   }
 } );

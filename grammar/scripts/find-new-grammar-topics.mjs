@@ -4,7 +4,9 @@ import path from 'path';
 function getSourcePrefix(fileName) {
   const match = fileName.match(/grammar-(.*?)\.tsv|kanshudo-grammar\.tsv/);
   if (!match) return '';
-  return match[1] || 'kanshudo';
+  let prefix = match[1] || 'kanshudo';
+  if (prefix === 'stolaf-genki') prefix = 'genki';
+  return prefix;
 }
 
 function readTSV(filePath) {
@@ -34,6 +36,13 @@ function readTSV(filePath) {
   return data;
 }
 
+// Get the target topic from command line arguments
+const targetTopic = process.argv[2];
+if (!targetTopic) {
+  console.error('Usage: node find-new-grammar-topics.mjs <topic-id>');
+  process.exit(1);
+}
+
 // Load existing topics from equivalences
 const equivalencesPath = path.join(process.cwd(), 'grammar/grammar-equivalences.json');
 const equivalences = JSON.parse(fs.readFileSync(equivalencesPath, 'utf8'));
@@ -43,6 +52,12 @@ equivalences.forEach(group => {
     existingTopics.add(topic);
   });
 });
+
+if (existingTopics.has(targetTopic)) {
+  fs.writeFileSync('grammar/new-topics.json', JSON.stringify([], null, 2));
+  console.log(`Topic ${targetTopic} is already in grammar-equivalences.json. Writing empty list.`);
+  process.exit(0);
+}
 
 // Get all TSVs
 const directory = path.join(process.cwd(), 'grammar');
@@ -59,12 +74,9 @@ files.forEach(file => {
     const id = row.id;
     if (!id) return;
     
-    // We'll assume the ID in the JSON matches the prefix:id 
-    // or we need to check if the ID is already present in a different form.
-    // For now, let's just use prefix:id
     const fullId = `${prefix}:${id}`;
     
-    if (!existingTopics.has(fullId)) {
+    if (fullId === targetTopic) {
       newTopics.push({
         id: fullId,
         source: prefix,
@@ -78,9 +90,6 @@ files.forEach(file => {
   });
 });
 
-// In a real scenario, we'd need to handle the fact that 'bunpro:adjective-て-noun-de' 
-// might not be 'bunpro:adjective-te-noun-de' (Romanization/slugification).
-// But let's start with this.
-
 fs.writeFileSync('grammar/new-topics.json', JSON.stringify(newTopics, null, 2));
-console.log(`Found ${newTopics.length} new topics.`);
+console.log(`Found ${newTopics.length} new topic(s).`);
+

@@ -17,7 +17,7 @@ Instead of a single large prompt, the workflow is decomposed into a series of at
 | Step | Script / Action | Input | Intermediate Output | LLM Role |
 | :--- | :--- | :--- | :--- | :--- |
 | **1. Filter** | `find-new-grammar-topics.mjs` | `grammar-equivalences.json` | `new-topics.json` | None |
-| **2. Discover** | `suggest-grammar-matches.mjs` | Topic ID + All TSVs | `potential-matches.json` | None (Keyword search) |
+| **2. Discover** | `suggest-grammar-matches.mjs` | Topic ID + Slug + Web Content + All TSVs | `potential-matches.json` | **Search Strategist** |
 | **3. Gather** | `gather-references.mjs` | `potential-matches.json` | `reference-content.json` | None (HTTP Fetch) |
 | **4. Decide** | `verify-equivalences.mjs` | `potential-matches` + `reference-content` | `equivalence-decision.json` | **Verifier** (Yes/No match) |
 | **5. Commit** | `apply-equivalence.mjs` | `equivalence-decision.json` | $\rightarrow$ `grammar-equivalences.json` | None |
@@ -67,7 +67,14 @@ To ensure transparency and allow for manual overrides, the pipeline uses structu
 
 By isolating the LLM calls, we can apply specific prompting strategies to each role:
 
-#### Role A: The Verifier (`verify-equivalences.mjs`)
+#### Role A: The Search Strategist (`suggest-grammar-matches.mjs`)
+The discovery phase is no longer a simple string match, but a linguistic search. The LLM analyzes the target topic's context to generate a broad list of potential search fragments.
+- **Knowledge Ingest**: The script fetches the `href` content. The LLM is provided with the `slug`, `titleJP`, `titleEN`, and the full web content.
+- **Failure Mode**: If the `href` fetch fails, or if the LLM determines the web content is empty or irrelevant to the grammar topic, the script must fail loudly.
+- **Task**: Generate a list of search fragments (stems, kanji variations, related terms, and Romaji) that would likely appear in other grammar databases.
+- **Execution**: The script then performs a case-insensitive search of these fragments across all `titleJP` and `titleEN` fields in the grammar TSVs to identify candidates.
+
+#### Role B: The Verifier (`verify-equivalences.mjs`)
 The task is binary. The prompt focuses on comparing two reference texts to see if they describe the same grammatical mechanism.
 - **Constraint**: Do not hallucinate IDs; only select from the provided `candidates` list.
 - **Benefit**: Extremely high accuracy even for small models.

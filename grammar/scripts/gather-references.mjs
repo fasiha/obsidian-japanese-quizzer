@@ -9,7 +9,9 @@ import path from 'path';
 function getSourcePrefix(fileName) {
   const match = fileName.match(/grammar-(.*?)\.tsv|kanshudo-grammar\.tsv/);
   if (!match) return '';
-  return match[1] || 'kanshudo';
+  let prefix = match[1] || 'kanshudo';
+  if (prefix === 'stolaf-genki') prefix = 'genki';
+  return prefix;
 }
 
 function readTSV(filePath) {
