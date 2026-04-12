@@ -95,10 +95,11 @@ for (const { src, dest } of filesToPublish) {
 
 // --- Copy images into the repo, preserving subdirectory structure ---
 
-for (const { localPath, repoPath: imageDest } of images) {
-  const absLocalPath = path.resolve(projectRoot, localPath);
+for (const { repoPath: imageDest } of images) {
+  // repoPath is relative to the project root (e.g. "Bunsho-Dokkai-1nen/1-usagi.jpg")
+  const absLocalPath = path.resolve(projectRoot, imageDest);
   if (!existsSync(absLocalPath)) {
-    console.warn(`[publish] Image not found, skipping: ${localPath}`);
+    console.warn(`[publish] Image not found, skipping: ${imageDest}`);
     continue;
   }
   const destPath = path.join(repoPath, imageDest);

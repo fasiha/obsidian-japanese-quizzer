@@ -25,8 +25,14 @@ func derivedURL(replacing filename: String, fallbackEnvVar: String? = nil) -> UR
 
 /// Build a URLRequest for the given URL, adding the GitHub PAT Authorization header
 /// if one is configured. Used by all Sync types to support private GitHub repos.
-func authenticatedRequest(for url: URL) -> URLRequest {
-    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+///
+/// - `cachePolicy`: defaults to `.reloadIgnoringLocalCacheData` for JSON data files that
+///   change on each publish. Pass `.returnCacheDataElseLoad` for static assets like images.
+func authenticatedRequest(
+    for url: URL,
+    cachePolicy: URLRequest.CachePolicy = .reloadIgnoringLocalCacheData
+) -> URLRequest {
+    var request = URLRequest(url: url, cachePolicy: cachePolicy)
     if let pat = SetupHandler.resolvedVocabPAT() {
         request.setValue("Bearer \(pat)", forHTTPHeaderField: "Authorization")
     }

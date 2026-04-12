@@ -28,7 +28,6 @@ struct CorpusManifest: Codable {
 /// One image that was published alongside the corpus, at its repo-relative path.
 struct CorpusImageEntry: Codable {
     let repoPath: String    // e.g. "doc-name/1-usagi.jpg"
-    let localPath: String   // absolute local path at publish time (not used by iOS)
 }
 
 /// Navigation target for deep-linking from a detail sheet into DocumentReaderView.

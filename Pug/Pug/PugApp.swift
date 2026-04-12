@@ -138,11 +138,8 @@ struct AppRootView: View {
             session!.pairCorpus = pairCorpus
             grammarStore.manifest = await grammarLoad
             let corpusManifest = await corpusLoad
-            corpusStore.entries = corpusManifest.entries
-            corpusStore.images = corpusManifest.images ?? []
-            corpusStore.baseURL = VocabSync.resolvedURL().flatMap {
-                URL(string: $0.absoluteString.replacingOccurrences(of: "vocab.json", with: ""))
-            }
+            corpusStore.apply(manifest: corpusManifest)
+            corpusStore.baseURL = VocabSync.resolvedURL().map { $0.deletingLastPathComponent() }
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -14,4 +14,11 @@ import Foundation
     /// An image at repoPath "doc-name/1-usagi.jpg" resolves to:
     ///   baseURL?.appendingPathComponent("doc-name/1-usagi.jpg")
     var baseURL: URL?
+
+    /// Apply a downloaded or cached corpus manifest: updates entries and images.
+    /// Does not touch baseURL — that is derived once at startup from the vocab URL.
+    func apply(manifest: CorpusManifest) {
+        entries = manifest.entries
+        images = manifest.images ?? []
+    }
 }

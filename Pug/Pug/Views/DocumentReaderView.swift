@@ -143,7 +143,8 @@ struct DocumentReaderView: View {
 
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top, spacing: 6) {
-                MarkdownLineView(text: line.text)
+                MarkdownLineView(text: line.text,
+                                 storyDir: (entry.title as NSString).deletingLastPathComponent)
                     .padding(.vertical, 4)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
@@ -511,11 +512,16 @@ struct IdentifiableGrammarTopic: Identifiable {
 /// corpus base URL with the configured GitHub PAT if present.
 struct ImageLineView: View {
     let text: String
+    /// Directory component of the containing story's title (e.g. "Bunsho-Dokkai-1nen").
+    /// Used to disambiguate images whose filenames collide across different stories.
+    let storyDir: String
     @Environment(CorpusStore.self) private var corpusStore
 
     @State private var loadedImage: SwiftUI.Image? = nil
     @State private var loadFailed = false
     @State private var isLoading = false
+    /// Incremented on tap-to-retry to re-trigger the fetch task.
+    @State private var retryCount = 0
 
     var body: some View {
         if let request = imageRequest {
@@ -523,13 +529,18 @@ struct ImageLineView: View {
                 if let image = loadedImage {
                     image.resizable().scaledToFit().frame(maxWidth: .infinity)
                 } else if loadFailed {
-                    Label("Image unavailable", systemImage: "photo")
-                        .foregroundStyle(.secondary)
+                    Button {
+                        loadFailed = false
+                        retryCount += 1
+                    } label: {
+                        Label("Image unavailable — tap to retry", systemImage: "photo")
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     ProgressView()
                 }
             }
-            .task(id: request.url) {
+            .task(id: "\(request.url?.absoluteString ?? ""):\(retryCount)") {
                 guard !isLoading else { return }
                 isLoading = true
                 loadedImage = nil
@@ -554,9 +565,8 @@ struct ImageLineView: View {
     }
 
     /// Extract the path from `![alt](path)` and resolve it against the corpus base URL.
-    /// The filename is matched against `corpusStore.images` to obtain the full repo-relative
-    /// path (e.g. "doc-name/1-usagi.jpg"), since the Markdown source only contains
-    /// a bare filename like "1-usagi.jpg".
+    /// The filename is matched against `corpusStore.images` using both the story directory
+    /// and the bare filename, so identical filenames in different story folders don't collide.
     private var imageRequest: URLRequest? {
         guard let base = corpusStore.baseURL else { return nil }
         // Match ![...](path) — path is everything between the last '(' and final ')'
@@ -567,13 +577,17 @@ struct ImageLineView: View {
         var rawPath = String(text[text.index(after: open)..<close])
         if rawPath.hasPrefix("./") { rawPath = String(rawPath.dropFirst(2)) }
         guard !rawPath.isEmpty, !rawPath.hasPrefix("http") else { return nil }
-        // Look up the full repo-relative path by matching the filename component.
+        // Look up the full repo-relative path by matching both directory and filename.
+        // Fallback to rawPath so images work even if corpus.json is stale or absent.
         let filename = (rawPath as NSString).lastPathComponent
         let repoPath = corpusStore.images.first(where: {
-            ($0.repoPath as NSString).lastPathComponent == filename
+            let entryDir = ($0.repoPath as NSString).deletingLastPathComponent
+            let entryFile = ($0.repoPath as NSString).lastPathComponent
+            return entryDir == storyDir && entryFile == filename
         })?.repoPath ?? rawPath
         let url = base.appendingPathComponent(repoPath)
-        return authenticatedRequest(for: url)
+        // Images are static assets — use URLSession's cache rather than always re-fetching.
+        return authenticatedRequest(for: url, cachePolicy: .returnCacheDataElseLoad)
     }
 }
 
@@ -588,6 +602,9 @@ struct ImageLineView: View {
 /// Empty lines render as a small spacer to preserve paragraph rhythm.
 struct MarkdownLineView: View {
     let text: String
+    /// Directory component of the containing story's title, forwarded to ImageLineView
+    /// for unambiguous image lookup when multiple stories share the same image filename.
+    var storyDir: String = ""
 
     @ScaledMetric(relativeTo: .title3) private var emptyLineHeight: CGFloat = 10
 
@@ -598,7 +615,7 @@ struct MarkdownLineView: View {
         } else if trimmed.contains("<ruby>") {
             SentenceFuriganaView(htmlRuby: trimmed, textStyle: .title3)
         } else if trimmed.hasPrefix("![") {
-            ImageLineView(text: trimmed)
+            ImageLineView(text: trimmed, storyDir: storyDir)
         } else if let attributed = rendered {
             Text(attributed)
                 .textSelection(.enabled)

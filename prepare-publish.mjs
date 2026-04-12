@@ -980,7 +980,7 @@ for (const { title, content } of stories) {
     const repoPath = path.relative(projectRoot, localPath);
     if (!seenImages.has(repoPath)) {
       seenImages.add(repoPath);
-      corpusImages.push({ repoPath, localPath });
+      corpusImages.push({ repoPath });
     }
   }
 }
