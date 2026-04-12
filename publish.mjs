@@ -1,118 +1,137 @@
 /**
  * publish.mjs
- * Pushes vocab.json to a GitHub secret Gist via git over SSH.
+ * Pushes vocab.json and related files to a private GitHub repo via git over SSH.
  *
  * One-time setup:
- *   1. Create a secret Gist at https://gist.github.com — paste any placeholder text.
- *      Copy the Gist ID from the URL: gist.github.com/<username>/<GIST_ID>
- *   2. Make sure github.com is in your ~/.ssh/known_hosts (any prior `git clone` or
- *      `ssh -T git@github.com` will have added it).
- *   3. Run `node prepare-publish.mjs` to generate vocab.json first.
+ *   1. Create a private GitHub repo (e.g. github.com/you/pug-files).
+ *   2. Clone it locally: git clone git@github.com:you/pug-files ../pug-files
+ *   3. Set PUBLISH_REPO_PATH in .env (default: ../pug-files relative to this file).
+ *   4. Run `node prepare-publish.mjs` to generate vocab.json and corpus.json first.
  *
  * Usage:
- *   GIST_ID=<your-gist-id> node publish.mjs
- *   node publish.mjs <gist-id>
+ *   node publish.mjs
  *
- * The raw URL for the iOS app's vocabUrl setup parameter will be printed on success:
- *   https://gist.githubusercontent.com/<user>/<gist-id>/raw/vocab.json
+ * The raw base URL for the iOS app's vocabUrl setup parameter:
+ *   https://raw.githubusercontent.com/<user>/pug-files/main/vocab.json
  */
 
 import { execSync } from "child_process";
-import { mkdtempSync, rmSync, copyFileSync, existsSync } from "fs";
-import { tmpdir } from "os";
+import { readFileSync, copyFileSync, mkdirSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
-const gistId = process.argv[2] || process.env.GIST_ID;
-if (!gistId) {
+// --- Load .env for PUBLISH_REPO_PATH ---
+
+function loadEnv(envPath) {
+  if (!existsSync(envPath)) return {};
+  const env = {};
+  for (const line of readFileSync(envPath, "utf8").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    const val = trimmed.slice(eq + 1).trim().replace(/^['"]|['"]$/g, "");
+    env[key] = val;
+  }
+  return env;
+}
+
+const env = { ...loadEnv(path.join(projectRoot, ".env")), ...process.env };
+
+const rawRepoPath = env.PUBLISH_REPO_PATH
+  ? env.PUBLISH_REPO_PATH.replace(/\$([A-Z_][A-Z0-9_]*)/g, (_, v) => process.env[v] ?? "")
+  : null;
+const repoPath = rawRepoPath
+  ? path.resolve(projectRoot, rawRepoPath)
+  : path.resolve(projectRoot, "../pug-files");
+
+if (!existsSync(repoPath)) {
   console.error(
-    "Error: Gist ID required.\n" +
-      "  Usage: GIST_ID=<id> node publish.mjs\n" +
-      "      or node publish.mjs <id>",
+    `Error: publish repo not found at ${repoPath}\n` +
+      "Clone your private GitHub repo there, or set PUBLISH_REPO_PATH in .env.",
   );
   process.exit(1);
 }
 
-const vocabPath = path.join(projectRoot, "vocab.json");
-if (!existsSync(vocabPath)) {
-  console.error("vocab.json not found — run `node prepare-publish.mjs` first");
-  process.exit(1);
+// --- Verify required source files exist ---
+
+const filesToPublish = [
+  { src: path.join(projectRoot, "vocab.json"),       dest: "vocab.json" },
+  { src: path.join(projectRoot, "grammar.json"),     dest: "grammar.json" },
+  { src: path.join(projectRoot, "grammar", "grammar-equivalences.json"), dest: "grammar-equivalences.json" },
+  { src: path.join(projectRoot, "transitive-intransitive", "transitive-pairs.json"), dest: "transitive-pairs.json" },
+  { src: path.join(projectRoot, "corpus.json"),      dest: "corpus.json" },
+];
+
+for (const { src, dest } of filesToPublish) {
+  if (!existsSync(src)) {
+    console.error(`${dest} not found — run \`node prepare-publish.mjs\` first`);
+    process.exit(1);
+  }
 }
 
-const grammarPath = path.join(projectRoot, "grammar.json");
-if (!existsSync(grammarPath)) {
-  console.error("grammar.json not found — run `node prepare-publish.mjs` first");
-  process.exit(1);
-}
+// --- Collect images listed in corpus.json ---
 
-const grammarEquivPath = path.join(projectRoot, "grammar", "grammar-equivalences.json");
-if (!existsSync(grammarEquivPath)) {
-  console.error("grammar/grammar-equivalences.json not found — run `/cluster-grammar-topics` first");
-  process.exit(1);
+let images = [];
+try {
+  const corpus = JSON.parse(readFileSync(path.join(projectRoot, "corpus.json"), "utf8"));
+  images = corpus.images ?? [];
+} catch (err) {
+  console.warn(`[publish] Could not parse corpus.json for images: ${err.message}`);
 }
-
-const transitivePairsPath = path.join(projectRoot, "transitive-intransitive", "transitive-pairs.json");
-if (!existsSync(transitivePairsPath)) {
-  console.error("transitive-intransitive/transitive-pairs.json not found");
-  process.exit(1);
-}
-
-const corpusPath = path.join(projectRoot, "corpus.json");
-if (!existsSync(corpusPath)) {
-  console.error("corpus.json not found — run `node prepare-publish.mjs` first");
-  process.exit(1);
-}
-
-const tmpDir = mkdtempSync(path.join(tmpdir(), "gist-publish-"));
 
 function run(cmd, opts = {}) {
   return execSync(cmd, { stdio: "inherit", ...opts });
 }
 
-try {
-  console.log(`Cloning gist ${gistId}...`);
-  run(`git clone git@gist.github.com:${gistId}.git "${tmpDir}"`);
+// --- Copy JSON files into the repo ---
 
-  copyFileSync(vocabPath, path.join(tmpDir, "vocab.json"));
-  copyFileSync(grammarPath, path.join(tmpDir, "grammar.json"));
-  // grammar-equivalences.json lives in grammar/ locally but is published flat
-  // so the Pug app can fetch it by replacing "vocab.json" with "grammar-equivalences.json"
-  // in the Gist raw URL.
-  copyFileSync(grammarEquivPath, path.join(tmpDir, "grammar-equivalences.json"));
-  // transitive-pairs.json lives in transitive-intransitive/ locally but is published flat.
-  copyFileSync(transitivePairsPath, path.join(tmpDir, "transitive-pairs.json"));
-  copyFileSync(corpusPath, path.join(tmpDir, "corpus.json"));
+for (const { src, dest } of filesToPublish) {
+  copyFileSync(src, path.join(repoPath, dest));
+}
 
-  run(`git -C "${tmpDir}" add vocab.json grammar.json grammar-equivalences.json transitive-pairs.json corpus.json`);
+// --- Copy images into the repo, preserving subdirectory structure ---
 
-  // Check if there's anything staged to commit
-  const diff = execSync(`git -C "${tmpDir}" diff --cached --name-only`, {
+for (const { localPath, repoPath: imageDest } of images) {
+  const absLocalPath = path.resolve(projectRoot, localPath);
+  if (!existsSync(absLocalPath)) {
+    console.warn(`[publish] Image not found, skipping: ${localPath}`);
+    continue;
+  }
+  const destPath = path.join(repoPath, imageDest);
+  mkdirSync(path.dirname(destPath), { recursive: true });
+  copyFileSync(absLocalPath, destPath);
+}
+
+// --- Commit and push ---
+
+run(`git -C "${repoPath}" add -A`);
+
+const diff = execSync(`git -C "${repoPath}" diff --cached --name-only`, {
+  encoding: "utf8",
+}).trim();
+
+if (!diff) {
+  console.log("\nAll files unchanged — nothing to push.");
+} else {
+  const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  run(`git -C "${repoPath}" commit -m "Update ${timestamp}"`);
+  run(`git -C "${repoPath}" push`);
+
+  // Extract username and repo name from the remote URL for the raw URL hint.
+  const remoteUrl = execSync(`git -C "${repoPath}" remote get-url origin`, {
     encoding: "utf8",
   }).trim();
+  // SSH remote looks like: git@github.com:<username>/<repo>.git
+  // HTTPS remote looks like: https://github.com/<username>/<repo>.git
+  const match = remoteUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+  const username = match ? match[1] : "<your-github-username>";
+  const repoName = match ? match[2] : "<your-repo>";
 
-  if (!diff) {
-    console.log("\nAll files unchanged — nothing to push.");
-  } else {
-    const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-    run(`git -C "${tmpDir}" commit -m "Update vocab.json ${timestamp}"`);
-    run(`git -C "${tmpDir}" push`);
-
-    // Extract GitHub username from the remote URL for the raw URL hint
-    const remoteUrl = execSync(`git -C "${tmpDir}" remote get-url origin`, {
-      encoding: "utf8",
-    }).trim();
-    // SSH remote looks like: git@gist.github.com:<username>/<gistId>.git
-    const usernameMatch = remoteUrl.match(/:([^/]+)\//);
-    const username = usernameMatch ? usernameMatch[1] : "<your-github-username>";
-
-    console.log(`\nPublished successfully!`);
-    console.log(`Raw URL (use this as vocabUrl in the setup deep link):`);
-    console.log(
-      `  https://gist.githubusercontent.com/${username}/${gistId}/raw/vocab.json`,
-    );
-  }
-} finally {
-  rmSync(tmpDir, { recursive: true, force: true });
+  console.log(`\nPublished successfully!`);
+  console.log(`Raw base URL (use vocab.json path as vocabUrl in the setup deep link):`);
+  console.log(`  https://raw.githubusercontent.com/${username}/${repoName}/main/vocab.json`);
 }

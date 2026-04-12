@@ -44,8 +44,7 @@ enum CorpusSync {
         guard let url = resolvedURL() else {
             throw CorpusSyncError.noURLConfigured
         }
-        let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: authenticatedRequest(for: url))
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw CorpusSyncError.httpError(http.statusCode)
         }

@@ -122,7 +122,7 @@ enum VocabSync {
         guard let url = resolvedURL() else {
             throw VocabSyncError.noURLConfigured
         }
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(for: authenticatedRequest(for: url))
         if let http = response as? HTTPURLResponse, http.statusCode != 200 {
             throw VocabSyncError.httpError(http.statusCode)
         }

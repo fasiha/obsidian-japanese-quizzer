@@ -1,6 +1,6 @@
 // SetupHandler.swift
-// Handles the japanquiz://setup?key=sk-ant-...&vocabUrl=https://... deep link.
-// Saves the API key to Keychain and the vocab URL to UserDefaults.
+// Handles the japanquiz://setup?key=sk-ant-...&vocabUrl=https://...&token=github_pat_... deep link.
+// Saves the Anthropic API key and GitHub PAT to Keychain; saves the vocab URL to UserDefaults.
 
 import Foundation
 import Security
@@ -8,6 +8,7 @@ import Security
 enum SetupHandler {
     private static let keychainService = "me.aldebrn.Pug"
     private static let keychainAccount = "anthropic-api-key"
+    private static let keychainAccountPAT = "vocab-url-pat"
 
     /// Handle a `japanquiz://setup` deep link.
     /// Saves `key` to Keychain and `vocabUrl` to UserDefaults.
@@ -31,6 +32,10 @@ enum SetupHandler {
             UserDefaults.standard.set(vocabUrl, forKey: VocabSync.userDefaultsKey)
             print("[Setup] Vocab URL saved: \(vocabUrl)")
         }
+        if let token = params["token"], !token.isEmpty {
+            saveToKeychain(token, account: keychainAccountPAT)
+            print("[Setup] GitHub PAT saved to Keychain")
+        }
         return true
     }
 
@@ -40,13 +45,24 @@ enum SetupHandler {
         return ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"] ?? ""
     }
 
+    /// Resolve the GitHub PAT for private repo access: Keychain first, then VOCAB_URL_PAT env var.
+    /// Returns nil if no PAT is configured (public repo or local dev without auth).
+    static func resolvedVocabPAT() -> String? {
+        if let pat = loadFromKeychain(account: keychainAccountPAT), !pat.isEmpty { return pat }
+        if let pat = ProcessInfo.processInfo.environment["VOCAB_URL_PAT"], !pat.isEmpty { return pat }
+        return nil
+    }
+
     // MARK: - Keychain
 
-    private static func loadApiKey() -> String? {
+    private static func loadApiKey() -> String? { loadFromKeychain(account: keychainAccount) }
+    private static func saveApiKey(_ key: String) { saveToKeychain(key, account: keychainAccount) }
+
+    private static func loadFromKeychain(account: String) -> String? {
         let query: [CFString: Any] = [
             kSecClass:       kSecClassGenericPassword,
             kSecAttrService: keychainService,
-            kSecAttrAccount: keychainAccount,
+            kSecAttrAccount: account,
             kSecReturnData:  true,
             kSecMatchLimit:  kSecMatchLimitOne,
         ]
@@ -57,12 +73,12 @@ enum SetupHandler {
         return String(data: data, encoding: .utf8)
     }
 
-    private static func saveApiKey(_ key: String) {
-        let data = Data(key.utf8)
+    private static func saveToKeychain(_ value: String, account: String) {
+        let data = Data(value.utf8)
         let query: [CFString: Any] = [
             kSecClass:       kSecClassGenericPassword,
             kSecAttrService: keychainService,
-            kSecAttrAccount: keychainAccount,
+            kSecAttrAccount: account,
         ]
         let status = SecItemUpdate(query as CFDictionary, [kSecValueData: data] as CFDictionary)
         if status == errSecItemNotFound {

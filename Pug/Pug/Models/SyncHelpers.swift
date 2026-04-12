@@ -23,6 +23,16 @@ func derivedURL(replacing filename: String, fallbackEnvVar: String? = nil) -> UR
     return nil
 }
 
+/// Build a URLRequest for the given URL, adding the GitHub PAT Authorization header
+/// if one is configured. Used by all Sync types to support private GitHub repos.
+func authenticatedRequest(for url: URL) -> URLRequest {
+    var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+    if let pat = SetupHandler.resolvedVocabPAT() {
+        request.setValue("Bearer \(pat)", forHTTPHeaderField: "Authorization")
+    }
+    return request
+}
+
 /// Return the URL for a file in the user's Documents directory, creating the
 /// directory if needed.
 func documentsURL(filename: String) throws -> URL {
