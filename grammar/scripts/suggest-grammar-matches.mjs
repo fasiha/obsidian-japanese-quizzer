@@ -195,9 +195,8 @@ async function main() {
     data.forEach(row => {
       const fullId = `${prefix}:${row.id}`;
       allData.push({
+        ...row,
         id: fullId,
-        titleJP: row['title-jp'] || '',
-        titleEN: row['title-en'] || '',
         prefix: prefix
       });
     });
@@ -211,8 +210,8 @@ async function main() {
     let matchedFragments = [];
 
     for (const fragment of fragments) {
-      if (item.titleJP.toLowerCase().includes(fragment.toLowerCase()) || 
-          item.titleEN.toLowerCase().includes(fragment.toLowerCase())) {
+      if ((item['title-jp'] && item['title-jp'].toLowerCase().includes(fragment.toLowerCase())) || 
+          (item['title-en'] && item['title-en'].toLowerCase().includes(fragment.toLowerCase()))) {
         matchCount++;
         matchedFragments.push(fragment);
       }
@@ -222,7 +221,8 @@ async function main() {
       candidates.push({
         id: item.id,
         score: matchCount,
-        reason: `Matches fragments: ${matchedFragments.join(', ')}`
+        reason: `Matches fragments: ${matchedFragments.join(', ')}`,
+        details: item
       });
     }
   }
@@ -230,12 +230,32 @@ async function main() {
   // Sort candidates by score (descending) and take top 5
   candidates.sort((a, b) => b.score - a.score);
   
-  const potentialMatches = [{
-    target: target.id,
-    candidates: candidates.slice(0, 5).map(c => ({
+  const topCandidates = candidates.slice(0, 5);
+  
+  // Fetch web content for candidates that have a reference URL
+  const enrichedCandidates = await Promise.all(topCandidates.map(async (c) => {
+    let webContent = '';
+    if (c.details.href) {
+      try {
+        webContent = await fetchWebContent(c.details.href);
+      } catch (e) {
+        console.error(`\x1b[33mWarning: Failed to fetch content for candidate ${c.id}: ${e.message}\x1b[0m`);
+      }
+    }
+    return {
       id: c.id,
-      reason: c.reason
-    }))
+      reason: c.reason,
+      details: c.details,
+      webContent: webContent
+    };
+  }));
+
+  const potentialMatches = [{
+    target: {
+      ...target,
+      webContent: webContent
+    },
+    candidates: enrichedCandidates
   }];
 
   // 5. Save results

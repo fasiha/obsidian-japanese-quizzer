@@ -6,17 +6,15 @@ import path from 'path';
  * Sequence:
  * 1. find-new-grammar-topics
  * 2. suggest-grammar-matches
- * 3. gather-references
- * 4. verify-equivalences
- * 5. apply-equivalence
- * 6. generate-description
- * 7. write-description
+ * 3. verify-equivalences
+ * 4. apply-equivalence
+ * 5. generate-description
+ * 6. write-description
  */
 
 const scripts = [
   'find-new-grammar-topics.mjs',
   'suggest-grammar-matches.mjs',
-  'gather-references.mjs',
   'verify-equivalences.mjs',
   'apply-equivalence.mjs',
   'generate-description.mjs',

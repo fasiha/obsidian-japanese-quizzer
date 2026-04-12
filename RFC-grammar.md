@@ -18,11 +18,10 @@ Instead of a single large prompt, the workflow is decomposed into a series of at
 | :--- | :--- | :--- | :--- | :--- |
 | **1. Filter** | `find-new-grammar-topics.mjs` | `grammar-equivalences.json` | `new-topics.json` | None |
 | **2. Discover** | `suggest-grammar-matches.mjs` | Topic ID + Slug + Web Content + All TSVs | `potential-matches.json` | **Search Strategist** |
-| **3. Gather** | `gather-references.mjs` | `potential-matches.json` | `reference-content.json` | None (HTTP Fetch) |
-| **4. Decide** | `verify-equivalences.mjs` | `potential-matches` + `reference-content` | `equivalence-decision.json` | **Verifier** (Yes/No match) |
-| **5. Commit** | `apply-equivalence.mjs` | `equivalence-decision.json` | $\rightarrow$ `grammar-equivalences.json` | None |
-| **6. Enrich** | `generate-description.mjs` | `reference-content` + User Sentences | `description-draft.json` | **Linguist** (Drafting) |
-| **7. Apply** | `write-description.mjs` | `description-draft.json` | $\rightarrow$ `grammar-equivalences.json` | None |
+| **3. Decide** | `verify-equivalences.mjs` | `potential-matches.json` | `equivalence-decision.json` | **Verifier** (Yes/No match) |
+| **4. Commit** | `apply-equivalence.mjs` | `equivalence-decision.json` | $\rightarrow$ `grammar-equivalences.json` | None |
+| **5. Enrich** | `generate-description.mjs` | `potential-matches.json` | `description-draft.json` | **Linguist** (Drafting) |
+| **6. Apply** | `write-description.mjs` | `description-draft.json` | $\rightarrow$ `grammar-equivalences.json` | None |
 
 ### 2. Execution
 
@@ -40,17 +39,20 @@ LLM interactions are handled via the `@anthropic-ai/sdk`, supporting both fronti
 
 To ensure transparency and allow for manual overrides, the pipeline uses structured intermediate JSON files:
 
-- **`potential-matches.json`**: A list of candidates found via aggressive keyword search (ID, Title-JP, Title-EN, Gloss).
+- **`potential-matches.json`**: A list of candidates found via aggressive keyword search (ID, Title-JP, Title-EN, Gloss), including full metadata and web content for the target and each candidate.
   ```json
   {
-    "target": "genki:naru-to-become",
+    "target": {
+      "id": "genki:naru-to-become",
+      "details": { ... },
+      "webContent": "..."
+    },
     "candidates": [
-      { "id": "dbjg:naru", "reason": "exact id match" },
-      { "id": "bunpro:になる-くなる", "reason": "keyword 'become' in title-en" }
+      { "id": "dbjg:naru", "reason": "exact id match", "details": { ... }, "webContent": "..." },
+      { "id": "bunpro:になる-くなる", "reason": "keyword 'become' in title-en", "details": { ... }, "webContent": "..." }
     ]
   }
   ```
-- **`reference-content.json`**: The raw context extracted from reference URLs for the target and all candidates.
 - **`equivalence-decision.json`**: The LLM's binary verification output.
   ```json
   {
