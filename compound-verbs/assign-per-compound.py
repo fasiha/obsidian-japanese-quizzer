@@ -88,22 +88,47 @@ LOCAL_URL = args.local_url or os.environ.get("LOCAL_LLM_URL", "http://localhost:
 if not args.compounds and not args.all:
     parser.error("Provide --compounds or --all")
 
-# For local models, query /props to get the actual model name for filenames
+# For local models, detect the actual model name for filenames.
+# Try /props (llama.cpp) first, fall back to /v1/models (omlx and others).
 ACTUAL_MODEL = MODEL
 if MODEL == "local" and not args.dry_run:
     import requests as _req
+    detected = False
+
+    # Try llama.cpp /props endpoint
     try:
         props = _req.get(f"{LOCAL_URL}/props", timeout=5).json()
-        ACTUAL_MODEL = (props.get("model_alias")
-                        or props.get("default_generation_settings", {}).get("model")
-                        or "local-unknown")
-        server_temp = props.get("default_generation_settings", {}).get("params", {}).get("temperature")
-        effective_temp = args.temperature if args.temperature is not None else server_temp
-        print(f"Local server: model={ACTUAL_MODEL}, server temperature={server_temp}")
-        print(f"Effective temperature: {effective_temp}"
-              f"{' (overridden)' if args.temperature is not None else ' (server default)'}")
-    except Exception as e:
-        print(f"WARNING: Cannot reach local server at {LOCAL_URL}/props — {e}")
+        if "detail" not in props:  # omlx returns {"detail": "Not Found"}
+            ACTUAL_MODEL = (props.get("model_alias")
+                            or props.get("default_generation_settings", {}).get("model")
+                            or "local-unknown")
+            server_temp = props.get("default_generation_settings", {}).get("params", {}).get("temperature")
+            effective_temp = args.temperature if args.temperature is not None else server_temp
+            print(f"Local server (llama.cpp): model={ACTUAL_MODEL}, server temperature={server_temp}")
+            print(f"Effective temperature: {effective_temp}"
+                  f"{' (overridden)' if args.temperature is not None else ' (server default)'}")
+            detected = True
+    except Exception:
+        pass
+
+    # Fall back to OpenAI-compatible /v1/models endpoint
+    if not detected:
+        try:
+            models_resp = _req.get(f"{LOCAL_URL}/v1/models", timeout=5).json()
+            model_list = models_resp.get("data", [])
+            # Pick the first model ending in "-it" (instruction-tuned), or just the first
+            it_models = [m for m in model_list if m.get("id", "").endswith("-it-4bit")
+                         or m.get("id", "").endswith("-it")]
+            chosen = it_models[0] if it_models else (model_list[0] if model_list else None)
+            if chosen:
+                ACTUAL_MODEL = chosen["id"]
+                print(f"Local server: model={ACTUAL_MODEL} (from /v1/models)")
+                detected = True
+        except Exception:
+            pass
+
+    if not detected:
+        print(f"WARNING: Cannot detect model from {LOCAL_URL}")
         print("Files will be saved with model name 'local-unknown'")
         ACTUAL_MODEL = "local-unknown"
 
@@ -289,26 +314,27 @@ def build_prompt(suffix: str, compounds: list[dict]) -> str:
         compound_word = "each compound"
         task_intro = f"Assign each of the following compound verbs to whichever meaning(s) -{suffix} contributes in it."
 
-    return f"""You are helping prepare data for a Japanese language learning app. You will classify how the suffix -{suffix} contributes to compound verb meaning.
+    return f"""You are helping prepare data for a Japanese language learning app. You will classify how the suffix -{suffix} contributes to each dictionary sense of a compound verb.
 
 The suffix -{suffix} has these distinct meanings when appended to a prefix verb:
 {meanings_block}
 
 {task_intro}
 
-For {compound_word}, you are given the dictionary senses of both the prefix verb and the compound. Compare them to determine what -{suffix} adds:
-- If a compound sense is essentially the same as a prefix verb sense, then -{suffix} adds nothing for that sense — it is lexicalized.
-- If a compound sense extends a prefix verb sense in a way that matches one of the numbered meanings above, assign that meaning.
-- A compound may be assigned to multiple meanings if different senses of the compound reflect different contributions of -{suffix}.
-- If no sense of the compound shows a transparent contribution of -{suffix}, omit the compound entirely (lexicalized).
+For {compound_word}, you are given the dictionary senses of both the prefix verb and the compound. For EACH compound sense, compare it against the prefix verb's senses to determine what -{suffix} adds:
+
+**The key test:** A compound verb sense should combine the prefix verb's contribution AND the suffix's contribution. Think of it as "to <prefix verb action> and <suffix meaning contribution>." Both parts must be present:
+- If a compound sense matches a prefix verb sense with no additional contribution from -{suffix}, it is lexicalized for that sense. This is true even if the compound sense superficially resembles one of the meaning definitions — what matters is whether -{suffix} is actually adding that meaning on top of the prefix verb, not whether the compound's definition happens to contain similar words.
+- If a compound sense extends a prefix verb sense in a way that clearly matches one of the numbered meanings above, assign that meaning number to that sense.
+- If a compound sense doesn't clearly relate to any prefix verb sense and no transparent contribution of -{suffix} can be identified, it is lexicalized for that sense.
 
 {compounds_section}
 
-Reason through the senses, comparing each compound sense against the prefix verb senses. Then output a JSON object where each key is a compound headword (kanji) and each value is an array of meaning numbers (integers 1–{len(meaning_strings)}) that -{suffix} contributes. Use an empty array [] for lexicalized compounds.
+Reason through each compound sense individually, comparing it against the prefix verb senses. Then output a JSON object where each key is a compound headword (kanji) and each value is an array of arrays — one inner array per compound sense, in the same order as listed above. Each inner array contains the meaning numbers (integers 1–{len(meaning_strings)}) that -{suffix} contributes for that sense, or is empty [] if that sense is lexicalized.
 
-Example output:
+Example for a compound with 4 senses where sense 1 shows meaning 1, sense 2 is lexicalized, sense 3 shows meaning 4, and sense 4 is lexicalized:
 {{
-  "{compounds[0]['headword']}": [1, 3]
+  "{compounds[0]['headword']}": [[1], [], [4], []]
 }}"""
 
 
@@ -335,16 +361,34 @@ def call_gemini(model: str, prompt: str, temperature: float | None = None) -> st
     config = types.GenerateContentConfig(max_output_tokens=16000)
     if temperature is not None:
         config.temperature = temperature
-    if "thinking" in model or "pro" in model:
+    # Enable thinking for models that support it:
+    # Gemini 2.5 Pro/Thinking use thinking_budget, Gemini 3 uses thinking_level
+    if "gemini-3" in model:
+        config.thinking_config = types.ThinkingConfig(thinking_level="medium")
+    elif "thinking" in model or "pro" in model:
         config.thinking_config = types.ThinkingConfig(thinking_budget=8000)
     response = client.models.generate_content(
         model=model, contents=prompt, config=config)
-    return response.text.strip()
+    # Extract thinking and answer from response parts
+    thinking_parts = []
+    answer_parts = []
+    for candidate in response.candidates:
+        for part in candidate.content.parts:
+            if getattr(part, "thought", False):
+                thinking_parts.append(part.text)
+            elif part.text:
+                answer_parts.append(part.text)
+    thinking = "\n".join(thinking_parts).strip()
+    answer = "\n".join(answer_parts).strip()
+    if thinking:
+        return f"========== THINKING ==========\n{thinking}\n\n========== ANSWER ==========\n{answer}"
+    return answer
 
 
 def call_local(prompt: str, temperature: float | None = None) -> str:
     import requests
-    body = {"messages": [{"role": "user", "content": prompt}], "max_tokens": 16384}
+    body = {"messages": [{"role": "user", "content": prompt}], "max_tokens": 16384,
+            "model": ACTUAL_MODEL}
     if temperature is not None:
         body["temperature"] = temperature
     resp = requests.post(f"{LOCAL_URL}/v1/chat/completions", json=body, timeout=30*60)
@@ -516,14 +560,21 @@ for i in range(0, len(compound_infos), batch_size):
     parsed = extract_json_from_response(response)
 
     if parsed:
-        for hw, meanings_assigned in parsed.items():
-            if isinstance(meanings_assigned, list):
-                meaning_labels = []
-                for m in meanings_assigned:
-                    if isinstance(m, int) and 1 <= m <= len(meaning_strings):
-                        meaning_labels.append(f"M{m}")
-                label = "+".join(meaning_labels) if meaning_labels else "lexicalized"
-                all_results[hw] = meanings_assigned
+        for hw, sense_assignments in parsed.items():
+            if isinstance(sense_assignments, list) and all(isinstance(s, list) for s in sense_assignments):
+                # Per-sense format: [[1], [], [4], []]
+                all_results[hw] = sense_assignments
+                parts = []
+                for si, ms in enumerate(sense_assignments):
+                    if ms:
+                        parts.append(f"s{si+1}→{'+'.join(f'M{m}' for m in ms)}")
+                    else:
+                        parts.append(f"s{si+1}→lex")
+                print(f"{hw}: {' '.join(parts)}", end="  ")
+            elif isinstance(sense_assignments, list):
+                # Legacy per-compound format: [1, 3, 4]
+                all_results[hw] = sense_assignments
+                label = "+".join(f"M{m}" for m in sense_assignments) if sense_assignments else "lex"
                 print(f"{hw} → {label}", end="  ")
         print()
     else:
@@ -537,11 +588,18 @@ if all_results and not args.dry_run:
     print(f"\n{'='*60}")
     print(f"Summary: {len(all_results)} compounds assigned")
     print(f"{'='*60}")
-    for hw, ms in all_results.items():
-        if ms:
-            labels = "+".join(f"M{m}" for m in ms)
-        else:
-            labels = "lexicalized"
-        print(f"  {hw} → {labels}")
+    for hw, sa in all_results.items():
+        if isinstance(sa, list) and sa and isinstance(sa[0], list):
+            # Per-sense
+            parts = []
+            for si, ms in enumerate(sa):
+                if ms:
+                    parts.append(f"s{si+1}→{'+'.join(f'M{m}' for m in ms)}")
+                else:
+                    parts.append(f"s{si+1}→lex")
+            print(f"  {hw}: {' '.join(parts)}")
+        elif isinstance(sa, list):
+            labels = "+".join(f"M{m}" for m in sa) if sa else "lexicalized"
+            print(f"  {hw} → {labels}")
 
 jmdict_db.close()

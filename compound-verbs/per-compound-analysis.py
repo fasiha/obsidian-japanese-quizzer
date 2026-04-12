@@ -26,6 +26,10 @@ import krippendorff
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--suffix", required=True)
+parser.add_argument("--per-sense-only", action="store_true",
+                    help="Only include files with per-sense format (array of arrays)")
+parser.add_argument("--batch-size", type=int, default=None,
+                    help="Only include files from a specific batch size (e.g. 10, 25)")
 args = parser.parse_args()
 
 SUFFIX = args.suffix
@@ -46,7 +50,11 @@ MEANING_NAMES = {
 
 
 def parse_batch_file(path: Path) -> dict[str, set[str]]:
-    """Parse a per-compound batch file. Returns {compound: set of M-labels}.
+    """Parse a batch file. Handles both formats:
+    - Per-compound: {"弾き出す": [1, 4]} → {("弾き出す", -1): {M1, M4}}
+    - Per-sense: {"弾き出す": [[1], [], [4], []]} → {("弾き出す", 0): {M1}, ("弾き出す", 1): set(), ...}
+
+    Keys are (compound, sense_idx) tuples. sense_idx=-1 means per-compound (old format).
     Meaning numbers (1-4) are converted to M1-M4. Empty array = lexicalized."""
     text = path.read_text()
     idx = text.find("========== PARSED ==========")
@@ -59,11 +67,21 @@ def parse_batch_file(path: Path) -> dict[str, set[str]]:
         return {}
 
     result = {}
-    for compound, meanings in obj.items():
-        if isinstance(meanings, list):
-            result[compound] = {f"M{m}" for m in meanings if isinstance(m, int)}
+    for compound, value in obj.items():
+        if isinstance(value, list) and value and isinstance(value[0], list):
+            # Per-sense format: [[1], [], [4], []]
+            for si, sense_meanings in enumerate(value):
+                if isinstance(sense_meanings, list):
+                    result[(compound, si)] = {f"M{m}" for m in sense_meanings
+                                              if isinstance(m, int) and 1 <= m <= 4}
+                else:
+                    result[(compound, si)] = set()
+        elif isinstance(value, list):
+            # Per-compound format: [1, 4]
+            result[(compound, -1)] = {f"M{m}" for m in value
+                                      if isinstance(m, int) and 1 <= m <= 4}
         else:
-            result[compound] = set()
+            result[(compound, -1)] = set()
     return result
 
 
@@ -80,8 +98,30 @@ def extract_model(filename: str) -> str:
     return "unknown"
 
 
-# Scan all batch files for this suffix
-batch_files = sorted(OUTDIR.glob(f"{SUFFIX}-batch-25-*.txt"))
+# Scan batch files for this suffix
+if args.batch_size:
+    batch_files = sorted(OUTDIR.glob(f"{SUFFIX}-batch-{args.batch_size}-*.txt"))
+else:
+    batch_files = sorted(OUTDIR.glob(f"{SUFFIX}-batch-*-*.txt"))
+
+if args.per_sense_only:
+    # Filter to only files containing per-sense format (array of arrays)
+    def is_per_sense(path: Path) -> bool:
+        text = path.read_text()
+        idx = text.find("========== PARSED ==========")
+        if idx < 0:
+            return False
+        parsed_text = text[idx + len("========== PARSED =========="):].strip()
+        try:
+            obj = json.loads(parsed_text)
+            first_val = next(iter(obj.values()), None)
+            return (isinstance(first_val, list) and first_val
+                    and isinstance(first_val[0], list))
+        except (json.JSONDecodeError, StopIteration):
+            return False
+
+    batch_files = [f for f in batch_files if is_per_sense(f)]
+
 print(f"Found {len(batch_files)} batch files for {SUFFIX}")
 
 # Group files by model
@@ -103,21 +143,25 @@ for model, files in by_model.items():
 # ---------------------------------------------------------------------------
 
 
-def group_into_runs(files: list[Path]) -> list[dict[str, set[str]]]:
+ItemKey = tuple[str, int]  # (compound, sense_idx) — sense_idx=-1 for per-compound format
+
+
+def group_into_runs(files: list[Path]) -> list[dict[ItemKey, set[str]]]:
     """Group a model's batch files into runs. Each run is a merged dict of
-    {compound: set of M-labels} covering all compounds seen.
+    {(compound, sense_idx): set of M-labels} covering all items seen.
 
     Strategy: parse all files, then greedily assign each file to the first
-    run that doesn't already have its compounds."""
+    run that doesn't already have its compounds (by headword, ignoring sense)."""
     parsed = [(f, parse_batch_file(f)) for f in files]
 
-    runs: list[dict[str, set[str]]] = []
+    runs: list[dict[ItemKey, set[str]]] = []
     for f, assignments in parsed:
-        compounds_in_file = set(assignments.keys())
-        # Find first run with no overlap
+        # Check overlap by compound headword (first element of tuple key)
+        compounds_in_file = {k[0] for k in assignments.keys()}
         placed = False
         for run in runs:
-            if not compounds_in_file.intersection(run.keys()):
+            compounds_in_run = {k[0] for k in run.keys()}
+            if not compounds_in_file.intersection(compounds_in_run):
                 run.update(assignments)
                 placed = True
                 break
@@ -127,26 +171,28 @@ def group_into_runs(files: list[Path]) -> list[dict[str, set[str]]]:
     return runs
 
 
-annotator_runs: list[tuple[str, dict[str, set[str]]]] = []
+annotator_runs: list[tuple[str, dict[ItemKey, set[str]]]] = []
 for model, files in sorted(by_model.items()):
     runs = group_into_runs(files)
     for i, run in enumerate(runs):
         label = f"{model}#{i+1}" if len(runs) > 1 else model
         annotator_runs.append((label, run))
-        print(f"  Run '{label}': {len(run)} compounds")
+        n_compounds = len({k[0] for k in run.keys()})
+        print(f"  Run '{label}': {len(run)} items ({n_compounds} compounds)")
 
 # ---------------------------------------------------------------------------
-# Build compound list (union of all compounds seen)
+# Build item list (union of all (compound, sense_idx) tuples seen)
 # ---------------------------------------------------------------------------
 
-all_compounds = set()
+all_items: set[ItemKey] = set()
 for _, run in annotator_runs:
-    all_compounds.update(run.keys())
-compound_list = sorted(all_compounds)
-n_items = len(compound_list)
+    all_items.update(run.keys())
+item_list = sorted(all_items)
+n_items = len(item_list)
 n_ann = len(annotator_runs)
+n_compounds = len({k[0] for k in item_list})
 
-print(f"\n{n_ann} annotator runs, {n_items} compounds")
+print(f"\n{n_ann} annotator runs, {n_items} items ({n_compounds} compounds)")
 
 # ---------------------------------------------------------------------------
 # Dawid-Skene (copied from annotator-analysis.py)
@@ -208,7 +254,7 @@ def dawid_skene_binary(annotations: np.ndarray, max_iter=50, tol=1e-4):
 meaning_classes = ["M1", "M2", "M3", "M4"]
 meaning_names = MEANING_NAMES.get(SUFFIX, {f"M{i+1}": f"meaning {i+1}" for i in range(4)})
 
-print(f"\n## {SUFFIX} — Per-compound assignment ({n_ann} annotators, {n_items} compounds)\n")
+print(f"\n## {SUFFIX} — Per-sense assignment ({n_ann} annotators, {n_items} items from {n_compounds} compounds)\n")
 
 # Per-meaning analysis
 all_alphas = {}
@@ -218,9 +264,9 @@ for mk in meaning_classes:
     # Build binary matrix: -1 = missing, 0 = not assigned, 1 = assigned
     ann_matrix = np.full((n_ann, n_items), -1, dtype=float)
     for j, (label, run) in enumerate(annotator_runs):
-        for i, compound in enumerate(compound_list):
-            if compound in run:
-                ann_matrix[j, i] = 1 if mk in run[compound] else 0
+        for i, item in enumerate(item_list):
+            if item in run:
+                ann_matrix[j, i] = 1 if mk in run[item] else 0
 
     # Krippendorff's alpha (treat -1 as missing)
     alpha_data = ann_matrix.copy()
@@ -274,18 +320,18 @@ for j, (label, _) in enumerate(annotator_runs):
 print(f"\n### Dawid-Skene consensus labels\n")
 
 ds_labels = {}
-for i, compound in enumerate(compound_list):
+for i, item in enumerate(item_list):
     labels = set()
     for mk in meaning_classes:
         T, _, _ = all_ds[mk]
         if T[i] >= 0.5:
             labels.add(mk)
-    ds_labels[compound] = labels
+    ds_labels[item] = labels
 
 # Count by label pattern
 from collections import Counter
 pattern_counts = Counter()
-for compound, labels in ds_labels.items():
+for item, labels in ds_labels.items():
     pattern = "+".join(sorted(labels)) if labels else "lexicalized"
     pattern_counts[pattern] += 1
 
@@ -296,41 +342,44 @@ for pattern, count in pattern_counts.most_common():
 
 # Uncertain items
 print(f"\n### Uncertain items (Dawid-Skene posterior between 0.2 and 0.8)\n")
-print("| Compound | Meaning | D-S P(yes) | Annotator votes |")
-print("|----------|---------|------------|-----------------|")
+print("| Item | Meaning | D-S P(yes) | Annotator votes |")
+print("|------|---------|------------|-----------------|")
 
 for mk in meaning_classes:
     T, _, _ = all_ds[mk]
-    for i, compound in enumerate(compound_list):
+    for i, item in enumerate(item_list):
         if 0.2 < T[i] < 0.8:
             yes = sum(1 for j in range(n_ann)
-                      if compound in annotator_runs[j][1]
-                      and mk in annotator_runs[j][1][compound])
-            total = sum(1 for j in range(n_ann) if compound in annotator_runs[j][1])
-            print(f"| {compound} | {mk} ({meaning_names[mk]}) | {T[i]:.0%} | {yes}/{total} |")
+                      if item in annotator_runs[j][1]
+                      and mk in annotator_runs[j][1][item])
+            total = sum(1 for j in range(n_ann) if item in annotator_runs[j][1])
+            compound, si = item
+            item_label = f"{compound} s{si+1}" if si >= 0 else compound
+            print(f"| {item_label} | {mk} ({meaning_names[mk]}) | {T[i]:.0%} | {yes}/{total} |")
 
 # Full label table
 print(f"\n### Full assignment table\n")
-header = f"| {'Compound':<12} |"
+header = f"| {'Item':<20} |"
 for label, _ in annotator_runs:
     short = label[:12]
     header += f" {short:<12} |"
 header += " D-S | Posteriors |"
 print(header)
-print("|" + "-" * 14 + "|" + ("" + "-" * 14 + "|") * n_ann + "-" * 15 + "|" + "-" * 40 + "|")
+print("|" + "-" * 22 + "|" + ("" + "-" * 14 + "|") * n_ann + "-" * 15 + "|" + "-" * 40 + "|")
 
-for i, compound in enumerate(compound_list):
-    row = f"| {compound:<12} |"
+for i, item in enumerate(item_list):
+    compound, si = item
+    item_label = f"{compound} s{si+1}" if si >= 0 else compound
+    row = f"| {item_label:<20} |"
     for j, (label, run) in enumerate(annotator_runs):
-        if compound in run:
-            labels = run[compound]
+        if item in run:
+            labels = run[item]
             cell = "+".join(sorted(labels)) if labels else "lex"
         else:
             cell = "—"
         row += f" {cell:<12} |"
-    ds = ds_labels[compound]
+    ds = ds_labels[item]
     ds_str = "+".join(sorted(ds)) if ds else "lex"
-    # Posteriors per meaning
     posteriors = []
     for mk in meaning_classes:
         T, _, _ = all_ds[mk]
