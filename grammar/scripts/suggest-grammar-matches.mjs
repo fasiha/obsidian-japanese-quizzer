@@ -109,8 +109,14 @@ OR
     const data = await res.json();
     const choice = data.choices[0].message;
     const contentResponse = choice.content;
+    let parsed;
+    let parseError = null;
 
-    const parsed = JSON.parse(contentResponse);
+    try {
+      parsed = JSON.parse(contentResponse);
+    } catch (e) {
+      parseError = e;
+    }
 
     // Save audit log
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -124,13 +130,17 @@ ${prompt}
 
 # RESPONSE
 Reasoning:
-${parsed.reasoning || choice.reasoning_content || 'N/A'}
+${parsed?.reasoning || choice.reasoning_content || 'N/A'}
 
 Content:
-${JSON.stringify(parsed, null, 2)}
+${parseError ? contentResponse : JSON.stringify(parsed, null, 2)}
 `;
     fs.writeFileSync(logPath, logContent);
 
+    if (parseError) {
+      console.error(`\x1b[31mLLM generated malformed JSON: ${parseError.message}\x1b[0m`);
+      process.exit(1);
+    }
 
     if (parsed.error) {
       console.error(`\x1b[31mLLM reported irrelevant content: ${parsed.error}\x1b[0m`);
