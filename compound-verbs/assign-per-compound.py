@@ -79,6 +79,8 @@ parser.add_argument("--batch-size", type=int, default=1,
                     help="Number of compounds per prompt (default: 1)")
 parser.add_argument("--dry-run", action="store_true")
 parser.add_argument("--local-url", default=None)
+parser.add_argument("--local-model", default=None,
+                    help="Override local model name (for servers that list multiple models)")
 args = parser.parse_args()
 
 SUFFIX = args.suffix
@@ -116,14 +118,17 @@ if MODEL == "local" and not args.dry_run:
         try:
             models_resp = _req.get(f"{LOCAL_URL}/v1/models", timeout=5).json()
             model_list = models_resp.get("data", [])
-            # Pick the first model ending in "-it" (instruction-tuned), or just the first
-            it_models = [m for m in model_list if m.get("id", "").endswith("-it-4bit")
-                         or m.get("id", "").endswith("-it")]
-            chosen = it_models[0] if it_models else (model_list[0] if model_list else None)
-            if chosen:
-                ACTUAL_MODEL = chosen["id"]
-                print(f"Local server: model={ACTUAL_MODEL} (from /v1/models)")
+            if args.local_model:
+                # User specified which model to use
+                ACTUAL_MODEL = args.local_model
+                print(f"Local server: model={ACTUAL_MODEL} (from --local-model)")
                 detected = True
+            else:
+                # Pick the last model in the list (most recently loaded)
+                if model_list:
+                    ACTUAL_MODEL = model_list[-1]["id"]
+                    print(f"Local server: model={ACTUAL_MODEL} (last in /v1/models)")
+                    detected = True
         except Exception:
             pass
 
