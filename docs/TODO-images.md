@@ -28,84 +28,12 @@ The PAT is delivered via `japanquiz://setup` as a new `token` parameter, stored 
 - **`VocabSync`**, **`CorpusSync`**, **`GrammarSync`** (×2), **`TransitivePairSync`** — all use `authenticatedRequest(for:)`.
 - **`.env`** — `VOCAB_URL` updated to `https://raw.githubusercontent.com/fasiha/pug-files/main/vocab.json`, `VOCAB_URL_PAT` and `PUBLISH_REPO_PATH` added.
 - Tested end-to-end in simulator: new setup deep link accepted, sync pulled latest files from private repo successfully.
-
-## Remaining: image rendering
-
-### Step 1 — `prepare-publish.mjs`: collect image references
-
-In the corpus-building loop, scan each story's raw Markdown for image references:
-
-```js
-/!\[([^\]]*)\]\(([^)]+)\)/g
-```
-
-For each match whose URL is a relative path (does not start with `http`):
-
-1. Resolve the absolute local path relative to the story file's directory.
-2. The repo-relative destination path mirrors the story's subdirectory (e.g. `example-1/1-usagi.jpg`).
-3. Leave the image reference in the Markdown source **unchanged** — the iOS app resolves the URL at render time.
-
-Change `corpus.json` from a bare array to a wrapper object with an `images` key:
-
-```json
-{
-  "images": [
-    {
-      "repoPath": "example-doc/1-usagi.jpg",
-      "localPath": "/absolute/path/to/example-doc/1-usagi.jpg"
-    }
-  ],
-  "entries": [ … ]
-}
-```
-
-### Step 2 — `CorpusSync.swift` + `CorpusStore.swift`: decode new shape
-
-`CorpusSync` currently decodes `corpus.json` as `[CorpusEntry]`. Change to a wrapper:
-
-```swift
-struct CorpusManifest: Codable {
-    let images: [ImageEntry]?   // nil in old corpus.json — ignored safely
-    let entries: [CorpusEntry]
-}
-
-struct ImageEntry: Codable {
-    let repoPath: String
-}
-```
-
-`CorpusStore` gains `var baseURL: URL?` — derived from `VocabSync.resolvedURL()` by dropping `vocab.json`. Any view resolves an image as `baseURL?.appendingPathComponent(repoPath)`.
-
-### Step 3 — `MarkdownLineView` + new `ImageLineView`
-
-Add a branch in `MarkdownLineView` before the Markdownosaur fallthrough:
-
-```swift
-} else if trimmed.hasPrefix("![") {
-    ImageLineView(text: trimmed)
-}
-```
-
-`ImageLineView` extracts the path from `![alt](path)`, reads `baseURL` from `@Environment(CorpusStore.self)`, and renders with `AsyncImage(urlRequest:)` (iOS 15+) using `authenticatedRequest(for:)`:
-
-```swift
-AsyncImage(urlRequest: authenticatedRequest(for: resolvedURL)) { phase in
-    switch phase {
-    case .success(let image):
-        image.resizable().scaledToFit().frame(maxWidth: .infinity)
-    case .failure:
-        Label("Image unavailable", systemImage: "photo")
-    case .empty:
-        ProgressView()
-    @unknown default:
-        EmptyView()
-    }
-}
-```
-
-### Step 4 — end-to-end test
-
-Add `![](1-usagi.jpg)` to Story 1, run `prepare-publish.mjs` + `publish.mjs`, sync in simulator, verify image appears inline.
+- **`prepare-publish.mjs`** — corpus-building loop scans each story's Markdown for image references (`/!\[([^\]]*)\]\(([^)]+)\)/g`). Relative paths are resolved to absolute local paths; repo-relative destination paths mirror the story subdirectory. `corpus.json` changed from a bare array to a wrapper object: `{ "images": [...], "entries": [...] }`. Each image entry has `repoPath` (e.g. `"Bunsho-Dokkai-1nen/1-usagi.jpg"`) and `localPath`.
+- **`CorpusSync.swift`** — `CorpusManifest` made public; `decodeManifest(from:)` accepts both new wrapper format and legacy bare-array format. New `downloadManifest()` and `cachedManifest()` return the full manifest. `CorpusImageEntry` struct exposed publicly.
+- **`CorpusStore.swift`** — gains `var images: [CorpusImageEntry]` populated on sync.
+- **`PugApp.swift`** and **`HomeView.swift`** — updated to call `downloadManifest()` / `cachedManifest()` and populate both `corpusStore.entries` and `corpusStore.images`.
+- **`DocumentReaderView.swift`** — `MarkdownLineView` branches on lines starting with `![` and renders them via `ImageLineView`. `ImageLineView` extracts the filename from the Markdown line, looks it up in `corpusStore.images` to get the full `repoPath`, resolves against `baseURL`, and fetches with `authenticatedRequest(for:)` via a manual `URLSession` task (SwiftUI's `AsyncImage` does not accept a `URLRequest`). Image renders resizable and full-width; shows a spinner while loading and a "Image unavailable" label on failure.
+- End-to-end tested in simulator: image appears inline in document reader.
 
 ## Out of scope
 

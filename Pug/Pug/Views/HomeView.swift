@@ -47,7 +47,9 @@ struct HomeView: View {
                 client: session.client,
                 toolHandler: session.toolHandler
             ) {
-                corpusStore.entries = try await CorpusSync.download()
+                let manifest = try await CorpusSync.downloadManifest()
+                corpusStore.entries = manifest.entries
+                corpusStore.images = manifest.images ?? []
             }
             .tabItem { Label("Reader", systemImage: "book.pages") }
         }

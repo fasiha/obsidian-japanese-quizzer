@@ -505,13 +505,86 @@ struct IdentifiableGrammarTopic: Identifiable {
     var id: String { topic.prefixedId }
 }
 
+// MARK: - ImageLineView
+
+/// Renders a Markdown image line (`![alt](path)`) by fetching the image from the
+/// corpus base URL with the configured GitHub PAT if present.
+struct ImageLineView: View {
+    let text: String
+    @Environment(CorpusStore.self) private var corpusStore
+
+    @State private var loadedImage: SwiftUI.Image? = nil
+    @State private var loadFailed = false
+    @State private var isLoading = false
+
+    var body: some View {
+        if let request = imageRequest {
+            Group {
+                if let image = loadedImage {
+                    image.resizable().scaledToFit().frame(maxWidth: .infinity)
+                } else if loadFailed {
+                    Label("Image unavailable", systemImage: "photo")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ProgressView()
+                }
+            }
+            .task(id: request.url) {
+                guard !isLoading else { return }
+                isLoading = true
+                loadedImage = nil
+                loadFailed = false
+                do {
+                    let (data, response) = try await URLSession.shared.data(for: request)
+                    let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    print("[ImageLineView] fetch \(request.url?.lastPathComponent ?? "?") status=\(status) bytes=\(data.count)")
+                    if let uiImage = UIImage(data: data) {
+                        loadedImage = SwiftUI.Image(uiImage: uiImage)
+                    } else {
+                        print("[ImageLineView] UIImage init failed — response body: \(String(data: data.prefix(200), encoding: .utf8) ?? "<binary>")")
+                        loadFailed = true
+                    }
+                } catch {
+                    print("[ImageLineView] network error: \(error)")
+                    loadFailed = true
+                }
+                isLoading = false
+            }
+        }
+    }
+
+    /// Extract the path from `![alt](path)` and resolve it against the corpus base URL.
+    /// The filename is matched against `corpusStore.images` to obtain the full repo-relative
+    /// path (e.g. "doc-name/1-usagi.jpg"), since the Markdown source only contains
+    /// a bare filename like "1-usagi.jpg".
+    private var imageRequest: URLRequest? {
+        guard let base = corpusStore.baseURL else { return nil }
+        // Match ![...](path) — path is everything between the last '(' and final ')'
+        guard let open = text.lastIndex(of: "("),
+              let close = text.lastIndex(of: ")"),
+              open < close
+        else { return nil }
+        var rawPath = String(text[text.index(after: open)..<close])
+        if rawPath.hasPrefix("./") { rawPath = String(rawPath.dropFirst(2)) }
+        guard !rawPath.isEmpty, !rawPath.hasPrefix("http") else { return nil }
+        // Look up the full repo-relative path by matching the filename component.
+        let filename = (rawPath as NSString).lastPathComponent
+        let repoPath = corpusStore.images.first(where: {
+            ($0.repoPath as NSString).lastPathComponent == filename
+        })?.repoPath ?? rawPath
+        let url = base.appendingPathComponent(repoPath)
+        return authenticatedRequest(for: url)
+    }
+}
+
 // MARK: - MarkdownLineView
 
 /// Renders a single Markdown line at reader size (title3).
 ///
 /// Lines containing HTML `<ruby>` tags are rendered via SentenceFuriganaView so
-/// the furigana appears above the kanji. All other lines go through Markdownosaur
-/// (which handles bold, italic, code, etc.) with fonts rebased to title3 size.
+/// the furigana appears above the kanji. Lines starting with `![` are rendered via
+/// ImageLineView. All other lines go through Markdownosaur (which handles bold,
+/// italic, code, etc.) with fonts rebased to title3 size.
 /// Empty lines render as a small spacer to preserve paragraph rhythm.
 struct MarkdownLineView: View {
     let text: String
@@ -524,6 +597,8 @@ struct MarkdownLineView: View {
             Spacer().frame(height: emptyLineHeight)
         } else if trimmed.contains("<ruby>") {
             SentenceFuriganaView(htmlRuby: trimmed, textStyle: .title3)
+        } else if trimmed.hasPrefix("![") {
+            ImageLineView(text: trimmed)
         } else if let attributed = rendered {
             Text(attributed)
                 .textSelection(.enabled)

@@ -960,9 +960,39 @@ const corpusEntries = stories.map(({ title, content: rawMarkdown }) => ({
   grammarCount: grammarCountByTitle.get(title) ?? 0,
 }));
 
+// Collect all relative image references across all stories.
+// Each image is published at its natural repo-relative path (same subdirectory as the story).
+const imageRefPattern = /!\[[^\]]*\]\(([^)]+)\)/g;
+const seenImages = new Set();
+const corpusImages = [];
+for (const { title, content } of stories) {
+  const storyDir = path.join(projectRoot, path.dirname(title));
+  for (const match of content.matchAll(imageRefPattern)) {
+    const imgPath = match[1].replace(/^\.\//, ""); // strip leading ./
+    if (imgPath.startsWith("http")) continue;       // skip absolute URLs
+    const localPath = path.resolve(storyDir, imgPath);
+    // Skip images that resolve outside the project root (e.g. via ../ paths)
+    if (!localPath.startsWith(projectRoot + path.sep)) {
+      console.warn(`  Warning: image outside project root, skipping: ${imgPath} (in ${title})`);
+      continue;
+    }
+    // repoPath mirrors the story's subdirectory structure
+    const repoPath = path.relative(projectRoot, localPath);
+    if (!seenImages.has(repoPath)) {
+      seenImages.add(repoPath);
+      corpusImages.push({ repoPath, localPath });
+    }
+  }
+}
+
 const corpusOutPath = path.join(projectRoot, "corpus.json");
-writeFileSync(corpusOutPath, JSON.stringify(corpusEntries, null, 2) + "\n");
-console.log(`Wrote ${corpusEntries.length} corpus entries → ${corpusOutPath}`);
+writeFileSync(
+  corpusOutPath,
+  JSON.stringify({ images: corpusImages, entries: corpusEntries }, null, 2) + "\n",
+);
+console.log(
+  `Wrote ${corpusEntries.length} corpus entries, ${corpusImages.length} image(s) → ${corpusOutPath}`,
+);
 
 // --- Compound verb detection ---
 console.log("\n=== Compound verb detection ===");

@@ -137,7 +137,12 @@ struct AppRootView: View {
             await pairLoad
             session!.pairCorpus = pairCorpus
             grammarStore.manifest = await grammarLoad
-            corpusStore.entries = await corpusLoad
+            let corpusManifest = await corpusLoad
+            corpusStore.entries = corpusManifest.entries
+            corpusStore.images = corpusManifest.images ?? []
+            corpusStore.baseURL = VocabSync.resolvedURL().flatMap {
+                URL(string: $0.absoluteString.replacingOccurrences(of: "vocab.json", with: ""))
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -176,17 +181,17 @@ struct AppRootView: View {
     }
 
     /// Load corpus entries: try cached first, then attempt a background sync.
-    private func loadCorpusEntries() async -> [CorpusEntry] {
-        var entries = CorpusSync.cached()
+    private func loadCorpusEntries() async -> CorpusManifest {
+        var manifest = CorpusSync.cachedManifest()
 
         if CorpusSync.resolvedURL() != nil {
             do {
-                entries = try await CorpusSync.download()
-                print("[Setup] corpus synced: \(entries.count) document(s)")
+                manifest = try await CorpusSync.downloadManifest()
+                print("[Setup] corpus synced: \(manifest.entries.count) document(s), \(manifest.images?.count ?? 0) image(s)")
             } catch {
                 print("[Setup] corpus sync failed (using cache): \(error)")
             }
         }
-        return entries
+        return manifest
     }
 }
