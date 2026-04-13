@@ -877,6 +877,17 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// Set of word IDs (jmdict) that have at least one facet in the learned table.
+    /// Used by PlantingSession to skip words the user has already marked as known.
+    func learnedWordIds() async throws -> Set<String> {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT DISTINCT word_id FROM learned WHERE word_type = 'jmdict'
+                """)
+            return Set(rows.compactMap { $0["word_id"] as? String })
+        }
+    }
+
     // MARK: - WAL management
 
     /// Checkpoint the WAL into the main DB file so the exported .sqlite is self-contained.

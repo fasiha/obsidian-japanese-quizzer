@@ -175,13 +175,38 @@ final class PlantingSession {
     }
 
     /// Called when the student taps "Skip" on the introduce card.
-    /// Marks the word as skipped for this session (excluded from all future batches)
-    /// and moves on to the next introduce card without creating any Ebisu models.
-    /// Called when the student taps "Skip" on the introduce card.
     /// Removes the word from this session's queue without creating any Ebisu models,
     /// so it will reappear at the start of the next planting session for this document.
     func tapSkip() {
         guard case .introducing = phase else { return }
+        dismissCurrentIntroWord()
+    }
+
+    /// Called when the student taps "Known" on the introduce card.
+    /// Moves the word's reading facets (and kanji facets if the toggle is on) into the
+    /// learned table so the word is permanently skipped by future planting sessions.
+    /// No drill questions are shown for the word — it is removed from the queue immediately.
+    func tapKnown() {
+        guard case .introducing = phase, let word = currentIntroWord else { return }
+        let includeKanji = currentIntroKanjiEnabled
+        phase = .loading
+        Task {
+            do {
+                try await db.setReadingKnown(wordType: "jmdict", wordId: word.id)
+                if includeKanji && !word.writtenTexts.isEmpty {
+                    try await db.setKanjiKnown(wordType: "jmdict", wordId: word.id)
+                }
+            } catch {
+                print("[PlantingSession] tapKnown: \(error)")
+            }
+            dismissCurrentIntroWord()
+        }
+    }
+
+    /// Removes the front word from the queue and shows the next introduce card (or ends the
+    /// session). Called by both tapSkip and tapKnown — they differ only in what DB writes
+    /// they perform before reaching this point.
+    private func dismissCurrentIntroWord() {
         remainingWords.removeFirst()
         totalToPlant = max(0, totalToPlant - 1)
         introduceNextWord()
@@ -222,12 +247,15 @@ final class PlantingSession {
         reviewCounts = counts
         let enrolledRecords = (try? await db.enrolledEbisuRecords()) ?? []
         let enrolledWordIds = Set(enrolledRecords.map(\.wordId))
+        let learnedWordIds = (try? await db.learnedWordIds()) ?? []
 
-        // Skip words whose reading facets are already above the review threshold.
+        // Skip words whose reading facets are already above the review threshold,
+        // or that the user has explicitly marked as known (present in the learned table).
         // (Kanji facets are checked after the user sets the toggle on the introduce card.)
         let readingFacets = ["reading-to-meaning", "meaning-to-reading"]
         let unplanted = sorted.filter { word in
-            !readingFacets.allSatisfy { facet in
+            guard !learnedWordIds.contains(word.id) else { return false }
+            return !readingFacets.allSatisfy { facet in
                 (counts["\(word.id)\0\(facet)"] ?? 0) >= Self.reviewThreshold
             }
         }

@@ -90,8 +90,14 @@ A lightweight new card design (not the full Word Detail Sheet) showing:
 - A **"Chat with AI / make a mnemonic"** button (calls Haiku) so the user can
   build a memory hook before drilling begins
 
-The introduce card is purely passive — the user reads it, optionally chats, then taps
-"Start drilling" (or similar). No quiz question on this card itself.
+The introduce card is purely passive — the user reads it, optionally chats, then chooses
+one of three actions (no quiz question on this card itself):
+
+- **Got it →** — creates Ebisu models and starts drilling the word immediately.
+- **Known** — moves the word's facets to the learned table, skipping it permanently in
+  all future planting sessions for this document. No drill is shown.
+- **Skip** — removes the word from this session's queue without any DB changes, so it
+  will reappear at the start of the next planting session.
 
 ---
 
@@ -137,8 +143,11 @@ Recovery is age-agnostic: if a word has an Ebisu model and its review count is b
 
 If a word is already in the user's vocab with Ebisu models that have been reviewed more
 than N times (i.e., clearly past the planting threshold), planting silently skips it and
-moves to the next unplanted word. The user never sees a "you already know this" card —
-skipping is invisible.
+moves to the next unplanted word.
+
+Words whose facets are in the learned table (either moved there by tapping "Known" on the
+introduce card, or marked known elsewhere in the app) are also silently skipped at session
+load time. The user never sees a card for either case — skipping is invisible.
 
 ---
 

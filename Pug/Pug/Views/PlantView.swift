@@ -183,6 +183,10 @@ struct PlantView: View {
                         .buttonStyle(.bordered)
                         .tint(.secondary)
 
+                    Button("Known") { session.tapKnown() }
+                        .buttonStyle(.bordered)
+                        .tint(.green)
+
                     Button("Got it  →") { session.tapGotIt() }
                         .buttonStyle(.borderedProminent)
                 }
