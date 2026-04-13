@@ -101,7 +101,6 @@ OR
       body: JSON.stringify({
         model: MODEL,
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
         response_format: { type: 'json_object' }
       }),
     });
