@@ -1,9 +1,18 @@
+/**
+ * suggest-grammar-matches.mjs
+ * 
+ * Analyzes a target grammar topic from new-topics.json and suggests potential 
+ * matches from existing TSV grammar databases using an LLM.
+ * 
+ * Flags:
+ *  --dry-run             : Print the LLM prompt for the target topic and exit.
+ *  --skip-extra-fetches  : Skip fetching web content for the suggested candidates.
+ *  --web-content "TEXT"  : Use the provided text as the web content for the target topic, 
+ *                          bypassing the automated fetch.
+ */
 import fs from 'fs';
 import path from 'path';
-import { JSDOM } from 'jsdom';
-
-const LOCAL_LLM_URL = 'http://localhost:8080/v1/chat/completions';
-const MODEL = 'gemma-4-31b-it-4bit'; // Use smarter model for strategy
+import { callLLM, fetchWebContent, logLLMInteraction, getDisplayTitle } from './llm-utils.mjs';
 
 function getSourcePrefix(fileName) {
   const match = fileName.match(/grammar-(.*?)\.tsv|kanshudo-grammar\.tsv/);
@@ -38,25 +47,6 @@ function readTSV(filePath) {
     data.push(entry);
   }
   return data;
-}
-
-async function fetchWebContent(url) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const html = await response.text();
-    const dom = new JSDOM(html);
-    
-    // Extract text from body, removing scripts and styles
-    const body = dom.window.document.body;
-    const scripts = body.querySelectorAll('script, style');
-    scripts.forEach(s => s.remove());
-    
-    return body.textContent.trim().replace(/\\s+/g, ' ');
-  } catch (e) {
-    console.error(`\x1b[31mFailed to fetch web content from ${url}: ${e.message}\x1b[0m`);
-    process.exit(1);
-  }
 }
 
 async function generateSearchTerms(target, content, dryRun = false) {
@@ -95,18 +85,7 @@ OR
   }
 
   try {
-    const res = await fetch(LOCAL_LLM_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' }
-      }),
-    });
-
-    const data = await res.json();
-    const choice = data.choices[0].message;
+    const choice = await callLLM(prompt);
     const contentResponse = choice.content;
     let parsed;
     let parseError = null;
@@ -117,24 +96,7 @@ OR
       parseError = e;
     }
 
-    // Save audit log
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logPath = path.join(process.cwd(), `grammar/suggest-grammar-matches-${timestamp}.md`);
-    const logContent = `# FLAGS
-Model: ${MODEL}
-Timestamp: ${new Date().toISOString()}
-
-# PROMPT
-${prompt}
-
-# RESPONSE
-Reasoning:
-${parsed?.reasoning || choice.reasoning_content || 'N/A'}
-
-Content:
-${parseError ? contentResponse : JSON.stringify(parsed, null, 2)}
-`;
-    fs.writeFileSync(logPath, logContent);
+    logLLMInteraction('suggest-grammar-matches', prompt, parsed ? JSON.stringify(parsed, null, 1) : contentResponse);
 
     if (parseError) {
       console.error(`\x1b[31mLLM generated malformed JSON: ${parseError.message}\x1b[0m`);
@@ -153,8 +115,25 @@ ${parseError ? contentResponse : JSON.stringify(parsed, null, 2)}
   }
 }
 
+function normalizeFragment(s) {
+  return s.replaceAll(/[\p{P}\p{S}\s]/ug, '').toLowerCase();
+}
+
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
+  const skipExtraFetches = process.argv.includes('--skip-extra-fetches');
+
+  // Parse --web-content flag
+  let webContentOverride = null;
+  const webContentIndex = process.argv.findIndex(arg => arg.startsWith('--web-content='));
+  if (webContentIndex !== -1) {
+    webContentOverride = process.argv[webContentIndex].split('=')[1];
+  } else {
+    const webContentFlagIndex = process.argv.indexOf('--web-content');
+    if (webContentFlagIndex !== -1 && process.argv[webContentFlagIndex + 1]) {
+      webContentOverride = process.argv[webContentFlagIndex + 1];
+    }
+  }
 
   // 1. Load new topics
   const newTopicsPath = path.join(process.cwd(), 'grammar/new-topics.json');
@@ -172,15 +151,14 @@ async function main() {
 
   // Process only the first new topic (since we now work on one at a time)
   const target = newTopics[0];
-  console.log(`Targeting: ${target.id} (${target.titleJP} / ${target.titleEN})`);
+  console.log(`Targeting: ${target.id} (${getDisplayTitle(target)})`);
 
   // 2. Fetch Web Content
-  console.log(`Fetching web content from ${target.href}...`);
-  const webContent = await fetchWebContent(target.href);
+  const webContent = webContentOverride ?? await fetchWebContent(target.href);
 
   // 3. Generate Search Terms using LLM
   console.log(`Generating search terms using LLM...`);
-  const fragments = await generateSearchTerms(target, webContent, dryRun);
+  const fragments = await generateSearchTerms(target, webContent, dryRun, skipExtraFetches);
   console.log(`Search fragments generated: ${fragments.join(', ')}`);
 
   // 4. Broad Search in TSVs
@@ -209,8 +187,10 @@ async function main() {
     let matchedFragments = [];
 
     for (const fragment of fragments) {
-      if ((item['title-jp'] && item['title-jp'].toLowerCase().includes(fragment.toLowerCase())) || 
-          (item['title-en'] && item['title-en'].toLowerCase().includes(fragment.toLowerCase()))) {
+      const f = normalizeFragment(fragment)
+      const found = [item['title-jp'], item['title-en'], item.title, item.id].some(x => x && normalizeFragment(x).includes(f))
+      if (found) {
+        console.log(`Fragment found: ${f} in [${item.id}]`)
         matchCount++;
         matchedFragments.push(fragment);
       }
@@ -228,26 +208,31 @@ async function main() {
 
   // Sort candidates by score (descending) and take top 5
   candidates.sort((a, b) => b.score - a.score);
-  
-  const topCandidates = candidates.slice(0, 5);
-  
+
+  const topCandidates = candidates.slice(0, 25);
+
   // Fetch web content for candidates that have a reference URL
-  const enrichedCandidates = await Promise.all(topCandidates.map(async (c) => {
+  const enrichedCandidates = [];
+  for (const c of topCandidates) {
     let webContent = '';
-    if (c.details.href) {
+    if (c.details.href && !skipExtraFetches) {
       try {
         webContent = await fetchWebContent(c.details.href);
+        await new Promise((resolve) => {
+          const sleeping = Math.ceil(250 + 250 * Math.random());
+          setTimeout(resolve, sleeping)
+        });
       } catch (e) {
         console.error(`\x1b[33mWarning: Failed to fetch content for candidate ${c.id}: ${e.message}\x1b[0m`);
       }
     }
-    return {
+    enrichedCandidates.push({
       id: c.id,
       reason: c.reason,
       details: c.details,
       webContent: webContent
-    };
-  }));
+    });
+  };
 
   const potentialMatches = [{
     target: {

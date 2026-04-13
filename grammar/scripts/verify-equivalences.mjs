@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-
-const LOCAL_LLM_URL = 'http://localhost:8080/v1/chat/completions';
-const MODEL = 'gemma-4-31b-it-4bit'; // Verifier role
+import { callLLM, logLLMInteraction, getDisplayTitle } from './llm-utils.mjs';
 
 /**
  * This script verifies if suggested grammar matches are actually equivalent.
@@ -16,7 +14,7 @@ function generatePrompt(group) {
   
   prompt += `### TARGET TOPIC:\n`;
   prompt += `ID: ${target.id}\n`;
-  prompt += `Title: ${target.details?.titleJP || ''} / ${target.details?.titleEN || ''}\n`;
+  prompt += `Title: ${getDisplayTitle(target.details)}\n`;
   prompt += `Web Content: ${target.webContent || 'No web content available.'}\n\n`;
   
   if (candidates && candidates.length > 0) {
@@ -24,7 +22,7 @@ function generatePrompt(group) {
     candidates.forEach((candidate, index) => {
       prompt += `\n--- Candidate [${index + 1}] ---\n`;
       prompt += `ID: ${candidate.id}\n`;
-      prompt += `Title: ${candidate.details?.titleJP || ''} / ${candidate.details?.titleEN || ''}\n`;
+      prompt += `Title: ${getDisplayTitle(candidate.details)}\n`;
       prompt += `Web Content: ${candidate.webContent || 'No web content available.'}\n`;
     });
   }
@@ -33,7 +31,7 @@ function generatePrompt(group) {
   prompt += `1. Review the details and web content for the target topic and all candidates.\n`;
   prompt += `2. Determine if the target topic is equivalent to any of the candidates.\n`;
   prompt += `3. Provide your response in the following JSON format:\n`;
-  prompt += `{\n  "matches": ["id1", "id2"],\n  "reasoning": "Briefly explain why these are or are not matches."\n}\n`;
+  prompt += `{\n  "matches": ["id1", "id2"],\n  "reasoning": "Briefly explain why you chose these."\n}\n`;
   prompt += `If no candidates match, the "matches" array should be empty.\n`;
 
   return prompt;
@@ -43,34 +41,11 @@ async function verifyGroup(group) {
   const prompt = generatePrompt(group);
 
   try {
-    const res = await fetch(LOCAL_LLM_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' }
-      }),
-    });
-
-    const data = await res.json();
-    const contentResponse = data.choices[0].message.content;
+    const choice = await callLLM(prompt);
+    const contentResponse = choice.content;
     const parsed = JSON.parse(contentResponse);
 
-    // Save audit log
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const logPath = path.join(process.cwd(), `grammar/verify-equivalence-${timestamp}.md`);
-    const logContent = `# VERIFICATION
-Model: ${MODEL}
-Timestamp: ${new Date().toISOString()}
-
-# PROMPT
-${prompt}
-
-# RESPONSE
-${contentResponse}
-`;
-    fs.writeFileSync(logPath, logContent);
+    logLLMInteraction('verify-equivalence', prompt, parsed ? JSON.stringify(parsed, null, 1) : contentResponse);
 
     return parsed;
   } catch (e) {
