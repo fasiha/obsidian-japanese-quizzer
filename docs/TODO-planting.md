@@ -44,21 +44,37 @@ fast-forwards through already-planted words (see "Already-known words" below).
 
 ## Core Session Flow: Interleaved Introduce + Drill
 
-Planting works in small batches (suggested size: 3–5 words; pick a constant to tune later).
-Within a batch the pattern is:
+Planting works in small batches (default size: 4 words, tunable via `batchSize`).
+Within a batch the pattern is round-based:
 
 1. **Introduce word 1** — show the introduce card (see below), user taps "Got it"
-2. **Drill word 1** — one quiz question (all facets; see "Facets" below)
+2. **Round of 1** — one shuffled drill question for word 1
 3. **Introduce word 2** — show introduce card
-4. **Drill words 1 & 2** — one question each, interleaved
+4. **Round of 2** — one shuffled drill question each for words 1 and 2
 5. **Introduce word 3** — show introduce card
-6. **Drill words 1, 2 & 3** — one question each
-7. Repeat until batch is exhausted, then loop back and drill the whole batch again until
-   every item-facet in the batch has received at least **N reviews** (suggested N = 3;
-   tune later)
-8. Move on to the next batch
+6. **Round of 3** — one shuffled drill question each for words 1, 2, and 3
+7. … continue until all words in the batch have been introduced …
+8. **Repeat rounds** until every (word, facet) pair in the batch has been reviewed at
+   least **N times** (default N = 2, tunable via `reviewThreshold`)
+9. Move on to the next batch
 
-Session ends when all new words in the document have been introduced and drilled to the N
+A **round** is a pre-built, shuffled list with one question per introduced word — the
+first facet of that word still below `reviewThreshold`. The shuffle is adjusted at
+round boundaries so the same word does not appear back-to-back (a one-position rotate
+if the first item of the new round matches the last word drilled).
+
+Words introduced earlier in the batch accumulate more total drills because they
+participate in more rounds, but every (word, facet) pair reaches the same minimum of
+`reviewThreshold` reviews before the batch advances.
+
+**Session opening behavior:** When a session loads, new (unintroduced) words are shown
+first. If recovery words exist (see Session Recovery below), the session opens with the
+introduce card for the first new word and the recovered words are treated as already
+introduced — so the first drill round includes both recovered and newly introduced words
+together. This means recovered words are not drilled in isolation before new words are
+introduced.
+
+Session ends when all new words in the document have been introduced and drilled to the
 review threshold.
 
 ---
@@ -97,18 +113,23 @@ checks this condition to decide when to advance to the next batch.
 
 ## Session Recovery (Interrupted Planting)
 
-Users are busy; sessions will be interrupted. Recovery logic on session start:
+**Implemented.** On session start, `loadSession` fetches all enrolled Ebisu word IDs
+alongside the review counts. Unplanted words for the document are split into two groups:
 
-1. Look at all words introduced in previous planting sessions for this document (words
-   with Ebisu models created within the last, say, 24–48 hours whose review count is
-   below N).
-2. If any such "partially planted" words exist, treat them as the start of the new
-   session's drill queue.
-3. If there is room left in the batch (for example, only 1 word was left unfinished last
-   time), introduce one fewer new word so the total active batch stays at the target
-   batch size.
-4. This means a returning user seamlessly finishes what was started and keeps moving
-   forward — no explicit "resume" prompt needed.
+1. **Already introduced** — words that have Ebisu models but review counts below
+   `reviewThreshold`. These are sorted to the front of `remainingWords`, preserving
+   document order within the group.
+2. **Not yet introduced** — words with no Ebisu models. These follow the already-introduced
+   words in the queue.
+
+`batchIntroducedCount` is initialized to the number of already-introduced words in the
+first batch, so `introduceNextWord` skips their introduce cards and goes directly to
+drilling. No explicit "resume" prompt is shown — the session opens with the introduce
+card for the first new word and the recovered words participate silently in the first
+drill round.
+
+Recovery is age-agnostic: if a word has an Ebisu model and its review count is below
+`reviewThreshold`, it is always recovered regardless of when it was introduced.
 
 ---
 
@@ -133,20 +154,14 @@ Revisit this decision after initial implementation.
 
 ## Open Questions / Decisions Deferred
 
-- **Introduction order**: Use document order — sort words by the first (minimum) `line`
-  value in `references[documentTitle]`. This matches how `VocabBrowserView` presents
-  words (which reflects `vocab.json` insertion order, itself approximately first-appearance
-  order). Sorting by `min(line)` per document makes this exact and robust rather than
-  relying on `vocab.json` array position.
-- **Batch size**: 3–5 is the suggested range; pick a concrete default constant (e.g., 4)
-  and expose it as a tunable constant in the code (not necessarily a user-facing setting
-  at first).
-- **N reviews threshold**: Suggested 2–3; make it a named constant.
-- **Short halflife value**: Suggested 1–2 hours for newly introduced items; make it a
-  named constant.
-- **Lookback window for recovery**: How far back to look for "partially planted" items
-  (suggested 24–48 hours). If a user introduced words a week ago and never finished, do
-  we treat those as planted or resume? Leaning toward: if Ebisu model exists and review
-  count < N, always treat as needing planting regardless of age.
+- **Introduction order**: Implemented — words are sorted by the first (minimum) `line`
+  value in `references[documentTitle]`, matching document reading order exactly.
+- **Batch size**: Implemented — `batchSize = 4` (named constant in `PlantingSession`).
+- **N reviews threshold**: Implemented — `reviewThreshold = 2` (named constant).
+- **Short halflife value**: Implemented — `initialHalflife = 1.5` hours (named constant).
+- **Session opening with recovered words**: Currently the session opens by introducing
+  the next new word even when recovered (already-introduced) words exist. The alternative
+  would be to drill recovered words first before introducing anything new. Deferring to
+  user feedback — see "Session Opening Behavior" note in the Core Session Flow section.
 - **"Learn" button state**: Should the Learn button be visually distinct (e.g., a count
   badge showing how many words remain to plant) vs. always the same appearance?

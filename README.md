@@ -168,6 +168,46 @@ included in the default quiz. Tapping the Quiz button starts a session covering 
 vocab and pairs; long-pressing it shows a menu to quiz only vocab or only transitive
 pairs.
 
+## Learn mode (planting)
+
+The **Learn** button on each document row in `VocabBrowserView` launches a guided
+vocabulary introduction session for that document. It is designed for users who want a
+structured path through new words rather than encountering them organically in the Quiz.
+
+**How it works:**
+
+Words are processed in batches of 4. Within each batch the session interleaves
+introduction cards and drill rounds:
+
+1. Show the introduce card for the next new word — kanji, kana, and document-relevant
+   senses. The user can toggle "I'll learn the kanji spelling too" to include
+   kanji-to-reading and meaning-reading-to-kanji facets. Tap "Got it" to confirm.
+2. Run one drill round: one multiple-choice question per introduced word (shuffled,
+   no back-to-back repeats across rounds).
+3. Introduce the next word, then run a round for all introduced words so far.
+4. Repeat until all words in the batch have been introduced, then keep running rounds
+   until every (word, facet) pair has been reviewed at least `reviewThreshold` times.
+5. Advance to the next batch.
+
+All drill questions are multiple choice, generated on-device from other words in the
+same document — no LLM call needed. Words introduced earlier in a batch receive more
+total drills, but every (word, facet) pair reaches the same minimum review count before
+the batch ends.
+
+**SRS integration:** Tapping "Got it" immediately creates Ebisu models for the word's
+facets with a short initial halflife (1.5 hours). The word enters the normal Quiz flow
+right away — Learn and Quiz share the same underlying data.
+
+**Session recovery:** If a session is interrupted, reopening Learn on the same document
+picks up seamlessly. Words with Ebisu models but review counts below the threshold are
+moved to the front of the queue and treated as already introduced — no redundant
+introduce cards are shown.
+
+See [docs/TODO-planting.md](docs/TODO-planting.md) for detailed design notes and open
+questions.
+
+---
+
 ## Document reader
 
 The Reader tab lets you read the original Markdown source files that your vocab and
