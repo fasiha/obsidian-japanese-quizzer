@@ -7,18 +7,38 @@ import path from 'path';
  */
 
 function mergeGroups(existingGroups, newGroup) {
-  const result = [];
-  let currentGroup = new Set(newGroup);
-  
+  let activeGroup = new Set(newGroup);
+  let bestGroupMetadata = null;
+
+  function updateBestMetadata(group) {
+    if (!group || Array.isArray(group)) return;
+    
+    if (!bestGroupMetadata) {
+      bestGroupMetadata = group;
+      return;
+    }
+    
+    // If the current best doesn't have a summary, but this one does, update.
+    if (!bestGroupMetadata.summary && group.summary) {
+      bestGroupMetadata = group;
+      return;
+    }
+    
+    // If both have summaries, keep the longer one.
+    if (bestGroupMetadata.summary && group.summary && group.summary.length > bestGroupMetadata.summary.length) {
+      bestGroupMetadata = group;
+    }
+  }
+
   // Find any existing groups that intersect with the new group
   const remainingGroups = [];
   for (const group of existingGroups) {
     const topics = Array.isArray(group) ? group : group.topics;
     const groupSet = new Set(topics);
     
-    if ([...groupSet].some(t => currentGroup.has(t))) {
-      // Merge intersecting group into our current group
-      groupSet.forEach(t => currentGroup.add(t));
+    if ([...groupSet].some(t => activeGroup.has(t))) {
+      groupSet.forEach(t => activeGroup.add(t));
+      updateBestMetadata(group);
     } else {
       remainingGroups.push(group);
     }
@@ -29,7 +49,6 @@ function mergeGroups(existingGroups, newGroup) {
   // So we repeat the process until no more changes occur.
   let changed = true;
   let finalGroups = remainingGroups;
-  let activeGroup = currentGroup;
   
   while (changed) {
     changed = false;
@@ -39,6 +58,7 @@ function mergeGroups(existingGroups, newGroup) {
       const groupSet = new Set(topics);
       if ([...groupSet].some(t => activeGroup.has(t))) {
         groupSet.forEach(t => activeGroup.add(t));
+        updateBestMetadata(group);
         changed = true;
       } else {
         nextGroups.push(group);
@@ -51,6 +71,13 @@ function mergeGroups(existingGroups, newGroup) {
   const mergedGroup = {
     topics: [...activeGroup]
   };
+
+  if (bestGroupMetadata) {
+    if (bestGroupMetadata.summary) mergedGroup.summary = bestGroupMetadata.summary;
+    if (bestGroupMetadata.subUses) mergedGroup.subUses = bestGroupMetadata.subUses;
+    if (bestGroupMetadata.cautions) mergedGroup.cautions = bestGroupMetadata.cautions;
+    if (bestGroupMetadata.stub !== undefined) mergedGroup.stub = bestGroupMetadata.stub;
+  }
   
   return [...finalGroups, mergedGroup];
 }

@@ -19,8 +19,8 @@ Instead of a single large prompt, the workflow is decomposed into a series of at
 | **1. Filter** | `find-new-grammar-topics.mjs` | `grammar-equivalences.json` | `new-topics.json` | None |
 | **2. Discover** | `suggest-grammar-matches.mjs` | Topic ID + Slug + Web Content + All TSVs | `potential-matches.json` | **Search Strategist** |
 | **3. Decide** | `verify-equivalences.mjs` | `potential-matches.json` | `equivalence-decision.json` | **Verifier** (Yes/No match) |
-| **4. Commit** | `apply-equivalence.mjs` | `equivalence-decision.json` | $\rightarrow$ `grammar-equivalences.json` | None |
-| **5. Enrich** | `generate-description.mjs` | `potential-matches.json` | `description-draft.json` | **Linguist** (Drafting) |
+| **4. Commit** | `apply-equivalence.mjs` | `equivalence-decision.json` | $\rightarrow$ `grammar-equivalences.json` | None (preserves metadata) |
+| **5. Enrich** | `generate-description.mjs` | `grammar-equivalences.json` + TSV files | `description-draft.json` | **Linguist** (Drafting) |
 | **6. Apply** | `write-description.mjs` | `description-draft.json` | $\rightarrow$ `grammar-equivalences.json` | None |
 
 ### 2. Execution
@@ -81,8 +81,9 @@ The task is binary. The prompt focuses on comparing two reference texts to see i
 - **Constraint**: Do not hallucinate IDs; only select from the provided `candidates` list.
 - **Benefit**: Extremely high accuracy even for small models.
 
-#### Role B: The Linguist (`generate-description.mjs`)
+#### Role C: The Linguist (`generate-description.mjs`)
 The task is creative synthesis. We use an atomic, multi-step Chain-of-Thought pipeline for *each* group:
+- **Constraint**: To avoid unnecessary LLM costs and prevent regression of high-quality human-curated content, the script skips groups that already have a substantial description (summary length > 10).
 1. **Analysis**: Extract core grammatical mechanism from reference content.
 2. **Drafting**: Write summary and sub-uses.
 3. **Example Creation**: Draft original examples (strictly avoiding copyright).

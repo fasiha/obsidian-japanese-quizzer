@@ -84,3 +84,44 @@ ${response}
 `;
   fs.writeFileSync(logPath, logContent);
 }
+
+/**
+ * Extracts source prefix from a TSV filename.
+ */
+export function getSourcePrefix(fileName) {
+  const match = fileName.match(/grammar-(.*?)\.tsv|kanshudo-grammar\.tsv/);
+  if (!match) return '';
+  let prefix = match[1] || 'kanshudo';
+  if (prefix === 'stolaf-genki') prefix = 'genki';
+  return prefix;
+}
+
+/**
+ * Reads a TSV file and returns its rows as objects.
+ */
+export function readTSV(filePath) {
+  const content = fs.readFileSync(filePath, 'utf8');
+  const lines = content.split('\n');
+  let headerIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('id') && !trimmed.startsWith('#')) {
+      headerIndex = i;
+      break;
+    }
+  }
+  if (headerIndex === -1) return [];
+  const headers = lines[headerIndex].trim().split('\t');
+  const data = [];
+  for (let i = headerIndex + 1; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const row = trimmed.split('\t');
+    const entry = {};
+    headers.forEach((header, index) => {
+      entry[header] = row[index];
+    });
+    data.push(entry);
+  }
+  return data;
+}

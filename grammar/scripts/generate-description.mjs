@@ -1,23 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 import Anthropic from "@anthropic-ai/sdk";
+import { readTSV, getSourcePrefix } from './llm-utils.mjs';
 
 /**
  * This script synthesizes a high-quality linguistic description for a group of 
  * equivalent grammar topics using reference content.
  */
 
-function generateDescriptionPrompt(group, referenceData) {
+function generateDescriptionPrompt(group, referenceMap) {
   const { topics } = group;
   
   // Gather all reference content for all topics in the group
   const allRefs = [];
   topics.forEach(topicId => {
-    const ref = referenceData.find(r => r.target.id === topicId);
-    if (ref) {
+    const details = referenceMap.get(topicId);
+    if (details) {
       allRefs.push({
         id: topicId,
-        details: ref.target.details
+        details: details
       });
     }
   });
@@ -52,16 +53,29 @@ async function run() {
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   
   const equivPath = path.join(process.cwd(), 'grammar/grammar-equivalences.json');
-  const refPath = path.join(process.cwd(), 'grammar/reference-content.json');
   
-  if (!fs.existsSync(equivPath) || !fs.existsSync(refPath)) {
-    console.error('Error: Missing required input files (equivalences or reference-content).');
+  if (!fs.existsSync(equivPath)) {
+    console.error('Error: Missing required input file (equivalences).');
     process.exit(1);
   }
   
-  const equivalences = JSON.parse(fs.readFileSync(equivPath, 'utf8'));
-  const referenceData = JSON.parse(fs.readFileSync(refPath, 'utf8'));
+  // 1. Load all reference data from TSVs into a map
+  const referenceMap = new Map();
+  const directory = path.join(process.cwd(), 'grammar');
+  const files = fs.readdirSync(directory).filter(f => f.endsWith('.tsv'));
   
+  console.log(`Loading reference data from TSVs...`);
+  files.forEach(file => {
+    const data = readTSV(path.join(directory, file));
+    const prefix = getSourcePrefix(file);
+    data.forEach(row => {
+      const fullId = `${prefix}:${row.id}`;
+      referenceMap.set(fullId, row);
+    });
+  });
+  console.log(`Loaded ${referenceMap.size} total reference entries.`);
+
+  const equivalences = JSON.parse(fs.readFileSync(equivPath, 'utf8'));
   const descriptions = [];
   
   for (let i = 0; i < equivalences.length; i++) {
@@ -76,7 +90,7 @@ async function run() {
     process.stdout.write(`Drafting description for group ${i + 1}/${equivalences.length}... `);
     
     try {
-      const prompt = generateDescriptionPrompt(group, referenceData);
+      const prompt = generateDescriptionPrompt(group, referenceMap);
       const response = await anthropic.messages.create({
         model: "claude-3-5-sonnet-20240620",
         max_tokens: 1500,
