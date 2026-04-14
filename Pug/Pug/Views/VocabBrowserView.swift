@@ -165,6 +165,7 @@ struct VocabBrowserView: View {
     private func startQuiz(filter: QuizSession.QuizFilter) {
         session.documentScope = nil
         session.quizFilter = filter
+        session.phase = .idle   // ensure QuizView's .task always calls session.start()
         showQuiz = true
     }
 
@@ -172,6 +173,7 @@ struct VocabBrowserView: View {
     private func startDocumentQuiz(documentTitle: String) {
         session.documentScope = documentTitle
         session.quizFilter = .vocabOnly
+        session.phase = .idle   // ensure QuizView's .task always calls session.start()
         showQuiz = true
     }
 
