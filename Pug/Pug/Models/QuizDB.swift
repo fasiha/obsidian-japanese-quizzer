@@ -894,6 +894,143 @@ final class QuizDB: Sendable {
     func checkpointWAL() async throws {
         _ = try await pool.writeWithoutTransaction { db in try db.checkpoint(.full) }
     }
+
+    // MARK: - Motivational analytics
+
+    /// A snapshot of lightweight engagement stats for the motivational dashboard.
+    /// "This week" = Monday 00:00 of the current ISO week to now (resets each Monday).
+    /// "Last week" = the full prior Monday–Sunday.
+    struct AnalyticsSnapshot {
+        /// Lowest predicted recall probability (0–1) across all enrolled vocab facets, or nil if none enrolled.
+        let vocabLowestRecall: Double?
+        /// Lowest predicted recall probability (0–1) across all enrolled grammar facets, or nil if none enrolled.
+        let grammarLowestRecall: Double?
+        /// Number of active vocab quiz answers submitted so far this calendar week.
+        let vocabReviewsThisWeek: Int
+        /// Number of active vocab quiz answers submitted during last calendar week.
+        let vocabReviewsLastWeek: Int
+        /// Number of active grammar quiz answers submitted so far this calendar week.
+        let grammarReviewsThisWeek: Int
+        /// Number of active grammar quiz answers submitted during last calendar week.
+        let grammarReviewsLastWeek: Int
+        /// Distinct vocab word IDs first enrolled for learning so far this calendar week.
+        let vocabLearnedThisWeek: Int
+        /// Distinct vocab word IDs first enrolled for learning during last calendar week.
+        let vocabLearnedLastWeek: Int
+        /// Grammar topics first enrolled so far this calendar week.
+        let grammarEnrolledThisWeek: Int
+        /// Grammar topics first enrolled during last calendar week.
+        let grammarEnrolledLastWeek: Int
+    }
+
+    /// Compute the analytics snapshot in a single database read pass (plus recall computation in Swift).
+    func analyticsSnapshot() async throws -> AnalyticsSnapshot {
+        // Fetch all Ebisu records in one read so recall can be computed in Swift.
+        let (vocabRecords, grammarRecords) = try await pool.read { db -> ([EbisuRecord], [EbisuRecord]) in
+            let vocab   = try EbisuRecord.filter(Column("word_type") == "jmdict").fetchAll(db)
+            let grammar = try EbisuRecord.filter(Column("word_type") == "grammar").fetchAll(db)
+            return (vocab, grammar)
+        }
+
+        let now = Date()
+
+        func lowestRecall(_ records: [EbisuRecord]) -> Double? {
+            guard !records.isEmpty else { return nil }
+            return records.compactMap { rec -> Double? in
+                guard let lastDate = parseISO8601(rec.lastReview) else { return nil }
+                let elapsedHours = max(now.timeIntervalSince(lastDate) / 3600, 1e-6)
+                return predictRecall(rec.model, tnow: elapsedHours, exact: true)
+            }.min()
+        }
+
+        let vocabLowestRecall   = lowestRecall(vocabRecords)
+        let grammarLowestRecall = lowestRecall(grammarRecords)
+
+        // Compute ISO calendar-week boundaries (weeks start on Monday).
+        // "This week" = Monday 00:00 of the current week to now.
+        // "Last week" = Monday 00:00 of the previous week to Sunday 23:59:59.
+        var isoCalendar = Calendar(identifier: .iso8601)
+        isoCalendar.timeZone = .current
+        let thisWeekStart = isoCalendar.dateInterval(of: .weekOfYear, for: now)!.start
+        let lastWeekStart = isoCalendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart)!
+
+        let fmt = ISO8601DateFormatter()
+        let thisWeekStartStr = fmt.string(from: thisWeekStart)
+        let lastWeekStartStr = fmt.string(from: lastWeekStart)
+
+        // Review counts: reviews table, word_type = 'jmdict'/'transitive-pair' or 'grammar'.
+        // Note: passive facet updates do NOT write to the reviews table — every row here
+        // is an answer the user actively submitted.
+        let (vocabThisWeek, vocabLastWeek, grammarThisWeek, grammarLastWeek) = try await pool.read { db in
+            func vocabReviewCount(from start: String, to end: String) throws -> Int {
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM reviews
+                    WHERE word_type IN ('jmdict', 'transitive-pair')
+                      AND timestamp >= ?
+                      AND timestamp <  ?
+                    """, arguments: [start, end]) ?? 0
+            }
+            func grammarReviewCount(from start: String, to end: String) throws -> Int {
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM reviews
+                    WHERE word_type = 'grammar'
+                      AND timestamp >= ?
+                      AND timestamp <  ?
+                    """, arguments: [start, end]) ?? 0
+            }
+            let nowStr = ISO8601DateFormatter().string(from: now)
+            return (
+                try vocabReviewCount(from: thisWeekStartStr, to: nowStr),
+                try vocabReviewCount(from: lastWeekStartStr, to: thisWeekStartStr),
+                try grammarReviewCount(from: thisWeekStartStr, to: nowStr),
+                try grammarReviewCount(from: lastWeekStartStr, to: thisWeekStartStr)
+            )
+        }
+
+        // Vocab learned: model_events rows with event LIKE 'learned,%' and word_type='jmdict',
+        // counting distinct word IDs (a word has multiple facets; each fires a separate event).
+        let (vocabLearnedThis, vocabLearnedLast) = try await pool.read { db in
+            func learnedCount(from start: String, to end: String) throws -> Int {
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(DISTINCT word_id) FROM model_events
+                    WHERE word_type = 'jmdict'
+                      AND event LIKE 'learned,%'
+                      AND timestamp >= ?
+                      AND timestamp <  ?
+                    """, arguments: [start, end]) ?? 0
+            }
+            let nowStr = ISO8601DateFormatter().string(from: now)
+            return (try learnedCount(from: thisWeekStartStr, to: nowStr),
+                    try learnedCount(from: lastWeekStartStr, to: thisWeekStartStr))
+        }
+
+        // Grammar enrolled: grammar_enrollment rows by enrolled_at date.
+        let (grammarEnrolledThis, grammarEnrolledLast) = try await pool.read { db in
+            func enrolledCount(from start: String, to end: String) throws -> Int {
+                try Int.fetchOne(db, sql: """
+                    SELECT COUNT(*) FROM grammar_enrollment
+                    WHERE enrolled_at >= ?
+                      AND enrolled_at <  ?
+                    """, arguments: [start, end]) ?? 0
+            }
+            let nowStr = ISO8601DateFormatter().string(from: now)
+            return (try enrolledCount(from: thisWeekStartStr, to: nowStr),
+                    try enrolledCount(from: lastWeekStartStr, to: thisWeekStartStr))
+        }
+
+        return AnalyticsSnapshot(
+            vocabLowestRecall:        vocabLowestRecall,
+            grammarLowestRecall:      grammarLowestRecall,
+            vocabReviewsThisWeek:     vocabThisWeek,
+            vocabReviewsLastWeek:     vocabLastWeek,
+            grammarReviewsThisWeek:   grammarThisWeek,
+            grammarReviewsLastWeek:   grammarLastWeek,
+            vocabLearnedThisWeek:     vocabLearnedThis,
+            vocabLearnedLastWeek:     vocabLearnedLast,
+            grammarEnrolledThisWeek:  grammarEnrolledThis,
+            grammarEnrolledLastWeek:  grammarEnrolledLast
+        )
+    }
 }
 
 enum QuizDBError: Error, LocalizedError {

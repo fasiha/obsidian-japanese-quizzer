@@ -32,6 +32,7 @@ struct GrammarBrowserView: View {
     @State private var showSettings = false
     @State private var lastSyncedAt: String?
     @State private var isSyncing = false
+    @State private var dashboardRefreshID = 0
 
     @Environment(GrammarStore.self) private var grammarStore
 
@@ -145,6 +146,9 @@ struct GrammarBrowserView: View {
             .navigationDestination(isPresented: $showQuiz) {
                 GrammarQuizView(session: grammarSession, manifest: manifest)
             }
+            .onChange(of: showQuiz) { _, isShowing in
+                if !isShowing { dashboardRefreshID += 1 }
+            }
         }
         .task { await loadEnrollmentStatus() }
     }
@@ -152,15 +156,24 @@ struct GrammarBrowserView: View {
     // MARK: - Topic list
 
     private var topicList: some View {
-        List(filteredTopics, id: \.prefixedId) { topic in
-            Button {
-                selectedTopic = IdentifiableTopic(id: topic.prefixedId, topic: topic)
-            } label: {
-                topicRow(topic)
+        List {
+            if searchText.isEmpty {
+                Section {
+                    MotivationDashboardView(db: db, refreshID: dashboardRefreshID)
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             }
-            .buttonStyle(.plain)
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                grammarSwipeButtons(for: topic)
+            ForEach(filteredTopics, id: \.prefixedId) { topic in
+                Button {
+                    selectedTopic = IdentifiableTopic(id: topic.prefixedId, topic: topic)
+                } label: {
+                    topicRow(topic)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    grammarSwipeButtons(for: topic)
+                }
             }
         }
         .listStyle(.plain)

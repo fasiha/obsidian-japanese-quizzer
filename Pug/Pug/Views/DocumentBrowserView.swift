@@ -89,6 +89,11 @@ struct DocumentBrowserView: View {
     private var documentList: some View {
         let roots = buildCorpusTree(entries: corpusStore.entries)
         return List {
+            Section {
+                MotivationDashboardView(db: db, refreshID: 0)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
             ForEach(roots, id: \.pathKey) { node in
                 CorpusSectionView(
                     node: node,

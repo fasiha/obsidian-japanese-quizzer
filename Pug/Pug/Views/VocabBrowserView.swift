@@ -44,6 +44,7 @@ struct VocabBrowserView: View {
     @State private var searchText = ""
     @State private var mnemonicMap: [String: String] = [:]  // wordId -> mnemonic text
     @State private var collapsedSections: Set<String> = []  // path keys of collapsed nodes
+    @State private var dashboardRefreshID = 0
 
     private var filteredItems: [VocabItem] {
         let f = filter
@@ -151,6 +152,12 @@ struct VocabBrowserView: View {
             .navigationDestination(isPresented: $showQuiz) {
                 QuizView(session: session, pairCorpus: pairCorpus, jmdict: jmdict)
             }
+            .onChange(of: showQuiz) { _, isShowing in
+                if !isShowing { dashboardRefreshID += 1 }
+            }
+            .onChange(of: showPlanting) { _, isShowing in
+                if !isShowing { dashboardRefreshID += 1 }
+            }
             .task {
                 if let rows = try? await db.mnemonics(wordType: "jmdict",
                                                       wordIds: corpus.items.map(\.id)) {
@@ -224,6 +231,11 @@ struct VocabBrowserView: View {
         let roots = buildSourceTree(sources: activeSources, items: filteredItems)
         let pairs = filteredPairs
         return List {
+            Section {
+                MotivationDashboardView(db: db, refreshID: dashboardRefreshID)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
             if !pairs.isEmpty {
                 pairsSection(pairs: pairs)
             }
