@@ -15,7 +15,7 @@ if (!lookup) {
   process.exit(1);
 }
 
-var { db } = await setup("jmdict.sqlite");
+var { db, tags } = await setup("jmdict.sqlite");
 var words = [];
 
 var ids = new Set();
@@ -47,5 +47,12 @@ if (words.length === 0) {
 const deduped = new Map(words.map((word) => [word.id, word]));
 
 for (const word of deduped.values()) {
-  console.log(word.id, wordFormsPart(word), wordMeanings(word, true));
+  console.log(
+    word.id,
+    wordFormsPart(word),
+    wordMeanings(word, { partOfSpeech: true, numbered: true, tags }).replace(
+      /\s*\(common\) \(futsuumeishi\)/g,
+      "",
+    ),
+  );
 }

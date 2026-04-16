@@ -55,6 +55,7 @@ if (batch.length) { insertMany(batch); count += batch.length; }
 db.exec(`
   CREATE INDEX bccwj_kanji   ON bccwj (kanji);
   CREATE INDEX bccwj_reading ON bccwj (reading);
+  CREATE INDEX bccwj_frequency ON bccwj (frequency);
 `);
 
 db.close();

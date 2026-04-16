@@ -133,7 +133,10 @@ export function intersectSets(sets) {
 // Helper: extract <details> blocks matching a summary type, with summary tags stripped.
 // Yields { match, inner, stripped } for each matching block.
 export function* extractDetailsBlocks(content, summaryType) {
-  const summaryRegex = new RegExp(`<summary>\\s*${summaryType}\\s*<\\/summary>`, "i");
+  const summaryRegex = new RegExp(
+    `<summary>\\s*${summaryType}\\s*<\\/summary>`,
+    "i",
+  );
   const detailsRegex = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
   let match;
   while ((match = detailsRegex.exec(content)) !== null) {
@@ -179,7 +182,7 @@ export function wordFormsPart(word) {
 }
 
 // Return English meanings joined by " / " (one entry per sense).
-export function wordMeanings(word, numbered = false) {
+export function wordMeanings(word, {numbered = false, partOfSpeech = false, tags = {}} = {}) {
   return word.sense
     .map(
       (s, outerIdx) =>
@@ -190,7 +193,8 @@ export function wordMeanings(word, numbered = false) {
           .join("; ") +
         (s.appliesToKanji[0] !== "*"
           ? ` (applies to these kanji: ${s.appliesToKanji.join(" or ")})`
-          : ""),
+          : "") +
+        (partOfSpeech ? ` [${s.partOfSpeech.map(pos => tags ? tags[pos] : pos).join(", ")}]` : ""),
     )
     .filter(Boolean)
     .join(numbered ? ". " : " / ");
@@ -289,7 +293,8 @@ export function loadGrammarDatabases() {
 export function extractGrammarBullets(content) {
   const bullets = [];
   for (const { match, stripped } of extractDetailsBlocks(content, "Grammar")) {
-    const openingTagLen = match[0].length - match[1].length - "</details>".length;
+    const openingTagLen =
+      match[0].length - match[1].length - "</details>".length;
     const innerStartIdx = match.index + openingTagLen;
     const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
 
