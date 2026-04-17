@@ -34,6 +34,12 @@ Hidden during search (Vocab and Grammar tabs) since you are in a focused lookup 
 
 **Grammar "new this week"** = rows in `grammar_enrollment` by `enrolled_at` date. There is no separate "marked known" timestamp for grammar, so enrollment date is the right proxy.
 
+## Visual redesign: instrument-panel gauges (planned)
+
+The plain 3×2 grid will be replaced with a pair of speedometer-style gauges (one for Vocab, one for Grammar) implemented using SwiftUI's `Canvas` API. Each gauge has two sub-dials sharing a hub: an upper 270° arc for weekly quiz count and a lower 90° arc for new items learned. A short recall bar sits above each gauge. The design is intentionally dark-mode-only (always rendered on a near-black card background regardless of system color scheme), so the neon-glow aesthetic stays coherent without needing a light-mode branch.
+
+This design requires **all-time weekly maximums** for both quiz count and new-items count (vocab and grammar separately) — four new aggregate values beyond what the current `AnalyticsSnapshot` tracks. The redline needle and dynamic scale both depend on these past-maximum figures. They can be computed with a single extra SQL query per gauge: `SELECT MAX(weekly_count) FROM …` over a per-week aggregation of the existing `reviews` and `model_events` tables.
+
 ## Files changed
 
 - `Pug/Pug/Models/QuizDB.swift` — `AnalyticsSnapshot` struct + `analyticsSnapshot()` (new MARK section at end of `QuizDB`)

@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Gauge Prototype</title>
+<style>
+  :root {
+    --bg: #f0f0f4;
+    --surface: #ffffff;
+    --text: #111118;
+    --text-dim: #777;
+    --track: #ccccdd;
+    --vocab-quiz-color:    #0088cc;
+    --vocab-items-color:   #008844;
+    --grammar-quiz-color:  #cc5500;
+    --grammar-items-color: #7722bb;
+    --label-vocab:   #006699;
+    --label-grammar: #994400;
+  }
+  [data-theme="dark"] {
+    --bg: #08080e;
+    --surface: #10101a;
+    --text: #eeeef8;
+    --text-dim: #666688;
+    --track: #222238;
+    --vocab-quiz-color:    #00ccff;
+    --vocab-items-color:   #33ff88;
+    --grammar-quiz-color:  #ff7733;
+    --grammar-items-color: #bb66ff;
+    --label-vocab:   #00ccff;
+    --label-grammar: #ff7733;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 24px 16px;
+    min-height: 100vh;
+    transition: background 0.25s, color 0.25s;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+
+  h1 { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; opacity: 0.4; font-weight: 500; }
+
+  .theme-btn {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--track);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .theme-btn:hover { background: var(--track); }
+
+  .gauges {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .gauge-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .gauge-label.vocab   { color: var(--label-vocab); }
+  .gauge-label.grammar { color: var(--label-grammar); }
+
+  .controls-wrap { max-width: 720px; margin: 0 auto; }
+  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 32px; }
+  .col-head {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 3px;
+    opacity: 0.4; padding-bottom: 4px; border-bottom: 1px solid var(--track); margin-bottom: 2px;
+  }
+  .row { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+  .row label { font-size: 11px; color: var(--text-dim); min-width: 148px; flex-shrink: 0; }
+  input[type=range] { flex: 1; accent-color: var(--vocab-quiz-color); height: 3px; }
+  .grammar-side input[type=range] { accent-color: var(--grammar-quiz-color); }
+  .num { font-size: 11px; min-width: 36px; text-align: right; opacity: 0.6; font-variant-numeric: tabular-nums; }
+  .global-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .global-row label { font-size: 11px; color: var(--text-dim); min-width: 180px; }
+  .row-group-label {
+    font-size: 9px; text-transform: uppercase; letter-spacing: 2px;
+    opacity: 0.35; grid-column: 1/-1; margin-top: 6px;
+  }
+</style>
+</head>
+<body data-theme="dark">
+
+<header>
+  <h1>Dashboard Prototype</h1>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">☀ Light</button>
+</header>
+
+<div class="gauges">
+  <div class="gauge-wrap">
+    <div class="gauge-label vocab">Vocab</div>
+    <svg id="vocab-svg" viewBox="0 0 220 230" width="220" height="230"></svg>
+  </div>
+  <div class="gauge-wrap">
+    <div class="gauge-label grammar">Grammar</div>
+    <svg id="grammar-svg" viewBox="0 0 220 230" width="220" height="230"></svg>
+  </div>
+</div>
+
+<div class="controls-wrap">
+  <div class="global-row">
+    <label for="hours">Hours since Monday midnight</label>
+    <input type="range" id="hours" min="0" max="168" value="60" style="flex:1; accent-color:#888;">
+    <span class="num" id="hours-val">60h</span>
+  </div>
+
+  <div class="controls-grid">
+    <div class="col-head">Vocab</div>
+    <div class="col-head">Grammar</div>
+
+    <div class="row-group-label">Quizzes</div>
+
+    <div class="row">
+      <label>This week</label>
+      <input type="range" id="v-qcur" min="0" max="600" value="190">
+      <span class="num" id="v-qcur-val">190</span>
+    </div>
+    <div class="row grammar-side">
+      <label>This week</label>
+      <input type="range" id="g-qcur" min="0" max="200" value="38">
+      <span class="num" id="g-qcur-val">38</span>
+    </div>
+
+    <div class="row">
+      <label>Last week</label>
+      <input type="range" id="v-qlast" min="0" max="600" value="122">
+      <span class="num" id="v-qlast-val">122</span>
+    </div>
+    <div class="row grammar-side">
+      <label>Last week</label>
+      <input type="range" id="g-qlast" min="0" max="200" value="55">
+      <span class="num" id="g-qlast-val">55</span>
+    </div>
+
+    <div class="row">
+      <label>Max ever (any week)</label>
+      <input type="range" id="v-qmax" min="1" max="900" value="310">
+      <span class="num" id="v-qmax-val">310</span>
+    </div>
+    <div class="row grammar-side">
+      <label>Max ever (any week)</label>
+      <input type="range" id="g-qmax" min="1" max="400" value="80">
+      <span class="num" id="g-qmax-val">80</span>
+    </div>
+
+    <div class="row-group-label">Items learned</div>
+
+    <div class="row">
+      <label>This week</label>
+      <input type="range" id="v-icur" min="0" max="100" value="12">
+      <span class="num" id="v-icur-val">12</span>
+    </div>
+    <div class="row grammar-side">
+      <label>This week</label>
+      <input type="range" id="g-icur" min="0" max="60" value="3">
+      <span class="num" id="g-icur-val">3</span>
+    </div>
+
+    <div class="row">
+      <label>Last week</label>
+      <input type="range" id="v-ilast" min="0" max="100" value="20">
+      <span class="num" id="v-ilast-val">20</span>
+    </div>
+    <div class="row grammar-side">
+      <label>Last week</label>
+      <input type="range" id="g-ilast" min="0" max="60" value="7">
+      <span class="num" id="g-ilast-val">7</span>
+    </div>
+
+    <div class="row">
+      <label>Max ever (any week)</label>
+      <input type="range" id="v-imax" min="1" max="150" value="35">
+      <span class="num" id="v-imax-val">35</span>
+    </div>
+    <div class="row grammar-side">
+      <label>Max ever (any week)</label>
+      <input type="range" id="g-imax" min="1" max="80" value="12">
+      <span class="num" id="g-imax-val">12</span>
+    </div>
+
+    <div class="row-group-label">Recall</div>
+
+    <div class="row">
+      <label>Weakest recall %</label>
+      <input type="range" id="v-recall" min="0" max="100" value="72">
+      <span class="num" id="v-recall-val">72%</span>
+    </div>
+    <div class="row grammar-side">
+      <label>Weakest recall %</label>
+      <input type="range" id="g-recall" min="0" max="100" value="28">
+      <span class="num" id="g-recall-val">28%</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── geometry ───────────────────────────────────────────────────────────────────
+const W = 220, H = 230, CX = W / 2;
+
+// Shifted down from top so the recall bar at y=7 clears the outer delta arc.
+// Top delta arc reaches up to CY_TOP − (R_TRACK + 14); with CY_TOP=112 that's y=24.
+const CY_TOP = 112;  // quizzes hub
+const CY_BOT = 134;  // items-learned hub (22 px below)
+
+const R_TRACK       = 74;
+const R_NEEDLE      = 68;
+const R_PACE_NEEDLE = 58;
+const HUB_R         = 5;
+
+// Upper D: 270° clockwise, 7 o'clock (135°) → 12 o'clock → 5 o'clock (45°)
+const TOP_START = 135;
+const TOP_SWEEP = 270;
+
+// Lower D: 90° counterclockwise, same angular endpoints through 6 o'clock.
+
+// ── math ──────────────────────────────────────────────────────────────────────
+function toRad(d) { return d * Math.PI / 180; }
+
+function pt(cx, cy, r, deg) {
+  const a = toRad(deg);
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function arc(cx, cy, r, startDeg, endDeg, clockwise = true) {
+  const cw = clockwise ? 1 : 0;
+  const sweep = clockwise
+    ? ((endDeg - startDeg) + 360) % 360
+    : ((startDeg - endDeg) + 360) % 360;
+  if (sweep < 0.01) return '';
+  if (sweep >= 359.99) {
+    const a = pt(cx, cy, r, startDeg), b = pt(cx, cy, r, startDeg + 180);
+    return `M${a.x},${a.y} A${r},${r} 0 1,${cw} ${b.x},${b.y} A${r},${r} 0 1,${cw} ${a.x},${a.y}`;
+  }
+  const s = pt(cx, cy, r, startDeg), e = pt(cx, cy, r, endDeg);
+  return `M${s.x},${s.y} A${r},${r} 0 ${sweep > 180 ? 1 : 0},${cw} ${e.x},${e.y}`;
+}
+
+function topAngle(value, max) {
+  return TOP_START + (Math.max(0, Math.min(value, max)) / max) * TOP_SWEEP;
+}
+
+// Counterclockwise: empty=135°, full=45°, 90° sweep through bottom.
+function botAngle(value, max) {
+  return 135 - (Math.max(0, Math.min(value, max)) / max) * 90;
+}
+
+// ── SVG helpers ────────────────────────────────────────────────────────────────
+function el(tag, attrs) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+const mkPath   = (d, a)               => el('path',   { d, ...a });
+const mkLine   = (x1, y1, x2, y2, a) => el('line',   { x1, y1, x2, y2, ...a });
+const mkCircle = (cx, cy, r, a)       => el('circle', { cx, cy, r, ...a });
+
+function makeDefs(svg, id) {
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <filter id="glow-${id}"      x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3"   result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-soft-${id}" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-red-${id}"  x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+  svg.appendChild(defs);
+}
+
+// ── draw one sub-gauge ─────────────────────────────────────────────────────────
+function drawSubGauge(svg, {
+  cx, cy, curValue, lastWeekValue, maxEver, hoursElapsed,
+  color, clockwise, angleFn, isDark, trackColor, surfaceColor,
+  glowId, redGlowId, softGlowId,
+  rTrack = R_TRACK,
+}) {
+  const rNeedle      = rTrack - (R_TRACK - R_NEEDLE);
+  const rPaceNeedle  = rTrack - (R_TRACK - R_PACE_NEEDLE);
+  const RED = '#ff2222';
+  const pastRedline = curValue > maxEver;
+  const scaleMax    = pastRedline ? curValue : maxEver;
+  const onPace      = (lastWeekValue / 168) * hoursElapsed;
+  const curAngle    = angleFn(curValue, scaleMax);
+  const paceAngle   = angleFn(onPace,   scaleMax);
+
+  const trackStart = clockwise ? TOP_START : 135;
+  const trackEnd   = clockwise ? TOP_START + TOP_SWEEP : 45;
+
+  // Background track
+  svg.appendChild(mkPath(arc(cx, cy, rTrack, trackStart, trackEnd, clockwise), {
+    fill: 'none', stroke: trackColor, 'stroke-width': 3, 'stroke-linecap': 'round',
+  }));
+
+  // Tick marks
+  const tickFracs = clockwise ? [0, 0.25, 0.5, 0.75, 1.0] : [0, 0.5, 1.0];
+  for (const frac of tickFracs) {
+    const ta = clockwise ? TOP_START + frac * TOP_SWEEP : 135 - frac * 90;
+    const inner = pt(cx, cy, rTrack + 4, ta);
+    const outer  = pt(cx, cy, rTrack + 9, ta);
+    svg.appendChild(mkLine(inner.x, inner.y, outer.x, outer.y, {
+      stroke: color,
+      'stroke-width': frac === 0 || frac === 1 ? '1.5' : '1',
+      'stroke-opacity': isDark ? '0.25' : '0.20',
+      'stroke-linecap': 'round',
+    }));
+  }
+
+  // Redline: wedge + needle when current exceeds all-time max
+  if (pastRedline) {
+    const oldMaxAngle = angleFn(maxEver, scaleMax);
+    const ws = pt(cx, cy, rNeedle, oldMaxAngle);
+    const we = pt(cx, cy, rNeedle, curAngle);
+    const wedgeSweep = clockwise ? curAngle - oldMaxAngle : oldMaxAngle - curAngle;
+    const sweepFlag  = clockwise ? 1 : 0;
+    svg.appendChild(mkPath(
+      `M${cx},${cy} L${ws.x},${ws.y} A${rNeedle},${rNeedle} 0 ${wedgeSweep > 180 ? 1 : 0},${sweepFlag} ${we.x},${we.y} Z`,
+      { fill: RED, 'fill-opacity': isDark ? '0.22' : '0.15',
+        filter: isDark ? `url(#${redGlowId})` : 'none' }
+    ));
+    const rlTip = pt(cx, cy, rNeedle, oldMaxAngle);
+    svg.appendChild(mkLine(cx, cy, rlTip.x, rlTip.y, {
+      stroke: RED, 'stroke-width': '2', 'stroke-linecap': 'round',
+      filter: isDark ? `url(#${redGlowId})` : 'none',
+    }));
+  }
+
+  // Faint progress fill along the track
+  if (curValue > 0) {
+    svg.appendChild(mkPath(arc(cx, cy, rTrack, trackStart, curAngle, clockwise), {
+      fill: 'none', stroke: color, 'stroke-width': 3,
+      'stroke-opacity': isDark ? '0.35' : '0.25', 'stroke-linecap': 'round',
+    }));
+  }
+
+  // Delta arc: outside track for top gauge, inside for bottom (less vertical room).
+  const rDelta = clockwise ? rTrack + 14 : rTrack - 14;
+  const [arcFrom, arcTo] = clockwise
+    ? [Math.min(paceAngle, curAngle), Math.max(paceAngle, curAngle)]
+    : [Math.max(paceAngle, curAngle), Math.min(paceAngle, curAngle)];
+  const deltaSpan = clockwise ? arcTo - arcFrom : arcFrom - arcTo;
+  if (deltaSpan > 0.5) {
+    svg.appendChild(mkPath(arc(cx, cy, rDelta, arcFrom, arcTo, clockwise), {
+      fill: 'none', stroke: color, 'stroke-width': 2.5,
+      'stroke-opacity': isDark ? '0.55' : '0.45', 'stroke-linecap': 'round',
+      filter: isDark ? `url(#${softGlowId})` : 'none',
+    }));
+    const nub = pt(cx, cy, rDelta, curAngle);
+    svg.appendChild(mkCircle(nub.x, nub.y, 2.5, {
+      fill: color, opacity: isDark ? '0.8' : '0.7',
+      filter: isDark ? `url(#${softGlowId})` : 'none',
+    }));
+  }
+
+  // On-pace needle: starts at hub, no tail
+  const paceTip = pt(cx, cy, rPaceNeedle, paceAngle);
+  svg.appendChild(mkLine(cx, cy, paceTip.x, paceTip.y, {
+    stroke: color, 'stroke-width': '1.5',
+    'stroke-opacity': isDark ? '0.40' : '0.35',
+    'stroke-linecap': 'round', 'stroke-dasharray': '4,3',
+  }));
+
+  // Current needle: starts at hub, no tail
+  const curTip = pt(cx, cy, rNeedle, curAngle);
+  svg.appendChild(mkLine(cx, cy, curTip.x, curTip.y, {
+    stroke: color, 'stroke-width': '3', 'stroke-linecap': 'round',
+    filter: isDark ? `url(#${glowId})` : 'none',
+  }));
+
+  // Hub
+  svg.appendChild(mkCircle(cx, cy, HUB_R, {
+    fill: color, filter: isDark ? `url(#${softGlowId})` : 'none',
+  }));
+  svg.appendChild(mkCircle(cx, cy, HUB_R - 2.5, { fill: surfaceColor }));
+}
+
+// ── main draw ──────────────────────────────────────────────────────────────────
+function drawGauge(svgId, {
+  quizCur, quizLast, quizMax,
+  itemsCur, itemsLast, itemsMax,
+  weakestRecall, hoursElapsed, quizColor, itemsColor,
+}) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  makeDefs(svg, svgId);
+
+  const isDark       = document.body.dataset.theme === 'dark';
+  const trackColor   = getComputedStyle(document.body).getPropertyValue('--track').trim();
+  const surfaceColor = getComputedStyle(document.body).getPropertyValue('--surface').trim();
+  const DIVIDER_COLOR = isDark ? '#ffffff' : '#000000';
+
+  const glowId     = `glow-${svgId}`;
+  const softGlowId = `glow-soft-${svgId}`;
+  const redGlowId  = `glow-red-${svgId}`;
+
+  // ── Recall bar at top of SVG ───────────────────────────────────────────────
+  const BAR_W = 60, BAR_H = 5, BAR_X = CX - BAR_W / 2, BAR_Y = 7;
+  svg.appendChild(el('rect', {
+    x: BAR_X, y: BAR_Y, width: BAR_W, height: BAR_H, rx: 2.5, fill: trackColor,
+  }));
+  const filledW = (weakestRecall / 100) * BAR_W;
+  if (filledW > 0.5) {
+    const r = el('rect', {
+      x: BAR_X, y: BAR_Y, width: filledW, height: BAR_H, rx: 2.5,
+      fill: quizColor, opacity: isDark ? '0.85' : '0.75',
+    });
+    if (isDark) r.setAttribute('filter', `url(#${softGlowId})`);
+    svg.appendChild(r);
+  }
+
+  const R_TRACK_BOT = R_TRACK - (CY_BOT - CY_TOP);
+
+  // ── Divider spokes: hub → arc endpoints at 7 o'clock and 5 o'clock ────────
+  // These faint lines separate the upper and lower pizza slices visually.
+  for (const [cx, cy, r] of [[CX, CY_TOP, R_TRACK], [CX, CY_BOT, R_TRACK_BOT]]) {
+    for (const angleDeg of [135, 45]) {
+      const rimPt = pt(cx, cy, r, angleDeg);
+      svg.appendChild(mkLine(cx, cy, rimPt.x, rimPt.y, {
+        stroke: DIVIDER_COLOR,
+        'stroke-width': '1',
+        'stroke-opacity': isDark ? '0.14' : '0.10',
+        'stroke-linecap': 'round',
+      }));
+    }
+  }
+
+  const shared = { isDark, trackColor, surfaceColor, hoursElapsed, glowId, softGlowId, redGlowId };
+
+  // ── Upper D: quizzes (clockwise 270°) ─────────────────────────────────────
+  drawSubGauge(svg, {
+    cx: CX, cy: CY_TOP,
+    curValue: quizCur, lastWeekValue: quizLast, maxEver: quizMax,
+    clockwise: true, angleFn: topAngle, color: quizColor,
+    ...shared,
+  });
+
+  // ── Lower D: items learned (counterclockwise 90°) ─────────────────────────
+  drawSubGauge(svg, {
+    cx: CX, cy: CY_BOT, rTrack: R_TRACK_BOT,
+    curValue: itemsCur, lastWeekValue: itemsLast, maxEver: itemsMax,
+    clockwise: false, angleFn: botAngle, color: itemsColor,
+    ...shared,
+  });
+}
+
+// ── wiring ─────────────────────────────────────────────────────────────────────
+function getN(id) { return parseFloat(document.getElementById(id).value); }
+function getCSSVar(name) { return getComputedStyle(document.body).getPropertyValue(name).trim(); }
+
+function drawAll() {
+  const hours = getN('hours');
+  drawGauge('vocab-svg', {
+    quizCur:  getN('v-qcur'),  quizLast:  getN('v-qlast'),  quizMax:  getN('v-qmax'),
+    itemsCur: getN('v-icur'),  itemsLast: getN('v-ilast'),  itemsMax: getN('v-imax'),
+    weakestRecall: getN('v-recall'), hoursElapsed: hours,
+    quizColor:  getCSSVar('--vocab-quiz-color'),
+    itemsColor: getCSSVar('--vocab-items-color'),
+  });
+  drawGauge('grammar-svg', {
+    quizCur:  getN('g-qcur'),  quizLast:  getN('g-qlast'),  quizMax:  getN('g-qmax'),
+    itemsCur: getN('g-icur'),  itemsLast: getN('g-ilast'),  itemsMax: getN('g-imax'),
+    weakestRecall: getN('g-recall'), hoursElapsed: hours,
+    quizColor:  getCSSVar('--grammar-quiz-color'),
+    itemsColor: getCSSVar('--grammar-items-color'),
+  });
+}
+
+const SLIDERS = [
+  ['hours',    'hours-val',    v => v + 'h'],
+  ['v-qcur',   'v-qcur-val',  v => v], ['g-qcur',   'g-qcur-val',  v => v],
+  ['v-qlast',  'v-qlast-val', v => v], ['g-qlast',  'g-qlast-val', v => v],
+  ['v-qmax',   'v-qmax-val',  v => v], ['g-qmax',   'g-qmax-val',  v => v],
+  ['v-icur',   'v-icur-val',  v => v], ['g-icur',   'g-icur-val',  v => v],
+  ['v-ilast',  'v-ilast-val', v => v], ['g-ilast',  'g-ilast-val', v => v],
+  ['v-imax',   'v-imax-val',  v => v], ['g-imax',   'g-imax-val',  v => v],
+  ['v-recall', 'v-recall-val', v => v + '%'], ['g-recall', 'g-recall-val', v => v + '%'],
+];
+for (const [sliderId, spanId, fmt] of SLIDERS) {
+  document.getElementById(sliderId).addEventListener('input', function () {
+    document.getElementById(spanId).textContent = fmt(this.value);
+    drawAll();
+  });
+}
+
+function toggleTheme() {
+  const isDark = document.body.dataset.theme === 'dark';
+  document.body.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('theme-btn').textContent = isDark ? '☽ Dark' : '☀ Light';
+  drawAll();
+}
+
+drawAll();
+</script>
+</body>
+</html>

@@ -909,18 +909,26 @@ final class QuizDB: Sendable {
         let vocabReviewsThisWeek: Int
         /// Number of active vocab quiz answers submitted during last calendar week.
         let vocabReviewsLastWeek: Int
+        /// Maximum vocab quiz answers in any single completed calendar week (the "redline" benchmark).
+        let vocabReviewsAllTimeWeeklyMax: Int
         /// Number of active grammar quiz answers submitted so far this calendar week.
         let grammarReviewsThisWeek: Int
         /// Number of active grammar quiz answers submitted during last calendar week.
         let grammarReviewsLastWeek: Int
+        /// Maximum grammar quiz answers in any single completed calendar week.
+        let grammarReviewsAllTimeWeeklyMax: Int
         /// Distinct vocab word IDs first enrolled for learning so far this calendar week.
         let vocabLearnedThisWeek: Int
         /// Distinct vocab word IDs first enrolled for learning during last calendar week.
         let vocabLearnedLastWeek: Int
+        /// Maximum distinct vocab words enrolled in any single completed calendar week.
+        let vocabLearnedAllTimeWeeklyMax: Int
         /// Grammar topics first enrolled so far this calendar week.
         let grammarEnrolledThisWeek: Int
         /// Grammar topics first enrolled during last calendar week.
         let grammarEnrolledLastWeek: Int
+        /// Maximum grammar topics enrolled in any single completed calendar week.
+        let grammarEnrolledAllTimeWeeklyMax: Int
     }
 
     /// Compute the analytics snapshot in a single database read pass (plus recall computation in Swift).
@@ -1018,17 +1026,62 @@ final class QuizDB: Sendable {
                     try enrolledCount(from: lastWeekStartStr, to: thisWeekStartStr))
         }
 
+        // All-time weekly maximums over completed weeks only (current week excluded so a
+        // mid-week count can exceed the max and trigger the redline indicator).
+        let (vocabReviewsMax, grammarReviewsMax, vocabLearnedMax, grammarEnrolledMax) = try await pool.read { db in
+            let vocabReviewsMax = try Int.fetchOne(db, sql: """
+                SELECT COALESCE(MAX(cnt), 0) FROM (
+                    SELECT COUNT(*) AS cnt FROM reviews
+                    WHERE word_type IN ('jmdict', 'transitive-pair')
+                      AND timestamp < ?
+                    GROUP BY strftime('%Y-%W', timestamp)
+                )
+                """, arguments: [thisWeekStartStr]) ?? 0
+
+            let grammarReviewsMax = try Int.fetchOne(db, sql: """
+                SELECT COALESCE(MAX(cnt), 0) FROM (
+                    SELECT COUNT(*) AS cnt FROM reviews
+                    WHERE word_type = 'grammar'
+                      AND timestamp < ?
+                    GROUP BY strftime('%Y-%W', timestamp)
+                )
+                """, arguments: [thisWeekStartStr]) ?? 0
+
+            let vocabLearnedMax = try Int.fetchOne(db, sql: """
+                SELECT COALESCE(MAX(cnt), 0) FROM (
+                    SELECT COUNT(DISTINCT word_id) AS cnt FROM model_events
+                    WHERE word_type IN ('jmdict', 'transitive-pair') AND event LIKE 'learned,%'
+                      AND timestamp < ?
+                    GROUP BY strftime('%Y-%W', timestamp)
+                )
+                """, arguments: [thisWeekStartStr]) ?? 0
+
+            let grammarEnrolledMax = try Int.fetchOne(db, sql: """
+                SELECT COALESCE(MAX(cnt), 0) FROM (
+                    SELECT COUNT(*) AS cnt FROM grammar_enrollment
+                    WHERE enrolled_at < ?
+                    GROUP BY strftime('%Y-%W', enrolled_at)
+                )
+                """, arguments: [thisWeekStartStr]) ?? 0
+
+            return (vocabReviewsMax, grammarReviewsMax, vocabLearnedMax, grammarEnrolledMax)
+        }
+
         return AnalyticsSnapshot(
-            vocabLowestRecall:        vocabLowestRecall,
-            grammarLowestRecall:      grammarLowestRecall,
-            vocabReviewsThisWeek:     vocabThisWeek,
-            vocabReviewsLastWeek:     vocabLastWeek,
-            grammarReviewsThisWeek:   grammarThisWeek,
-            grammarReviewsLastWeek:   grammarLastWeek,
-            vocabLearnedThisWeek:     vocabLearnedThis,
-            vocabLearnedLastWeek:     vocabLearnedLast,
-            grammarEnrolledThisWeek:  grammarEnrolledThis,
-            grammarEnrolledLastWeek:  grammarEnrolledLast
+            vocabLowestRecall:               vocabLowestRecall,
+            grammarLowestRecall:             grammarLowestRecall,
+            vocabReviewsThisWeek:            vocabThisWeek,
+            vocabReviewsLastWeek:            vocabLastWeek,
+            vocabReviewsAllTimeWeeklyMax:    vocabReviewsMax,
+            grammarReviewsThisWeek:          grammarThisWeek,
+            grammarReviewsLastWeek:          grammarLastWeek,
+            grammarReviewsAllTimeWeeklyMax:  grammarReviewsMax,
+            vocabLearnedThisWeek:            vocabLearnedThis,
+            vocabLearnedLastWeek:            vocabLearnedLast,
+            vocabLearnedAllTimeWeeklyMax:    vocabLearnedMax,
+            grammarEnrolledThisWeek:         grammarEnrolledThis,
+            grammarEnrolledLastWeek:         grammarEnrolledLast,
+            grammarEnrolledAllTimeWeeklyMax: grammarEnrolledMax
         )
     }
 }

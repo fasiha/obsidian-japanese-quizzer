@@ -94,6 +94,7 @@ struct DocumentBrowserView: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+            .listSectionSeparator(.hidden)
             ForEach(roots, id: \.pathKey) { node in
                 CorpusSectionView(
                     node: node,

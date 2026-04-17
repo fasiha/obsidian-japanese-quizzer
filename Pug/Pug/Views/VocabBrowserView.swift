@@ -236,6 +236,7 @@ struct VocabBrowserView: View {
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
+            .listSectionSeparator(.hidden)
             if !pairs.isEmpty {
                 pairsSection(pairs: pairs)
             }

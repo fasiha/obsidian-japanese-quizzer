@@ -163,6 +163,7 @@ struct GrammarBrowserView: View {
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
+                .listSectionSeparator(.hidden)
             }
             ForEach(filteredTopics, id: \.prefixedId) { topic in
                 Button {
