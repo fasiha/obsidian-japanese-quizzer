@@ -280,4 +280,36 @@ This eliminates the need for a romaji conversion utility — the LLM handles any
 5. **Wire up Ebisu cross-updates**: on pair review, passive Ebisu update on both individual word models if enrolled; on individual word review, passive Ebisu update on any associated pair model
 6. **Cross-link word detail sheets**: show pair partner info (and a tap target to it) on each word's detail sheet
 
-- [ ] Consider how to add new transitive-intransitive pairs into this dataset.
+## Appendix: Enrolling new pairs from all-transitive-pairs.json
+
+The curated `transitive-pairs.json` is a subset of the candidate pool in `all-transitive-pairs.json`. To promote a pair:
+
+### Prerequisites
+
+Verify the pair in `all-transitive-pairs.json` has `ambiguousReason: null`. If it has an `ambiguousReason` string, clear it only if you've confirmed the ambiguity doesn't affect the core transitive/intransitive distinction.
+
+### Enrollment steps
+
+**Step 1: Copy the object manually**
+
+Find the pair in `all-transitive-pairs.json` and copy its JSON object into `transitive-pairs.json`. The `drills` and `jaFurigana` fields will be added by the next two steps.
+
+**Step 2: Generate drills**
+
+```bash
+node .claude/scripts/generate-pair-drills.mjs --generate --limit 1
+```
+
+This generates drills for any unambiguous pair in `transitive-pairs.json` that lacks them.
+
+**Step 3: Add furigana**
+
+```bash
+node .claude/scripts/generate-pair-drills.mjs --add-furigana
+```
+
+This fills in `jaFurigana` for any drill sentence that lacks it, hitting the local REST endpoint at `http://127.0.0.1:8133/api/v1/sentence/`.
+
+### Editing a drill after enrollment
+
+Edit `en`/`ja` fields directly in `transitive-pairs.json`. If you change a `ja` sentence, delete its `jaFurigana` field and re-run `--add-furigana` to regenerate it.

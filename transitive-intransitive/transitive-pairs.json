@@ -3420,5 +3420,64 @@
         }
       }
     ]
+  },
+  {
+    "intransitive": {
+      "kana": "つもる",
+      "jmdictId": "1382990",
+      "kanji": [
+        "積もる"
+      ]
+    },
+    "transitive": {
+      "kana": "つむ",
+      "jmdictId": "1382970",
+      "kanji": [
+        "積む"
+      ]
+    },
+    "examples": {
+      "intransitive": "雪が屋根に積もった。 — Snow piled up on the roof.",
+      "transitive": "トラックに荷物を積んだ。 — I loaded cargo onto the truck."
+    },
+    "ambiguousReason": null,
+    "drills": [
+      {
+        "intransitive": {
+          "en": "Leaves piled up against the fence.",
+          "ja": "落ち葉がフェンスに積もった。",
+          "jaFurigana": "<ruby>落<rt>お</rt></ruby>ち<ruby>葉<rt>ば</rt></ruby>がフェンスに<ruby>積<rt>つ</rt></ruby>もった。"
+        },
+        "transitive": {
+          "en": "So I raked them into a big heap.",
+          "ja": "それで私は落ち葉をまとめて大きな山に積んだ。",
+          "jaFurigana": "それで<ruby>私<rt>わたくし</rt></ruby>は<ruby>落<rt>お</rt></ruby>ち<ruby>葉<rt>ば</rt></ruby>をまとめて<ruby>大<rt>おお</rt></ruby>きな<ruby>山<rt>やま</rt></ruby>に<ruby>積<rt>つ</rt></ruby>んだ。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Dust has been piling up on the bookshelf.",
+          "ja": "本棚にほこりが積もっている。",
+          "jaFurigana": "<ruby>本<rt>ほん</rt></ruby><ruby>棚<rt>だな</rt></ruby>にほこりが<ruby>積<rt>つ</rt></ruby>もっている。"
+        },
+        "transitive": {
+          "en": "I stacked the books neatly and wiped it clean.",
+          "ja": "本をきれいに積んで、棚を拭いた。",
+          "jaFurigana": "<ruby>本<rt>ほん</rt></ruby>をきれいに<ruby>積<rt>つ</rt></ruby>んで、<ruby>棚<rt>たな</rt></ruby>を<ruby>拭<rt>ふ</rt></ruby>いた。"
+        }
+      },
+      {
+        "intransitive": {
+          "en": "Snow piled up on the doorstep overnight.",
+          "ja": "一晩で玄関に雪が積もった。",
+          "jaFurigana": "<ruby>一<rt>いち</rt></ruby><ruby>晩<rt>ばん</rt></ruby>で<ruby>玄<rt>げん</rt></ruby><ruby>関<rt>かん</rt></ruby>に<ruby>雪<rt>ゆき</rt></ruby>が<ruby>積<rt>つ</rt></ruby>もった。"
+        },
+        "transitive": {
+          "en": "Dad stacked firewood by the door",
+          "ja": "お父さんはドアの横に薪を積んだ。",
+          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんはドアの<ruby>横<rt>よこ</rt></ruby>に<ruby>薪<rt>たきぎ</rt></ruby>を<ruby>積<rt>つ</rt></ruby>んだ。"
+        }
+      }
+    ]
   }
 ]

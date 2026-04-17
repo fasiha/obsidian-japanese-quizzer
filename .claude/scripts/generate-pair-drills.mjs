@@ -26,6 +26,7 @@ import Anthropic from "@anthropic-ai/sdk";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, "../..");
 const PAIRS_PATH = resolve(PROJECT_ROOT, "transitive-intransitive/transitive-pairs.json");
+const ALL_PAIRS_PATH = resolve(PROJECT_ROOT, "transitive-intransitive/all-transitive-pairs.json");
 
 // Load .env manually (no dotenv dependency)
 try {
@@ -245,12 +246,14 @@ function write() {
 
 // ── --prompt-for PAIR_ID ──────────────────────────────────────────────
 function promptFor(pairId) {
-  const pairs = loadPairs();
-  const pair = pairs.find(
-    (p) => `${p.intransitive.jmdictId}-${p.transitive.jmdictId}` === pairId
-  );
+  // Search curated list first, then fall back to candidate pool
+  const curated = loadPairs();
+  const allPairs = JSON.parse(readFileSync(ALL_PAIRS_PATH, "utf8"));
+  const pair =
+    curated.find((p) => `${p.intransitive.jmdictId}-${p.transitive.jmdictId}` === pairId) ||
+    allPairs.find((p) => `${p.intransitive.jmdictId}-${p.transitive.jmdictId}` === pairId);
   if (!pair) {
-    console.error(`Unknown pairId: ${pairId}`);
+    console.error(`Unknown pairId: ${pairId} (searched transitive-pairs.json and all-transitive-pairs.json)`);
     process.exit(1);
   }
   console.log(buildPrompt(pair));
@@ -277,25 +280,27 @@ function mergeTmpFiles() {
   }
 
   const pairs = loadPairs();
-  const pairIndex = new Map();
-  for (let i = 0; i < pairs.length; i++) {
-    const id = `${pairs[i].intransitive.jmdictId}-${pairs[i].transitive.jmdictId}`;
-    if (!pairIndex.has(id)) pairIndex.set(id, []);
-    pairIndex.get(id).push(i);
+  const allPairs = JSON.parse(readFileSync(ALL_PAIRS_PATH, "utf8"));
+
+  function buildIndex(arr) {
+    const index = new Map();
+    for (let i = 0; i < arr.length; i++) {
+      const id = `${arr[i].intransitive.jmdictId}-${arr[i].transitive.jmdictId}`;
+      if (!index.has(id)) index.set(id, []);
+      index.get(id).push(i);
+    }
+    return index;
   }
+  const pairIndex = buildIndex(pairs);
+  const allPairIndex = buildIndex(allPairs);
 
   let merged = 0;
+  let mergedIntoAll = 0;
   let skippedAmbiguous = 0;
   let errors = 0;
 
   for (const file of tmpFiles) {
     const pairId = file.replace("drill-", "").replace(".json", "");
-    const indices = pairIndex.get(pairId);
-    if (!indices) {
-      console.error(`Unknown pairId from file ${file}: ${pairId}`);
-      errors++;
-      continue;
-    }
 
     let drills;
     try {
@@ -327,16 +332,36 @@ function mergeTmpFiles() {
     }
     if (!valid) { errors++; continue; }
 
-    for (const idx of indices) {
-      if (pairs[idx].ambiguousReason !== null) { skippedAmbiguous++; continue; }
-      pairs[idx].drills = drills;
-      merged++;
+    // Write to curated transitive-pairs.json if found there
+    const indices = pairIndex.get(pairId);
+    if (indices) {
+      for (const idx of indices) {
+        if (pairs[idx].ambiguousReason !== null) { skippedAmbiguous++; continue; }
+        pairs[idx].drills = drills;
+        merged++;
+      }
+    }
+
+    // Also write to all-transitive-pairs.json so add-pair.mjs can find the drills
+    const allIndices = allPairIndex.get(pairId);
+    if (allIndices) {
+      for (const idx of allIndices) {
+        if (allPairs[idx].ambiguousReason !== null) { skippedAmbiguous++; continue; }
+        allPairs[idx].drills = drills;
+        mergedIntoAll++;
+      }
+    }
+
+    if (!indices && !allIndices) {
+      console.error(`Unknown pairId from file ${file}: ${pairId}`);
+      errors++;
     }
   }
 
   if (skippedAmbiguous > 0) console.log(`Skipped ${skippedAmbiguous} ambiguous entries.`);
   savePairs(pairs);
-  console.log(`Merged drills from ${merged} files. Errors: ${errors}. (${tmpFiles.length} files found)`);
+  writeFileSync(ALL_PAIRS_PATH, JSON.stringify(allPairs, null, 2) + "\n", "utf8");
+  console.log(`Merged drills into transitive-pairs.json: ${merged}, into all-transitive-pairs.json: ${mergedIntoAll}. Errors: ${errors}. (${tmpFiles.length} files found)`);
 
   // Clean up merged files
   for (const file of tmpFiles) {
@@ -346,7 +371,7 @@ function mergeTmpFiles() {
 
   const unambiguous = pairs.filter((p) => p.ambiguousReason === null);
   const withDrills = unambiguous.filter((p) => p.drills);
-  console.log(`Progress: ${withDrills.length}/${unambiguous.length} unambiguous pairs have drills.`);
+  console.log(`Curated progress: ${withDrills.length}/${unambiguous.length} unambiguous pairs have drills.`);
 }
 
 // ── --dump-drills [--batch N] [--batch-size M] ────────────────────────
@@ -542,6 +567,46 @@ function patchDrills(filePath) {
   console.log(`Applied ${applied} fixes, skipped ${skipped}.`);
 }
 
+// ── --add-furigana ────────────────────────────────────────────────────
+async function addFurigana(baseUrl) {
+  const pairs = loadPairs();
+
+  function buildRubyHtml(tokens) {
+    return tokens
+      .flat()
+      .map((el) => (typeof el === "string" ? el : `<ruby>${el.ruby}<rt>${el.rt}</rt></ruby>`))
+      .join("");
+  }
+
+  async function fetchFurigana(sentence) {
+    const url = baseUrl + encodeURIComponent(sentence);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for: ${sentence}`);
+    const json = await res.json();
+    return buildRubyHtml(json[0].furigana);
+  }
+
+  let updated = 0;
+  let alreadyDone = 0;
+  let noDrills = 0;
+
+  for (const pair of pairs) {
+    if (!pair.drills) { noDrills++; continue; }
+    for (const drill of pair.drills) {
+      for (const side of ["intransitive", "transitive"]) {
+        if (drill[side].jaFurigana) { alreadyDone++; continue; }
+        const sentence = drill[side].ja;
+        process.stderr.write(`  ${sentence}\n`);
+        drill[side].jaFurigana = await fetchFurigana(sentence);
+        updated++;
+      }
+    }
+  }
+
+  savePairs(pairs);
+  console.log(`Added furigana to ${updated} sentences. Already done: ${alreadyDone}. Pairs without drills: ${noDrills}.`);
+}
+
 // ── CLI ───────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 
@@ -576,12 +641,17 @@ if (args.includes("--status")) {
   const fileIdx = args.indexOf("--patch-drills");
   const file = args[fileIdx + 1]?.startsWith("--") ? null : args[fileIdx + 1] || null;
   patchDrills(file);
+} else if (args.includes("--add-furigana")) {
+  const urlIdx = args.indexOf("--url");
+  const baseUrl = urlIdx !== -1 ? args[urlIdx + 1] : "http://127.0.0.1:8133/api/v1/sentence/";
+  addFurigana(baseUrl);
 } else if (args.includes("--write")) {
   write();
 } else {
   console.error("Usage:");
   console.error("  node generate-pair-drills.mjs --status");
   console.error("  node generate-pair-drills.mjs --generate [--limit N] [--model MODEL]");
+  console.error("  node generate-pair-drills.mjs --add-furigana [--url URL]");
   console.error("  node generate-pair-drills.mjs --prompt-for PAIR_ID");
   console.error("  node generate-pair-drills.mjs --needs-drills [--limit N]");
   console.error("  node generate-pair-drills.mjs --merge-tmp");

@@ -4310,7 +4310,7 @@
       "intransitive": "雪が屋根に積もった。 — Snow piled up on the roof.",
       "transitive": "トラックに荷物を積んだ。 — I loaded cargo onto the truck."
     },
-    "ambiguousReason": "つもる is tagged both vt and vi in JMDict (vi = \"to pile up,\" vt = \"to estimate\"), making the intransitive labeling not fully clean, though the pile-up sense does form a genuine pair with つむ."
+    "ambiguousReason": null
   },
   {
     "intransitive": {
