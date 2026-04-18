@@ -4,6 +4,7 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 
 | File | Status | Notes | Row Last Updated |
 |------|--------|-------|------------------|
+| [TODO-screenshots.md](TODO-screenshots.md) | **in-progress** | Hero screenshot tour for README. Unblocked now we know idb can let us progrmmatically tap iOS simulators. | 2026-04-18 |
 | [TODO-dispute-ui.md](TODO-dispute-ui.md) | **not started** | Button to void a mis-graded multiple-choice score and restore the pre-quiz Ebisu model. Root generation bug (Haiku mis-tracking correctIndex during shuffle) fixed 2026-04-18 by shuffling app-side; dispute UI deferred pending evidence that the fix is insufficient. | 2026-04-18 |
 | [TODO-dashboard.md](TODO-dashboard.md) | **done** | Racecar-style speedometer gauges (Vocab/Grammar) with rotating needles: upper 300° arc (weekly quizzes), lower 60° arc (new items). This week vs last week vs all-time max. Pace needle (dashed) shows on-track progress. Red overflow wedge when exceeding all-time max. Tap to toggle compact table view. | 2026-04-17 |
 | [TODO-appliesToKanji.md](TODO-appliesToKanji.md) | **done** | All tasks ✅ including stretch goal (appliesToKana) and bonus (secondary kana readings). Status header says COMPLETE 2026-03-29. | 2026-04-13 |
@@ -21,7 +22,6 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 | [TODO-new-grammar-db.md](TODO-new-grammar-db.md) | **standing checklist** | Not a feature to complete — it's the enrollment checklist for any future grammar database. IMABI is the candidate; blocked on IMABI site remodel stabilizing. | 2026-04-13 |
 | [TODO-planting.md](TODO-planting.md) | **done** | Fully implemented per recent commits (1ba5d38–07d3248). Session recovery, already-known skipping, SRS integration, watering integration all implemented. | 2026-04-13 |
 | [TODO-reader.md](TODO-reader.md) | **done** | Working beautifully, my favorite part of the app. | 2026-04-13 |
-| [TODO-screenshots.md](TODO-screenshots.md) | **blocked** | Hero screenshot tour for README. Don't know how to allow Claude to tap on iOS Simulator. | 2026-04-13 |
 | [TODO-sense.md](TODO-sense.md) | **done** | All steps including Step 5 (in-app sense enrollment) done as of 2026-04-08. | 2026-04-13 |
 | [TODO-swift6.md](TODO-swift6.md) | **not started** | Migration guide. Low urgency. | 2026-04-13 |
 | [TODO-transitive-intransitive-pairs.md](TODO-transitive-intransitive-pairs.md) | **done** | Completed in iOS. Future work is curating our small ~55 corpus of pedagogically-powerful pairs. | 2026-04-13 |
