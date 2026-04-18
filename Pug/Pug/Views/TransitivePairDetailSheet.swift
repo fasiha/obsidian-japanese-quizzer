@@ -102,6 +102,9 @@ struct TransitivePairDetailSheet: View {
                     }
                     Divider()
                     actionsSection
+                    if shouldShowQuickHalflifeChips {
+                        quickHalflifeChipsSection
+                    }
                     if !ebisuModels.isEmpty {
                         Divider()
                         ebisuHalflivesSection
@@ -552,6 +555,40 @@ struct TransitivePairDetailSheet: View {
                 }
                 .buttonStyle(.plain)
             }
+        }
+    }
+
+    private var shouldShowQuickHalflifeChips: Bool {
+        guard !ebisuModels.isEmpty else { return false }
+        return ebisuModels.contains { (ebisuReviewCounts[$0.id] ?? 0) == 0 }
+    }
+
+    private var quickHalflifeChipsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Set initial halflife")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            HStack(spacing: 8) {
+                ForEach([2.0, 4.0, 8.0, 12.0, 16.0], id: \.self) { hours in
+                    Button("\(Int(hours))h") {
+                        Task { await setAllFacetHalflives(hours: hours) }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.accentColor)
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    private func setAllFacetHalflives(hours: Double) async {
+        for record in ebisuModels {
+            await doRescale(record: record, hours: hours)
         }
     }
 
