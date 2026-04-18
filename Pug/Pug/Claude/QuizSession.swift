@@ -1237,7 +1237,7 @@ final class QuizSession {
         // manifest's written forms for the display text.
         var result: [(display: String, gloss: String)] = []
         for wordID in candidateIDs.prefix(targetCount * 2) {   // over-fetch to account for empties
-            // Look up senseExtras from the loaded quiz items (already fetched from JMDict).
+            // Look up senseExtra«s from the loaded quiz items (already fetched from JMDict).
             let senseExtras: [SenseExtra]
             let corpusIndices: [Int]
             let writtenTexts: [String]

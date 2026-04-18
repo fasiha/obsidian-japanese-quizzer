@@ -684,9 +684,8 @@ final class GrammarQuizSession {
                 Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
 
                 Finally, end with a ```json code block:
-                {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>,"sub_use":"<phrase>"}
-                - "sentence" is always empty string for tier 1.
-                - Place the correct sentence at a randomly chosen index (0–3) and record it in "correct".
+                {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"sub_use":"<phrase>"}
+                - Always place the correct sentence at index 0.
                 - Each choice is a 1-element array containing the full Japanese sentence.
                 \(subUseJsonInstruction)
                 """
@@ -699,10 +698,9 @@ final class GrammarQuizSession {
                 Step 2 — Full sentence: Write one complete, natural Japanese sentence using the target grammar.
 
                 Finally, end with a ```json code block:
-                {"stem":"<Step 1>","sentence":"<Step 2 full sentence>","choices":[[""]],"correct":0,"sub_use":"<phrase>"}
+                {"stem":"<Step 1>","sentence":"<Step 2 full sentence>","choices":[[""]],"sub_use":"<phrase>"}
                 - "sentence" is the FULL Japanese sentence from Step 2.
                 - "choices" is always [[""]] — answer extraction happens separately.
-                - "correct" is always 0.
                 \(subUseJsonInstruction)
                 """
             }
@@ -720,9 +718,9 @@ final class GrammarQuizSession {
             Step 4 — Self-check: (a) Does any distractor express a meaning close enough to the correct answer that a student could reasonably argue for it? If yes, revise. (b) Are all four choices clearly different in meaning, not just in nuance?
 
             Finally, end with a ```json code block:
-            {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"correct":<0-3>,"sub_use":"<phrase>"}
+            {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"sub_use":"<phrase>"}
             - "stem": the Japanese sentence from Step 1 — no English.
-            - Place the correct translation at a randomly chosen index (0–3) and record it in "correct".
+            - Always place the correct translation at index 0.
             - Each choice is a 1-element array containing the English translation.
             \(subUseJsonInstruction)
             """
@@ -1171,6 +1169,22 @@ final class GrammarQuizSession {
                     multipleChoice = await disambiguateGaps(
                         question: multipleChoice, topicId: item.topicId, client: client)
                 }
+                // Shuffle choices app-side so Haiku always writes the correct answer at
+                // index 0 (simpler prompt) and we introduce the randomness here instead.
+                // Only shuffle 4-choice questions; single-choice fill-in-the-blank keeps index 0.
+                if multipleChoice.choices.count == 4 {
+                    var shuffledChoices = multipleChoice.choices
+                    let newCorrectIndex = Int.random(in: 0..<4)
+                    // Swap the correct answer (index 0) into the randomly chosen position.
+                    shuffledChoices.swapAt(0, newCorrectIndex)
+                    multipleChoice = GrammarMultipleChoiceQuestion(
+                        stem:         multipleChoice.stem,
+                        sentence:     multipleChoice.sentence,
+                        choices:      shuffledChoices,
+                        correctIndex: newCorrectIndex,
+                        subUse:       multipleChoice.subUse
+                    )
+                }
                 finalMultipleChoice = multipleChoice
                 let letters     = ["A", "B", "C", "D"]
                 let choicesText = multipleChoice.choices.indices
@@ -1268,10 +1282,9 @@ final class GrammarQuizSession {
               let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
               let rawChoices = obj["choices"] as? [Any],
-              rawChoices.count == 4 || rawChoices.count == 1,
-              let correctIndex = obj["correct"] as? Int,
-              (0..<rawChoices.count).contains(correctIndex)
+              rawChoices.count == 4 || rawChoices.count == 1
         else { return nil }
+        let correctIndex = 0
 
         // Accept both [[String]] (multi-gap) and [String] (legacy/recognition fallback).
         let choices: [[String]]
@@ -1293,8 +1306,11 @@ final class GrammarQuizSession {
         let choiceKeys = choices.map { $0.joined(separator: "\u{001F}") }
         guard Set(choiceKeys).count == choices.count else { return nil }
 
-        // "sentence" is present for production fill-in-the-blank, absent for recognition.
-        let sentence = obj["sentence"] as? String
+        // "sentence" is meaningful only for fill-in-the-blank (single-choice) questions.
+        // For 4-choice questions the model sometimes echoes the correct sentence into this field
+        // anyway; ignoring it prevents a spurious gapped-sentence box and avoids leaking the
+        // answer after the app-side shuffle moves the correct choice away from index 0.
+        let sentence = choices.count == 1 ? obj["sentence"] as? String : nil
         // "sub_use" names the specific construction targeted (e.g. "godan potential form").
         let subUse = (obj["sub_use"] as? String)?.trimmingCharacters(in: .whitespaces).nonEmptyOrNil
         return GrammarMultipleChoiceQuestion(stem: stem, sentence: sentence,
