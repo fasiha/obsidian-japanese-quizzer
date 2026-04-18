@@ -21,6 +21,7 @@ struct DocumentBrowserView: View {
     let onSync: () async -> Void
 
     @Environment(CorpusStore.self) private var corpusStore
+    @Environment(GrammarStore.self) private var grammarStore
 
     @State private var collapsedSections: Set<String> = []
     @State private var isSyncing = false

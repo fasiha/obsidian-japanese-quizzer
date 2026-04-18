@@ -22,6 +22,7 @@ struct MotivationDashboardView: View {
     @State private var isLoading = true
     @State private var showTable = false
     @Environment(\.colorScheme) var colorScheme
+    @Environment(GrammarStore.self) private var grammarStore
 
     var body: some View {
         Group {
@@ -224,7 +225,7 @@ struct MotivationDashboardView: View {
     private func load() async {
         isLoading = snapshot == nil
         do {
-            snapshot = try await db.analyticsSnapshot()
+            snapshot = try await db.analyticsSnapshot(canonicalGrammarTopicIds: grammarStore.canonicalTopicIds)
         } catch {
             print("[MotivationDashboardView] load failed: \(error)")
         }

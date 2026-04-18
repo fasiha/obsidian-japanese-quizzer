@@ -932,7 +932,7 @@ final class QuizDB: Sendable {
     }
 
     /// Compute the analytics snapshot in a single database read pass (plus recall computation in Swift).
-    func analyticsSnapshot() async throws -> AnalyticsSnapshot {
+    func analyticsSnapshot(canonicalGrammarTopicIds: Set<String>? = nil) async throws -> AnalyticsSnapshot {
         // Fetch all Ebisu records in one read so recall can be computed in Swift.
         let (vocabRecords, grammarRecords) = try await pool.read { db -> ([EbisuRecord], [EbisuRecord]) in
             let vocab   = try EbisuRecord.filter(Column("word_type") == "jmdict").fetchAll(db)
@@ -1012,14 +1012,21 @@ final class QuizDB: Sendable {
                     try learnedCount(from: lastWeekStartStr, to: thisWeekStartStr))
         }
 
-        // Grammar enrolled: grammar_enrollment rows by enrolled_at date.
+        // Grammar enrolled: grammar_enrollment rows by enrolled_at date, counting only one
+        // topic per equivalence group (using canonical IDs) to avoid double-counting siblings.
         let (grammarEnrolledThis, grammarEnrolledLast) = try await pool.read { db in
+            let topicFilter = canonicalGrammarTopicIds.map { ids -> String in
+                let placeholders = ids.map { _ in "?" }.joined(separator: ",")
+                return "AND topic_id IN (\(placeholders))"
+            } ?? ""
+            let topicArgs = canonicalGrammarTopicIds.map { Array($0) } ?? []
             func enrolledCount(from start: String, to end: String) throws -> Int {
                 try Int.fetchOne(db, sql: """
                     SELECT COUNT(*) FROM grammar_enrollment
                     WHERE enrolled_at >= ?
                       AND enrolled_at <  ?
-                    """, arguments: [start, end]) ?? 0
+                      \(topicFilter)
+                    """, arguments: StatementArguments([start, end] + topicArgs)) ?? 0
             }
             let nowStr = ISO8601DateFormatter().string(from: now)
             return (try enrolledCount(from: thisWeekStartStr, to: nowStr),
@@ -1056,13 +1063,19 @@ final class QuizDB: Sendable {
                 )
                 """, arguments: [thisWeekStartStr]) ?? 0
 
+            let grammarEnrolledMaxTopicFilter = canonicalGrammarTopicIds.map { ids -> String in
+                let placeholders = ids.map { _ in "?" }.joined(separator: ",")
+                return "AND topic_id IN (\(placeholders))"
+            } ?? ""
+            let grammarEnrolledMaxTopicArgs = canonicalGrammarTopicIds.map { Array($0) } ?? []
             let grammarEnrolledMax = try Int.fetchOne(db, sql: """
                 SELECT COALESCE(MAX(cnt), 0) FROM (
                     SELECT COUNT(*) AS cnt FROM grammar_enrollment
                     WHERE enrolled_at < ?
+                      \(grammarEnrolledMaxTopicFilter)
                     GROUP BY strftime('%Y-%W', enrolled_at)
                 )
-                """, arguments: [thisWeekStartStr]) ?? 0
+                """, arguments: StatementArguments([thisWeekStartStr] + grammarEnrolledMaxTopicArgs)) ?? 0
 
             return (vocabReviewsMax, grammarReviewsMax, vocabLearnedMax, grammarEnrolledMax)
         }
