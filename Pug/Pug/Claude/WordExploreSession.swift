@@ -59,7 +59,9 @@ final class WordExploreSession {
                 maxTokens: 1024,
                 toolHandler: { @Sendable name, input in
                     return try await th.handle(toolName: name, input: input)
-                }
+                },
+                chatContext: .wordExplore(wordId: item.id),
+                templateId: nil
             )
             conversation = updatedConversation
             // Log telemetry

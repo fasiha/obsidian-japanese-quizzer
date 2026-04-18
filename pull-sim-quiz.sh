@@ -25,7 +25,7 @@ DEST="quiz-backup-$TIMESTAMP"
 mkdir "$DEST"
 
 # Copy quiz.sqlite and any WAL/SHM sidecar files
-for f in "$SIM_DIR"/quiz.sqlite*; do
+for f in "$SIM_DIR"/quiz.sqlite* "$SIM_DIR"/chat.sqlite*; do
   [[ -e "$f" ]] || continue
   cp "$f" "$DEST/"
   echo "Copied: $f → $DEST/"

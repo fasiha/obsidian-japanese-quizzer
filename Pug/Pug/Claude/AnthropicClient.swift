@@ -166,20 +166,25 @@ struct AnthropicResponse: Decodable, Sendable {
 struct AnthropicClient: Sendable {
     let apiKey: String
     let modelProvider: @Sendable () -> String
+    /// Optional chat log. When `send()` is called with a non-nil `chatContext`,
+    /// the outgoing user message and the final assistant response are persisted here.
+    let chatDB: ChatDB?
 
     var model: String { modelProvider() }
 
     private static let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private static let apiVersion = "2023-06-01"
 
-    init(apiKey: String, model: String = "claude-sonnet-4-6") {
+    init(apiKey: String, model: String = "claude-sonnet-4-6", chatDB: ChatDB? = nil) {
         self.apiKey = apiKey
         self.modelProvider = { model }
+        self.chatDB = chatDB
     }
 
-    init(apiKey: String, modelProvider: @escaping @Sendable () -> String) {
+    init(apiKey: String, modelProvider: @escaping @Sendable () -> String, chatDB: ChatDB? = nil) {
         self.apiKey = apiKey
         self.modelProvider = modelProvider
+        self.chatDB = chatDB
     }
 
     /// Called for each tool_use block: (toolName, toolInput) → result string.
@@ -202,13 +207,18 @@ struct AnthropicClient: Sendable {
     ///   - tools: Tools the model may call.
     ///   - maxTokens: Max tokens per API call.
     ///   - toolHandler: Called for each tool_use block. Required if tools are provided.
+    ///   - chatContext: Identifies the subject of this call for logging in chat.sqlite.
+    ///     Every call site must provide one so no turns are silently dropped.
+    ///   - templateId: nil for organic user exchanges; non-nil for canned prompts (e.g. `"vocab-mc-reading-to-meaning"`).
     /// - Returns: (finalText, updatedMessages, metadata)
     func send(
         messages: [AnthropicMessage],
         system: String? = nil,
         tools: [AnthropicTool] = [],
         maxTokens: Int = 2048,
-        toolHandler: ToolHandler? = nil
+        toolHandler: ToolHandler? = nil,
+        chatContext: ChatContext,
+        templateId: String?
     ) async throws -> (text: String, messages: [AnthropicMessage], metadata: SendMetadata) {
         var msgs = messages
         var turn = 0
@@ -245,6 +255,15 @@ struct AnthropicClient: Sendable {
                 meta.totalTurns = turn
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")
+                if let db = chatDB {
+                    let userContent = messages.last.map { msg in
+                        msg.content.compactMap { block -> String? in
+                            if case .text(let t) = block { return t } else { return nil }
+                        }.joined(separator: "\n")
+                    } ?? ""
+                    await db.append(context: chatContext, role: "user", content: userContent, templateId: templateId)
+                    await db.append(context: chatContext, role: "assistant", content: text, templateId: templateId)
+                }
                 return (text, msgs, meta)
             }
 

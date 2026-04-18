@@ -522,7 +522,9 @@ struct GrammarDetailSheet: View {
                 system: system,
                 tools: [],
                 maxTokens: 256,
-                toolHandler: nil
+                toolHandler: nil,
+                chatContext: .grammarDetail(topicId: topic.prefixedId),
+                templateId: "grammar-try-it-out"
             )
             chatMessages.append((isUser: false, text: response))
         } catch {
@@ -620,7 +622,9 @@ struct GrammarDetailSheet: View {
                 system: system,
                 tools: tools,
                 maxTokens: 512,
-                toolHandler: handler
+                toolHandler: handler,
+                chatContext: .grammarDetail(topicId: topic.prefixedId),
+                templateId: nil
             )
             chatMessages.append((isUser: false, text: response))
             await loadMnemonic()   // Refresh display if Claude saved a new mnemonic.

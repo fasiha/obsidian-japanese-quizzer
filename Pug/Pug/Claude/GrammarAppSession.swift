@@ -349,7 +349,9 @@ final class GrammarAppSession {
                 system: system,
                 tools: tools,
                 maxTokens: 512,
-                toolHandler: handler
+                toolHandler: handler,
+                chatContext: .grammarDetail(topicId: item.topicId),
+                templateId: nil
             )
             conversation = updatedMsgs
             if !response.isEmpty {

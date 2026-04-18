@@ -15,10 +15,12 @@ final class ReviewChatSession {
 
     private let client: AnthropicClient
     private let systemPrompt: String
+    private let chatContext: ChatContext
     private var conversation: [AnthropicMessage] = []
 
     init(client: AnthropicClient, review: Review) {
         self.client = client
+        self.chatContext = .reviewDetail(wordId: review.wordId, quizType: review.quizType)
         let notesBlock = review.notes.map { "Quiz context:\n\($0)" } ?? "No detailed quiz context recorded."
         self.systemPrompt = """
         You are a Japanese language tutor. The student is reviewing a past quiz item they want to discuss.
@@ -47,7 +49,9 @@ final class ReviewChatSession {
                 let (reply, updatedConversation, _) = try await client.send(
                     messages: conversation,
                     system: systemPrompt,
-                    maxTokens: 1024
+                    maxTokens: 1024,
+                    chatContext: chatContext,
+                    templateId: nil
                 )
                 conversation = updatedConversation
                 messages.append((isUser: false, text: reply))

@@ -411,7 +411,9 @@ struct TransitivePairDetailSheet: View {
                     { @Sendable (name: String, input: [String: JSONValue]) async throws -> String in
                         return try await handler.handle(toolName: name, input: input)
                     }
-                }
+                },
+                chatContext: .transitivePairDetail(pairId: item.id),
+                templateId: nil
             )
             chatConversation = updatedConversation
             chatMessages.append((isUser: false, text: response))

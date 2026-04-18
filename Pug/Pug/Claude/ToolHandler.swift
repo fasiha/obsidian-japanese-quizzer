@@ -130,10 +130,13 @@ struct ToolHandler: Sendable {
     /// Quiz database for mnemonic read/write. Nil if not yet initialized.
     let quizDB: QuizDB?
 
+    /// Chat log database. Nil if not yet initialized.
+    let chatDB: ChatDB?
+
     /// Open jmdict.sqlite and kanjidic2.sqlite directly from the app bundle.
     /// Both are read-only and in DELETE journal mode, so no WAL sidecars are created.
     /// Uses DatabaseQueue (not Pool) so GRDB doesn't force WAL mode on read-only DBs.
-    static func makeDefault(quizDB: QuizDB? = nil) throws -> ToolHandler {
+    static func makeDefault(quizDB: QuizDB? = nil, chatDB: ChatDB? = nil) throws -> ToolHandler {
         var config = Configuration()
         config.readonly = true
 
@@ -148,7 +151,7 @@ struct ToolHandler: Sendable {
 
         let wanikani = WanikaniData.load()
 
-        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue, wanikani: wanikani, quizDB: quizDB)
+        return ToolHandler(jmdict: jmdictQueue, kanjidic: kanjidicQueue, wanikani: wanikani, quizDB: quizDB, chatDB: chatDB)
     }
 
     /// Route a tool call. Returns the result string (JSON on success, error JSON on failure).

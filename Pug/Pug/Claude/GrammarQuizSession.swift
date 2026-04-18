@@ -231,7 +231,9 @@ nonisolated func disambiguateGaps(
         do {
             let (response, _, _) = try await client.send(
                 messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
-                maxTokens: maxTok
+                maxTokens: maxTok,
+                chatContext: .grammarQuizGeneration(topicId: topicId),
+                templateId: "grammar-gap-disambiguate"
             )
             let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
             // Parse one or more 1-based indices from the response.
@@ -331,7 +333,9 @@ nonisolated func refineAnswerExtraction(
     do {
         let (response, _, _) = try await client.send(
             messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
-            maxTokens: maxTok
+            maxTokens: maxTok,
+            chatContext: .grammarQuizGeneration(topicId: topicId),
+            templateId: "grammar-answer-refine"
         )
         let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -425,7 +429,9 @@ final class GrammarQuizSession {
             system: system,
             tools: [],
             maxTokens: 512,
-            toolHandler: nil
+            toolHandler: nil,
+            chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+            templateId: "grammar-llm-grade"
         )
         return text
     }
@@ -806,7 +812,9 @@ final class GrammarQuizSession {
             system: system,
             tools: [],
             maxTokens: 512,
-            toolHandler: nil
+            toolHandler: nil,
+            chatContext: .grammarQuizGeneration(topicId: item.topicId),
+            templateId: "grammar-freetext-stem-gen"
         )
         try? await db.log(apiEvent: ApiEvent(
             timestamp:            ISO8601DateFormatter().string(from: Date()),
@@ -983,7 +991,9 @@ final class GrammarQuizSession {
                 system: system,
                 tools: [],
                 maxTokens: 512,
-                toolHandler: nil
+                toolHandler: nil,
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                templateId: "grammar-tier2-grade"
             )
             messages    = msgs
             lastResponse = raw
@@ -1116,7 +1126,9 @@ final class GrammarQuizSession {
                 system: system,
                 tools: [],
                 maxTokens: 512,
-                toolHandler: nil
+                toolHandler: nil,
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                templateId: "grammar-tier3-grade"
             )
             messages     = msgs
             lastResponse = raw
@@ -1149,7 +1161,9 @@ final class GrammarQuizSession {
                 system: system,
                 tools: [],
                 maxTokens: 1500,
-                toolHandler: nil
+                toolHandler: nil,
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                templateId: "grammar-mc-\(item.facet)"
             )
             finalMsgs = msgs
 
@@ -1422,7 +1436,9 @@ nonisolated func fetchAndResolveVocab(
         let (response, _, _) = try await client.send(
             messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
             maxTokens: 128,
-            toolHandler: nil
+            toolHandler: nil,
+            chatContext: .grammarQuizGeneration(topicId: topicId),
+            templateId: "grammar-vocab-gloss"
         )
         let trimmed = response.trimmingCharacters(in: .whitespacesAndNewlines)
         // Extract JSON array from response (may be wrapped in a code fence or have leading prose).

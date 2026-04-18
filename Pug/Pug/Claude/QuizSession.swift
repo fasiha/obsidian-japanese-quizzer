@@ -315,7 +315,9 @@ final class QuizSession {
                 system: system,
                 tools: [],
                 maxTokens: 256,
-                toolHandler: makeToolHandler()
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-grade"),
+                templateId: "pair-llm-grade"
             )
             let (intrCorrect, tranCorrect) = parsePairLLMScores(from: response,
                                                                   intrMatchedByString: intrMatchedByString,
@@ -482,16 +484,16 @@ final class QuizSession {
 
     /// Auto-fires a tutor chat turn explaining the transitive/intransitive distinction for pairs.
     func startPairTutorSession() {
-        guard canStartPairTutorSession, let q = lastPairQuestion else { return }
+        guard canStartPairTutorSession, let q = lastPairQuestion, let item = currentItem else { return }
         isSendingChat = true
         let systemPromptText = pairTutorSystemPrompt(for: q)
         currentPairSystemPrompt = systemPromptText
         let msg = pairTutorOpeningMessage(for: q)
         chatMessages.append((isUser: true, text: msg))
-        Task { await doPairTutorOpeningTurn(msg, systemPromptText: systemPromptText) }
+        Task { await doPairTutorOpeningTurn(msg, systemPromptText: systemPromptText, item: item) }
     }
 
-    private func doPairTutorOpeningTurn(_ message: String, systemPromptText: String) async {
+    private func doPairTutorOpeningTurn(_ message: String, systemPromptText: String, item: QuizItem) async {
         conversation = [AnthropicMessage(role: "user", content: [.text(message)])]
         do {
             let (response, updatedMsgs, _) = try await client.send(
@@ -499,7 +501,9 @@ final class QuizSession {
                 system: systemPromptText,
                 tools: [.lookupJmdict],
                 maxTokens: 1024,
-                toolHandler: makeToolHandler()
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-tutor"),
+                templateId: nil
             )
             conversation = updatedMsgs
             let displayText = response.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -810,7 +814,9 @@ final class QuizSession {
                                      postHalflife: gradedHalflife, mnemonicBlock: mnemonicBlock),
                 tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
-                toolHandler: makeToolHandler()
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                templateId: nil
             )
             conversation = updatedMsgs
             try? await db.log(apiEvent: ApiEvent(
@@ -874,7 +880,9 @@ final class QuizSession {
                 system: activeSystemPrompt,
                 tools: activeTools,
                 maxTokens: 1024,
-                toolHandler: makeToolHandler()
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                templateId: nil
             )
             conversation = updatedMsgs
             let toolsJSON = meta.toolsCalled.isEmpty ? nil :
@@ -1143,7 +1151,9 @@ final class QuizSession {
             system: system,
             tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
             maxTokens: 1024,
-            toolHandler: makeToolHandler()
+            toolHandler: makeToolHandler(),
+            chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+            templateId: "vocab-llm-grade"
         )
         return response
     }
@@ -1288,7 +1298,9 @@ final class QuizSession {
                 system: system,
                 tools: resolvedTools,
                 maxTokens: 1024,
-                toolHandler: makeToolHandler()
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                templateId: "vocab-mc-\(item.facet)"
             )
             finalMsgs = msgs
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :

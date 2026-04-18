@@ -29,7 +29,7 @@ SIM_DIR=$(dirname "$SIM_DB")
 # Delete quiz.sqlite and any WAL/SHM sidecar files
 echo ""
 echo "=== Deleting ==="
-for f in "$SIM_DIR"/quiz.sqlite*; do
+for f in "$SIM_DIR"/quiz.sqlite* "$SIM_DIR"/chat.sqlite*; do
   [[ -e "$f" ]] || continue
   rm "$f"
   echo "Deleted: $(basename "$f")"
