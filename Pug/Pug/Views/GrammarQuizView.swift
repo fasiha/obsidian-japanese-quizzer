@@ -155,6 +155,30 @@ struct GrammarQuizView: View {
                 // Stem (English context for production; Japanese sentence for recognition)
                 stemView(question: question)
 
+                // Audio playback button — sits directly under the sentence so it is always
+                // reachable before the furigana pass finishes and the choices shift.
+                // Production: choice A gets the full sentence; choices B-D get the differing
+                // core with a small context window from the shared prefix/suffix.
+                // Recognition: the Japanese stem only.
+                let japaneseSentences: [String] = {
+                    if session.currentItem?.facet == "recognition" {
+                        return [question.stem]
+                    } else {
+                        return audioSentences(for: question, cloze: question.choiceClozeTemplate())
+                    }
+                }()
+                HStack {
+                    Spacer()
+                    Button {
+                        audioPlayer.toggle(sentences: japaneseSentences, language: "ja-JP")
+                    } label: {
+                        Label(audioPlayer.isPlaying ? "Stop audio" : "Play audio",
+                              systemImage: audioPlayer.isPlaying ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(audioPlayer.isPlaying ? .secondary : .blue)
+                }
+
                 // Collapsible vocabulary hints — disabled while fetch is in progress
                 assumedVocabDisclosure
 
@@ -215,29 +239,6 @@ struct GrammarQuizView: View {
                         .buttonStyle(.plain)
                     }
                 }
-
-                // Audio playback button — plays Japanese sentences aloud.
-                // Production: choice A gets the full sentence; choices B-D get
-                // just the differing core with a small kanji-safe context window
-                // from the shared prefix/suffix so the listener hears each choice
-                // in minimal grammatical context without repeating the full frame.
-                // Recognition: the Japanese stem only.
-                let japaneseSentences: [String] = {
-                    if session.currentItem?.facet == "recognition" {
-                        return [question.stem]
-                    } else {
-                        return audioSentences(for: question, cloze: cloze)
-                    }
-                }()
-                Button {
-                    audioPlayer.toggle(sentences: japaneseSentences, language: "ja-JP")
-                } label: {
-                    Label(audioPlayer.isPlaying ? "Stop audio" : "Play audio",
-                          systemImage: audioPlayer.isPlaying ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                }
-                .buttonStyle(.bordered)
-                .tint(audioPlayer.isPlaying ? .secondary : .blue)
-                .frame(maxWidth: .infinity)
 
                 // Uncertainty row
                 HStack(spacing: 8) {
