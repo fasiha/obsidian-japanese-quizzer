@@ -30,6 +30,7 @@ Pug/Pug.xcodeproj/xcshareddata/xcschemes/
 *.ass
 *.srt
 *.jpg
+BCCWJ_*tsv
 
 vocab.json
 grammar.json

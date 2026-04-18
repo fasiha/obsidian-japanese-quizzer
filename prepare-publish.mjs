@@ -447,6 +447,55 @@ const jmdictWords = idsToWords(db, wordIds);
 const jmdictById = new Map();
 for (const w of jmdictWords) jmdictById.set(w.id, w);
 
+// Open bccwj.sqlite for corpus frequency lookups. Gracefully absent if not built yet.
+const bccwjDb = (() => {
+  const dbPath = path.join(projectRoot, "bccwj.sqlite");
+  if (!existsSync(dbPath)) return null;
+  return new Database(dbPath, { readonly: true });
+})();
+const bccwjPmwQuery = bccwjDb
+  ? bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ?")
+  : null;
+
+// Manual overrides for words where BCCWJ (UniDic) uses a different canonical
+// kanji form than JMDict lists. Keyed by JMDict word ID.
+const bccwjOverridesPath = path.join(projectRoot, "bccwj-overrides.json");
+const bccwjOverrides = existsSync(bccwjOverridesPath)
+  ? JSON.parse(readFileSync(bccwjOverridesPath, "utf8")).overrides
+  : {};
+
+/**
+ * Look up the highest BCCWJ frequency for a JMDict word by trying every
+ * combination of written form and hiragana-normalized reading.
+ * For kana-only words, the written form column in BCCWJ holds the kana text
+ * (possibly in katakana), so both original and hiragana-normalized forms are tried.
+ * Falls back to bccwj-overrides.json for words where UniDic uses a different
+ * canonical kanji than any form listed in JMDict.
+ */
+function lookupBccwjPerMillionWords(jmWord) {
+  if (!bccwjPmwQuery) return null;
+  const override = bccwjOverrides[jmWord.id];
+  if (override) {
+    const row = bccwjPmwQuery.get(override.kanji, override.reading);
+    if (row) return row.pmw;
+  }
+  const kanaTexts = (jmWord.kana ?? []).map((k) => k.text);
+  const kanjiTexts = (jmWord.kanji ?? []).map((k) => k.text);
+  const searchForms =
+    kanjiTexts.length > 0
+      ? kanjiTexts
+      : [...new Set([...kanaTexts, ...kanaTexts.map(toHiragana)])];
+  const hiraganaReadings = [...new Set(kanaTexts.map(toHiragana))];
+  let max = null;
+  for (const form of searchForms) {
+    for (const reading of hiraganaReadings) {
+      const row = bccwjPmwQuery.get(form, reading);
+      if (row && (max === null || row.pmw > max)) max = row.pmw;
+    }
+  }
+  return max;
+}
+
 const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   const references = Object.fromEntries(
     [...refs.entries()].map(([title, occurrences]) => [
@@ -458,6 +507,7 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   const jmWord = jmdictById.get(id);
   if (jmWord) {
     entry.writtenForms = buildFuriganaForWord(jmWord, furiganaMap);
+    entry.bccwjPerMillionWords = lookupBccwjPerMillionWords(jmWord);
   }
   const flags = existingWordFlags.get(id);
   if (flags?.notCompound) entry.notCompound = true;

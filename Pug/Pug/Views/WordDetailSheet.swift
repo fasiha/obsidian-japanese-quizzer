@@ -165,8 +165,8 @@ struct WordDetailSheet: View {
 
             senseExtrasSection
 
-            if !item.sources.isEmpty {
-                Text(item.sources.joined(separator: ", "))
+            if let pmw = item.bccwjPerMillionWords {
+                Text("Corpus: \(pmw, specifier: "%.2f") per million words")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

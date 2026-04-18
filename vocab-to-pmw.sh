@@ -1,0 +1,1 @@
+jq -r '.words[] | [.bccwjPerMillionWords, .writtenForms[0].reading] | @tsv' vocab.json | sort -k1 -nr

@@ -26,6 +26,9 @@ struct VocabWordEntry: Codable {
     let sources: [String]
     let writtenForms: [WrittenFormGroup]?  // nil for old vocab.json without furigana data
     let references: [String: [VocabReference]]?  // nil for old vocab.json without reference data
+    /// Frequency in the BCCWJ corpus (approx. 83 million words), expressed as occurrences per million words.
+    /// Absent for words not matched in BCCWJ.
+    let bccwjPerMillionWords: Double?
 
     /// Union of sense indices across all corpus occurrences, sorted and deduplicated.
     /// Empty when no reference has llm_sense data.

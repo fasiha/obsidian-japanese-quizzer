@@ -30,6 +30,8 @@ struct VocabItem: Identifiable {
     /// Zero-based indices of senses attested in the corpus, from vocab.json llm_sense.
     /// Empty means llm_sense was absent or had no computed indices — show all senses equally (undimmed).
     let corpusSenseIndices: [Int]
+    /// Frequency in the BCCWJ corpus expressed as occurrences per million words. Nil when not matched.
+    let bccwjPerMillionWords: Double?
 
     // Derived from DB state (ebisu_models + learned + word_commitment)
     var commitment: WordCommitment?
@@ -190,6 +192,7 @@ final class VocabCorpus {
                 writtenForms: entry.writtenForms ?? [],
                 references: entry.references ?? [:],
                 corpusSenseIndices: corpusSenseIndices,
+                bccwjPerMillionWords: entry.bccwjPerMillionWords,
                 commitment: commitment,
                 readingState: readingState,
                 kanjiState: kanjiState

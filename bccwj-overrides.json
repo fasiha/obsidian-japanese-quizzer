@@ -1,0 +1,6 @@
+{
+  "comment": "Maps JMDict word IDs to the canonical BCCWJ lemma+reading when they differ. BCCWJ (UniDic) collapses orthographic variants under one canonical kanji form that JMDict may not list.",
+  "overrides": {
+    "1221270": { "kanji": "返る", "reading": "かえる" }
+  }
+}

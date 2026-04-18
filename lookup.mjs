@@ -34,7 +34,6 @@ var mapper = (word) => {
 };
 
 if (lookup.match(/^[0-9]+$/)) {
-  console.log("ID?");
   words = idsToWords(db, [lookup]);
 } else if (lookup.endsWith("*")) {
   readingBeginning(db, lookup.slice(0, -1)).forEach(mapper);
@@ -60,10 +59,10 @@ let getBccwjFrequency = null;
 if (existsSync(BCCWJ_PATH)) {
   try {
     bccwjDb = new Database(BCCWJ_PATH, { readonly: true });
-    const stmt = bccwjDb.prepare("SELECT frequency FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1");
+    const stmt = bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1");
     getBccwjFrequency = (kanji, reading) => {
       const row = stmt.get(kanji, reading);
-      return row ? row.frequency : null;
+      return row ? row.pmw : null;
     };
   } catch (err) {
     console.error("Warning: could not open bccwj.sqlite:", err.message);
@@ -80,9 +79,9 @@ for (const word of deduped.values()) {
 
     // Try each kanji form
     for (const form of kanji) {
-      const freq = getBccwjFrequency(form, kana[0]);
-      if (freq) {
-        frequencyInfo = `freq:${freq}`;
+      const result = getBccwjFrequency(form, kana[0]);
+      if (result) {
+        frequencyInfo = `pmw:${result}`;
         break;
       }
     }
@@ -90,9 +89,9 @@ for (const word of deduped.values()) {
     // If no kanji match, try kana forms
     if (!frequencyInfo) {
       for (const form of kana) {
-        const freq = getBccwjFrequency(form, form);
-        if (freq) {
-          frequencyInfo = `freq:${freq}`;
+        const result = getBccwjFrequency(form, form);
+        if (result) {
+          frequencyInfo = `freq:${result.frequency} pmw:${result.pmw}`;
           break;
         }
       }
