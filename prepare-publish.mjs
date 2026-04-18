@@ -26,6 +26,7 @@
 import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import Anthropic from "@anthropic-ai/sdk";
+import Database from "better-sqlite3";
 import path from "path";
 import {
   findMdFiles,

@@ -14,10 +14,12 @@ with open('headwords.json') as f:
     headwords = json.load(f)
 
 import os, subprocess
-if not os.path.exists('bccwj.sqlite'):
-    print('bccwj.sqlite not found, building it now...')
-    subprocess.run(['node', 'build-bccwj-db.mjs'], check=True)
-_db = sqlite.connect('bccwj.sqlite')
+bccwj_path = os.path.join('..', 'bccwj.sqlite')
+if not os.path.exists(bccwj_path):
+    print('bccwj.sqlite not found at ../bccwj.sqlite')
+    print('Build it with: node .claude/scripts/build-bccwj-db.mjs')
+    sys.exit(1)
+_db = sqlite.connect(bccwj_path)
 _db.row_factory = sqlite.Row
 
 def bccwj_freq(entry):

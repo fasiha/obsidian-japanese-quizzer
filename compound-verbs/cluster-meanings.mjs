@@ -15,7 +15,7 @@
  *   compound-verbs/clusters/<v2>-meanings-<timestamp>-<model>.txt   (flags + prompt + response)
  *
  * Requires ANTHROPIC_API_KEY in .env
- * Requires compound-verbs/bccwj.sqlite (build with: node compound-verbs/build-bccwj-db.mjs)
+ * Requires bccwj.sqlite at project root (build with: node .claude/scripts/build-bccwj-db.mjs)
  */
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
@@ -61,10 +61,10 @@ const survey = JSON.parse(readFileSync(surveyPath, "utf8"));
 
 // --- Load BCCWJ frequency database ---
 
-const bccwjDbPath = join(__dirname, "bccwj.sqlite");
+const bccwjDbPath = join(root, "bccwj.sqlite");
 if (!existsSync(bccwjDbPath)) {
-  console.error("BCCWJ SQLite database not found: compound-verbs/bccwj.sqlite");
-  console.error("Build it with: node compound-verbs/build-bccwj-db.mjs");
+  console.error("BCCWJ SQLite database not found: bccwj.sqlite");
+  console.error("Build it with: node .claude/scripts/build-bccwj-db.mjs");
   process.exit(1);
 }
 

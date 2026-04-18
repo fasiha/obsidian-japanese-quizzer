@@ -14,7 +14,7 @@ import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const BCCWJ_PATH = path.join(__dirname, "compound-verbs", "bccwj.sqlite");
+const BCCWJ_PATH = path.join(__dirname, "bccwj.sqlite");
 
 var lookup = process.argv[2];
 if (!lookup) {

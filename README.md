@@ -55,7 +55,17 @@ Download these files into the project root from [jmdict-simplified releases](htt
 node .claude/scripts/get-kanji-info.mjs 日
 ```
 
-### 4. Copy databases and data to the iOS app
+### 4. Build bccwj.sqlite
+
+Download [`BCCWJ_frequencylist_luw2_ver1_0.tsv`](http://doi.org/10.15084/00003214) (the Long Unit Word frequency list from NINJAL's BCCWJ) and place it in the project root. Then:
+
+```bash
+node .claude/scripts/build-bccwj-db.mjs
+```
+
+This creates `bccwj.sqlite`, a fast way to look up words and corpus frequencies, useful for some workflows.
+
+### 5. Copy databases and data to the iOS app
 
 ```bash
 cp jmdict.sqlite Pug/Pug/Resources/jmdict.sqlite

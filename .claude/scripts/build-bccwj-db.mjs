@@ -5,14 +5,18 @@
 //
 // "kanji" is the lemma column (may be kana-only for some entries).
 // "reading" is lForm normalized from katakana to hiragana.
-// Usage: node build-bccwj-db.mjs
+// Usage: node .claude/scripts/build-bccwj-db.mjs
 
 import Database from 'better-sqlite3';
 import { createReadStream } from 'fs';
 import { createInterface } from 'readline';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-const TSV = 'BCCWJ_frequencylist_luw2_ver1_0.tsv';
-const DB  = 'bccwj.sqlite';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, '..', '..');
+const TSV = join(root, 'BCCWJ_frequencylist_luw2_ver1_0.tsv');
+const DB  = join(root, 'bccwj.sqlite');
 
 function toHiragana(s) {
   return s.replace(/[\u30A1-\u30F6]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));

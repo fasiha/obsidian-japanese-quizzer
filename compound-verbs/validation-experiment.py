@@ -459,7 +459,7 @@ if survey_path.exists():
     survey = json.loads(survey_path.read_text())
 
     # Load BCCWJ frequencies to determine which compounds are "rare"
-    bccwj_path = SCRIPT_DIR / "bccwj.sqlite"
+    bccwj_path = ROOT / "bccwj.sqlite"
     bccwj_freq: dict[str, int] = {}
     if bccwj_path.exists():
         bccwj_db = sqlite3.connect(str(bccwj_path))
