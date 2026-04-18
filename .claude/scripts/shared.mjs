@@ -102,11 +102,25 @@ export function findMdFiles(dir, excludeDirs = ["node_modules", ".claude"]) {
   return results;
 }
 
-// True if the string contains only Japanese characters
+// True if the string contains only Japanese script characters and punctuation.
+// Used for token-level checks (e.g. finding where the Japanese prefix ends in a bullet).
 export function isJapanese(str) {
-  return /^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC。？！]+$/.test(
+  return /^[\u3001\u3002\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC。？！]+$/.test(
     str,
   );
+}
+
+// True if the majority of non-whitespace characters in a line are Japanese.
+// Used for line-level checks (e.g. identifying an annotated sentence while
+// walking backward through Markdown), where punctuation like 、 or loanword
+// Latin letters should not disqualify an otherwise Japanese sentence.
+export function looksLikeJapaneseLine(str) {
+  const chars = [...str].filter((c) => !/\s/.test(c));
+  if (chars.length === 0) return false;
+  const japaneseCount = chars.filter((c) =>
+    /[\u3000-\u303F\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005\u30FC]/.test(c)
+  ).length;
+  return japaneseCount / chars.length >= 0.5;
 }
 
 // Extract leading Japanese tokens from a bullet (stop at first non-Japanese token)

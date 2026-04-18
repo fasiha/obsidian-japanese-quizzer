@@ -337,6 +337,23 @@
   },
   {
     "topics": [
+      "bunpro:ていただけませんか",
+      "genki:teitadakemasen"
+    ],
+    "summary": "ていただけませんか is the most humble way to request a favor. It combines the て-form of a verb with いただけ (the potential stem of the humble verb いただく 'to receive') plus ません + か (polite negative question). The negative-question framing softens the request, and the humble いただく lowers the speaker relative to the listener — making this the default choice when asking superiors, teachers, clients, or strangers for a favor. Genki introduces this form alongside the less-formal ーてくれませんか (polite) and the casual ーてくれない, so learners should recognize all three politeness tiers together.",
+    "subUses": [
+      "Humble request to a superior or stranger (ーていただけませんか): 作文を直していただけませんか (Could you please correct my essay?)",
+      "Polite request to an equal (ーてくれませんか): お弁当を作ってくれませんか (Could you make me a bento?)",
+      "Casual request to a friend or family member (ーてくれない): ノートを見せてくれない (Can I see your notes?)"
+    ],
+    "cautions": [
+      "いただける is the potential form of いただく — the shape before ません must be いただけ (not いただき or いただく). Memorize the full ladder: ください (neutral polite) → くれませんか (polite request from an equal) → いただけませんか (humble request from below)",
+      "Match the politeness tier to the social distance: ーてくれない for friends and family, ーてくれませんか for classmates or coworkers, ーていただけませんか for teachers, clients, and strangers",
+      "For even stronger deference in business or formal writing, the variants ーていただけますでしょうか and ーていただけないでしょうか add tentative conditional politeness on top of the humble form"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:ておく",
       "dbjg:oku",
       "genki:teoku",
@@ -373,6 +390,25 @@
       "The completion sense is often reinforced by adverbs like すっかり (completely) or 全部 (all); their presence is a strong signal that completion, not regret, is the primary reading",
       "Colloquial contractions ちゃう and じゃう are gender-neutral in casual speech; do not mark them wrong in informal contexts",
       "Additional male-only contractions: ちまう and じまう follow the same て/で rule (e.g., 読んでしまう → 読んじまう); these are correct but gender-restricted"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:てすみません",
+      "genki:te-sumimasen-deshita"
+    ],
+    "summary": "てすみません apologizes for an action the speaker has taken (or failed to take). It attaches to the て-form of a verb, or なくて for negative verbs, and is followed by an apology phrase. The phrase choice marks the register: すみません / すみませんでした for polite contexts (teachers, bosses, strangers) and ごめん / ごめんなさい for casual contexts (friends, family). The past-tense すみませんでした frames the action as a finished, now-regretted deed.",
+    "subUses": [
+      "Polite apology for a completed action: 授業中に話してすみませんでした (I'm sorry for talking during class)",
+      "Polite apology for something not done (なくて + すみませんでした): 教科書を持ってこなくてすみませんでした (I'm sorry for not bringing my textbook)",
+      "Casual apology for an action (ーてごめん): 夜遅く電話してごめん (Sorry for calling so late)",
+      "Casual apology for an omission (なくてごめん): 約束を守らなくてごめん (Sorry for not keeping my promise)"
+    ],
+    "cautions": [
+      "Negative verbs always use なくて before the apology — 来なくてすみません, 守らなくてごめん. Do not use ないで here",
+      "すみません and すみませんでした are both acceptable: use the past form when the action has finished, the plain form when apologizing in the moment. Either is polite",
+      "Match the apology phrase to the listener: ごめん / ごめんなさい only with close peers, younger people, or family; すみませんでした with anyone who requires formal politeness",
+      "The て-form connects directly to the apology phrase — do not insert だ, で, or a comma between them"
     ]
   },
   {
@@ -426,6 +462,50 @@
       "Past tense てみた carries an implication that the attempt was made and completed; it does not inherently signal failure or success — context determines the outcome",
       "Do not confuse with てごらん, which is a directive form ('give it a try') used toward someone of lower status or children; てみる applies equally to self and others",
       "In very casual speech, the final る may be dropped (食べてみ) — accept this but note it is informal"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:といい",
+      "genki:toii"
+    ],
+    "summary": "といい expresses hope or a wish about a future situation. The clause before と is in plain form: verbs and い-adjectives attach directly (来るといい, 寒くないといい), while な-adjectives and nouns take だ (静かだといい, 日曜日だといい). Add ですね to share the hope with or about someone else, or んですが / なあ to voice a more tentative, inward-looking wish.",
+    "subUses": [
+      "Hoping for another person's good fortune (ですね): 早くよくなるといいですね (I hope you get better soon)",
+      "Hoping for a favorable situation that also affects you: 大学院に入れるといいですね (I hope I can get into graduate school)",
+      "Hoping something won't happen (negative short form + といい): 寒くないといいですね (I hope it won't be cold)",
+      "Tentative personal hope (んですが): 奨学金がもらえるといいんですが (I'm hoping I can get a scholarship)"
+    ],
+    "cautions": [
+      "The clause before と must be plain form — use 来るといい, never 来ますといい, even when the main sentence is polite",
+      "Insert だ before といい only for な-adjectives and nouns (静かだといい, 日曜日だといい). い-adjectives and verbs attach directly with no だ (寒いといい, 勝つといい)",
+      "Use んですが for a speaker's own hope (more tentative, modest); use ですね to voice hope about or to someone else"
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:とき",
+      "dbjg:toki",
+      "genki:toki",
+      "kanshudo:時"
+    ],
+    "summary": "とき means 'when' or 'at the time of.' It is a dependent noun that takes a preceding modifier: a plain-form verb (present or past), an い-adjective, a な-adjective + な, or a noun + の. The structure 'A とき, B' means 'when A, B.' The tense inside the A clause is relative to B: use present tense when A is simultaneous with or still upcoming at the moment of B, and past tense when A is already complete by the time B happens — regardless of where B falls on the absolute timeline.",
+    "subUses": [
+      "Present verb + とき (A is ongoing or upcoming relative to B): コーヒーを飲むとき、砂糖を入れます (When I drink coffee, I put in sugar — the sugar goes in before the drinking)",
+      "Past verb + とき (A is complete by the time B happens): 朝寝坊したとき、タクシーに乗ります (When I oversleep, I take a taxi — the oversleeping finishes first)",
+      "い-adjective + とき: 眠いとき、コーヒーを飲みます (When I'm sleepy, I drink coffee)",
+      "な-adjective + な + とき: ひまなとき、ゲームをします (When I have free time, I play games)",
+      "Noun + の + とき: ホームシックのとき、両親に電話します (When I'm homesick, I call my parents)",
+      "Differing subjects (とき-clause subject marked with が): 私が大学生だった時、妹はまだ三つだった (When I was a college student, my sister was only three)"
+    ],
+    "cautions": [
+      "The clause before とき must be plain form — 来たとき, not 来ましたとき — even when the main clause B uses masu-form politeness",
+      "Relative-tense rule: 行くとき = A has not yet happened at the moment of B; 行ったとき = A is already complete at the moment of B. Both can describe past, present, or future real-world events; the tense tracks the order of A and B, not the speech time",
+      "Attach な to な-adjectives (ひまなとき) and の to nouns (子供のとき). Do not swap them",
+      "Particle after とき: に pinpoints a specific time (食べたときに), は sets up a general rule (食べたときは); either is fine, or neither when the timing is already clear from context",
+      "When the とき-clause has a subject different from the main clause, mark it with が, not は: メアリーは私が日本にいた時フランスにいた (Mary was in France when I was in Japan). は inside the とき-clause would re-topicalize the sentence and break the time-clause reading",
+      "Stative exception to the relative-tense rule: when the main clause is past and the とき-clause predicate is stative (い-adjective, or verbs like いる・ある), the とき-clause can be past or non-past with the same meaning — 日本にいる時田中先生に会った (I met Professor Tanaka when I was in Japan) and 日本にいた時田中先生に会った are equivalent; 肉が高い時は魚も高かった (when meat is/was expensive, fish too was expensive) and 肉が高かった時は魚も高かった are equivalent. The strict 行く/行った distinction applies to action verbs",
+      "とき is purely temporal — unlike English 'when,' it cannot carry a conditional sense ('if/whenever X, then Y'). For that meaning use たら or と: それを見たらおどろきますよ (you'll be surprised when you see it) is correct; *それを見る時おどろきますよ is ungrammatical"
     ]
   },
   {

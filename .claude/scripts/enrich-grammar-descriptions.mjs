@@ -65,7 +65,7 @@ import {
   projectRoot,
   loadGrammarDatabases,
   extractGrammarBullets,
-  isJapanese,
+  looksLikeJapaneseLine,
   migrateEquivalences,
 } from "./shared.mjs";
 
@@ -156,7 +156,7 @@ function extractContentItems(content, relPath, topicIds) {
       const clean = stripRuby(rawLine).trim();
 
       // If this line contains Japanese, it's our sentence
-      if (isJapanese(clean)) {
+      if (looksLikeJapaneseLine(clean)) {
         sentence = clean;           // ruby-stripped, for LLM consumption
         rawSentence = rawLine.trim(); // original Markdown, for sourcesSeen
         break;
