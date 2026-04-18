@@ -34,11 +34,23 @@ Hidden during search (Vocab and Grammar tabs) since you are in a focused lookup 
 
 **Grammar "new this week"** = rows in `grammar_enrollment` by `enrolled_at` date. There is no separate "marked known" timestamp for grammar, so enrollment date is the right proxy.
 
-## Visual redesign: instrument-panel gauges (planned)
+## Visual redesign: instrument-panel gauges (completed)
 
-The plain 3×2 grid will be replaced with a pair of speedometer-style gauges (one for Vocab, one for Grammar) implemented using SwiftUI's `Canvas` API. Each gauge has two sub-dials sharing a hub: an upper 270° arc for weekly quiz count and a lower 90° arc for new items learned. A short recall bar sits above each gauge. The design is intentionally dark-mode-only (always rendered on a near-black card background regardless of system color scheme), so the neon-glow aesthetic stays coherent without needing a light-mode branch.
+Two racecar-style speedometer gauges (Vocab left, Grammar right) side-by-side, implemented in SwiftUI `Canvas`. Each gauge has two rotating needles sharing a central hub: an upper 300° arc for weekly quiz count and a lower 60° arc for new items learned. Surrounding each arc are tick marks with dynamically scaled labels (0 to all-time max week).
 
-This design requires **all-time weekly maximums** for both quiz count and new-items count (vocab and grammar separately) — four new aggregate values beyond what the current `AnalyticsSnapshot` tracks. The redline needle and dynamic scale both depend on these past-maximum figures. They can be computed with a single extra SQL query per gauge: `SELECT MAX(weekly_count) FROM …` over a per-week aggregation of the existing `reviews` and `model_events` tables.
+**Active metrics (solid needles):** This week's progress (thick colorful needles with neon glow in dark mode, muted in light mode).
+
+**Pace comparison (dashed needle):** Expected weekly pace calculated from last week's activity and hours elapsed in the current week: `(lastWeek / 168) × hoursElapsed`. Shows at a glance whether current week is on track, ahead, or behind.
+
+**Overflow indicator (red wedge):** If this week exceeds all-time weekly max, a red wedge fills the space between old-max and current position, with a glow effect. Visual urgency without numbers.
+
+**Recall bar (sides):** Vertical 60px bar on each side (Vocab left in cyan, Grammar right in orange). Red/orange/green coloring (< 5% / < 25% / ≥ 25%).
+
+**Tap-to-toggle:** Tap the gauges to switch to a compact 3-row table view (Weakest Recall, Quizzes This Week, Learned This Week) with Vocab/Grammar columns. Tap again to return to gauges.
+
+**Dark/light support:** Neon glow (3px blur) in dark mode, subtler (1.5px blur) in light mode. Card background auto-adjusts; recall bar opacity matches scheme.
+
+All-time weekly maximums tracked in `AnalyticsSnapshot` via new SQL aggregations: `SELECT MAX(weekly_count) FROM (SELECT strftime('%Y-W%W', reviewed_at) as week, COUNT(*) as weekly_count FROM reviews ...)` separately for vocab and grammar, and likewise for new items from `model_events`.
 
 ## Files changed
 

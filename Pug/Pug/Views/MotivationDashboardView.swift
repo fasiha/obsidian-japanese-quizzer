@@ -122,12 +122,12 @@ struct MotivationDashboardView: View {
 
     private func recallBarVertical(_ recall: Double?, color: Color, isDark: Bool) -> some View {
         let barH = 60.0, barW = 5.0
-        let trackOpacity: Double = isDark ? 0.12 : 0.08
+        let trackOpacity: Double = isDark ? 0.12 : 0.18
         let filled = (recall ?? 0) * barH
 
         return VStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 2.5)
-                .fill(Color.white.opacity(trackOpacity))
+                .fill((isDark ? Color.white : Color.black).opacity(trackOpacity))
                 .frame(width: barW, height: barH - filled)
             RoundedRectangle(cornerRadius: 2.5)
                 .fill(color.opacity(isDark ? 0.85 : 0.75))
@@ -310,13 +310,17 @@ private func lowerAngle(value: Double, max: Double) -> Double {
     135.0 - clamp01(value / max) * 90.0
 }
 
-private func clamp01(_ x: Double) -> Double { Swift.max(0, Swift.min(1, x)) }
+private func clamp01(_ x: Double) -> Double {
+    guard x.isFinite else { return 0 }
+    return Swift.max(0, Swift.min(1, x))
+}
 
 private func drawRecallBar(ctx: GraphicsContext, sc: Double, recall: Double?, barColor: Color, isDark: Bool) {
     let barW = 60.0, barH = 5.0, barX = svgCX - barW / 2, barY = 7.0
     let trackRect = CGRect(x: barX * sc, y: barY * sc, width: barW * sc, height: barH * sc)
-    let trackOpacity: Double = isDark ? 0.12 : 0.08
-    ctx.fill(Path(roundedRect: trackRect, cornerRadius: 2.5 * sc), with: .color(.white.opacity(trackOpacity)))
+    let trackOpacity: Double = isDark ? 0.12 : 0.18
+    let trackBaseColor: Color = isDark ? .white : .black
+    ctx.fill(Path(roundedRect: trackRect, cornerRadius: 2.5 * sc), with: .color(trackBaseColor.opacity(trackOpacity)))
     if let r = recall, r > 0 {
         let filled = r * barW
         let filledRect = CGRect(x: barX * sc, y: barY * sc, width: filled * sc, height: barH * sc)
@@ -337,12 +341,14 @@ private func drawSubGauge(
     let pathCW = !clockwiseOnScreen
     let trackStartDeg = 135.0, trackEndDeg = 45.0
 
-    let trackOpacity: Double = isDark ? 0.12 : 0.08
+    let trackOpacity: Double = isDark ? 0.12 : 0.18
+    let trackBaseColor: Color = isDark ? .white : .black
     ctx.stroke(arcPath(sc: sc, cx: cx, cy: cy, r: rTrack, startDeg: trackStartDeg, endDeg: trackEndDeg, pathCW: pathCW),
-        with: .color(.white.opacity(trackOpacity)), style: StrokeStyle(lineWidth: 3 * sc, lineCap: .round))
+        with: .color(trackBaseColor.opacity(trackOpacity)), style: StrokeStyle(lineWidth: 3 * sc, lineCap: .round))
 
     let tickFracs: [Double] = clockwiseOnScreen ? [0, 0.25, 0.5, 0.75, 1.0] : [0, 0.5, 1.0]
-    let tickOpacity: Double = isDark ? 0.25 : 0.15
+    let tickOpacity: Double = isDark ? 0.25 : 0.45
+    var shownTickLabels = Set<Int>()
     for frac in tickFracs {
         let ta = clockwiseOnScreen ? 135.0 + frac * 270.0 : 135.0 - frac * 90.0
         let inner = svgPt(sc: sc, cx: cx, cy: cy, r: rTrack + 4, deg: ta)
@@ -352,6 +358,18 @@ private func drawSubGauge(
         tick.addLine(to: outer)
         let lw = (frac == 0 || frac == 1) ? 1.5 * sc : 1.0 * sc
         ctx.stroke(tick, with: .color(color.opacity(tickOpacity)), style: StrokeStyle(lineWidth: lw, lineCap: .round))
+
+        if frac > 0, effectiveMax > 0 {
+            let tickValue = Int((frac * effectiveMax).rounded())
+            if tickValue > 0, !shownTickLabels.contains(tickValue), tickValue > 1 || frac == 1.0 {
+                shownTickLabels.insert(tickValue)
+                let labelPt = svgPt(sc: sc, cx: cx, cy: cy, r: rTrack + 16, deg: ta)
+                let text = Text(String(tickValue))
+                    .font(.system(size: 9 * sc, weight: .semibold, design: .default))
+                    .foregroundColor(color.opacity(isDark ? 0.65 : 0.85))
+                ctx.draw(text, at: labelPt, anchor: .center)
+            }
+        }
     }
 
     let redColor = Color(red: 1, green: 0.13, blue: 0.13)
@@ -375,20 +393,20 @@ private func drawSubGauge(
         ctx.stroke(rl, with: .color(redColor), style: StrokeStyle(lineWidth: 2 * sc, lineCap: .round))
     }
 
-    let progressOpacity: Double = isDark ? 0.35 : 0.22
+    let progressOpacity: Double = isDark ? 0.35 : 0.5
     if curValue > 0 {
         ctx.stroke(arcPath(sc: sc, cx: cx, cy: cy, r: rTrack, startDeg: trackStartDeg, endDeg: curAngle, pathCW: pathCW),
             with: .color(color.opacity(progressOpacity)), style: StrokeStyle(lineWidth: 3 * sc, lineCap: .round))
     }
 
-    let rDelta = clockwiseOnScreen ? rTrack + 14 : rTrack - 14
+    let rDelta = clockwiseOnScreen ? rTrack - 14 : rTrack - 14
     let arcFrom = clockwiseOnScreen ? Swift.min(paceAngle, curAngle) : Swift.max(paceAngle, curAngle)
     let arcTo = clockwiseOnScreen ? Swift.max(paceAngle, curAngle) : Swift.min(paceAngle, curAngle)
     let deltaSpan = clockwiseOnScreen ? arcTo - arcFrom : arcFrom - arcTo
     let hubPt = CGPoint(x: cx * sc, y: cy * sc)
     if deltaSpan > 0.5 {
         let deltaPath = arcPath(sc: sc, cx: cx, cy: cy, r: rDelta, startDeg: arcFrom, endDeg: arcTo, pathCW: pathCW)
-        let deltaOpacity: Double = isDark ? 0.55 : 0.35
+        let deltaOpacity: Double = isDark ? 0.55 : 0.65
         var glowCtx = ctx
         glowCtx.addFilter(.blur(radius: glowBlur * sc))
         glowCtx.stroke(deltaPath, with: .color(color.opacity(deltaOpacity)), style: StrokeStyle(lineWidth: 2.5 * sc, lineCap: .round))
@@ -404,7 +422,7 @@ private func drawSubGauge(
     var pacePath = Path()
     pacePath.move(to: hubPt)
     pacePath.addLine(to: paceTip)
-    let paceOpacity: Double = isDark ? 0.40 : 0.25
+    let paceOpacity: Double = isDark ? 0.40 : 0.55
     ctx.stroke(pacePath, with: .color(color.opacity(paceOpacity)), style: StrokeStyle(lineWidth: 1.5 * sc, lineCap: .round, dash: [4 * sc, 3 * sc]))
 
     let curTip = svgPt(sc: sc, cx: cx, cy: cy, r: rNeedle, deg: curAngle)

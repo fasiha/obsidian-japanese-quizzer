@@ -4,7 +4,7 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 
 | File | Status | Notes | Row Last Updated |
 |------|--------|-------|------------------|
-| [TODO-dashboard.md](TODO-dashboard.md) | **done** | Motivational analytics strip at top of all three browser tabs. Six stats: lowest recall (vocab/grammar), quiz answers this week vs last, new words/topics this week vs last. Calendar-week boundaries (Monday reset), computed in Swift. | 2026-04-14 |
+| [TODO-dashboard.md](TODO-dashboard.md) | **done** | Racecar-style speedometer gauges (Vocab/Grammar) with rotating needles: upper 300° arc (weekly quizzes), lower 60° arc (new items). This week vs last week vs all-time max. Pace needle (dashed) shows on-track progress. Red overflow wedge when exceeding all-time max. Tap to toggle compact table view. | 2026-04-17 |
 | [TODO-appliesToKanji.md](TODO-appliesToKanji.md) | **done** | All tasks ✅ including stretch goal (appliesToKana) and bonus (secondary kana readings). Status header says COMPLETE 2026-03-29. | 2026-04-13 |
 | [TODO-audio-lyrics.md](TODO-audio-lyrics.md) | **done** | All phases implemented and end-to-end tested in simulator per the Done section. | 2026-04-13 |
 | [TODO-classical-japanese.md](TODO-classical-japanese.md) | **done** | Confirmed: `classicalJapanese` field present in GrammarSync.swift, GrammarDetailSheet.swift, GrammarQuizContext.swift, and TestHarness. | 2026-04-13 |
