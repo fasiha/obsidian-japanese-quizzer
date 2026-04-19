@@ -143,6 +143,7 @@ struct AppRootView: View {
             await pairLoad
             session!.pairCorpus = pairCorpus
             grammarStore.manifest = await grammarLoad
+            if let m = grammarStore.manifest { try await quizDB.backfillEquivalenceGroupEbisu(from: m) }
             let corpusManifest = await corpusLoad
             corpusStore.apply(manifest: corpusManifest)
             corpusStore.baseURL = VocabSync.resolvedURL().map { $0.deletingLastPathComponent() }
@@ -197,7 +198,10 @@ struct AppRootView: View {
         async let corpusReload: () = forceDownloadCorpus()
         await vocabReload
         await pairsReload
-        if let m = await grammarReload { grammarStore.manifest = m }
+        if let m = await grammarReload {
+            grammarStore.manifest = m
+            try? await db.backfillEquivalenceGroupEbisu(from: m)
+        }
         await corpusReload
     }
 

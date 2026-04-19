@@ -330,6 +330,47 @@ extension QuizDB {
         }
     }
 
+    /// After loading a grammar manifest, ensure every member of an enrolled equivalence group
+    /// has ebisu_models and grammar_enrollment rows. Fixes the case where a topic is added to
+    /// an existing equivalence group after the user already enrolled a sibling — without this,
+    /// the new topic shows "0 of 1 grammar" in the browser until the next quiz review triggers
+    /// normal Ebisu propagation.
+    func backfillEquivalenceGroupEbisu(from manifest: GrammarManifest) async throws {
+        let enrolledIds: Set<String> = try await pool.read { db in
+            let ids = try String.fetchAll(db, sql: "SELECT topic_id FROM grammar_enrollment")
+            return Set(ids)
+        }
+        guard !enrolledIds.isEmpty else { return }
+
+        // Walk each equivalence group once. Collect groups that have at least one enrolled
+        // member but are missing at least one other member from ebisu_models/grammar_enrollment.
+        var seen: Set<String> = []
+        var groupsToBackfill: [(primaryId: String, allGroupIds: [String])] = []
+
+        for (topicId, topic) in manifest.topics {
+            guard !seen.contains(topicId) else { continue }
+            let siblings = topic.equivalenceGroup ?? []
+            let groupIds = [topicId] + siblings
+            seen.formUnion(groupIds)
+
+            let enrolledInGroup  = groupIds.filter {  enrolledIds.contains($0) }
+            let missingFromGroup = groupIds.filter { !enrolledIds.contains($0) }
+            guard !enrolledInGroup.isEmpty, !missingFromGroup.isEmpty else { continue }
+
+            groupsToBackfill.append((primaryId: enrolledInGroup[0], allGroupIds: groupIds))
+        }
+
+        guard !groupsToBackfill.isEmpty else { return }
+
+        for (primaryId, groupIds) in groupsToBackfill {
+            for facet in GrammarQuizContext.grammarFacets {
+                try await propagateGrammarEbisu(from: primaryId, quizType: facet,
+                                               siblingIds: groupIds)
+            }
+        }
+        print("[QuizDB] backfilled Ebisu models for \(groupsToBackfill.count) equivalence group(s) with newly-added sibling topics")
+    }
+
     /// Whether a grammar topic is currently enrolled (has a grammar_enrollment row).
     func isGrammarTopicEnrolled(topicId: String) async throws -> Bool {
         try await pool.read { db in
