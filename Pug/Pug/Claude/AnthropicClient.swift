@@ -256,6 +256,9 @@ struct AnthropicClient: Sendable {
                 print("[Anthropic] done after \(turn) turn(s), text length=\(text.count)")
                 print("[Anthropic] final text: \(text)")
                 if let db = chatDB {
+                    if let sys = system, messages.count == 1 {
+                        await db.append(context: chatContext, role: "system", content: sys, templateId: templateId)
+                    }
                     let userContent = messages.last.map { msg in
                         msg.content.compactMap { block -> String? in
                             if case .text(let t) = block { return t } else { return nil }
