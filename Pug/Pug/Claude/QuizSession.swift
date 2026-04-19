@@ -172,9 +172,16 @@ final class QuizSession {
 
         let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
         let questionBubble = "\(multipleChoice.stem)\n\n\(choicesText)"
+        var wrongSuffix = ""
+        if !isCorrect && item.facet == "meaning-reading-to-kanji" {
+            let wrongKanji = multipleChoice.choices[index]
+            if let meanings = toolHandler.kanjiMeanings(wrongKanji) {
+                wrongSuffix = " (\(meanings))"
+            }
+        }
         let resultBubble = isCorrect
             ? "✓ \(chosenLetter)) \(multipleChoice.choices[index])"
-            : "✗ Wrong: \(chosenLetter)) \(multipleChoice.choices[index])\n✓ Correct: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
+            : "✗ Wrong: \(chosenLetter)) \(multipleChoice.choices[index])\(wrongSuffix)\n✓ Correct: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"
         var resultSummary = "Question: \(multipleChoice.stem)\nChoices: \(choicesText)\nStudent chose \(chosenLetter)) \(multipleChoice.choices[index]) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
         if !isCorrect {
             resultSummary += ". Correct answer: \(correctLetter)) \(multipleChoice.choices[multipleChoice.correctIndex])"

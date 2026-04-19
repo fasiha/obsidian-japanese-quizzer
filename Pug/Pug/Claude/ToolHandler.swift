@@ -309,6 +309,31 @@ struct ToolHandler: Sendable {
         return String(data: data, encoding: .utf8) ?? "[]"
     }
 
+    /// Look up kun readings and English meanings for a single kanji character from kanjidic2.
+    /// Returns a formatted string like "ゆ, よし · cause, reason, from", or nil if not found.
+    func kanjiMeanings(_ kanji: String) -> String? {
+        guard let db = kanjidic else { return nil }
+        let result = try? db.read { conn -> (kun: [String], meanings: [String]) in
+            let row = try Row.fetchOne(conn, sql: "SELECT kun_readings, meanings FROM kanji WHERE literal = ?", arguments: [kanji])
+            let kun: [String]
+            if let json = row?["kun_readings"] as? String,
+               let ms = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String] {
+                kun = ms
+            } else { kun = [] }
+            let meanings: [String]
+            if let json = row?["meanings"] as? String,
+               let ms = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String] {
+                meanings = ms
+            } else { meanings = [] }
+            return (kun, meanings)
+        }
+        guard let result, !result.meanings.isEmpty else { return nil }
+        var parts: [String] = []
+        if !result.kun.isEmpty { parts.append(result.kun.joined(separator: ", ")) }
+        parts.append(result.meanings.joined(separator: ", "))
+        return parts.joined(separator: " · ")
+    }
+
     private func getMnemonic(wordType: String, wordId: String) async -> String {
         guard let db = quizDB else { return #"{"error":"quiz database not available"}"# }
         do {
