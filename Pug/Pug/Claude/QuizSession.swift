@@ -1635,10 +1635,9 @@ final class QuizSession {
         Think first if helpful, then end with a ```json code block containing:
         {
           "stem": "the question shown to the student (no A/B/C/D options in the stem)",
-          "choices": ["option 0", "option 1", "option 2", "option 3"],
-          "correct_index": N
+          "choices": ["correct answer", "distractor 1", "distractor 2", "distractor 3"]
         }
-        The correct answer must be at position N (0-indexed). Shuffle so correct is not always first.
+        Always place the correct answer at index 0. The app will shuffle the choices.
         """
     }
 
