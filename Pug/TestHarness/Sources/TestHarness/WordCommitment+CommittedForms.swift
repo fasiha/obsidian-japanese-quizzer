@@ -1,0 +1,1 @@
+../../../Pug/Models/WordCommitment+CommittedForms.swift

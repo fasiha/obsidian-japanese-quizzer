@@ -456,7 +456,7 @@ if let quizPath = findFile("quiz.sqlite") {
 
 let model  = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
 let client = AnthropicClient(apiKey: apiKey, model: model)
-let toolHandler = ToolHandler(jmdict: jmdictDB, kanjidic: nil, wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]), quizDB: quizDB)
+let toolHandler = ToolHandler(jmdict: jmdictDB, kanjidic: nil, wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]), quizDB: quizDB, chatDB: nil)
 let prefs       = UserPreferences()
 let tmpPath     = NSTemporaryDirectory() + "testharness-quiz-\(ProcessInfo.processInfo.processIdentifier).sqlite"
 let fallbackDB  = try QuizDB.open(path: tmpPath)

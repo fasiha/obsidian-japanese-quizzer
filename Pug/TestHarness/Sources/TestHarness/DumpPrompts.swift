@@ -229,7 +229,7 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
     let fallbackDB = try! QuizDB.open(path: tmpPath)
     let toolHandler = ToolHandler(jmdict: jmdict, kanjidic: nil,
                                   wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]),
-                                  quizDB: fallbackDB)
+                                  quizDB: fallbackDB, chatDB: nil)
     let prefs = UserPreferences()
     let session = QuizSession(client: client, toolHandler: toolHandler, db: fallbackDB, preferences: prefs)
 
@@ -330,7 +330,7 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
     let db = quizDB ?? fallbackDB
     let toolHandler = ToolHandler(jmdict: jmdict, kanjidic: kanjidicDB,
                                   wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]),
-                                  quizDB: db)
+                                  quizDB: db, chatDB: nil)
     let prefs = UserPreferences()
     let session = QuizSession(client: client, toolHandler: toolHandler, db: db, preferences: prefs)
     session.allCandidates = []
