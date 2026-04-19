@@ -17,6 +17,14 @@
 //   TestHarness <word_id> --live
 //     → send all prompt paths to Haiku and validate responses
 //
+// Grammar mode flags:
+//   --grammar <topic_id>
+//     → switch to grammar quiz mode; all flags below apply only in grammar mode
+//   --recent-note "sub_use: godan potential affirmative"  (repeatable)
+//     → simulate a review note from the real app; the generation system prompt shows these
+//       as "Recently exercised sub-uses" and asks Haiku to pick a different sub-use.
+//       This mirrors iOS behavior where GrammarQuizSession reads recentNotes from the DB.
+//
 // Reads ANTHROPIC_API_KEY from .env in the project root (two levels up from Pug/).
 
 import Foundation
