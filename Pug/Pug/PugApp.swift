@@ -133,7 +133,7 @@ struct AppRootView: View {
                                           preferences: preferences)
             plantingSession = PlantingSession(db: quizDB)
             grammarSession  = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
-                                               jmdict: toolHandler.jmdict)
+                                               jmdict: toolHandler.jmdict, preferences: preferences)
 
             // Load vocab corpus, pair corpus, grammar manifest, and corpus entries concurrently.
             async let grammarLoad = loadGrammarManifest()

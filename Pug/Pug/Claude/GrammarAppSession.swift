@@ -62,17 +62,19 @@ final class GrammarAppSession {
     let db: QuizDB
     let toolHandler: ToolHandler?
     let jmdict: (any DatabaseReader)?
+    let preferences: UserPreferences
     private var manifest: GrammarManifest?
     private let itemSession: GrammarQuizSession  // single-item LLM helper
     private var conversation: [AnthropicMessage] = []
     private var currentQuestion: GrammarMultipleChoiceQuestion? = nil
 
     init(client: AnthropicClient, db: QuizDB, toolHandler: ToolHandler? = nil,
-         jmdict: (any DatabaseReader)? = nil) {
+         jmdict: (any DatabaseReader)? = nil, preferences: UserPreferences) {
         self.client      = client
         self.db          = db
         self.toolHandler = toolHandler
         self.jmdict      = jmdict
+        self.preferences = preferences
         self.itemSession = GrammarQuizSession(client: client, db: db)
         self.itemSession.jmdict = jmdict
     }
@@ -233,9 +235,15 @@ final class GrammarAppSession {
             if candidates.isEmpty { phase = .noItems; return }
 
             let pool = Array(candidates.prefix(GrammarQuizContext.selectionPoolSize))
-            let lo = min(GrammarQuizContext.minItemsPerQuiz, pool.count)
-            let hi = min(GrammarQuizContext.maxItemsPerQuiz, pool.count)
-            let count = Int.random(in: lo...hi)
+            let count: Int
+            switch preferences.sessionLength {
+            case .short:
+                let lo = min(GrammarQuizContext.minItemsPerQuiz, pool.count)
+                let hi = min(GrammarQuizContext.maxItemsPerQuiz, pool.count)
+                count = Int.random(in: lo...hi)
+            case .long:
+                count = min(10, pool.count)
+            }
             items = Array(pool.shuffled().prefix(count))
             print("[GrammarAppSession] selected \(items.count) item(s)")
 

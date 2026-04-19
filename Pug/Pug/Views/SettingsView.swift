@@ -42,6 +42,19 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Picker("Session length", selection: $prefs.sessionLength) {
+                        ForEach(SessionLength.allCases) { length in
+                            Text(length.label).tag(length)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Session length")
+                } footer: {
+                    Text(preferences.sessionLength.description)
+                }
+
+                Section {
                     Picker("Distractor source", selection: $prefs.distractorSource) {
                         ForEach(DistractorSource.allCases) { source in
                             Text(source.label).tag(source)

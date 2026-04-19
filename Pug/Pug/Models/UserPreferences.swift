@@ -48,6 +48,27 @@ enum LocalModel: String, CaseIterable, Identifiable {
     }
 }
 
+enum SessionLength: String, CaseIterable, Identifiable {
+    case short = "short"   // 3–5 items, chosen randomly
+    case long  = "long"    // exactly 10 items
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .short: return "3–5 quizzes"
+        case .long:  return "10 quizzes"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .short: return "Each session picks a random number of items between 3 and 5. Good for quick reviews."
+        case .long:  return "Each session always has exactly 10 items. Good for longer, more thorough practice."
+        }
+    }
+}
+
 enum DistractorSource: String, CaseIterable, Identifiable {
     case ai        = "ai"         // current behaviour: Haiku invents distractors freely
     case documents = "documents"  // new: pick distractors from corpus vocab
@@ -81,6 +102,10 @@ final class UserPreferences {
         didSet { UserDefaults.standard.set(localModel.rawValue, forKey: Keys.localModel) }
     }
 
+    var sessionLength: SessionLength {
+        didSet { UserDefaults.standard.set(sessionLength.rawValue, forKey: Keys.sessionLength) }
+    }
+
     var distractorSource: DistractorSource {
         didSet { UserDefaults.standard.set(distractorSource.rawValue, forKey: Keys.distractorSource) }
     }
@@ -100,6 +125,9 @@ final class UserPreferences {
 
         audioFolderBookmark = UserDefaults.standard.data(forKey: Keys.audioFolderBookmark)
 
+        let storedLength = UserDefaults.standard.string(forKey: Keys.sessionLength) ?? ""
+        sessionLength = SessionLength(rawValue: storedLength) ?? .short
+
         let storedDistractor = UserDefaults.standard.string(forKey: Keys.distractorSource) ?? ""
         distractorSource = DistractorSource(rawValue: storedDistractor) ?? .ai
     }
@@ -108,6 +136,7 @@ final class UserPreferences {
         static let quizStyle          = "quizStyle"
         static let localModel         = "localModel"
         static let audioFolderBookmark = "audioFolderBookmark"
+        static let sessionLength      = "sessionLength"
         static let distractorSource   = "distractorSource"
     }
 }

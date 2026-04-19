@@ -587,15 +587,21 @@ final class QuizSession {
 
     // MARK: - Private: LLM item selection
 
-    /// Algorithmically select quiz items: take the top-10 most urgent candidates
-    /// (already sorted by ascending recall in QuizContext.build) and randomly pick
-    /// 3–5 of them. This avoids an LLM round-trip while still producing varied sessions.
+    /// Algorithmically select quiz items: take the top most-urgent candidates
+    /// (already sorted by ascending recall in QuizContext.build) and pick a count
+    /// based on the user's session-length preference.
     private func selectItems(candidates: [QuizItem]) -> [QuizItem] {
         let pool = Array(candidates.prefix(QuizContext.selectionPoolSize))
         guard !pool.isEmpty else { return [] }
-        let lo = min(QuizContext.minItemsPerQuiz, pool.count)
-        let hi = min(QuizContext.maxItemsPerQuiz, pool.count)
-        let count = Int.random(in: lo...hi)
+        let count: Int
+        switch preferences.sessionLength {
+        case .short:
+            let lo = min(QuizContext.minItemsPerQuiz, pool.count)
+            let hi = min(QuizContext.maxItemsPerQuiz, pool.count)
+            count = Int.random(in: lo...hi)
+        case .long:
+            count = min(10, pool.count)
+        }
         let selected = Array(pool.shuffled().prefix(count))
         print("[QuizSession] selectItems: picked \(selected.count) from top-\(pool.count) of \(candidates.count) candidates")
         return selected
