@@ -145,22 +145,29 @@
       "dbjg:ageru1",
       "dbjg:kureru1",
       "dbjg:morau1",
-      "genki:ageru-kureru-morau"
+      "genki:ageru-kureru-morau",
+      "genki:tekureruagerumorau"
     ],
-    "summary": "あげる, くれる, and もらう are the three basic Japanese giving/receiving verbs. あげる means the giver gives outward (away from the speaker's sphere); くれる means someone gives inward toward the speaker or the speaker's in-group; もらう reverses the perspective so the recipient is the subject (X は Y に/から もらう). The giver is marked with は/が and the recipient with に for both あげる and くれる.",
+    "summary": "あげる, くれる, and もらう are the three basic Japanese giving/receiving verbs. あげる means the giver gives outward (away from the speaker's sphere); くれる means someone gives inward toward the speaker or the speaker's in-group; もらう reverses the perspective so the recipient is the subject (X は Y に/から もらう). The same three verbs attach to the て-form of action verbs (てあげる/てくれる/てもらう) to express doing a favor rather than giving a physical object.",
     "subUses": [
       "Giving outward (あげる): 私はスーさんに辞書をあげました (I gave Sue a dictionary)",
       "Third-party giving (あげる): けんさんはスーさんに猫をあげました (Ken gave Sue a cat)",
       "Giving directly to the speaker (くれる): スーさんは私にTシャツをくれました (Sue gave me a T-shirt)",
       "Giving from an outsider to someone in the speaker's in-group (くれる): 大統領が妹に手紙をくれました (The president gave my sister a letter — くれる because the speaker identifies with their sister, and the giver is distant)",
+      "Between two in-group members (くれる with speaker aligned to recipient): 祖母が弟におもちゃをくれた (Grandma gave my brother a toy — speaker adopts the brother's perspective for this utterance)",
       "Receiving with もらう (recipient as subject): 私はけんさんに帽子をもらいました (I received a hat from Ken)",
-      "Asking what was received: 誕生日に何をもらいましたか (What did you get for your birthday?)"
+      "Asking what was received: 誕生日に何をもらいましたか (What did you get for your birthday?)",
+      "Doing a favor for someone (てあげる): 荷物を持ってあげましょうか (Shall I carry your bags for you? — speaker does action outward toward recipient)",
+      "Someone does a favor for the speaker (てくれる): 先生が漢字を教えてくれた (The teacher taught me kanji — action directed toward speaker)",
+      "Arranging or asking someone to do something (てもらう): 友達に写真を撮ってもらった (I had my friend take a photo — subject arranged for the action to happen)"
     ],
     "cautions": [
-      "あげる and くれる cannot be swapped freely — use あげる when the gift moves away from the speaker; use くれる only when the recipient is the speaker or someone the speaker feels close to",
+      "くれる requires the speaker to adopt the recipient's perspective in this utterance; the recipient does not need to be objectively closer to the speaker than the giver, only aligned with the speaker's current viewpoint",
+      "Between two equally-close people (siblings, grandparent and sibling, etc.) either あげる or くれる can be correct — do not mark either wrong; the choice reflects whose side the speaker is narrating from",
       "もらう makes the recipient the grammatical subject; the giver takes に or から (私は友だちに/から本をもらった)",
-      "Do not use くれる when speaking of something given to a third party outside the speaker's in-group — use あげる instead",
-      "These base giving verbs (for objects) are distinct from the て-form giving verbs (てあげる/てくれる/てもらう) which express doing favors; do not confuse the two patterns"
+      "Do not use くれる when the recipient is a third party outside the speaker's in-group — use あげる instead",
+      "When the recipient is the speaker (私), only くれる works, never あげる",
+      "てもらう often carries a nuance of requesting or arranging; it does not simply mean 'receive' — the subject actively caused the action to happen"
     ]
   },
   {
