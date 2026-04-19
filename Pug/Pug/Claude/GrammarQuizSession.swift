@@ -518,7 +518,7 @@ final class GrammarQuizSession {
             if isGenerating && !isFreeTextStemGeneration {
                 if item.tier == 1 {
                     facetRule = """
-                    Facet: production (tier 1) — student sees an English context sentence and \
+                    Facet: production — student sees an English context sentence and \
                     four complete Japanese sentences; they select the one that correctly expresses \
                     the English using the target grammar.
                     The English stem must NOT contain Japanese.
@@ -559,7 +559,7 @@ final class GrammarQuizSession {
         case "recognition":
             if isGenerating && !isFreeTextStemGeneration {
                 facetRule = """
-                Facet: recognition (tier \(item.tier)) — student sees a Japanese sentence, \
+                Facet: recognition — student sees a Japanese sentence, \
                 selects the correct natural English translation from four choices.
                 The Japanese stem must naturally contain the target grammar. It must NOT contain \
                 any English.
@@ -676,18 +676,18 @@ final class GrammarQuizSession {
         case "production":
             if item.tier == 1 {
                 return """
-                Generate ONE multiple-choice question for the production facet (tier 1).
+                Generate ONE multiple-choice question for the production facet.
                 Work through these steps explicitly — write out each step before the JSON:
 
                 Step 1 — English stem: One or two English sentences that tell a concrete, story-like scenario — something that happened or is happening to a specific person in a specific setting. No Japanese. Vary the verb and setting; 食べる, 飲む, and 泳ぐ are overused.
                 Step 2 — Correct sentence: Write one complete, natural Japanese sentence that correctly expresses the English stem using the target grammar.
                 Step 3 — Distractors: Write three distractor Japanese sentences. Each must:
-                  (a) use the SAME core vocabulary and situation as the correct sentence — keep the subject, object, and setting identical,
+                  (a) use the SAME core subject and main verb as the correct sentence; you may adjust the time expression, aspect marker, or other peripheral details so the distractor is natural in its own right,
                   (b) swap ONLY the grammar construction — use a clearly different grammar form (e.g. causative instead of potential, passive instead of conditional, te-form instead of volitional),
                   (c) NOT use any construction that is a valid alternative way to express the target grammar's meaning (e.g. if target is potential verbs, do NOT use ことができる as a distractor — that is also correct; use causative, passive, plain form, etc.),
                   (d) result in a grammatically valid Japanese sentence that expresses a DIFFERENT meaning from the English stem because it uses the wrong grammar form.
                   Name the grammar form each distractor uses.
-                Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? If not, revise.
+                Step 4 — Self-check: (a) Are the four sentences clearly distinguishable by grammar form, not just by particles (が vs を)? (b) Could a student who knows the target grammar but not the distractors' forms reliably pick the correct answer? (c) Is each distractor natural Japanese a native speaker would accept? A past-tense form (～た, ～てしまった) cannot co-occur with a future time expression (明日, 来週, etc.); honorific or passive forms used to describe the speaker's own deliberate action are unnatural. If any distractor fails this check, adjust its time expression or choose a different grammar form. If not, revise.
 
                 Finally, end with a ```json code block:
                 {"stem":"<Step 1>","sentence":"","choices":[["<correct sentence>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"sub_use":"<phrase>"}
