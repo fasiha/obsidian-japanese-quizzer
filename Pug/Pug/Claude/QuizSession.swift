@@ -734,22 +734,9 @@ final class QuizSession {
         phase = .generating
         print("[QuizSession] generating multiple choice question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
-        // For reading-to-meaning in "documents" mode, build a corpus-sourced candidate list.
-        let distractorCandidateList: String?
-        if item.facet == "reading-to-meaning" && preferences.distractorSource == .documents {
-            let candidates = distractorCandidates(for: item)
-            if candidates.isEmpty {
-                distractorCandidateList = nil   // fall back to AI mode gracefully
-            } else {
-                distractorCandidateList = candidates.map { "\($0.display) → \($0.gloss)" }.joined(separator: "\n")
-            }
-        } else {
-            distractorCandidateList = nil
-        }
-
         let system = systemPrompt(for: item, isGenerating: true,
                                   preRecall: preQuizRecall, preHalflife: preQuizHalflife,
-                                  distractorCandidateList: distractorCandidateList)
+                                  distractorCandidateList: buildDistractorCandidateList(for: item))
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
@@ -942,9 +929,10 @@ final class QuizSession {
     private func recordReview(item: QuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
 
-        // Append distractor source tag for reading-to-meaning quizzes.
+        // Append distractor source tag for reading-to-meaning and meaning-to-reading quizzes.
         var finalNotes = notes
-        if item.facet == "reading-to-meaning" && preferences.distractorSource == .documents {
+        let facetUsesDocumentDistractors = (item.facet == "reading-to-meaning" || item.facet == "meaning-to-reading")
+        if facetUsesDocumentDistractors && preferences.distractorSource == .documents {
             finalNotes += (notes.isEmpty ? "" : " ") + "[documents distractors]"
         }
 
@@ -1112,7 +1100,8 @@ final class QuizSession {
         }
 
         let system  = systemPrompt(for: item, isGenerating: true,
-                                   preRecall: preRecall, preHalflife: preHalflife)
+                                   preRecall: preRecall, preHalflife: preHalflife,
+                                   distractorCandidateList: buildDistractorCandidateList(for: item))
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         print("[QuizSession] prefetch multiple choice: starting for index \(index): \(item.wordText) facet:\(item.facet)")
@@ -1182,7 +1171,22 @@ final class QuizSession {
     }
 
     /// Collect up to `targetCount` candidate (Japanese display text → English gloss) pairs
-    /// from the corpus for use as reading-to-meaning distractors.
+    /// Build the distractor candidate list string for the system prompt, or nil to fall back to AI distractors.
+    /// Handles both reading-to-meaning (display → gloss) and meaning-to-reading (kana only) formats.
+    private func buildDistractorCandidateList(for item: QuizItem) -> String? {
+        let facetNeedsDocumentDistractors = (item.facet == "reading-to-meaning" || item.facet == "meaning-to-reading")
+        guard facetNeedsDocumentDistractors && preferences.distractorSource == .documents else { return nil }
+        let candidates = distractorCandidates(for: item)
+        guard !candidates.isEmpty else { return nil }
+        if item.facet == "meaning-to-reading" {
+            let kanas = candidates.compactMap { $0.kana.isEmpty ? nil : $0.kana }
+            return kanas.isEmpty ? nil : kanas.joined(separator: "\n")
+        } else {
+            return candidates.map { "\($0.display) → \($0.gloss)" }.joined(separator: "\n")
+        }
+    }
+
+    /// from the corpus for use as reading-to-meaning and meaning-to-reading distractors.
     ///
     /// Strategy:
     ///   1. Find which documents contain the quiz word (via VocabManifest sources).
@@ -1195,8 +1199,11 @@ final class QuizSession {
     ///      whose gloss is empty.
     ///
     /// This is a synchronous, in-memory computation — no database or network calls.
-    private func distractorCandidates(for item: QuizItem, targetCount: Int = 25) -> [(display: String, gloss: String)] {
-        guard let manifest = VocabSync.cached() else { return [] }
+    private func distractorCandidates(for item: QuizItem, targetCount: Int = 25) -> [(display: String, gloss: String, kana: String)] {
+        guard let manifest = VocabSync.cached() else {
+            print("[QuizSession] distractorCandidates: manifest not cached, falling back to AI distractors")
+            return []
+        }
 
         // Build a map from word ID to VocabWordEntry for fast lookup.
         var entryByID: [String: VocabWordEntry] = [:]
@@ -1224,6 +1231,8 @@ final class QuizSession {
             }
         }
 
+        print("[QuizSession] distractorCandidates: word=\(item.wordId) sources=\(quizSources.sorted()) enrolledPool=\(enrolledIDs.count)")
+
         // Pass 1: documents the quiz word is in.
         for title in quizSources { collectFrom(title: title) }
 
@@ -1249,10 +1258,12 @@ final class QuizSession {
             }
         }
 
+        print("[QuizSession] distractorCandidates: \(candidateIDs.count) candidate ID(s) after document expansion")
+
         // Convert IDs to (display, gloss) pairs using senseExtras already on each QuizItem.
         // We rely on the items loaded in the session for senseExtras, falling back to the
         // manifest's written forms for the display text.
-        var result: [(display: String, gloss: String)] = []
+        var result: [(display: String, gloss: String, kana: String)] = []
         for wordID in candidateIDs.prefix(targetCount * 2) {   // over-fetch to account for empties
             // Look up senseExtras from the loaded quiz items (already fetched from JMDict).
             let senseExtras: [SenseExtra]
@@ -1281,9 +1292,11 @@ final class QuizSession {
             // Display text: first written form, or first kana if no written forms.
             let display = writtenTexts.first ?? kanaTexts.first ?? wordID
 
-            result.append((display: display, gloss: gloss))
+            let kana = kanaTexts.first ?? ""
+            result.append((display: display, gloss: gloss, kana: kana))
             if result.count >= targetCount { break }
         }
+        print("[QuizSession] distractorCandidates: returning \(result.count) usable candidate(s)\(result.isEmpty ? " — falling back to AI distractors" : "")")
         return result
     }
 
@@ -1366,11 +1379,14 @@ final class QuizSession {
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let stem = obj["stem"] as? String,
               let choices = obj["choices"] as? [String],
-              choices.count == 4,
-              let correctIndex = obj["correct_index"] as? Int,
-              (0..<4).contains(correctIndex)
+              choices.count == 4
         else { return nil }
-        return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+        // The model always places the correct answer at index 0; shuffle app-side so we
+        // control randomness rather than relying on the model to track an index correctly.
+        let newCorrectIndex = Int.random(in: 0..<4)
+        var shuffledChoices = choices
+        shuffledChoices.swapAt(0, newCorrectIndex)
+        return MultipleChoiceQuestion(stem: stem, choices: shuffledChoices, correctIndex: newCorrectIndex)
     }
 
     // MARK: - Private: mnemonic helpers
@@ -1479,7 +1495,19 @@ final class QuizSession {
             }
         case "meaning-to-reading":
             if isGenerating {
-                facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
+                if let candidateList = distractorCandidateList {
+                    facetRule = """
+                    Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. \
+                    Do not reference other JMDict senses. \
+                    Choose exactly 3 wrong kana readings from this candidate list:\n\(candidateList)\n\
+                    Rules for distractor selection:\
+                    \n1. Do NOT choose a candidate whose meaning is too close to the correct answer.\
+                    \n2. Prefer candidates of approximately the same mora length as the correct answer.\
+                    \n3. If fewer than 3 suitable candidates remain after rule 1, fill remaining slots with any candidate — do not invent new kana.
+                    """
+                } else {
+                    facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
+                }
                 // No explicit correct-answer pin here: for kana-only words with multiple readings
                 // (e.g. そっと/そうっと/そおっと/そーっと) the model seems to pick the first
                 // listed kana, which is the primary reading. That's acceptable behaviour.
@@ -1580,8 +1608,12 @@ final class QuizSession {
                 }
             case "meaning-reading-to-kanji":
                 // Partial meaning-reading-to-kanji already has specific distractor instructions in facetRule
-                distractorLine = item.partialKanjiTemplate != nil ? "" :
-                    "\nDistractors: write 3 wrong kanji forms directly — no lookup needed. Substitute one kanji with a visually similar or same-reading alternative, or use a semantically related word you know."
+                if item.partialKanjiTemplate != nil {
+                    distractorLine = ""
+                } else {
+                    let allWritten = item.writtenTexts.joined(separator: ", ")
+                    distractorLine = "\nDistractors: write 3 wrong kanji forms directly — no lookup needed. Substitute one kanji with a visually similar or same-reading alternative, or use a semantically related word you know. CRITICAL: Every listed written form (\(allWritten)) is a correct answer — do NOT use any of them as a distractor."
+                }
             default:
                 distractorLine = ""
             }
