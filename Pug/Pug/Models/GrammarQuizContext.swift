@@ -92,8 +92,6 @@ struct GrammarQuizContext {
 
     /// Number of top-urgency candidates to sample from when building a session.
     static let selectionPoolSize = 10
-    static let minItemsPerQuiz = 3
-    static let maxItemsPerQuiz = 5
 
     /// Build a ranked list of GrammarQuizItems from the DB and grammar manifest.
     ///

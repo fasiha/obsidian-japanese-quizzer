@@ -600,16 +600,16 @@ final class QuizSession {
     private func selectItems(candidates: [QuizItem]) -> [QuizItem] {
         let pool = Array(candidates.prefix(QuizContext.selectionPoolSize))
         guard !pool.isEmpty else { return [] }
-        let count: Int
+        let selected: [QuizItem]
         switch preferences.sessionLength {
         case .short:
-            let lo = min(QuizContext.minItemsPerQuiz, pool.count)
-            let hi = min(QuizContext.maxItemsPerQuiz, pool.count)
-            count = Int.random(in: lo...hi)
+            let weakest = pool[0]
+            let rest = Array(pool.dropFirst()).shuffled()
+            let extras = rest.isEmpty ? 0 : Int.random(in: 2...min(4, rest.count))
+            selected = (rest.prefix(extras) + [weakest]).shuffled()
         case .long:
-            count = min(10, pool.count)
+            selected = Array(pool.prefix(10))
         }
-        let selected = Array(pool.shuffled().prefix(count))
         print("[QuizSession] selectItems: picked \(selected.count) from top-\(pool.count) of \(candidates.count) candidates")
         return selected
     }

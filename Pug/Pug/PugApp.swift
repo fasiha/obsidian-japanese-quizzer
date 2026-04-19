@@ -123,7 +123,7 @@ struct AppRootView: View {
             let apiKey = SetupHandler.resolvedApiKey()
             let envModel = ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"]
             let client = AnthropicClient(apiKey: apiKey, modelProvider: {
-                envModel ?? preferences.localModel.rawValue
+                envModel ?? "claude-haiku-4-5-20251001"
             }, chatDB: chatDB)
 
             // Publish core state so HomeView can render immediately.

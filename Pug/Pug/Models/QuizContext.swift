@@ -172,9 +172,6 @@ struct QuizContext {
 
     /// Number of top-urgency candidates to sample from when building a session.
     static let selectionPoolSize = 10
-    /// Minimum and maximum items chosen per quiz session.
-    static let minItemsPerQuiz = 3
-    static let maxItemsPerQuiz = 5
 
     /// Build a ranked list of QuizItems from the DB.
     ///

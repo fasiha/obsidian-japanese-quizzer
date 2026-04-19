@@ -27,26 +27,6 @@ enum QuizStyle: String, CaseIterable, Identifiable {
     }
 }
 
-enum LocalModel: String, CaseIterable, Identifiable {
-    case haiku  = "claude-haiku-4-5-20251001"
-    case sonnet = "claude-sonnet-4-6"
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .haiku:  return "Haiku (fast)"
-        case .sonnet: return "Sonnet (smart)"
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .haiku:  return "Faster and cheaper. Good for everyday quizzes."
-        case .sonnet: return "Slower and more expensive. Better reasoning for tricky questions."
-        }
-    }
-}
 
 enum SessionLength: String, CaseIterable, Identifiable {
     case short = "short"   // 3–5 items, chosen randomly
@@ -98,9 +78,6 @@ final class UserPreferences {
         didSet { UserDefaults.standard.set(quizStyle.rawValue, forKey: Keys.quizStyle) }
     }
 
-    var localModel: LocalModel {
-        didSet { UserDefaults.standard.set(localModel.rawValue, forKey: Keys.localModel) }
-    }
 
     var sessionLength: SessionLength {
         didSet { UserDefaults.standard.set(sessionLength.rawValue, forKey: Keys.sessionLength) }
@@ -120,8 +97,6 @@ final class UserPreferences {
         let storedStyle = UserDefaults.standard.string(forKey: Keys.quizStyle) ?? ""
         quizStyle = QuizStyle(rawValue: storedStyle) ?? .varied
 
-        let storedModel = UserDefaults.standard.string(forKey: Keys.localModel) ?? ""
-        localModel = LocalModel(rawValue: storedModel) ?? .haiku
 
         audioFolderBookmark = UserDefaults.standard.data(forKey: Keys.audioFolderBookmark)
 
@@ -134,7 +109,6 @@ final class UserPreferences {
 
     private enum Keys {
         static let quizStyle          = "quizStyle"
-        static let localModel         = "localModel"
         static let audioFolderBookmark = "audioFolderBookmark"
         static let sessionLength      = "sessionLength"
         static let distractorSource   = "distractorSource"

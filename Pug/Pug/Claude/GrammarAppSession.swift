@@ -235,16 +235,15 @@ final class GrammarAppSession {
             if candidates.isEmpty { phase = .noItems; return }
 
             let pool = Array(candidates.prefix(GrammarQuizContext.selectionPoolSize))
-            let count: Int
             switch preferences.sessionLength {
             case .short:
-                let lo = min(GrammarQuizContext.minItemsPerQuiz, pool.count)
-                let hi = min(GrammarQuizContext.maxItemsPerQuiz, pool.count)
-                count = Int.random(in: lo...hi)
+                let weakest = pool[0]
+                let rest = Array(pool.dropFirst()).shuffled()
+                let extras = rest.isEmpty ? 0 : Int.random(in: 2...min(4, rest.count))
+                items = (rest.prefix(extras) + [weakest]).shuffled()
             case .long:
-                count = min(10, pool.count)
+                items = Array(pool.prefix(10))
             }
-            items = Array(pool.shuffled().prefix(count))
             print("[GrammarAppSession] selected \(items.count) item(s)")
 
             await generateQuestion()

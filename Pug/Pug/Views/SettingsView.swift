@@ -28,18 +28,6 @@ struct SettingsView: View {
                     Text(preferences.quizStyle.description)
                 }
 
-                Section {
-                    Picker("AI model", selection: $prefs.localModel) {
-                        ForEach(LocalModel.allCases) { model in
-                            Text(model.label).tag(model)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("AI model")
-                } footer: {
-                    Text(preferences.localModel.description)
-                }
 
                 Section {
                     Picker("Session length", selection: $prefs.sessionLength) {
