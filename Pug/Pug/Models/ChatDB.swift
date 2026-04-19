@@ -12,15 +12,14 @@ import GRDB
 enum ChatContext: Sendable {
     /// Organic word-exploration chat in WordDetailSheet.
     case wordExplore(wordId: String)
-    /// Organic discussion in ReviewDetailSheet after a quiz answer.
-    case reviewDetail(wordId: String, quizType: String)
     /// Organic discussion in TransitivePairDetailSheet.
     case transitivePairDetail(pairId: String)
     /// Organic or canned exchange in GrammarDetailSheet or GrammarAppSession.
     case grammarDetail(topicId: String)
-    /// Vocabulary quiz turn (multiple-choice generation, grading, or tutor).
-    /// The facet string matches QuizItem.facet, e.g. "reading-to-meaning", "pair-grade", "pair-tutor".
-    case vocabQuiz(wordId: String, facet: String)
+    /// Vocabulary quiz turn (multiple-choice generation, grading, or tutor), and any subsequent
+    /// ReviewDetailSheet conversation about the same quiz attempt.
+    /// sessionId is QuizItem.id.uuidString, shared with the Review row in quiz.sqlite.
+    case vocabQuiz(wordId: String, facet: String, sessionId: String)
     /// Grammar quiz turn (multiple-choice generation, grading, or tutor).
     case grammarQuiz(topicId: String, facet: String)
     /// Internal question-generation helpers (gap disambiguation, answer refinement, vocab gloss).
@@ -29,13 +28,12 @@ enum ChatContext: Sendable {
     /// The string stored in the `context` column of chat.sqlite.
     var tag: String {
         switch self {
-        case .wordExplore(let id):                     return "word:\(id)"
-        case .reviewDetail(let id, let qt):            return "review:\(id):\(qt)"
-        case .transitivePairDetail(let id):            return "pair:\(id)"
-        case .grammarDetail(let id):                   return "grammar:\(id)"
-        case .vocabQuiz(let id, let facet):            return "quiz:\(id):\(facet)"
-        case .grammarQuiz(let id, let facet):          return "quiz:\(id):\(facet)"
-        case .grammarQuizGeneration(let id):           return "quiz-gen:\(id)"
+        case .wordExplore(let id):                              return "word:\(id)"
+        case .transitivePairDetail(let id):                     return "pair:\(id)"
+        case .grammarDetail(let id):                            return "grammar:\(id)"
+        case .vocabQuiz(let id, let facet, let sessionId):      return "quiz:\(id):\(facet):\(sessionId)"
+        case .grammarQuiz(let id, let facet):                   return "quiz:\(id):\(facet)"
+        case .grammarQuizGeneration(let id):                    return "quiz-gen:\(id)"
         }
     }
 }
@@ -113,6 +111,25 @@ final class ChatDB: Sendable {
             try db.create(index: "turns_context", on: "turns", columns: ["context"])
         }
         try migrator.migrate(queue)
+    }
+
+    /// Fetch organic (templateId IS NULL) turns for a context tag, optionally filtered by a time window.
+    /// afterMs and beforeMs are unix epoch milliseconds; pass 0 / .max to skip the bound.
+    func organicTurns(context: String, afterMs: Int64 = 0, beforeMs: Int64 = .max) async -> [ChatTurn] {
+        do {
+            return try await queue.read { db in
+                try ChatTurn
+                    .filter(ChatTurn.Columns.context == context)
+                    .filter(ChatTurn.Columns.templateId == nil)
+                    .filter(ChatTurn.Columns.ts >= afterMs)
+                    .filter(ChatTurn.Columns.ts <= beforeMs)
+                    .order(ChatTurn.Columns.ts)
+                    .fetchAll(db)
+            }
+        } catch {
+            print("[ChatDB] organicTurns failed: \(error)")
+            return []
+        }
     }
 
     /// Append a single turn. Silently ignores errors so a logging failure never interrupts the UI.

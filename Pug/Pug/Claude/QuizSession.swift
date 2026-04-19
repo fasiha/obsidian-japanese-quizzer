@@ -316,7 +316,7 @@ final class QuizSession {
                 tools: [],
                 maxTokens: 256,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-grade"),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-grade", sessionId: item.id.uuidString),
                 templateId: "pair-llm-grade"
             )
             let (intrCorrect, tranCorrect) = parsePairLLMScores(from: response,
@@ -502,7 +502,7 @@ final class QuizSession {
                 tools: [.lookupJmdict],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-tutor"),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-tutor", sessionId: item.id.uuidString),
                 templateId: nil
             )
             conversation = updatedMsgs
@@ -815,7 +815,7 @@ final class QuizSession {
                 tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
                 maxTokens: 1024,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: nil
             )
             conversation = updatedMsgs
@@ -881,7 +881,7 @@ final class QuizSession {
                 tools: activeTools,
                 maxTokens: 1024,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: nil
             )
             conversation = updatedMsgs
@@ -950,7 +950,8 @@ final class QuizSession {
             wordText: item.wordText,
             score: score,
             quizType: item.facet,
-            notes: finalNotes.isEmpty ? nil : finalNotes
+            notes: finalNotes.isEmpty ? nil : finalNotes,
+            sessionId: item.id.uuidString
         )
         try await db.insert(review: review)
 
@@ -1152,7 +1153,7 @@ final class QuizSession {
             tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
             maxTokens: 1024,
             toolHandler: makeToolHandler(),
-            chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+            chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet, sessionId: item.id.uuidString),
             templateId: "vocab-llm-grade"
         )
         return response
@@ -1299,7 +1300,7 @@ final class QuizSession {
                 tools: resolvedTools,
                 maxTokens: 1024,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: "vocab-mc-\(item.facet)"
             )
             finalMsgs = msgs

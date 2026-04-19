@@ -18,6 +18,9 @@ struct Review: Codable, FetchableRecord, MutablePersistableRecord {
     var score: Double       // 0.0–1.0
     var quizType: String
     var notes: String?
+    /// UUID shared with chat.sqlite turns so ReviewDetailSheet can load the exact post-quiz conversation.
+    /// nil for reviews recorded before migration v11.
+    var sessionId: String?
 
     mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 
@@ -29,6 +32,7 @@ struct Review: Codable, FetchableRecord, MutablePersistableRecord {
         case score
         case quizType = "quiz_type"
         case notes
+        case sessionId = "session_id"
     }
 }
 
@@ -493,6 +497,14 @@ final class QuizDB: Sendable {
             // at commit time, even if it covers all senses.
             try db.alter(table: "word_commitment") { t in
                 t.add(column: "sense_indices", .text)   // JSON array of Int, e.g. "[0,2]", or NULL
+            }
+        }
+        migrator.registerMigration("v11") { db in
+            // session_id: UUID generated when the QuizItem is created, shared with chat.sqlite
+            // so ReviewDetailSheet can load the exact post-quiz chat for this review.
+            // NULL for reviews recorded before this migration.
+            try db.alter(table: "reviews") { t in
+                t.add(column: "session_id", .text)
             }
         }
         try migrator.migrate(pool)

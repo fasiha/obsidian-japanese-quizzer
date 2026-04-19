@@ -33,6 +33,7 @@ struct TransitivePairDetailSheet: View {
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
     @State private var chatInput = ""
     @State private var isSendingChat = false
+    @State private var pastTurns: [ChatTurn] = []
     @State private var chatConversation: [AnthropicMessage] = []
 
 
@@ -126,6 +127,7 @@ struct TransitivePairDetailSheet: View {
                 await loadJMDictInfo()
                 await loadEbisuModels()
                 await loadMnemonics()
+                await loadPastTurns()
             }
             .sheet(item: $rescaleTarget) { target in
                 RescaleSheet(currentHalflife: target.record.t, reviewCount: target.reviewCount) { hours in
@@ -311,6 +313,13 @@ struct TransitivePairDetailSheet: View {
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
+
+            if !pastTurns.isEmpty {
+                ForEach(Array(pastTurns.enumerated()), id: \.offset) { _, turn in
+                    ChatBubble(turn: turn)
+                }
+                Divider()
+            }
 
             ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, msg in
                 HStack(alignment: .top) {
@@ -592,6 +601,12 @@ struct TransitivePairDetailSheet: View {
         for record in ebisuModels {
             await doRescale(record: record, hours: hours)
         }
+    }
+
+    private func loadPastTurns() async {
+        guard let chatDB = client.chatDB else { return }
+        let context = ChatContext.transitivePairDetail(pairId: item.id).tag
+        pastTurns = await chatDB.organicTurns(context: context)
     }
 
     private func loadEbisuModels() async {

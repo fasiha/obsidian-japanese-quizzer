@@ -4,7 +4,7 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 
 | File | Status | Notes | Row Last Updated |
 |------|--------|-------|------------------|
-| [TODO-persist-chats.md](TODO-persist-chats.md) | **in-progress** | Persist every Haiku chat turn (user and assistant) to a new `chat.sqlite`. Separate from `quiz.sqlite` due to different value profile and faster growth. Schema: `turns` table with `context`, `role`, `content`, `template_id`. | 2026-04-18 |
+| [TODO-persist-chats.md](TODO-persist-chats.md) | **done** | Persist every Haiku chat turn (user and assistant) to a new `chat.sqlite`. Separate from `quiz.sqlite` due to different value profile and faster growth. Shown in quiz history and word/grammar/transitive-pair detail sheets. | 2026-04-18 |
 | [TODO-screenshots.md](TODO-screenshots.md) | **in-progress** | Hero screenshot tour for README. Unblocked now we know idb can let us progrmmatically tap iOS simulators. | 2026-04-18 |
 | [TODO-dispute-ui.md](TODO-dispute-ui.md) | **not started** | Button to void a mis-graded multiple-choice score and restore the pre-quiz Ebisu model. Root generation bug (Haiku mis-tracking correctIndex during shuffle) fixed 2026-04-18 by shuffling app-side; dispute UI deferred pending evidence that the fix is insufficient. | 2026-04-18 |
 | [TODO-dashboard.md](TODO-dashboard.md) | **done** | Racecar-style speedometer gauges (Vocab/Grammar) with rotating needles: upper 300° arc (weekly quizzes), lower 60° arc (new items). This week vs last week vs all-time max. Pace needle (dashed) shows on-track progress. Red overflow wedge when exceeding all-time max. Tap to toggle compact table view. | 2026-04-17 |

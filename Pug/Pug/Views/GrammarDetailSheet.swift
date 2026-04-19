@@ -36,6 +36,7 @@ struct GrammarDetailSheet: View {
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
     @State private var chatInput = ""
     @State private var isSendingChat = false
+    @State private var pastTurns: [ChatTurn] = []
 
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
          toolHandler: ToolHandler? = nil,
@@ -83,6 +84,7 @@ struct GrammarDetailSheet: View {
             .task {
                 await loadMnemonic()
                 await loadEbisuModels()
+                await loadPastTurns()
             }
             .sheet(item: $rescaleTarget) { target in
                 RescaleSheet(currentHalflife: target.record.t, reviewCount: target.reviewCount) { hours in
@@ -301,6 +303,12 @@ struct GrammarDetailSheet: View {
         .textSelection(.enabled)
     }
 
+    private func loadPastTurns() async {
+        guard let chatDB = client.chatDB else { return }
+        let context = ChatContext.grammarDetail(topicId: topic.prefixedId).tag
+        pastTurns = await chatDB.organicTurns(context: context)
+    }
+
     private func loadMnemonic() async {
         guard let quizDB = toolHandler?.quizDB else { return }
         let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
@@ -434,6 +442,13 @@ struct GrammarDetailSheet: View {
             Divider()
             Text("Ask Claude about this grammar")
                 .font(.headline)
+
+            if !pastTurns.isEmpty {
+                ForEach(Array(pastTurns.enumerated()), id: \.offset) { _, turn in
+                    ChatBubble(turn: turn)
+                }
+                Divider()
+            }
 
             ForEach(Array(chatMessages.enumerated()), id: \.offset) { _, msg in
                 HStack(alignment: .top) {

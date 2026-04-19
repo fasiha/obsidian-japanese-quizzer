@@ -40,12 +40,14 @@ struct HistoryView: View {
                     )
                 } else {
                     List(Array(reviews.enumerated()), id: \.offset) { index, review in
-                        Button {
+                        ReviewRowContainer(
+                            review: review,
+                            formatter: Self.localFormatter,
+                            isoParser: Self.isoParser,
+                            chatDB: client.chatDB
+                        ) {
                             selectedReview = IdentifiableReview(id: index, review: review)
-                        } label: {
-                            ReviewRow(review: review, formatter: Self.localFormatter, isoParser: Self.isoParser)
                         }
-                        .buttonStyle(.plain)
                     }
                     .listStyle(.plain)
                 }
@@ -63,6 +65,107 @@ struct HistoryView: View {
         isLoading = true
         reviews = (try? await db.recentReviews(limit: 200)) ?? []
         isLoading = false
+    }
+}
+
+// MARK: - Row container (review summary + collapsible chat)
+
+private struct ReviewRowContainer: View {
+    let review: Review
+    let formatter: DateFormatter
+    let isoParser: ISO8601DateFormatter
+    let chatDB: ChatDB?
+    let onTap: () -> Void
+
+    @State private var isExpanded = false
+    @State private var turns: [ChatTurn] = []
+    @State private var didLoad = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: onTap) {
+                ReviewRow(review: review, formatter: formatter, isoParser: isoParser)
+            }
+            .buttonStyle(.plain)
+
+            if let chatDB {
+                QuizChatDisclosure(
+                    review: review,
+                    chatDB: chatDB,
+                    isExpanded: $isExpanded,
+                    turns: $turns,
+                    didLoad: $didLoad
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Collapsible chat disclosure
+
+private struct QuizChatDisclosure: View {
+    let review: Review
+    let chatDB: ChatDB
+    @Binding var isExpanded: Bool
+    @Binding var turns: [ChatTurn]
+    @Binding var didLoad: Bool
+
+    /// Exact context tag derived from the review's session UUID.
+    /// nil for legacy reviews recorded before session tracking was added.
+    private var contextTag: String? {
+        guard let sessionId = review.sessionId else { return nil }
+        return ChatContext.vocabQuiz(wordId: review.wordId, facet: review.quizType, sessionId: sessionId).tag
+    }
+
+    var body: some View {
+        Group {
+            if contextTag == nil || (didLoad && turns.isEmpty) {
+                EmptyView()
+            } else {
+                DisclosureGroup(isExpanded: $isExpanded) {
+                    ForEach(Array(turns.enumerated()), id: \.offset) { _, turn in
+                        ChatBubble(turn: turn)
+                    }
+                } label: {
+                    Label(
+                        didLoad ? "\(turns.count) message\(turns.count == 1 ? "" : "s")" : "Chat",
+                        systemImage: "bubble.left.and.bubble.right"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .task {
+                    guard !didLoad, let tag = contextTag else { return }
+                    turns = await chatDB.organicTurns(context: tag)
+                    didLoad = true
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Chat bubble (shared)
+
+struct ChatBubble: View {
+    let turn: ChatTurn
+
+    private var isUser: Bool { turn.role == "user" }
+
+    var body: some View {
+        HStack(alignment: .top) {
+            if isUser { Spacer(minLength: 40) }
+            SelectableText(turn.content)
+                .font(.callout)
+                .padding(10)
+                .background(
+                    isUser
+                        ? Color.accentColor.opacity(0.15)
+                        : Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 10)
+                )
+            if !isUser { Spacer(minLength: 40) }
+        }
+        .padding(.vertical, 2)
     }
 }
 
@@ -117,4 +220,3 @@ private struct ReviewRow: View {
         }
     }
 }
-

@@ -75,6 +75,7 @@ struct WordDetailSheet: View {
     @State private var ebisuModels: [EbisuRecord] = []
     @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleTarget: RescaleTarget? = nil
+    @State private var pastTurns: [ChatTurn] = []
 
     var body: some View {
         NavigationStack {
@@ -106,6 +107,7 @@ struct WordDetailSheet: View {
                 Task { await loadMnemonics() }
                 Task { await loadEbisuModels() }
                 Task { await autoCommitFirstForm() }
+                Task { await loadPastTurns() }
             }
             .onChange(of: explore?.turnCount) { Task { await loadMnemonics() } }
             .navigationDestination(item: $readerTarget) { target in
@@ -644,7 +646,15 @@ struct WordDetailSheet: View {
                 .tracking(0.5)
 
             if let explore {
-                // Chat bubbles
+                // Past conversations from previous sessions
+                if !pastTurns.isEmpty {
+                    ForEach(Array(pastTurns.enumerated()), id: \.offset) { _, turn in
+                        ChatBubble(turn: turn)
+                    }
+                    Divider()
+                }
+
+                // Chat bubbles for the current session
                 ForEach(Array(explore.messages.enumerated()), id: \.offset) { _, msg in
                     HStack(alignment: .top) {
                         if msg.isUser { Spacer(minLength: 40) }
@@ -805,6 +815,12 @@ struct WordDetailSheet: View {
             isWorking = false
             dismiss()
         }
+    }
+
+    private func loadPastTurns() async {
+        guard let chatDB = client.chatDB else { return }
+        let context = ChatContext.wordExplore(wordId: item.id).tag
+        pastTurns = await chatDB.organicTurns(context: context)
     }
 
     private func loadEbisuModels() async {

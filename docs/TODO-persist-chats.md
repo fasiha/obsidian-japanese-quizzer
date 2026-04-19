@@ -62,8 +62,8 @@ GRDB has no built-in row compression. iOS APFS may apply transparent compression
 
 1. ~~**Create `chat.sqlite`** with the schema above, opened alongside `quiz.sqlite` at app launch via a new `ChatDB` (GRDB `DatabaseQueue`). **Done** — `ChatDB.swift`, wired in `PugApp.swift`.~~
 2. ~~**Write-only logging**: `ChatDB.append(context:role:content:templateId:)` wired into every Haiku call site via required parameters on `AnthropicClient.send()`. **Done.**~~
-3. **Detail sheet persistence**: in WordDetailSheet, GrammarDetailSheet, and TransitivePairDetailSheet, load prior turns for the relevant context on appear and surface them in the chat view.
-4. **HistoryView integration**: show a disclosure section per quiz session with the turns whose context matches that session.
+3. ~~**Detail sheet persistence**: in WordDetailSheet, GrammarDetailSheet, and TransitivePairDetailSheet, load prior turns for the relevant context on appear and surface them above the chat input. Filter to organic turns only (templateId is NULL) so canned prompt/response pairs don't clutter the view. **Done** — `ChatDB.organicTurns(context:)` added; all three detail sheets load past turns on `.task` and render them via the shared `ChatBubble` view.~~
+4. ~~**HistoryView + ReviewDetailSheet integration**: each past quiz row gets a collapsible "Chat" disclosure group; tapping the row opens ReviewDetailSheet which shows the quiz summary, the original quiz-session chat, and a chat input to continue the conversation — all under the same `vocabQuiz` context. **Done** — session UUID (`QuizItem.id`) is now stored in both `chat.sqlite` turns and the `reviews` table (`session_id` column, migration v11), replacing the fragile time-window query. `reviewDetail` context removed entirely.~~
 
 ## Future directions
 
