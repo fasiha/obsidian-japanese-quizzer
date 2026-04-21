@@ -221,28 +221,33 @@ Three meaningful states for `llm_sense.counter`:
 7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
 8. ✅ Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
 
-### Phase 3: iOS — Counter enrollment and `meaning-to-reading` facet
+### Phase 3: iOS — Counter meta-documents, WordDetailSheet, and enrollment
 
 9. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
 10. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
-11. Add `CounterBrowserView` — displays all 66 counters in a browser, user can enroll by reading each counter's entry (analogous to TransitivePairBrowserView).
-    a. Put the 18 "Absolutely must know" and "Must know" in a "Must know" doc (or sub-doc)
-    b. Put the remaining 48 "Common" counters in a second "Common" doc after the previous one
-12. Implement `meaning-to-reading` for counters: prompt is `whatItCounts`, answer is the reading. Distractors are other counter readings from the same frequency tier.
+11. Author two counter meta-documents surfaced in `VocabBrowserView` (no separate `CounterBrowserView`):
+    a. "Must Know" — the 2 "Absolutely Must Know" + 17 "Must Know" counters (19 total)
+    b. "Common" — the 47 "Common" counters
+    These parallel how transitive pairs appear as a meta-document in `VocabBrowserView`.
+12. Tapping a counter entry opens `WordDetailSheet` directly. `WordDetailSheet` gains a counter-aware section:
+    - An icon or badge next to counter senses in the senses list. The sense is highlighted if the tap source used that sense; the icon appears regardless.
+    - A collapsed pronunciation table (1–10 grid plus "how many") below the senses section.
+    - If a sense has no `ctr` part-of-speech tag but was hand-verified (see `counters.json` schema notes), include a brief note to that effect.
+    - Optionally: a DBJG phonetic type label and one-sentence pattern explanation (Type B: h→p with 1, 6, 8, 10, etc.).
+13. Committing to a counter entry creates two Ebisu model entries:
+    - `(word_type="counter", word_id="{id}", quiz_type="meaning-to-reading")`
+    - `(word_type="counter", word_id="{id}", quiz_type="counter-number-to-reading")` — only if the user has also committed to the kanji form, since the prompt must show kanji to avoid leaking the reading.
 
-### Phase 4: iOS — `counter-number-to-reading` facet
+### Phase 4: iOS — Both counter quiz facets
 
-13. Implement `counter-number-to-reading` quiz generation (kanji-committed words only):
-    - Multiple choice: app draws a number, builds stem, picks three distractors from the counter's own 1–10 table.
-    - Free-answer: app builds stem locally, LLM grades.
-14. Add the system prompt for `counter-number-to-reading` and enumerate it in TestHarness `--dump-prompts`.
+14. Implement `meaning-to-reading`: prompt is `whatItCounts` (or a random entry from `countExamples`), answer is the counter reading. Distractors are other counter readings from the same frequency tier.
+15. Implement `counter-number-to-reading` (kanji-committed entries only):
+    - Number drawn at quiz time from {1, 3, 6, 8, 10} — the phonetically interesting set.
+    - Multiple choice: three distractors drawn from the same counter's 1–10 table.
+    - Free-answer: app builds the stem locally, LLM grades.
+16. Add the system prompt for `counter-number-to-reading` grading and enumerate it in TestHarness `--dump-prompts`.
 
-### Phase 5: iOS — WordDetailSheet counter section
-
-15. When `word_type="counter"`, show a pronunciation table (1–10 grid) in WordDetailSheet below the existing senses section.
-16. Optionally: show the DBJG type label and a one-sentence explanation of the phonetic pattern.
-
-### Phase 6: Validation
+### Phase 5: Validation
 
 17. Run TestHarness against `counter-number-to-reading` prompts for a representative sample of counters (Type B, Type C, irregular).
 18. Manual end-to-end test in simulator: enroll 本, commit to kanji, trigger both counter facets, verify correct and incorrect answers grade correctly.
