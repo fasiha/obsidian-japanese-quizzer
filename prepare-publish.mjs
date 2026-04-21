@@ -603,15 +603,39 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
 // --- Preserve words from existing vocab.json that aren't in current Markdown ---
 // This prevents data loss if the script is interrupted: words not referenced in
 // the current Markdown files are preserved as-is from the previous run.
+// Exception: references to files that were processed this run are dropped if the
+// word wasn't found — the bullet was deleted. Entries with no remaining references
+// are dropped entirely.
 {
   const currentIds = new Set(words.map((w) => w.id));
+  const processedTitles = new Set(stories.map((s) => s.title));
   if (existsSync(outPath)) {
     try {
       const existing = JSON.parse(readFileSync(outPath, "utf8"));
+      let droppedEntries = 0;
+      let droppedRefs = 0;
       for (const oldWord of existing.words ?? []) {
-        if (!currentIds.has(oldWord.id)) {
-          words.push(oldWord);
+        if (currentIds.has(oldWord.id)) continue;
+        // Drop references to processed files where the word no longer appears.
+        // If the bullet were still present, extractVocabBullets would have found it.
+        const filteredRefs = {};
+        for (const [title, refs] of Object.entries(oldWord.references ?? {})) {
+          if (processedTitles.has(title)) {
+            droppedRefs += refs.length;
+          } else {
+            filteredRefs[title] = refs;
+          }
         }
+        if (Object.keys(filteredRefs).length === 0) {
+          droppedEntries++;
+          continue;
+        }
+        const remainingTitles = new Set(Object.keys(filteredRefs));
+        const filteredSources = (oldWord.sources ?? []).filter((s) => remainingTitles.has(s));
+        words.push({ ...oldWord, sources: filteredSources, references: filteredRefs });
+      }
+      if (droppedEntries > 0 || droppedRefs > 0) {
+        console.log(`  Removed ${droppedRefs} stale reference(s) and ${droppedEntries} orphaned entry/entries from vocab.json`);
       }
     } catch {
       // Corrupt or missing vocab.json — continue with current Markdown only
