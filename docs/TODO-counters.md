@@ -144,7 +144,64 @@ Provides a pedagogically useful type classification (Type A through F plus irreg
 
 8. **`counter-number-to-reading` in TestHarness** — needs a new prompt variation enumerated in `--dump-prompts`.
 
-9. **`pronunciations` parsing in `build-counters-json.mjs`** — currently stores raw TSV strings. Needs to be updated to parse each cell into `{ primary: string[], rare: string[] }` before writing `counters.json`.
+9. **`pronunciations` parsing in `build-counters-json.mjs`** — ✅ resolved. Each TSV cell now parsed into `{ primary: string[], rare: string[] }`.
+
+---
+
+## Counter Detection in `prepare-publish.mjs` for `vocab.json`
+
+### Where counter info lives in a vocab reference
+
+A vocabulary reference object in `vocab.json` can carry counter information in two distinct places, depending on source:
+
+**Manual annotation** (`- counter:id` bullet in Markdown) → stored as a **sibling to `llm_sense`**:
+```json
+{
+  "line": 82,
+  "context": "赤ちゃんは３ヶ月で笑い始めます。",
+  "counter": "つき",
+  "llm_sense": { "sense_indices": [1], "computed_from": [...], "reasoning": "..." }
+}
+```
+
+**LLM-detected counter** → stored **inside `llm_sense`**:
+```json
+{
+  "line": 67,
+  "context": "１００枚の折り紙が必要です。",
+  "llm_sense": { "sense_indices": [0], "counter": "まい", "computed_from": [...], "reasoning": "..." }
+}
+```
+
+Consumers resolve the counter as: `ref.counter ?? ref.llm_sense?.counter`.
+
+A ref never has both: if `ref.counter` is set from a manual annotation, the LLM counter-detection question is skipped entirely for that ref.
+
+### Detection strategy
+
+1. **Manual annotation**: `- counter:id` in a `<details><summary>Vocab</summary>` block explicitly tags a word as a counter with a known ID. This is stored in `ref.counter` (sibling to `llm_sense`) and skips LLM inference.
+2. **LLM inference**: For words whose JMDict ID appears in `counters.json`, `prepare-publish.mjs` adds a counter-detection question to the sense analysis prompt. The LLM result is stored in `llm_sense.counter`.
+
+### LLM prompt for counter detection
+
+`countersByJmdictId` maps each JMDict ID to the array of `counters.json` entries that reference it. Most IDs have exactly one entry; a few ambiguous readings (e.g. 月 with ID 1255430) have two.
+
+- **1 candidate**: prompt asks "Is this word being used as counter `id` (for `whatItCounts`)? If yes, respond with `id`. If not or unsure, set counter to null."
+- **2+ candidates**: prompt lists all candidates by index and asks the LLM to choose the matching counter ID, or null if unsure. Example for 月: "Is this word being used as one of these counters? 0: `つき` (Months), 1: `がつ` (Calendar months)."
+
+Three meaningful states for `llm_sense.counter`:
+- **key absent** — LLM was never asked (word not counter-capable, or entry predates counter detection). Gap detection flags these.
+- **`counter: null`** — LLM was asked and said "not a counter here" or "unsure which counter".
+- **`counter: "id"`** — LLM confirmed counter usage and identified the counter.
+
+### Gap detection
+
+`prepare-publish.mjs` scans all refs after analysis and reports any counter-capable words (JMDict ID in `countersByJmdictId`) whose `llm_sense` lacks a `counter` key. These are logged per-ref and summarised at the end:
+
+```
+  Would analyze 月 [Music/Shiki no Uta:65] (potential counter sense found, counter field unevaluated)
+- 1 potential counter senses found, 0 skipped
+```
 
 ---
 
@@ -153,36 +210,37 @@ Provides a pedagogically useful type classification (Type A through F plus irreg
 ### Phase 1: Data pipeline — `counters.json`
 
 1. ✅ `.claude/scripts/build-counters-json.mjs` written and working. Uses `ctr` part-of-speech filtering to auto-resolve JMDict matches, with manual override maps for the 22 ambiguous entries and 8 reading-collision IDs.
-2. ✅ All 66 counters resolved. New schema: `id`, `countExamples`, `jmdict: { id, senseIndex }`, `pronunciations`.
-3. Update `build-counters-json.mjs` to parse TSV pronunciation cells into `{ primary, rare }` objects (Known Unknown 9).
-4. Commit `counters.json` alongside `transitive-pairs.json` in the published Gist.
+2. ✅ All 66 counters resolved. New schema: `id`, `countExamples`, `jmdict: { id, senseIndex }`, `pronunciations` with `{ primary, rare }` objects.
+3. ✅ `build-counters-json.mjs` parses TSV pronunciation cells into `{ primary, rare }` objects.
+4. Commit `counters.json` to published Gist (alongside `transitive-pairs.json`).
 
-### Phase 2: Markdown reading files
+### Phase 2: Enrollment via `prepare-publish.mjs`
 
-5. Author `wago.md` — a short reading file with the ten wago forms (ひとつ, ふたつ, … とお) enrolled as vocab.
-6. Author `counters-must-know.md` — 19 counters (2 absolutely must know + 17 must know) with example sentences using each counter.
-7. Author `counters-common.md` — 47 common counters.
+5. ✅ Counter detection wired into `prepare-publish.mjs`: for any word appearing in `counters.json`, the sense analysis includes a counter-detection question.
+6. ✅ LLM-detected counter stored in `llm_sense.counter`; manual `- counter:id` annotation stored as sibling `ref.counter`. Consumers check `ref.counter ?? ref.llm_sense?.counter`.
+7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
+8. Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
 
-### Phase 3: iOS — counter enrollment and `meaning-to-reading` facet
+### Phase 3: iOS — Counter enrollment and `meaning-to-reading` facet
 
-8. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
-9. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
-10. Extend enrollment so Markdown reading files can reference counter IDs, creating `word_type="counter"` entries.
-11. Implement `meaning-to-reading` for counters: prompt is `whatItCounts`, answer is the reading. Distractors are other counter readings from the same frequency tier.
+9. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
+10. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
+11. Add `CounterBrowserView` — displays all 66 counters in a browser, user can enroll by reading each counter's entry (analogous to TransitivePairBrowserView).
+12. Implement `meaning-to-reading` for counters: prompt is `whatItCounts`, answer is the reading. Distractors are other counter readings from the same frequency tier.
 
 ### Phase 4: iOS — `counter-number-to-reading` facet
 
-12. Implement `counter-number-to-reading` quiz generation (kanji-committed words only):
+13. Implement `counter-number-to-reading` quiz generation (kanji-committed words only):
     - Multiple choice: app draws a number, builds stem, picks three distractors from the counter's own 1–10 table.
     - Free-answer: app builds stem locally, LLM grades.
-13. Add the system prompt for `counter-number-to-reading` and enumerate it in TestHarness `--dump-prompts`.
+14. Add the system prompt for `counter-number-to-reading` and enumerate it in TestHarness `--dump-prompts`.
 
 ### Phase 5: iOS — WordDetailSheet counter section
 
-14. When `word_type="counter"`, show a pronunciation table (1–10 grid) in WordDetailSheet below the existing senses section.
-15. Optionally: show the DBJG type label and a one-sentence explanation of the phonetic pattern.
+15. When `word_type="counter"`, show a pronunciation table (1–10 grid) in WordDetailSheet below the existing senses section.
+16. Optionally: show the DBJG type label and a one-sentence explanation of the phonetic pattern.
 
 ### Phase 6: Validation
 
-16. Run TestHarness against `counter-number-to-reading` prompts for a representative sample of counters (Type B, Type C, irregular).
-17. Manual end-to-end test in simulator: enroll 本, commit to kanji, trigger both counter facets, verify correct and incorrect answers grade correctly.
+17. Run TestHarness against `counter-number-to-reading` prompts for a representative sample of counters (Type B, Type C, irregular).
+18. Manual end-to-end test in simulator: enroll 本, commit to kanji, trigger both counter facets, verify correct and incorrect answers grade correctly.

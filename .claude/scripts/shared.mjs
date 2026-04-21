@@ -164,6 +164,7 @@ export function* extractDetailsBlocks(content, summaryType) {
 // Extract bullet text from all <details><summary>Vocab</summary> blocks in a file.
 // Returns plain strings (no line numbers). Used by get-quiz-context.mjs.
 // check-vocab.mjs has its own version that also tracks line numbers.
+// Bullets starting with "counter:" are counter enrollments, not JMDict vocab — skipped here.
 export function extractVocabBullets(content) {
   const bullets = [];
   for (const { stripped } of extractDetailsBlocks(content, "Vocab")) {
@@ -171,10 +172,25 @@ export function extractVocabBullets(content) {
       const trimmed = line.trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
-      if (bullet) bullets.push(bullet);
+      if (bullet && !bullet.startsWith("counter:")) bullets.push(bullet);
     }
   }
   return bullets;
+}
+
+// Extract counter IDs from all <details><summary>Vocab</summary> blocks in a file.
+// Returns the id strings (the part after "counter:") for bullets of the form "- counter:id".
+export function extractCounterBullets(content) {
+  const ids = [];
+  for (const { stripped } of extractDetailsBlocks(content, "Vocab")) {
+    for (const line of stripped.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("-")) continue;
+      const bullet = trimmed.slice(1).trim();
+      if (bullet.startsWith("counter:")) ids.push(bullet.slice("counter:".length).trim());
+    }
+  }
+  return ids;
 }
 
 // Return the forms portion of a context line in "written:X,Y  reading:A,B" format
