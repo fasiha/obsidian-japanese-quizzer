@@ -91,7 +91,7 @@ The ten wago forms (一つ through 十, plus the standalone とお) are a fixed,
 
 - `id` — stable kana-based word_id for Ebisu models; unique across all entries. For entries whose reading collides with a more common word, a kanji suffix is appended (e.g. `かい-階` for floors, `かん-巻` for volumes). For 組's two contexts, descriptive suffixes are used (`くみ-グループ`, `くみ-クラス`).
 - `countExamples` — initially empty; fill in manually from the Tofugu article for each counter (e.g. for 台: "playground slides, beds, tables, couches, harps, pianos, cellos, cars, trucks, motors, washing machines, dryers, ovens, air conditioners, microwaves, cellular phones, keyboards, and more").
-- `jmdict` — `null` if no JMDict entry exists. `senseIndex` is an array of 0-based indices of the counter senses in the JMDict entry, or `null` if the entry exists but JMDict has no `ctr`-tagged sense (the "no-counter-sense" case: 番、秒、便、部屋、文字). Most entries have exactly one index. 着 is the only current exception with two indices (`[1, 2]`), because it counts both clothing items and race placements.
+- `jmdict` — `null` if didn't find a meaningful JMDict entry (no entries have this now). `senseIndex` can be null if we haven't found any senses that match, or is an array of 0-based indices of the counter senses in the JMDict entry. Indexed senses may be tagged by JMDict as `ctr` (counter), `n-suf` (noun-suffix, typical for counters), or plain `n` (noun) that has been hand-verified to match the counter meaning — all have been validated against JMDict. Most entries have exactly one index. 着 has two indices (`[1, 2]`), because it counts both clothing items and race placements.
 
 ---
 
@@ -128,7 +128,7 @@ Provides a pedagogically useful type classification (Type A through F plus irreg
 
 ## Known Unknowns
 
-1. **~~JMDict coverage of the 66 counters~~** — resolved. `build-counters-json.mjs` looks up all 66 via `ctr` part-of-speech filtering plus a manual override map. All 66 resolved. Five entries have `jmdict.senseIndex === null` (no counter-tagged sense in JMDict): 番、秒、便、部屋、文字.
+1. **~~JMDict coverage of the 66 counters~~** — resolved. `build-counters-json.mjs` looks up all 66 via `ctr` part-of-speech filtering plus a manual override map. All 66 resolved. Five entries (番、秒、便、部屋、文字) had no counter-tagged sense in JMDict; these were manually hand-verified and indexed to their semantic noun senses.
 
 2. **~~Multiple `counters.json` entries sharing the same JMDict ID~~** — resolved. Each TSV row gets its own stable `id` derived from the reading. Collisions between distinct counters sharing a reading (e.g. 階 vs 回, both かい) are resolved by appending the kanji: `かい-階`. The two 組 rows get descriptive suffixes: `くみ-グループ` and `くみ-クラス`. The Ebisu model key `(word_type="counter", word_id="{id}", quiz_type="…")` is unambiguous for all 66 entries.
 
@@ -138,7 +138,7 @@ Provides a pedagogically useful type classification (Type A through F plus irreg
 
 5. **Markdown reading files** — need to author: (a) a wago file (10 words, trivial), (b) a must-know counters file (19 counters), (c) a common counters file (47 counters). These are the enrollment vehicle — counters only enter the quiz queue when a user reads and commits to the word.
 
-6. **WordDetailSheet counter section** — when a word has `word_type="counter"`, the detail sheet should display the 1–10 pronunciation table (analogous to how transitive pairs show both verb forms). When `jmdict.senseIndex === null`, include a note that the word is used as a counter even though JMDict does not tag it as one. Design TBD.
+6. **WordDetailSheet counter section** — when a word has `word_type="counter"`, the detail sheet should display the 1–10 pronunciation table (analogous to how transitive pairs show both verb forms). If `jmdict.senseIndex` points to a sense without an explicit `ctr` part-of-speech tag (noun or noun-suffix), include a note that the sense has been hand-verified as counter-relevant. Design TBD.
 
 7. **Quiz prompt wording for `counter-number-to-reading`** — multiple-choice distractors can be generated without LLM: pick three other readings from the same counter's 1–10 table (e.g. for 六匹→ろっぴき, offer いっぴき, さんびき, はっぴき). Free-answer phase: app builds stem locally, LLM grades. Needs a system prompt.
 
