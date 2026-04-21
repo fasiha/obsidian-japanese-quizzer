@@ -369,6 +369,9 @@ const mdFiles = findMdFiles(projectRoot);
 // Build a map from JMDict ID -> array of counter info for counter detection.
 // Maps JMDict ID to array of { id, whatItCounts, senseIndex }.
 // Most JMDict IDs map to 1 counter, but ambiguous cases like かい (階 vs 回) have 2+.
+// senseIndex is an array of 0-based indices (usually length 1; length 2 for 着 which
+// counts both clothing and race placement). null means JMDict has no ctr-tagged sense.
+const hasSenseIndices = (c) => Array.isArray(c.senseIndex) && c.senseIndex.length > 0;
 const countersByJmdictId = new Map();
 const countersJsonPath = path.join(projectRoot, "Counters", "counters.json");
 let countersJsonData = [];
@@ -880,7 +883,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
           const computedFrom = refComputedFrom(ref);
           const counterInfo = countersByJmdictId.get(word.id);
           if (counterInfo && !ref.counter) {
-            const trivialCounter = counterInfo.find((c) => c.senseIndex !== null);
+            const trivialCounter = counterInfo.find(hasSenseIndices);
             if (trivialCounter) {
               // The JMDict-tagged counter sense IS the word's only sense — no ambiguity,
               // no LLM call needed. Mark this counter trivially.
@@ -926,7 +929,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
       // senseIndex: null (no ctr-tagged sense in JMDict). Those need an LLM call
       // to detect counter usage and may have uncached refs left unset above.
       const ci = countersByJmdictId.get(word.id);
-      if (!ci || ci.some((c) => c.senseIndex !== null)) continue;
+      if (!ci || ci.some(hasSenseIndices)) continue;
     }
 
     const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;

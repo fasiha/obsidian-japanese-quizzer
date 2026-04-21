@@ -10,7 +10,7 @@
     ],
     "jmdict": {
       "id": "1264740",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -127,7 +127,7 @@
     ],
     "jmdict": {
       "id": "1522150",
-      "senseIndex": 4
+      "senseIndex": [4]
     },
     "pronunciations": {
       "1": {
@@ -230,7 +230,7 @@
     ],
     "jmdict": {
       "id": "1524610",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -345,7 +345,7 @@
     ],
     "jmdict": {
       "id": "1583370",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -442,7 +442,7 @@
     ],
     "jmdict": {
       "id": "1450690",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -535,7 +535,7 @@
     ],
     "jmdict": {
       "id": "1607310",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -642,7 +642,7 @@
     ],
     "jmdict": {
       "id": "1298520",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -745,7 +745,7 @@
     ],
     "jmdict": {
       "id": "1412560",
-      "senseIndex": 3
+      "senseIndex": [3]
     },
     "pronunciations": {
       "1": {
@@ -920,7 +920,7 @@
     ],
     "jmdict": {
       "id": "2084840",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -1009,7 +1009,7 @@
     ],
     "jmdict": {
       "id": "1199330",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -1102,7 +1102,7 @@
     ],
     "jmdict": {
       "id": "2149890",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -1521,7 +1521,7 @@
     ],
     "jmdict": {
       "id": "1203020",
-      "senseIndex": 3
+      "senseIndex": [3]
     },
     "pronunciations": {
       "1": {
@@ -1610,7 +1610,7 @@
     ],
     "jmdict": {
       "id": "1294940",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -1784,7 +1784,7 @@
     ],
     "jmdict": {
       "id": "1194480",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -1871,7 +1871,7 @@
     ],
     "jmdict": {
       "id": "2086750",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -1973,7 +1973,7 @@
     ],
     "jmdict": {
       "id": "1590250",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -2067,7 +2067,7 @@
     ],
     "jmdict": {
       "id": "1214540",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -2163,7 +2163,7 @@
     ],
     "jmdict": {
       "id": "1955950",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -2345,7 +2345,7 @@
     ],
     "jmdict": {
       "id": "1384840",
-      "senseIndex": 4
+      "senseIndex": [4]
     },
     "pronunciations": {
       "1": {
@@ -2441,7 +2441,7 @@
     ],
     "jmdict": {
       "id": "1275640",
-      "senseIndex": 11
+      "senseIndex": [11]
     },
     "pronunciations": {
       "1": {
@@ -2536,7 +2536,7 @@
     ],
     "jmdict": {
       "id": "1397450",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -2622,7 +2622,7 @@
     ],
     "jmdict": {
       "id": "1397450",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -2730,7 +2730,7 @@
     ],
     "jmdict": {
       "id": "1255940",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -2828,7 +2828,7 @@
     ],
     "jmdict": {
       "id": "2078590",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -2917,7 +2917,7 @@
     ],
     "jmdict": {
       "id": "1270910",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -3011,7 +3011,7 @@
     ],
     "jmdict": {
       "id": "2259610",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -3102,7 +3102,7 @@
     ],
     "jmdict": {
       "id": "1299680",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -3279,7 +3279,7 @@
     ],
     "jmdict": {
       "id": "2648780",
-      "senseIndex": 2
+      "senseIndex": [2]
     },
     "pronunciations": {
       "1": {
@@ -3388,7 +3388,7 @@
     ],
     "jmdict": {
       "id": "2015400",
-      "senseIndex": 3
+      "senseIndex": [3]
     },
     "pronunciations": {
       "1": {
@@ -3478,7 +3478,7 @@
     ],
     "jmdict": {
       "id": "1328890",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -3661,7 +3661,7 @@
     ],
     "jmdict": {
       "id": "1331020",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -3749,7 +3749,7 @@
     ],
     "jmdict": {
       "id": "2097830",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -4046,7 +4046,7 @@
     ],
     "jmdict": {
       "id": "2412230",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -4146,7 +4146,7 @@
     ],
     "jmdict": {
       "id": "1404450",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -4342,7 +4342,7 @@
     ],
     "jmdict": {
       "id": "1633690",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -4444,7 +4444,7 @@
     ],
     "jmdict": {
       "id": "1597470",
-      "senseIndex": 1
+      "senseIndex": [1, 2]
     },
     "pronunciations": {
       "1": {
@@ -4549,7 +4549,7 @@
     ],
     "jmdict": {
       "id": "1432840",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -4663,7 +4663,7 @@
     ],
     "jmdict": {
       "id": "1552890",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -4768,7 +4768,7 @@
     ],
     "jmdict": {
       "id": "1441390",
-      "senseIndex": 7
+      "senseIndex": [7]
     },
     "pronunciations": {
       "1": {
@@ -4862,7 +4862,7 @@
     ],
     "jmdict": {
       "id": "1445160",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -4984,7 +4984,7 @@
     ],
     "jmdict": {
       "id": "2019640",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -5078,7 +5078,7 @@
     ],
     "jmdict": {
       "id": "1919550",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -5179,7 +5179,7 @@
     ],
     "jmdict": {
       "id": "1585650",
-      "senseIndex": 6
+      "senseIndex": [6]
     },
     "pronunciations": {
       "1": {
@@ -5295,7 +5295,7 @@
     ],
     "jmdict": {
       "id": "1477120",
-      "senseIndex": 3
+      "senseIndex": [3]
     },
     "pronunciations": {
       "1": {
@@ -5668,7 +5668,7 @@
     ],
     "jmdict": {
       "id": "2707020",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -5858,7 +5858,7 @@
     ],
     "jmdict": {
       "id": "1514300",
-      "senseIndex": 1
+      "senseIndex": [1]
     },
     "pronunciations": {
       "1": {
@@ -5944,7 +5944,7 @@
     ],
     "jmdict": {
       "id": "2153790",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -6122,7 +6122,7 @@
     ],
     "jmdict": {
       "id": "1634040",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {
@@ -6215,7 +6215,7 @@
     ],
     "jmdict": {
       "id": "2100460",
-      "senseIndex": 0
+      "senseIndex": [0]
     },
     "pronunciations": {
       "1": {

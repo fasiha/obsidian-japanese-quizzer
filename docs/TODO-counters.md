@@ -91,7 +91,7 @@ The ten wago forms (一つ through 十, plus the standalone とお) are a fixed,
 
 - `id` — stable kana-based word_id for Ebisu models; unique across all entries. For entries whose reading collides with a more common word, a kanji suffix is appended (e.g. `かい-階` for floors, `かん-巻` for volumes). For 組's two contexts, descriptive suffixes are used (`くみ-グループ`, `くみ-クラス`).
 - `countExamples` — initially empty; fill in manually from the Tofugu article for each counter (e.g. for 台: "playground slides, beds, tables, couches, harps, pianos, cellos, cars, trucks, motors, washing machines, dryers, ovens, air conditioners, microwaves, cellular phones, keyboards, and more").
-- `jmdict` — `null` if no JMDict entry exists. `senseIndex` is the 0-based index of the counter sense in the JMDict entry, or `null` if the entry exists but JMDict has no `ctr`-tagged sense (the "no-counter-sense" case: 番、秒、便、部屋、文字). The iOS app can infer the counter's JMDict relationship from `senseIndex` alone: `=== 0` means counter is the primary sense, `> 0` means counter is a secondary sense, `=== null` means JMDict does not tag it as a counter.
+- `jmdict` — `null` if no JMDict entry exists. `senseIndex` is an array of 0-based indices of the counter senses in the JMDict entry, or `null` if the entry exists but JMDict has no `ctr`-tagged sense (the "no-counter-sense" case: 番、秒、便、部屋、文字). Most entries have exactly one index. 着 is the only current exception with two indices (`[1, 2]`), because it counts both clothing items and race placements.
 
 ---
 
@@ -226,6 +226,8 @@ Three meaningful states for `llm_sense.counter`:
 9. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
 10. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
 11. Add `CounterBrowserView` — displays all 66 counters in a browser, user can enroll by reading each counter's entry (analogous to TransitivePairBrowserView).
+    a. Put the 18 "Absolutely must know" and "Must know" in a "Must know" doc (or sub-doc)
+    b. Put the remaining 48 "Common" counters in a second "Common" doc after the previous one
 12. Implement `meaning-to-reading` for counters: prompt is `whatItCounts`, answer is the reading. Distractors are other counter readings from the same frequency tier.
 
 ### Phase 4: iOS — `counter-number-to-reading` facet
