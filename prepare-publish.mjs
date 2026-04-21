@@ -1200,11 +1200,37 @@ for (const { sources } of grammarMap.values()) {
   }
 }
 
+// Build per-title counter enrollment counts: unique counter IDs seen per story.
+// Sources: manual "- counter:id" bullets (countersByTitleLine) and LLM-detected
+// counter usage (ref.llm_sense?.counter). Counts unique IDs, not occurrences,
+// parallel to how vocabCount counts unique word IDs.
+const counterIdsByTitle = new Map();
+for (const [title, lineMap] of countersByTitleLine) {
+  for (const counterSet of lineMap.values()) {
+    for (const counterId of counterSet) {
+      if (!counterIdsByTitle.has(title)) counterIdsByTitle.set(title, new Set());
+      counterIdsByTitle.get(title).add(counterId);
+    }
+  }
+}
+for (const word of words) {
+  for (const [title, refs] of Object.entries(word.references ?? {})) {
+    for (const ref of refs) {
+      const counterId = ref.llm_sense?.counter;
+      if (counterId) {
+        if (!counterIdsByTitle.has(title)) counterIdsByTitle.set(title, new Set());
+        counterIdsByTitle.get(title).add(counterId);
+      }
+    }
+  }
+}
+
 const corpusEntries = stories.map(({ title, content: rawMarkdown }) => ({
   title,
   markdown: rawMarkdown,
   vocabCount: vocabCountByTitle.get(title) ?? 0,
   grammarCount: grammarCountByTitle.get(title) ?? 0,
+  counterCount: counterIdsByTitle.get(title)?.size ?? 0,
 }));
 
 // Collect all relative image references across all stories.

@@ -212,14 +212,14 @@ Three meaningful states for `llm_sense.counter`:
 1. ✅ `.claude/scripts/build-counters-json.mjs` written and working. Uses `ctr` part-of-speech filtering to auto-resolve JMDict matches, with manual override maps for the 22 ambiguous entries and 8 reading-collision IDs.
 2. ✅ All 66 counters resolved. New schema: `id`, `countExamples`, `jmdict: { id, senseIndex }`, `pronunciations` with `{ primary, rare }` objects.
 3. ✅ `build-counters-json.mjs` parses TSV pronunciation cells into `{ primary, rare }` objects.
-4. Commit `counters.json` to published Gist (alongside `transitive-pairs.json`).
+4. ✅ Commit `counters.json` to published Gist (alongside `transitive-pairs.json`): added to `filesToPublish` in `publish.mjs`.
 
 ### Phase 2: Enrollment via `prepare-publish.mjs`
 
 5. ✅ Counter detection wired into `prepare-publish.mjs`: for any word appearing in `counters.json`, the sense analysis includes a counter-detection question.
 6. ✅ LLM-detected counter stored in `llm_sense.counter`; manual `- counter:id` annotation stored as sibling `ref.counter`. Consumers check `ref.counter ?? ref.llm_sense?.counter`.
 7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
-8. Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
+8. ✅ Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
 
 ### Phase 3: iOS — Counter enrollment and `meaning-to-reading` facet
 
