@@ -459,7 +459,7 @@ Example: { "1234567": 0, "9876543": null }`;
 
   // --- Step 7: Summary ---
 
-  console.log(`
+  if (uncheckedVerbs.length > 0) console.log(`
 === Summary ===
 Unchecked verbs examined:  ${uncheckedVerbs.length}
 Compound candidates found: ${[...candidatesBySuffix.values()].reduce((n, a) => n + a.length, 0)}
@@ -467,6 +467,8 @@ Added to compound-verbs:   ${dryRun ? "(dry-run)" : addedCount}
 Skipped (no sense match):  ${skippedNullCount}
 Flagged as not-compound:   ${dryRun ? "(dry-run, would flag " + flaggedCount + ")" : flaggedCount}
 `);
+
+  return uncheckedVerbs.length;
 }
 
 // --- Script entry point ---

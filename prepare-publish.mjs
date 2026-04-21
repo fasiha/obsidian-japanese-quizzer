@@ -1295,5 +1295,4 @@ console.log(
 );
 
 // --- Compound verb detection ---
-console.log("\n=== Compound verb detection ===");
 await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs });
