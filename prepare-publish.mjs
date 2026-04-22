@@ -373,6 +373,8 @@ const mdFiles = findMdFiles(projectRoot);
 // counts both clothing and race placement). null means JMDict has no ctr-tagged sense.
 const hasSenseIndices = (c) => Array.isArray(c.senseIndex) && c.senseIndex.length > 0;
 const countersByJmdictId = new Map();
+// Maps counter id (e.g. "くみ-クラス") → jmdict id string, for resolving counter bullets to vocab entries.
+const counterIdToJmdictId = new Map();
 const countersJsonPath = path.join(projectRoot, "Counters", "counters.json");
 let countersJsonData = [];
 if (existsSync(countersJsonPath)) {
@@ -389,6 +391,7 @@ if (existsSync(countersJsonPath)) {
           whatItCounts: counter.whatItCounts,
           senseIndex: counter.jmdict.senseIndex,
         });
+        counterIdToJmdictId.set(counter.id, jmdictId);
       }
     }
   } catch (e) {
@@ -492,14 +495,33 @@ for (const filePath of mdFiles) {
   }
 
   // --- Counter extraction ---
-  // Build a map: title → (line → counterId) for manual counter annotations
+  // Build a map: title → (line → counterId) for manual counter annotations.
+  // Also treat each counter bullet as a vocab entry for its underlying JMDict word,
+  // so that counter-only files (e.g. Counters-Must-Know.md) produce word entries in
+  // vocab.json. Deduplication: if a regular vocab bullet already added a ref for
+  // this word on the same line, skip adding a second one (the counter-matching logic
+  // below will attach ref.counter to the existing ref).
   if (!countersByTitleLine.has(title)) {
     countersByTitleLine.set(title, new Map());
   }
-  for (const { counterId, line } of extractCounterBullets(content)) {
+  for (const { counterId, line, context } of extractCounterBullets(content)) {
     const lineMap = countersByTitleLine.get(title);
     if (!lineMap.has(line)) lineMap.set(line, new Set());
     lineMap.get(line).add(counterId);
+
+    const wordId = counterIdToJmdictId.get(counterId);
+    if (!wordId) continue;
+    const existingEntry = wordMap.get(wordId);
+    const alreadyOnLine = existingEntry?.refs.get(title)?.some((r) => r.line === line);
+    if (alreadyOnLine) continue;
+    const occurrence = { line, context, narration: undefined };
+    if (existingEntry) {
+      existingEntry.sources.add(title);
+      if (!existingEntry.refs.has(title)) existingEntry.refs.set(title, []);
+      existingEntry.refs.get(title).push(occurrence);
+    } else {
+      wordMap.set(wordId, { id: wordId, sources: new Set([title]), refs: new Map([[title, [occurrence]]]) });
+    }
   }
 }
 
@@ -585,8 +607,8 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
     for (const ref of refs) {
       const counterSet = countersForTitle.get(ref.line);
       if (!counterSet || counterSet.size === 0) continue;
-      const matchingId = wordCounterIds.find((cid) => counterSet.has(cid));
-      if (matchingId) ref.counter = matchingId;
+      const matchingIds = wordCounterIds.filter((cid) => counterSet.has(cid));
+      if (matchingIds.length > 0) ref.counter = matchingIds;
     }
   }
   const entry = { id, sources: [...sources], references };
@@ -723,7 +745,8 @@ function parseSingleSenseResponse(fullText, displayForm, numSenses) {
   const senseIndices = parsed.sense_indices.filter(
     (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < numSenses,
   );
-  const counter = parsed.counter ?? null;
+  const rawCounter = parsed.counter;
+  const counter = Array.isArray(rawCounter) ? rawCounter.filter((c) => typeof c === "string" && c.length > 0) : null;
   return { senseIndices, counter };
 }
 
@@ -749,25 +772,17 @@ function buildSingleSensePrompt(jmWord, ref, counterInfo = null) {
   );
 
   if (counterInfo && counterInfo.length > 0) {
-    if (counterInfo.length === 1) {
-      // Single counter: straightforward yes/no question
-      const counter = counterInfo[0];
-      prompt += (
-        `\nAlso: is this word being used as the counter "${counter.id}" (for ${counter.whatItCounts})? ` +
-        `If yes, respond with the counter id "${counter.id}". If not or unsure, set counter to null.`
-      );
-    } else {
-      // Multiple counters: ask for index (e.g., かい-階 vs かい-回)
-      const counterList = counterInfo.map((c, i) => `${i}: "${c.id}" (${c.whatItCounts})`).join(", ");
-      prompt += (
-        `\nAlso: is this word being used as one of these counters? ${counterList} ` +
-        `If yes, respond with the counter id (e.g., "${counterInfo[0].id}"). If not or unsure, set counter to null.`
-      );
-    }
+    const counterList = counterInfo.map((c) => `"${c.id}" (${c.whatItCounts})`).join(", ");
+    prompt += (
+      `\nAlso: is this word being used as any of these counters? ${counterList} ` +
+      `Respond with an array of matching counter ids (e.g., ["${counterInfo[0].id}"]). ` +
+      `Multiple counters are allowed if the sentence genuinely uses the word in multiple counter roles. ` +
+      `Use an empty array if the word is not being used as a counter here.`
+    );
   }
 
   const exampleJson = counterInfo && counterInfo.length > 0
-    ? `{"sense_indices": [0], "counter": null}`
+    ? `{"sense_indices": [0], "counter": []}`
     : `{"sense_indices": [0]}`;
   prompt += `\nThink step by step, then end your response with a JSON code block:\n` +
     `\`\`\`json\n${exampleJson}\n\`\`\``;
@@ -817,19 +832,15 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs, counterInfoP
       let block = `Occurrence ${i}:\n${parts.length ? parts.join("\n") : "(no context)"}`;
       const ci = counterInfoPerRef[i];
       if (ci && ci.length > 0) {
-        if (ci.length === 1) {
-          block += `\n(Also: is this word used as the counter "${ci[0].id}" (for ${ci[0].whatItCounts})? If yes, set counter to "${ci[0].id}". If not or unsure, set counter to null.)`;
-        } else {
-          const list = ci.map((c) => `"${c.id}" (${c.whatItCounts})`).join(", ");
-          block += `\n(Also: is this word used as one of these counters? ${list} If yes, set counter to the matching id. If not or unsure, set counter to null.)`;
-        }
+        const list = ci.map((c) => `"${c.id}" (${c.whatItCounts})`).join(", ");
+        block += `\n(Also: is this word used as any of these counters? ${list} Set counter to an array of matching ids, or [] if not used as a counter.)`;
       }
       return block;
     })
     .join("\n\n");
 
   const exampleEntry = anyCounterQuestions
-    ? `{"sense_indices": [0], "counter": null}`
+    ? `{"sense_indices": [0], "counter": []}`
     : `{"sense_indices": [0]}`;
   const exampleJson = `{"occurrences": [${exampleEntry}, {"sense_indices": [1, 2]}]}`;
 
@@ -874,7 +885,7 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs, counterInfoP
     senseIndices: (occ.sense_indices ?? []).filter(
       (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < jmWord.sense.length,
     ),
-    counter: counterInfoPerRef[i] ? (occ.counter ?? null) : undefined,
+    counter: counterInfoPerRef[i] ? (Array.isArray(occ.counter) ? occ.counter.filter((c) => typeof c === "string" && c.length > 0) : null) : undefined,
     reasoning: fullText,
   }));
 }
@@ -901,17 +912,30 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
     const jmWord = jmdictById.get(word.id);
     for (const refs of Object.values(word.references ?? {})) {
       for (const ref of refs) {
+        if (ref.counter?.length) {
+          // ref.counter was set from manual counter bullets — we know exactly which
+          // counter(s) are in use, so derive sense_indices directly from counters.json
+          // senseIndex fields without calling Haiku.
+          const counterEntries = (countersByJmdictId.get(word.id) ?? []).filter((c) =>
+            ref.counter.includes(c.id),
+          );
+          const senseIndices = [
+            ...new Set(counterEntries.flatMap((c) => c.senseIndex ?? [])),
+          ].sort((a, b) => a - b);
+          ref.llm_sense = { sense_indices: senseIndices, computed_from: refComputedFrom(ref) };
+          continue;
+        }
         if (!jmWord) {
           ref.llm_sense = { sense_indices: [0], computed_from: refComputedFrom(ref), counter: null };
         } else if (jmWord.sense.length <= 1) {
           const computedFrom = refComputedFrom(ref);
           const counterInfo = countersByJmdictId.get(word.id);
-          if (counterInfo && !ref.counter) {
+          if (counterInfo && !ref.counter?.length) {
             const trivialCounter = counterInfo.find(hasSenseIndices);
             if (trivialCounter) {
               // The JMDict-tagged counter sense IS the word's only sense — no ambiguity,
               // no LLM call needed. Mark this counter trivially.
-              ref.llm_sense = { sense_indices: [0], computed_from: computedFrom, counter: trivialCounter.id };
+              ref.llm_sense = { sense_indices: [0], computed_from: computedFrom, counter: [trivialCounter.id] };
             } else if (computedFrom.length > 0) {
               // All counters.json entries for this word have senseIndex: null — the JMDict
               // entry has no ctr-tagged sense, so we can't trivially infer counter usage.
@@ -968,7 +992,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
           // Only show counter detection prompt if the ref doesn't already have a manual counter annotation
-          const counterInfoForRef = ref.counter ? null : counterInfo;
+          const counterInfoForRef = ref.counter?.length ? null : counterInfo;
           console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref, counterInfoForRef).replaceAll(/\n/g, '\n    > ')}\n`);
           if (counterInfoForRef) counterSkippedCount++;
         }
@@ -977,7 +1001,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
       if (noLlm) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
-          const counterInfoForRef = ref.counter ? null : counterInfo;
+          const counterInfoForRef = ref.counter?.length ? null : counterInfo;
           console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref, counterInfoForRef).replaceAll(/\n/g, '\n    > ')}\n`);
           if (counterInfoForRef) counterSkippedCount++;
         }
@@ -1000,7 +1024,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
         process.stdout.write(
           `  Analyzing ${displayForm} [${title}:lines ${lines}] (${uncachedRefs.length} occurrences, batch; ${refsAnalyzed + 1}–${refsAnalyzed + uncachedRefs.length}/${maxSenses === Infinity ? "all" : maxSenses})… `,
         );
-        const counterInfoPerRef = uncachedRefs.map((ref) => (ref.counter ? null : counterInfo));
+        const counterInfoPerRef = uncachedRefs.map((ref) => (ref.counter?.length ? null : counterInfo));
         results = await analyzeReferencesSenseBatch(anthropic, jmWord, uncachedRefs, counterInfoPerRef);
         process.stdout.write(
           `→ [${results.map((r) => `[${r.senseIndices.join(", ")}]`).join(", ")}]\n`,
@@ -1014,13 +1038,13 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
         // Manual counter annotations go in ref.counter (sibling to llm_sense)
         // LLM-detected counters go in llm_sense.counter (null = asked but not a counter; key absent = never asked)
         const llmSenseObj = { sense_indices: senseIndices, computed_from: computedFrom };
-        if (counterInfo && !ref.counter) {
+        if (counterInfo && !ref.counter?.length) {
           llmSenseObj.counter = counter ?? null;
         }
         llmSenseObj.reasoning = reasoning;
         ref.llm_sense = llmSenseObj;
         reasoningLines.push(
-          `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]${counter ? ` (counter: ${counter})` : ""}${ref.counter ? ` [manual: ${ref.counter}]` : ""}\n${"=".repeat(60)}\n${reasoning}\n`,
+          `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]${counter?.length ? ` (counter: ${counter.join(", ")})` : ""}${ref.counter?.length ? ` [manual: ${ref.counter.join(", ")}]` : ""}\n${"=".repeat(60)}\n${reasoning}\n`,
         );
       }
       writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
@@ -1243,8 +1267,7 @@ for (const [title, lineMap] of countersByTitleLine) {
 for (const word of words) {
   for (const [title, refs] of Object.entries(word.references ?? {})) {
     for (const ref of refs) {
-      const counterId = ref.llm_sense?.counter;
-      if (counterId) {
+      for (const counterId of ref.llm_sense?.counter ?? []) {
         if (!counterIdsByTitle.has(title)) counterIdsByTitle.set(title, new Set());
         counterIdsByTitle.get(title).add(counterId);
       }

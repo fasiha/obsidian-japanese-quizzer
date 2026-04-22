@@ -159,23 +159,33 @@ A vocabulary reference object in `vocab.json` can carry counter information in t
 {
   "line": 82,
   "context": "赤ちゃんは３ヶ月で笑い始めます。",
-  "counter": "つき",
+  "counter": ["つき"],
   "llm_sense": { "sense_indices": [1], "computed_from": [...], "reasoning": "..." }
 }
 ```
 
-**LLM-detected counter** → stored **inside `llm_sense`**:
+Multiple `- counter:id` bullets for the same sentence (e.g. `くみ-クラス` and `くみ-グループ` both appearing in a single sentence) all get collected:
+```json
+{
+  "line": 12,
+  "context": "一組と二組が…",
+  "counter": ["くみ-クラス", "くみ-グループ"],
+  "llm_sense": { "sense_indices": [0, 1], "computed_from": [...], "reasoning": "..." }
+}
+```
+
+**LLM-detected counter** → stored **inside `llm_sense`** as an array:
 ```json
 {
   "line": 67,
   "context": "１００枚の折り紙が必要です。",
-  "llm_sense": { "sense_indices": [0], "counter": "まい", "computed_from": [...], "reasoning": "..." }
+  "llm_sense": { "sense_indices": [0], "counter": ["まい"], "computed_from": [...], "reasoning": "..." }
 }
 ```
 
-Consumers resolve the counter as: `ref.counter ?? ref.llm_sense?.counter`.
+Consumers resolve counter IDs as: `[...(ref.counter ?? []), ...(ref.llm_sense?.counter ?? [])]` — or simply check each source independently.
 
-A ref never has both: if `ref.counter` is set from a manual annotation, the LLM counter-detection question is skipped entirely for that ref.
+A ref's `counter` array and its `llm_sense.counter` are mutually exclusive: if `ref.counter` is non-empty (manual annotations present), the LLM counter-detection question is skipped entirely for that ref.
 
 ### Detection strategy
 
@@ -186,13 +196,13 @@ A ref never has both: if `ref.counter` is set from a manual annotation, the LLM 
 
 `countersByJmdictId` maps each JMDict ID to the array of `counters.json` entries that reference it. Most IDs have exactly one entry; a few ambiguous readings (e.g. 月 with ID 1255430) have two.
 
-- **1 candidate**: prompt asks "Is this word being used as counter `id` (for `whatItCounts`)? If yes, respond with `id`. If not or unsure, set counter to null."
-- **2+ candidates**: prompt lists all candidates by index and asks the LLM to choose the matching counter ID, or null if unsure. Example for 月: "Is this word being used as one of these counters? 0: `つき` (Months), 1: `がつ` (Calendar months)."
+For any number of candidates, the prompt asks the LLM to return an array of matching counter IDs (e.g. `["つき"]`), or an empty array if the word is not used as a counter. Multiple IDs are allowed when a sentence genuinely uses the word in more than one counter role simultaneously.
 
 Three meaningful states for `llm_sense.counter`:
 - **key absent** — LLM was never asked (word not counter-capable, or entry predates counter detection). Gap detection flags these.
-- **`counter: null`** — LLM was asked and said "not a counter here" or "unsure which counter".
-- **`counter: "id"`** — LLM confirmed counter usage and identified the counter.
+- **`counter: null`** — LLM was asked but returned a non-array response (parse failure).
+- **`counter: []`** — LLM was asked and confirmed the word is not used as a counter here.
+- **`counter: ["id", …]`** — LLM confirmed counter usage and identified one or more counter IDs.
 
 ### Gap detection
 
@@ -217,7 +227,7 @@ Three meaningful states for `llm_sense.counter`:
 ### Phase 2: Enrollment via `prepare-publish.mjs`
 
 5. ✅ Counter detection wired into `prepare-publish.mjs`: for any word appearing in `counters.json`, the sense analysis includes a counter-detection question.
-6. ✅ LLM-detected counter stored in `llm_sense.counter`; manual `- counter:id` annotation stored as sibling `ref.counter`. Consumers check `ref.counter ?? ref.llm_sense?.counter`.
+6. ✅ LLM-detected counters stored in `llm_sense.counter` (array); manual `- counter:id` annotations stored as sibling `ref.counter` (array). Multiple counters per sentence are supported in both sources.
 7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
 8. ✅ Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
 

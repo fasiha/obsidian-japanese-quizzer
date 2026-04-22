@@ -30,9 +30,17 @@ Each **word entry**:
         "line": 9,                 // 1-based line number in the Markdown file
         "context": "…prose…",      // nearest preceding sentence (may be null)
         "narration": "…note…",     // non-Japanese text after the bullet tokens (may be null)
+        "counter": ["くみ-クラス"], // manually annotated counter IDs for this occurrence (absent
+                                   // when no `- counter:…` bullets matched this word; may contain
+                                   // multiple IDs if the sentence uses the word in multiple counter
+                                   // roles, e.g. both くみ-クラス and くみ-グループ)
         "llm_sense": {             // sense analysis (absent when context is empty)
           "sense_indices": [0],    // 0-based JMDict sense indices Haiku selected
           "computed_from": […],    // sorted deduplicated [context, narration] used as cache key
+          "counter": ["くみ-クラス"], // counter IDs Haiku detected (empty array = asked but not a
+                                   // counter; key absent = Haiku was not asked about counters for
+                                   // this occurrence because ref.counter already covered it; null
+                                   // = asked but Haiku returned a non-array response)
           "reasoning": "…"         // Haiku's chain-of-thought (present when freshly computed)
         },
         "annotated_forms": ["たきぎ"]  // Japanese tokens from the vocab bullet, in order
