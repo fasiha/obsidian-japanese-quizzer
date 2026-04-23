@@ -45,6 +45,9 @@ struct VocabReference: Codable {
     let context: String?
     /// Non-Japanese pedagogical annotation on the word's bullet line (e.g. "[kanji]").
     let narration: String?
+    /// Counter IDs from a manual `- counter:id` annotation in the Markdown source.
+    /// Absent when no annotation was present; non-empty means the word was used as these counter(s).
+    let counter: [String]?
     /// LLM-inferred sense(s) this specific occurrence embodies. Absent when not yet determined.
     let llmSense: LlmSense?
     /// Japanese tokens from the annotator's vocab bullet, in order (e.g. ["たきぎ"] or ["もと", "元", "本"]).
@@ -52,9 +55,15 @@ struct VocabReference: Codable {
     let annotatedForms: [String]?
 
     private enum CodingKeys: String, CodingKey {
-        case line, context, narration
+        case line, context, narration, counter
         case llmSense = "llm_sense"
         case annotatedForms = "annotated_forms"
+    }
+
+    /// All counter IDs attested for this occurrence: manual annotation takes precedence;
+    /// falls back to LLM-detected counters.
+    var attestedCounterIds: [String] {
+        counter ?? llmSense?.counter ?? []
     }
 }
 
@@ -64,9 +73,13 @@ struct LlmSense: Codable {
     /// Zero-based indices into the JMDict sense list for the senses the student is learning.
     /// Empty array means Haiku had insufficient context; iOS app treats it the same as [0].
     let senseIndices: [Int]
+    /// Counter IDs Haiku detected for this occurrence.
+    /// Empty array = asked, not a counter use. Absent = not asked (manual annotation covered it). Nil = malformed response.
+    let counter: [String]?
 
     private enum CodingKeys: String, CodingKey {
         case senseIndices = "sense_indices"
+        case counter
     }
 }
 

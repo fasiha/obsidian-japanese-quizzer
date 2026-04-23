@@ -36,6 +36,7 @@ struct WordDetailSheet: View {
 
     @Environment(VocabCorpus.self) private var corpus
     @Environment(TransitivePairCorpus.self) private var pairCorpus
+    @Environment(CounterCorpus.self) private var counterCorpus
     @Environment(GrammarStore.self) private var grammarStore
     @Environment(CorpusStore.self) private var corpusStore
 
@@ -213,6 +214,10 @@ struct WordDetailSheet: View {
                     }
                     .buttonStyle(.plain)
                 }
+            }
+
+            ForEach(counterItemsToShow) { counterItem in
+                counterInfoGroup(counterItem: counterItem)
             }
 
             if !item.references.isEmpty {
@@ -403,6 +408,10 @@ struct WordDetailSheet: View {
                 kanjiCharPicker
             }
 
+            ForEach(counterItemsToShow) { counterItem in
+                counterEnrollmentControl(counterItem: counterItem)
+            }
+
             if shouldShowQuickHalflifeChips {
                 quickHalflifeChipsSection
             }
@@ -432,6 +441,106 @@ struct WordDetailSheet: View {
                 }
                 .buttonStyle(.bordered)
             }
+        }
+    }
+
+    // MARK: - Counter helpers
+
+    /// Counter IDs attested in the current navigation origin (document title + line number).
+    /// Falls back to all counter IDs for this word when no origin-specific data is available.
+    private var originCounterIds: [String] {
+        switch origin {
+        case .reference(let title, let line):
+            let ids = item.references[title]?
+                .first(where: { $0.line == line })?.attestedCounterIds ?? []
+            return ids
+        case .document(let title):
+            return Array(Set(
+                (item.references[title] ?? []).flatMap(\.attestedCounterIds)
+            )).sorted()
+        case .none:
+            return []
+        }
+    }
+
+    /// Counter items to display: those attested in the current origin, or all if origin has none.
+    private var counterItemsToShow: [CounterItem] {
+        let all = counterCorpus.items(forJMDictId: item.id)
+        guard !all.isEmpty else { return [] }
+        let ids = originCounterIds
+        if ids.isEmpty { return all }
+        let filtered = all.filter { ids.contains($0.id) }
+        return filtered.isEmpty ? all : filtered
+    }
+
+    private let counterNumberKeys = ["1","2","3","4","5","6","7","8","9","10","how-many"]
+    private let counterNumberLabels: [String: String] = [
+        "1":"１","2":"２","3":"３","4":"４","5":"５",
+        "6":"６","7":"７","8":"８","9":"９","10":"１０","how-many":"何？"
+    ]
+
+    /// Collapsed pronunciation table + whatItCounts for one counter entry.
+    @ViewBuilder
+    private func counterInfoGroup(counterItem: CounterItem) -> some View {
+        let c = counterItem.counter
+        infoGroup(heading: "\(c.kanji) (\(c.reading)) — Counter") {
+            Text(c.whatItCounts).font(.callout)
+            if !c.countExamples.isEmpty {
+                Text(c.countExamples.joined(separator: ", "))
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            DisclosureGroup("Pronunciations") {
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                    ForEach(counterNumberKeys, id: \.self) { key in
+                        if let cell = c.pronunciations[key] {
+                            GridRow {
+                                Text(counterNumberLabels[key] ?? key)
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                    .frame(minWidth: 32, alignment: .trailing)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(cell.primary.joined(separator: " / ")).font(.body)
+                                    if !cell.rare.isEmpty {
+                                        Text("(\(cell.rare.joined(separator: " / ")))")
+                                            .font(.caption).foregroundStyle(.tertiary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    /// Don't know / Learning / Known picker for one counter's enrollment state.
+    @ViewBuilder
+    private func counterEnrollmentControl(counterItem: CounterItem) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            let label = counterCorpus.items(forJMDictId: item.id).count > 1
+                ? "Counter (\(counterItem.counter.kanji))"
+                : "Counter"
+            Text(label)
+                .font(.caption).fontWeight(.semibold)
+                .foregroundStyle(.secondary).textCase(.uppercase).tracking(0.5)
+            Picker(label, selection: Binding(
+                get: { counterItem.state },
+                set: { newState in
+                    Task {
+                        switch newState {
+                        case .unknown:  await counterCorpus.clearCounter(counterId: counterItem.id, db: db)
+                        case .learning: await counterCorpus.setCounterLearning(counterId: counterItem.id, db: db)
+                        case .known:    await counterCorpus.setCounterKnown(counterId: counterItem.id, db: db)
+                        }
+                    }
+                }
+            )) {
+                Text("Don't know").tag(FacetState.unknown)
+                Text("Learning").tag(FacetState.learning)
+                Text("Known").tag(FacetState.known)
+            }
+            .pickerStyle(.segmented)
         }
     }
 

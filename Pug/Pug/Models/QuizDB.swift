@@ -587,6 +587,13 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// All enrolled counter Ebisu models.
+    func enrolledCounterRecords() async throws -> [EbisuRecord] {
+        try await pool.read { db in
+            try EbisuRecord.filter(Column("word_type") == "counter").fetchAll(db)
+        }
+    }
+
     // MARK: - Word commitment
 
     func commitment(wordType: String, wordId: String) async throws -> WordCommitment? {
