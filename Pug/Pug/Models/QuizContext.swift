@@ -106,6 +106,91 @@ func preferredKanaForm(
     return kanaTexts.first { form in restrictedSets.contains { $0.contains(form) } }
 }
 
+/// True when the string contains at least one CJK kanji character.
+private func containsKanji(_ text: String) -> Bool {
+    text.unicodeScalars.contains {
+        ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+        ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+        ($0.value >= 0xF900 && $0.value <= 0xFAFF)
+    }
+}
+
+/// Result of resolving annotator-chosen forms against a JMDict entry's written forms and readings.
+struct ResolvedAnnotatorForms {
+    /// The best-matching written form (kanji + furigana) for this occurrence.
+    let writtenForm: WrittenForm
+    /// The kana reading that matches the written form for this occurrence.
+    let kana: String
+}
+
+/// Resolves the annotator's vocab-bullet tokens into a concrete written form and kana reading.
+///
+/// Resolution rules:
+/// - Tokens are classified as kana-only (pure hiragana/katakana) or kanji-containing.
+/// - The first kana token is the preferred reading; the first kanji token is the preferred written text.
+/// - If only one type is present, the other is derived from the matching WrittenFormGroup.
+/// - If both are present and compatible (a WrittenFormGroup exists with that reading containing
+///   that kanji form), both are used directly.
+/// - If both are present but incompatible, the token that appears first in annotatedForms wins:
+///   kanji-first → keep the kanji, derive a compatible kana from its group's reading;
+///   kana-first  → keep the kana, derive a compatible kanji form from its group.
+///   This ensures the returned (writtenForm, kana) pair always corresponds to a valid furigana
+///   entry in writtenForms — we never mix a form and a reading from different groups.
+/// Returns nil when no compatible form can be found.
+func resolveAnnotatedForms(
+    annotatedForms: [String],
+    writtenForms: [WrittenFormGroup],
+    kanaTexts: [String]
+) -> ResolvedAnnotatorForms? {
+    guard !annotatedForms.isEmpty else { return nil }
+
+    let kanjiCandidate = annotatedForms.first(where: { containsKanji($0) })
+    let kanaCandidate  = annotatedForms.first(where: { !containsKanji($0) })
+
+    if let kana = kanaCandidate, let kanji = kanjiCandidate {
+        // Both present — try compatible match first.
+        for group in writtenForms where group.reading == kana {
+            if let form = group.forms.first(where: { $0.text == kanji }) {
+                return ResolvedAnnotatorForms(writtenForm: form, kana: kana)
+            }
+        }
+        // Incompatible: honour whichever token appears first in the annotatedForms list.
+        let kanjiIndex = annotatedForms.firstIndex(where: { containsKanji($0) }) ?? .max
+        let kanaIndex  = annotatedForms.firstIndex(where: { !containsKanji($0) }) ?? .max
+        if kanjiIndex < kanaIndex {
+            // Kanji wins: find the kanji form, derive its group's reading as kana.
+            for group in writtenForms {
+                if let form = group.forms.first(where: { $0.text == kanji }) {
+                    return ResolvedAnnotatorForms(writtenForm: form, kana: group.reading)
+                }
+            }
+        } else {
+            // Kana wins: find the kana group, take its first form as kanji.
+            if let group = writtenForms.first(where: { $0.reading == kana }),
+               let form = group.forms.first {
+                return ResolvedAnnotatorForms(writtenForm: form, kana: kana)
+            }
+        }
+
+    } else if let kana = kanaCandidate {
+        // Kana only: find the WrittenFormGroup whose reading matches, take its first form.
+        if let group = writtenForms.first(where: { $0.reading == kana }),
+           let form = group.forms.first {
+            return ResolvedAnnotatorForms(writtenForm: form, kana: kana)
+        }
+
+    } else if let kanji = kanjiCandidate {
+        // Kanji only: find the form, derive kana from its group's reading.
+        for group in writtenForms {
+            if let form = group.forms.first(where: { $0.text == kanji }) {
+                return ResolvedAnnotatorForms(writtenForm: form, kana: group.reading)
+            }
+        }
+    }
+
+    return nil
+}
+
 // MARK: - Quiz item
 
 /// The urgency of one word+facet pair for a quiz session.

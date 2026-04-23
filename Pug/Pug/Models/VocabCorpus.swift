@@ -22,6 +22,10 @@ struct VocabItem: Identifiable {
     let id: String              // JMDict entry ID
     let sources: [String]       // story titles this word appears in
     let wordText: String        // primary display form (first written form, or first kana if none)
+    /// Written form and kana resolved from the first reference's annotatedForms (the annotator's
+    /// vocab bullet). Nil when annotatedForms are absent or no compatible form can be found.
+    /// Used for display, default form commitment, and swipe-to-learn enrollment.
+    let annotatorResolved: ResolvedAnnotatorForms?
     let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
     let kanaTexts: [String]     // non-irregular kana-only forms
     let senseExtras: [SenseExtra]        // per-sense data: glosses + metadata (usage notes, related/antonym xrefs, pos tags)
@@ -166,10 +170,22 @@ final class VocabCorpus {
 
             let corpusSenseIndices = entry.corpusSenseIndices
 
+            // Resolve the annotator's preferred form from the first reference's annotatedForms.
+            // Sources are stored in sorted order; use the first source's first reference entry.
+            let firstAnnotatedForms: [String] = entry.sources.lazy
+                .compactMap { entry.references?[$0]?.first?.annotatedForms }
+                .first ?? []
+            let annotatorResolved = resolveAnnotatedForms(
+                annotatedForms: firstAnnotatedForms,
+                writtenForms: entry.writtenForms ?? [],
+                kanaTexts: jd.kanaTexts
+            )
+
             // If the user has committed to a specific written form, use that for display
             // rather than inferring from corpus senses — the commitment is the user's
             // explicit choice and should always win.
             let preferredText = commitment?.committedWrittenText
+            ?? annotatorResolved?.writtenForm.text
             ?? preferredWrittenForm(
                 senseExtras: jd.senseExtras,
                 activeSenseIndices: corpusSenseIndices,
@@ -186,6 +202,7 @@ final class VocabCorpus {
                 id: entry.id,
                 sources: entry.sources,
                 wordText: preferredText,
+                annotatorResolved: annotatorResolved,
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 senseExtras: jd.senseExtras,
@@ -282,12 +299,13 @@ final class VocabCorpus {
     /// When transitioning to .learning for the first time, pass senseIndicesToSeed to record
     /// which senses the student is committing to from their current navigation origin.
     func setReadingState(_ state: FacetState, wordId: String, db: QuizDB,
-                         senseIndicesToSeed: [Int]? = nil) async {
+                         senseIndicesToSeed: [Int]? = nil,
+                         preferredForm: WrittenForm? = nil) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
             // Ensure commitment exists
             if items[idx].commitment == nil {
-                let furigana = defaultFuriganaJSON(for: items[idx])
+                let furigana = defaultFuriganaJSON(for: items[idx], preferredForm: preferredForm)
                 try await db.setCommitment(wordType: "jmdict", wordId: wordId, furigana: furigana)
                 items[idx].commitment = WordCommitment(wordType: "jmdict", wordId: wordId,
                                                         furigana: furigana, kanjiChars: nil,
@@ -425,12 +443,18 @@ final class VocabCorpus {
     // MARK: - Helpers
 
     /// Default furigana JSON for a word (first form of first reading group, or "[]").
-    private func defaultFuriganaJSON(for item: VocabItem) -> String {
-        let form = preferredWrittenForm(
-            senseExtras: item.senseExtras,
-            activeSenseIndices: item.corpusSenseIndices,
-            writtenForms: item.writtenForms
-        ) ?? item.writtenForms.first?.forms.first
+    /// Returns the furigana JSON for the default committed form, preferring an explicit
+    /// annotator-resolved form over sense-inferred defaults. Pass `preferredForm` to override
+    /// with a document-specific resolution (e.g. from a swipe in a leaf document section).
+    private func defaultFuriganaJSON(for item: VocabItem, preferredForm: WrittenForm? = nil) -> String {
+        let form = preferredForm
+            ?? item.annotatorResolved?.writtenForm
+            ?? preferredWrittenForm(
+                senseExtras: item.senseExtras,
+                activeSenseIndices: item.corpusSenseIndices,
+                writtenForms: item.writtenForms
+            )
+            ?? item.writtenForms.first?.forms.first
         guard let form,
               let data = try? JSONEncoder().encode(form.furigana),
               let json = String(data: data, encoding: .utf8)

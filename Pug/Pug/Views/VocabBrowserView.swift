@@ -210,7 +210,7 @@ struct VocabBrowserView: View {
                 }
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    swipeButtons(for: item)
+                    swipeButtons(for: item, documentTitle: nil)
                 }
             }
         }
@@ -245,7 +245,7 @@ struct VocabBrowserView: View {
                     node: node,
                     collapsedSections: $collapsedSections,
                     selectedItem: $selectedItem,
-                    swipeButtons: { item in swipeButtons(for: item) },
+                    swipeButtons: { item, title in swipeButtons(for: item, documentTitle: title) },
                     onLearn: { title in startPlanting(documentTitle: title) },
                     onDocumentQuiz: { title in startDocumentQuiz(documentTitle: title) }
                 )
@@ -296,28 +296,46 @@ struct VocabBrowserView: View {
     }
 
     @ViewBuilder
-    private func swipeButtons(for item: VocabItem) -> some View {
+    /// `documentTitle` is the specific document leaf the user is swiping in, or nil when
+    /// swiping from the flat unfiltered list (no document context available).
+    private func swipeButtons(for item: VocabItem, documentTitle: String?) -> some View {
         // Only show swipe actions for fully unknown words.
         // Learning / known words require deliberate action via WordDetailSheet.
         if item.readingState == .unknown && item.kanjiState == .unknown {
+            // Resolve the preferred written form using the document-specific annotatedForms when
+            // available, falling back to the item-level annotatorResolved (from the first source).
+            let docResolved: ResolvedAnnotatorForms? = documentTitle.flatMap { title in
+                let forms = item.references[title]?.first?.annotatedForms ?? []
+                return resolveAnnotatedForms(annotatedForms: forms,
+                                             writtenForms: item.writtenForms,
+                                             kanaTexts: item.kanaTexts)
+            }
+            let resolved = docResolved ?? item.annotatorResolved
+            let preferredForm = resolved?.writtenForm
+                ?? preferredWrittenForm(
+                    senseExtras: item.senseExtras,
+                    activeSenseIndices: item.corpusSenseIndices,
+                    writtenForms: item.writtenForms
+                )
+                ?? item.writtenForms.flatMap(\.forms).first
+
             // "Learn word" is declared first so it appears closest to the swipe edge.
             Button {
-                Task { await corpus.setReadingState(.learning, wordId: item.id, db: db) }
+                Task {
+                    await corpus.setReadingState(.learning, wordId: item.id, db: db,
+                                                 preferredForm: resolved?.writtenForm)
+                }
             } label: {
                 Label("Learn word", systemImage: "plus.circle.fill")
             }
             .tint(.green)
             // "Learn kanji" only makes sense when the word has actual kanji forms.
-            let firstForm = preferredWrittenForm(
-                senseExtras: item.senseExtras,
-                activeSenseIndices: item.corpusSenseIndices,
-                writtenForms: item.writtenForms
-            ) ?? item.writtenForms.flatMap(\.forms).first
-            if !item.isKanaOnly, let form = firstForm, !form.furigana.extractKanji().isEmpty {
+            if !item.isKanaOnly, let form = preferredForm, !form.furigana.extractKanji().isEmpty {
                 Button {
                     Task {
                         // setReadingState ensures commitment (furigana) exists first.
-                        await corpus.setReadingState(.learning, wordId: item.id, db: db)
+                        await corpus.setReadingState(.learning, wordId: item.id, db: db,
+                                                     preferredForm: resolved?.writtenForm)
                         await corpus.setKanjiState(.learning, wordId: item.id,
                                                    kanjiChars: form.furigana.extractKanji(), db: db)
                     }
@@ -480,7 +498,7 @@ struct SourceSectionView<SwipeContent: View>: View {
     let node: SourceTreeNode
     @Binding var collapsedSections: Set<String>
     @Binding var selectedItem: VocabItemSelection?
-    @ViewBuilder let swipeButtons: (VocabItem) -> SwipeContent
+    @ViewBuilder let swipeButtons: (VocabItem, String?) -> SwipeContent
     var onLearn: ((String) -> Void)? = nil
     var onDocumentQuiz: ((String) -> Void)? = nil
 
@@ -525,7 +543,7 @@ struct SourceSectionView<SwipeContent: View>: View {
                     }
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        swipeButtons(item)
+                        swipeButtons(item, title)
                     }
                 }
             } label: {
@@ -576,9 +594,10 @@ struct VocabRowView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(item.wordText)
                     .font(.headline)
-                // Prefer the committed reading (from furigana) over kanaTexts.first so that
-                // a word like 焚き木 shows たきぎ rather than the JMDict-default まき.
-                let displayKana = item.commitment?.committedReading ?? item.kanaTexts.first
+                // Prefer the committed reading, then the annotator's chosen kana, then the
+                // JMDict-default first kana. This ensures e.g. 薪 shows たきぎ (from the bullet)
+                // rather than the JMDict-default まき when the annotator wrote "- たきぎ".
+                let displayKana = item.commitment?.committedReading ?? item.annotatorResolved?.kana ?? item.kanaTexts.first
                 if let kana = displayKana, kana != item.wordText {
                     Text(kana)
                         .font(.subheadline)

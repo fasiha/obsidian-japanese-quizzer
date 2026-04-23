@@ -65,6 +65,28 @@ struct WordDetailSheet: View {
         }
     }
 
+    /// Resolves the annotator's vocab-bullet forms for the specific navigation origin.
+    /// For a line-specific reference, resolves that line's annotatedForms.
+    /// For a document-level origin, resolves the first reference's annotatedForms for that document.
+    /// When origin is nil, falls back to item.annotatorResolved (pre-computed from the first source).
+    private var originResolvedForms: ResolvedAnnotatorForms? {
+        switch origin {
+        case .reference(let title, let line):
+            let forms = item.references[title]?
+                .first(where: { $0.line == line })?.annotatedForms ?? []
+            return resolveAnnotatedForms(annotatedForms: forms,
+                                         writtenForms: item.writtenForms,
+                                         kanaTexts: item.kanaTexts)
+        case .document(let title):
+            let forms = item.references[title]?.first?.annotatedForms ?? []
+            return resolveAnnotatedForms(annotatedForms: forms,
+                                         writtenForms: item.writtenForms,
+                                         kanaTexts: item.kanaTexts)
+        case .none:
+            return item.annotatorResolved
+        }
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var readerTarget: ReaderTarget? = nil
     @State private var pairDetailItem: TransitivePairItem? = nil
@@ -142,11 +164,13 @@ struct WordDetailSheet: View {
 
             // Secondary kana readings, deduplicated across hiragana/katakana variants.
             // Only shown when there is more than one distinct phonetic reading.
-            let primaryKana = preferredKanaForm(
-                senseExtras: item.senseExtras,
-                activeSenseIndices: item.corpusSenseIndices,
-                kanaTexts: item.kanaTexts
-            ) ?? item.kanaTexts.first
+            let primaryKana = originResolvedForms?.kana
+                ?? preferredKanaForm(
+                    senseExtras: item.senseExtras,
+                    activeSenseIndices: item.corpusSenseIndices,
+                    kanaTexts: item.kanaTexts
+                )
+                ?? item.kanaTexts.first
             let secondaryReadings: [String] = {
                 var seen: Set<String> = primaryKana.map { [toHiragana($0)] } ?? []
                 var result: [String] = []
@@ -243,14 +267,16 @@ struct WordDetailSheet: View {
     }
 
     /// Large ruby furigana heading from the first written form, or plain kana for kana-only words.
+    /// Prefers the origin's annotated forms (the annotator's vocab bullet) over sense-inferred forms.
     @ViewBuilder
     private var wordHeading: some View {
-        let preferred = preferredWrittenForm(
+        let annotatorForm = originResolvedForms?.writtenForm
+        let preferred = annotatorForm ?? preferredWrittenForm(
             senseExtras: item.senseExtras,
             activeSenseIndices: item.corpusSenseIndices,
             writtenForms: item.writtenForms
         )
-        let preferredKana = preferredKanaForm(
+        let preferredKana = originResolvedForms?.kana ?? preferredKanaForm(
             senseExtras: item.senseExtras,
             activeSenseIndices: item.corpusSenseIndices,
             kanaTexts: item.kanaTexts
@@ -725,13 +751,17 @@ struct WordDetailSheet: View {
     /// so the user can immediately start learning reading and kanji without
     /// having to pick a form first. The user can change the committed form
     /// later via the written form picker.
+    /// Prefers the form indicated by the origin's annotated forms (the annotator's vocab bullet).
     private func autoCommitFirstForm() async {
         guard item.commitment == nil else { return }
-        guard let form = preferredWrittenForm(
-            senseExtras: item.senseExtras,
-            activeSenseIndices: item.corpusSenseIndices,
-            writtenForms: item.writtenForms
-        ) ?? item.writtenForms.flatMap(\.forms).first else { return }
+        guard let form = originResolvedForms?.writtenForm
+            ?? preferredWrittenForm(
+                senseExtras: item.senseExtras,
+                activeSenseIndices: item.corpusSenseIndices,
+                writtenForms: item.writtenForms
+            )
+            ?? item.writtenForms.flatMap(\.forms).first
+        else { return }
         if let data = try? JSONEncoder().encode(form.furigana),
            let json = String(data: data, encoding: .utf8) {
             await corpus.setCommittedFurigana(wordId: item.id, furiganaJSON: json, db: db)

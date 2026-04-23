@@ -359,10 +359,12 @@ struct DocumentReaderView: View {
                 continue
             }
 
-            // Fall back to the jmdict furigana table using the first kanji form + first kana reading.
-            // JMDict kana entries can be katakana (e.g. シラフ) while the furigana table stores
-            // hiragana (しらふ), so normalize to hiragana before the lookup.
-            if let text = item.writtenTexts.first, let reading = item.kanaTexts.first {
+            // Fall back to the jmdict furigana table. Prefer the annotator's resolved form
+            // (from the vocab bullet) over the JMDict-default first kanji + first kana, so that
+            // e.g. 薪 annotated as "- たきぎ" shows たきぎ furigana rather than the default まき.
+            let chipText    = item.annotatorResolved?.writtenForm.text ?? item.writtenTexts.first
+            let chipReading = item.annotatorResolved?.kana             ?? item.kanaTexts.first
+            if let text = chipText, let reading = chipReading {
                 // Katakana U+30A1–U+30F6 → hiragana U+3041–U+3096 (subtract 0x60).
                 // JMDict kana entries may be katakana (e.g. シラフ) while the furigana table
                 // stores hiragana (しらふ), so normalize before the lookup.
@@ -384,8 +386,8 @@ struct DocumentReaderView: View {
 
             // Final fallback: furigana embedded in writtenForms (from vocab.json). Guards against
             // version skew between jmdict.sqlite and vocab.json.
-            if let segs = item.writtenForms.first?.forms.first?.furigana,
-               segs.contains(where: { $0.rt != nil }) {
+            let fallbackForm = item.annotatorResolved?.writtenForm ?? item.writtenForms.first?.forms.first
+            if let segs = fallbackForm?.furigana, segs.contains(where: { $0.rt != nil }) {
                 map[item.id] = segs
             }
         }

@@ -47,10 +47,14 @@ struct VocabReference: Codable {
     let narration: String?
     /// LLM-inferred sense(s) this specific occurrence embodies. Absent when not yet determined.
     let llmSense: LlmSense?
+    /// Japanese tokens from the annotator's vocab bullet, in order (e.g. ["たきぎ"] or ["もと", "元", "本"]).
+    /// Used to derive the preferred kanji form and reading for this occurrence.
+    let annotatedForms: [String]?
 
     private enum CodingKeys: String, CodingKey {
         case line, context, narration
         case llmSense = "llm_sense"
+        case annotatedForms = "annotated_forms"
     }
 }
 

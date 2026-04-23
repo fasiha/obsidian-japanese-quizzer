@@ -402,11 +402,13 @@ for (const filePath of mdFiles) {
     // If the bullet starts with a bare JMDict ID (all digits), trust it directly.
     const directIdMatch = bullet.match(/^(\d+)/);
     let wordId;
+    let annotatedForms = [];
     if (directIdMatch) {
       wordId = directIdMatch[1];
     } else {
       const tokens = extractJapaneseTokens(bullet);
       if (tokens.length === 0) continue;
+      annotatedForms = tokens;
 
       const idSets = tokens.map((token) => new Set(findExactIds(db, token)));
       const matchIds = [...intersectSets(idSets)];
@@ -420,7 +422,7 @@ for (const filePath of mdFiles) {
       wordId = String(matchIds[0]);
     }
 
-    const occurrence = { line, context, narration };
+    const occurrence = { line, context, narration, annotated_forms: annotatedForms.length > 0 ? annotatedForms : undefined };
     if (wordMap.has(wordId)) {
       const entry = wordMap.get(wordId);
       entry.sources.add(title);

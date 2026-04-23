@@ -34,7 +34,9 @@ Each **word entry**:
           "sense_indices": [0],    // 0-based JMDict sense indices Haiku selected
           "computed_from": […],    // sorted deduplicated [context, narration] used as cache key
           "reasoning": "…"         // Haiku's chain-of-thought (present when freshly computed)
-        }
+        },
+        "annotated_forms": ["たきぎ"]  // Japanese tokens from the vocab bullet, in order
+                                       // (absent for bare-ID bullets like "- 1365010")
       }
     ]
   }
@@ -44,6 +46,15 @@ Each **word entry**:
 Words appearing in multiple stories accumulate `sources` entries and gain one
 `references` key per story. All other word data (senses, part-of-speech, etc.)
 is fetched at runtime from the bundled `jmdict.sqlite`.
+
+`annotated_forms` records the raw Japanese tokens from the annotator's vocab
+bullet (e.g. `- たきぎ` → `["たきぎ"]`, `- もと 元 本` → `["もと","元","本"]`).
+The iOS app resolves these against the JMDict entry's `writtenForms` to pick the
+preferred display form and reading for that specific occurrence — for example,
+showing 薪 with たきぎ furigana rather than the JMDict-default まき. When both a
+kana and a kanji token are present and compatible, both are used; if they are
+incompatible (no matching `WrittenFormGroup`), the token that appears first in
+the bullet wins and a compatible partner is derived from the other slot.
 
 ---
 
