@@ -21,6 +21,27 @@ struct CounterItem: Identifiable {
 
     var id: String { counter.id }
 
+    /// Compute document sources by looking up the counter's jmdict ID in the vocab corpus.
+    /// Falls back to category-based mapping if no jmdict reference.
+    func sources(in corpus: any Sequence<VocabItem>) -> [String] {
+        if let jmdictId = counter.jmdict?.id {
+            let matches = Array(corpus).filter { $0.id == jmdictId }
+            let sourcesSet = Set(matches.flatMap(\.sources))
+            if !sourcesSet.isEmpty {
+                return Array(sourcesSet).sorted()
+            }
+        }
+        // Fallback to category-based mapping if no jmdict match
+        switch counter.category {
+        case "Absolutely Must Know", "Must Know":
+            return ["Counters/Counters-Must-Know"]
+        case "Common":
+            return ["Counters/Counters-Common"]
+        default:
+            return ["Counters/Counters-Common"]
+        }
+    }
+
     func matches(filter: VocabFilter) -> Bool {
         switch filter {
         case .notYetLearning: return state == .unknown

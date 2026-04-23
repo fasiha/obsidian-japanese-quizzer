@@ -37,7 +37,6 @@ struct VocabBrowserView: View {
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItemSelection? = nil
     @State private var selectedPair: TransitivePairItem? = nil
-    @State private var selectedCounter: CounterItem? = nil
 
     @State private var showQuiz = false
     @State private var showSettings = false
@@ -48,9 +47,38 @@ struct VocabBrowserView: View {
     @State private var collapsedSections: Set<String> = []  // path keys of collapsed nodes
     @State private var dashboardRefreshID = 0
 
+    /// Highest counter enrollment state for a given JMDict ID.
+    /// .learning if any counter for that word is learning; .known if all are known and none learning; .unknown otherwise.
+    private var counterStateByJMDictId: [String: FacetState] {
+        var map: [String: FacetState] = [:]
+        for counterItem in counterCorpus.items {
+            guard let jmdictId = counterItem.counter.jmdict?.id else { continue }
+            let existing = map[jmdictId] ?? .unknown
+            switch (existing, counterItem.state) {
+            case (_, .learning):       map[jmdictId] = .learning
+            case (.unknown, .known):   map[jmdictId] = .known
+            default:                   break
+            }
+        }
+        return map
+    }
+
+    private func itemMatchesFilter(_ item: VocabItem, filter: VocabFilter) -> Bool {
+        if item.matches(filter: filter) { return true }
+        // Also match when the item's counter enrollment state fits the filter.
+        if let counterState = counterStateByJMDictId[item.id] {
+            switch filter {
+            case .notYetLearning: return counterState == .unknown
+            case .learning:       return counterState == .learning
+            case .known:          return counterState == .known
+            }
+        }
+        return false
+    }
+
     private var filteredItems: [VocabItem] {
         let f = filter
-        let statusFiltered = corpus.items.filter { f == nil || $0.matches(filter: f!) }
+        let statusFiltered = corpus.items.filter { f == nil || itemMatchesFilter($0, filter: f!) }
         let q = searchText.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return statusFiltered }
         return statusFiltered.filter { item in
@@ -75,19 +103,6 @@ struct VocabBrowserView: View {
         }
     }
 
-    private var filteredCounters: [CounterItem] {
-        let f = filter
-        let statusFiltered = counterCorpus.items.filter { f == nil || $0.matches(filter: f!) }
-        let q = searchText.trimmingCharacters(in: .whitespaces)
-        guard !q.isEmpty else { return statusFiltered }
-        return statusFiltered.filter { item in
-            let c = item.counter
-            return c.kanji.localizedCaseInsensitiveContains(q)
-                || c.reading.localizedCaseInsensitiveContains(q)
-                || c.whatItCounts.localizedCaseInsensitiveContains(q)
-        }
-    }
-
     var body: some View {
         NavigationStack {
             Group {
@@ -106,7 +121,7 @@ struct VocabBrowserView: View {
                         systemImage: "books.vertical",
                         description: Text("Download vocab via the ··· menu or set up the app URL.")
                     )
-                } else if filteredItems.isEmpty && filteredPairs.isEmpty && filteredCounters.isEmpty {
+                } else if filteredItems.isEmpty && filteredPairs.isEmpty {
                     if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                         ContentUnavailableView.search(text: searchText)
                     } else {
@@ -159,13 +174,6 @@ struct VocabBrowserView: View {
                 TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict,
                                           client: session.client, toolHandler: session.toolHandler)
             }
-            .sheet(item: $selectedCounter) { counterItem in
-                if let jmdictId = counterItem.counter.jmdict?.id,
-                   let vocabItem = corpus.items.first(where: { $0.id == jmdictId }) {
-                    WordDetailSheet(initialItem: vocabItem, db: db,
-                                    client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
-                }
-            }
 
             .sheet(isPresented: $showSettings) { SettingsView(db: db) }
             .sheet(isPresented: $showPlanting) {
@@ -217,7 +225,7 @@ struct VocabBrowserView: View {
 
     private var wordList: some View {
         let pairs = filteredPairs
-        let counters = filteredCounters
+        let counterStates = counterStateByJMDictId
         return List {
             ForEach(pairs) { pairItem in
                 Button { selectedPair = pairItem } label: {
@@ -228,18 +236,9 @@ struct VocabBrowserView: View {
                     pairSwipeButtons(for: pairItem)
                 }
             }
-            ForEach(counters) { counterItem in
-                Button { selectedCounter = counterItem } label: {
-                    counterRowView(counterItem)
-                }
-                .buttonStyle(.plain)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    counterSwipeButtons(for: counterItem)
-                }
-            }
             ForEach(filteredItems) { item in
                 Button { selectedItem = VocabItemSelection(item: item, origin: nil) } label: {
-                    VocabRowView(item: item)
+                    VocabRowView(item: item, counterState: counterStates[item.id])
                 }
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -254,7 +253,7 @@ struct VocabBrowserView: View {
 
     /// Alphabetically sorted list of source titles that have at least one word in filteredItems.
     private var activeSources: [String] {
-        Array(Set(filteredItems.flatMap(\.sources))).sorted()
+        return Array(Set(filteredItems.flatMap(\.sources))).sorted()
     }
 
     // Note: buildSourceTree recomputes on every redraw. Fine for current corpus sizes
@@ -263,7 +262,6 @@ struct VocabBrowserView: View {
     private var groupedWordList: some View {
         let roots = buildSourceTree(sources: activeSources, items: filteredItems)
         let pairs = filteredPairs
-        let counters = filteredCounters
         return List {
             Section {
                 MotivationDashboardView(db: db, refreshID: dashboardRefreshID)
@@ -274,14 +272,13 @@ struct VocabBrowserView: View {
             if !pairs.isEmpty {
                 pairsSection(pairs: pairs)
             }
-            if !counters.isEmpty {
-                countersSection(counters: counters)
-            }
+            let counterStates = counterStateByJMDictId
             ForEach(roots, id: \.pathKey) { node in
                 SourceSectionView(
                     node: node,
                     collapsedSections: $collapsedSections,
                     selectedItem: $selectedItem,
+                    rowContent: { item in VocabRowView(item: item, counterState: counterStates[item.id]) },
                     swipeButtons: { item, title in swipeButtons(for: item, documentTitle: title) },
                     onLearn: { title in startPlanting(documentTitle: title) },
                     onDocumentQuiz: { title in startDocumentQuiz(documentTitle: title) }
@@ -325,57 +322,6 @@ struct VocabBrowserView: View {
         if !item.pair.isAmbiguous && item.state == .unknown {
             Button {
                 Task { await pairCorpus.setPairLearning(pairId: item.id, db: db) }
-            } label: {
-                Label("Learn", systemImage: "plus.circle.fill")
-            }
-            .tint(.green)
-        }
-    }
-
-    // MARK: - Counters section
-
-    @ViewBuilder
-    private func countersSection(counters: [CounterItem]) -> some View {
-        let isExpanded = Binding(
-            get: { !collapsedSections.contains("__counters__") },
-            set: { expanded in
-                if expanded { collapsedSections.remove("__counters__") }
-                else { collapsedSections.insert("__counters__") }
-            }
-        )
-        DisclosureGroup(isExpanded: isExpanded) {
-            ForEach(counters) { counterItem in
-                Button { selectedCounter = counterItem } label: {
-                    counterRowView(counterItem)
-                }
-                .buttonStyle(.plain)
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    counterSwipeButtons(for: counterItem)
-                }
-            }
-        } label: {
-            Text("Counters")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .textCase(nil)
-        }
-    }
-
-    private func counterRowView(_ item: CounterItem) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("\(item.counter.kanji) (\(item.counter.reading))")
-                .font(.body)
-            Text(item.counter.whatItCounts)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private func counterSwipeButtons(for item: CounterItem) -> some View {
-        if item.state == .unknown {
-            Button {
-                Task { await counterCorpus.setCounterLearning(counterId: item.id, db: db) }
             } label: {
                 Label("Learn", systemImage: "plus.circle.fill")
             }
@@ -582,10 +528,11 @@ func buildSourceTree(sources: [String], items: [VocabItem]) -> [SourceTreeNode] 
 /// leaf sections, each containing word rows with swipe actions.
 /// `onLearn` and `onDocumentQuiz` are optional callbacks fired from leaf section headers;
 /// they receive the full document title (e.g. "genki-app/L13").
-struct SourceSectionView<SwipeContent: View>: View {
+struct SourceSectionView<RowContent: View, SwipeContent: View>: View {
     let node: SourceTreeNode
     @Binding var collapsedSections: Set<String>
     @Binding var selectedItem: VocabItemSelection?
+    @ViewBuilder let rowContent: (VocabItem) -> RowContent
     @ViewBuilder let swipeButtons: (VocabItem, String?) -> SwipeContent
     var onLearn: ((String) -> Void)? = nil
     var onDocumentQuiz: ((String) -> Void)? = nil
@@ -609,6 +556,7 @@ struct SourceSectionView<SwipeContent: View>: View {
                         node: child,
                         collapsedSections: $collapsedSections,
                         selectedItem: $selectedItem,
+                        rowContent: rowContent,
                         swipeButtons: swipeButtons,
                         onLearn: onLearn,
                         onDocumentQuiz: onDocumentQuiz
@@ -627,7 +575,7 @@ struct SourceSectionView<SwipeContent: View>: View {
                     Button {
                         selectedItem = VocabItemSelection(item: item, origin: .document(title: title))
                     } label: {
-                        VocabRowView(item: item)
+                        rowContent(item)
                     }
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -676,6 +624,7 @@ struct SourceSectionView<SwipeContent: View>: View {
 
 struct VocabRowView: View {
     let item: VocabItem
+    var counterState: FacetState? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -716,14 +665,18 @@ struct VocabRowView: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        if item.readingState == .learning || item.kanjiState == .learning {
+        let isLearning = item.readingState == .learning || item.kanjiState == .learning
+            || counterState == .learning
+        let isKnown = !isLearning
+            && (item.readingState == .known || item.kanjiState == .known || counterState == .known)
+        if isLearning {
             Text("Learning")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)
                 .background(.green.opacity(0.15))
                 .foregroundStyle(.green)
                 .clipShape(Capsule())
-        } else if item.readingState == .known || item.kanjiState == .known {
+        } else if isKnown {
             Text("Learned")
                 .font(.caption2).fontWeight(.medium)
                 .padding(.horizontal, 6).padding(.vertical, 2)
