@@ -279,7 +279,7 @@ function extractVocabBullets(content) {
       const trimmed = innerLine.trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
-      if (!bullet) continue;
+      if (!bullet || bullet.startsWith("counter:")) continue;
       // Narration = text after the leading Japanese tokens (or after the bare ID).
       const parts = bullet.split(/\s+/);
       let j = 0;
@@ -290,6 +290,30 @@ function extractVocabBullets(content) {
     }
   }
   return bullets;
+}
+
+// Extract counter IDs from `- counter:id` bullets in <details><summary>Vocab</summary> blocks.
+// Returns { counterId, line, context } for each counter bullet found.
+function extractCounterBullets(content) {
+  const counters = [];
+  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
+    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
+    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
+    const line = sentenceLine ?? detailsOpeningLine;
+    const innerLines = stripped.split("\n");
+    for (const innerLine of innerLines) {
+      const trimmed = innerLine.trim();
+      if (!trimmed.startsWith("-")) continue;
+      const bullet = trimmed.slice(1).trim();
+      if (bullet.startsWith("counter:")) {
+        const counterId = bullet.slice("counter:".length).trim();
+        if (counterId) {
+          counters.push({ counterId, line, context });
+        }
+      }
+    }
+  }
+  return counters;
 }
 
 // --- Command-line flags ---
@@ -342,6 +366,39 @@ const { db } = await setup(JMDICT_DB);
 const grammarDb = loadGrammarDatabases();
 const mdFiles = findMdFiles(projectRoot);
 
+// Build a map from JMDict ID -> array of counter info for counter detection.
+// Maps JMDict ID to array of { id, whatItCounts, senseIndex }.
+// Most JMDict IDs map to 1 counter, but ambiguous cases like かい (階 vs 回) have 2+.
+// senseIndex is an array of 0-based indices (usually length 1; length 2 for 着 which
+// counts both clothing and race placement). null means JMDict has no ctr-tagged sense.
+const hasSenseIndices = (c) => Array.isArray(c.senseIndex) && c.senseIndex.length > 0;
+const countersByJmdictId = new Map();
+// Maps counter id (e.g. "くみ-クラス") → jmdict id string, for resolving counter bullets to vocab entries.
+const counterIdToJmdictId = new Map();
+const countersJsonPath = path.join(projectRoot, "Counters", "counters.json");
+let countersJsonData = [];
+if (existsSync(countersJsonPath)) {
+  try {
+    countersJsonData = JSON.parse(readFileSync(countersJsonPath, "utf8"));
+    for (const counter of countersJsonData) {
+      if (counter.jmdict && counter.jmdict.id) {
+        const jmdictId = counter.jmdict.id;
+        if (!countersByJmdictId.has(jmdictId)) {
+          countersByJmdictId.set(jmdictId, []);
+        }
+        countersByJmdictId.get(jmdictId).push({
+          id: counter.id,
+          whatItCounts: counter.whatItCounts,
+          senseIndex: counter.jmdict.senseIndex,
+        });
+        counterIdToJmdictId.set(counter.id, jmdictId);
+      }
+    }
+  } catch (e) {
+    console.warn(`Could not load counters.json for counter detection: ${e.message}`);
+  }
+}
+
 const errors = [];
 const stories = [];
 // Map from word id -> { id, sources: Set<title>, refs: Map<title, Set<lineNumber>> }
@@ -349,6 +406,9 @@ const wordMap = new Map();
 // Map from grammar topicId -> { topicId, sources: Set<title>, sentences: [] }
 const grammarMap = new Map();
 const grammarErrors = [];
+
+// Map: title → (line → counterId) for manual counter annotations
+const countersByTitleLine = new Map();
 
 for (const filePath of mdFiles) {
   const content = readFileSync(filePath, "utf8");
@@ -433,6 +493,36 @@ for (const filePath of mdFiles) {
       wordMap.set(wordId, { id: wordId, sources: new Set([title]), refs });
     }
   }
+
+  // --- Counter extraction ---
+  // Build a map: title → (line → counterId) for manual counter annotations.
+  // Also treat each counter bullet as a vocab entry for its underlying JMDict word,
+  // so that counter-only files (e.g. Counters-Must-Know.md) produce word entries in
+  // vocab.json. Deduplication: if a regular vocab bullet already added a ref for
+  // this word on the same line, skip adding a second one (the counter-matching logic
+  // below will attach ref.counter to the existing ref).
+  if (!countersByTitleLine.has(title)) {
+    countersByTitleLine.set(title, new Map());
+  }
+  for (const { counterId, line, context } of extractCounterBullets(content)) {
+    const lineMap = countersByTitleLine.get(title);
+    if (!lineMap.has(line)) lineMap.set(line, new Set());
+    lineMap.get(line).add(counterId);
+
+    const wordId = counterIdToJmdictId.get(counterId);
+    if (!wordId) continue;
+    const existingEntry = wordMap.get(wordId);
+    const alreadyOnLine = existingEntry?.refs.get(title)?.some((r) => r.line === line);
+    if (alreadyOnLine) continue;
+    const occurrence = { line, context, narration: undefined };
+    if (existingEntry) {
+      existingEntry.sources.add(title);
+      if (!existingEntry.refs.has(title)) existingEntry.refs.set(title, []);
+      existingEntry.refs.get(title).push(occurrence);
+    } else {
+      wordMap.set(wordId, { id: wordId, sources: new Set([title]), refs: new Map([[title, [occurrence]]]) });
+    }
+  }
 }
 
 const allErrors = [...errors, ...grammarErrors];
@@ -505,6 +595,22 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
       occurrences.slice().sort((a, b) => a.line - b.line),
     ]),
   );
+  // Attach manual counter annotations to refs.
+  // countersByTitleLine[title][line] is a Set of counter IDs annotated for that sentence.
+  // For each ref, find the annotated counter ID that matches one of this word's known
+  // counter IDs (from countersByJmdictId). This correctly assigns ひき to 匹 and とう to
+  // 頭 even when both appear in the same sentence with both annotations present.
+  for (const [title, refs] of Object.entries(references)) {
+    const countersForTitle = countersByTitleLine.get(title);
+    if (!countersForTitle) continue;
+    const wordCounterIds = (countersByJmdictId.get(id) ?? []).map((c) => c.id);
+    for (const ref of refs) {
+      const counterSet = countersForTitle.get(ref.line);
+      if (!counterSet || counterSet.size === 0) continue;
+      const matchingIds = wordCounterIds.filter((cid) => counterSet.has(cid));
+      if (matchingIds.length > 0) ref.counter = matchingIds;
+    }
+  }
   const entry = { id, sources: [...sources], references };
   const jmWord = jmdictById.get(id);
   if (jmWord) {
@@ -519,15 +625,39 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
 // --- Preserve words from existing vocab.json that aren't in current Markdown ---
 // This prevents data loss if the script is interrupted: words not referenced in
 // the current Markdown files are preserved as-is from the previous run.
+// Exception: references to files that were processed this run are dropped if the
+// word wasn't found — the bullet was deleted. Entries with no remaining references
+// are dropped entirely.
 {
   const currentIds = new Set(words.map((w) => w.id));
+  const processedTitles = new Set(stories.map((s) => s.title));
   if (existsSync(outPath)) {
     try {
       const existing = JSON.parse(readFileSync(outPath, "utf8"));
+      let droppedEntries = 0;
+      let droppedRefs = 0;
       for (const oldWord of existing.words ?? []) {
-        if (!currentIds.has(oldWord.id)) {
-          words.push(oldWord);
+        if (currentIds.has(oldWord.id)) continue;
+        // Drop references to processed files where the word no longer appears.
+        // If the bullet were still present, extractVocabBullets would have found it.
+        const filteredRefs = {};
+        for (const [title, refs] of Object.entries(oldWord.references ?? {})) {
+          if (processedTitles.has(title)) {
+            droppedRefs += refs.length;
+          } else {
+            filteredRefs[title] = refs;
+          }
         }
+        if (Object.keys(filteredRefs).length === 0) {
+          droppedEntries++;
+          continue;
+        }
+        const remainingTitles = new Set(Object.keys(filteredRefs));
+        const filteredSources = (oldWord.sources ?? []).filter((s) => remainingTitles.has(s));
+        words.push({ ...oldWord, sources: filteredSources, references: filteredRefs });
+      }
+      if (droppedEntries > 0 || droppedRefs > 0) {
+        console.log(`  Removed ${droppedRefs} stale reference(s) and ${droppedEntries} orphaned entry/entries from vocab.json`);
       }
     } catch {
       // Corrupt or missing vocab.json — continue with current Markdown only
@@ -612,31 +742,52 @@ function parseSingleSenseResponse(fullText, displayForm, numSenses) {
       `Haiku response missing sense_indices array for ${displayForm}: ${jsonText}`,
     );
   }
-  return parsed.sense_indices.filter(
+  const senseIndices = parsed.sense_indices.filter(
     (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < numSenses,
   );
+  const rawCounter = parsed.counter;
+  const counter = Array.isArray(rawCounter) ? rawCounter.filter((c) => typeof c === "string" && c.length > 0) : null;
+  return { senseIndices, counter };
 }
 
 /**
  * Build the prompt for a single-reference sense analysis call.
+ * If counterInfo is provided, also asks whether the word is being used as a counter.
  */
-function buildSingleSensePrompt(jmWord, ref) {
+function buildSingleSensePrompt(jmWord, ref, counterInfo = null) {
   const { wordLine, senseList } = buildSensePromptHeader(jmWord);
   const parts = [];
   if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
   if (ref.narration) parts.push(`Note: ${ref.narration}`);
   const contextBlock = parts.join("\n");
-  return (
+
+  let prompt = (
     `You are helping a Japanese language learner understand which sense of a word is used in a specific sentence.\n\n` +
     `${wordLine}\n\n` +
     `JMDict senses (0-indexed):\n${senseList}\n\n` +
     `${contextBlock}\n\n` +
     `Which sense(s) does this specific occurrence of the word use? ` +
     `A sentence may cover more than one sense if it is metaphorical or genuinely ambiguous. ` +
-    `Use an empty array if the context is insufficient to determine. ` +
-    `Think step by step, then end your response with a JSON code block:\n` +
-    "```json\n{\"sense_indices\": [0]}\n```"
+    `Use an empty array if the context is insufficient to determine.\n`
   );
+
+  if (counterInfo && counterInfo.length > 0) {
+    const counterList = counterInfo.map((c) => `"${c.id}" (${c.whatItCounts})`).join(", ");
+    prompt += (
+      `\nAlso: is this word being used as any of these counters? ${counterList} ` +
+      `Respond with an array of matching counter ids (e.g., ["${counterInfo[0].id}"]). ` +
+      `Multiple counters are allowed if the sentence genuinely uses the word in multiple counter roles. ` +
+      `Use an empty array if the word is not being used as a counter here.`
+    );
+  }
+
+  const exampleJson = counterInfo && counterInfo.length > 0
+    ? `{"sense_indices": [0], "counter": []}`
+    : `{"sense_indices": [0]}`;
+  prompt += `\nThink step by step, then end your response with a JSON code block:\n` +
+    `\`\`\`json\n${exampleJson}\n\`\`\``;
+
+  return prompt;
 }
 
 /**
@@ -645,9 +796,9 @@ function buildSingleSensePrompt(jmWord, ref) {
  * response text (for the reasoning log).
  * Throws on API error or malformed response (caller handles abort).
  */
-async function analyzeReferenceSense(anthropic, jmWord, ref) {
+async function analyzeReferenceSense(anthropic, jmWord, ref, counterInfo = null) {
   const { displayForm } = buildSensePromptHeader(jmWord);
-  const prompt = buildSingleSensePrompt(jmWord, ref);
+  const prompt = buildSingleSensePrompt(jmWord, ref, counterInfo);
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
@@ -656,8 +807,8 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
   });
 
   const fullText = response.content[0].text;
-  const validIndices = parseSingleSenseResponse(fullText, displayForm, jmWord.sense.length);
-  return { senseIndices: validIndices, reasoning: fullText };
+  const { senseIndices, counter } = parseSingleSenseResponse(fullText, displayForm, jmWord.sense.length);
+  return { senseIndices, counter, reasoning: fullText };
 }
 
 /**
@@ -666,20 +817,32 @@ async function analyzeReferenceSense(anthropic, jmWord, ref) {
  * (in the same order), each with senseIndices and the shared reasoning text.
  * Throws on API error or malformed response (caller handles abort).
  */
-async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
+// counterInfoPerRef: array parallel to refs, each element is the counterInfo array for that
+// ref (or null if the ref already has a manual counter annotation or isn't counter-capable).
+async function analyzeReferencesSenseBatch(anthropic, jmWord, refs, counterInfoPerRef) {
   const { displayForm, wordLine, senseList } = buildSensePromptHeader(jmWord);
+
+  const anyCounterQuestions = counterInfoPerRef.some((ci) => ci && ci.length > 0);
 
   const occurrenceBlocks = refs
     .map((ref, i) => {
       const parts = [];
       if (ref.context) parts.push(`Sentence: ${stripRuby(ref.context)}`);
       if (ref.narration) parts.push(`Note: ${ref.narration}`);
-      return `Occurrence ${i}:\n${parts.length ? parts.join("\n") : "(no context)"}`;
+      let block = `Occurrence ${i}:\n${parts.length ? parts.join("\n") : "(no context)"}`;
+      const ci = counterInfoPerRef[i];
+      if (ci && ci.length > 0) {
+        const list = ci.map((c) => `"${c.id}" (${c.whatItCounts})`).join(", ");
+        block += `\n(Also: is this word used as any of these counters? ${list} Set counter to an array of matching ids, or [] if not used as a counter.)`;
+      }
+      return block;
     })
     .join("\n\n");
 
-  const exampleJson =
-    `{"occurrences": [{"sense_indices": [0]}, {"sense_indices": [1, 2]}]}`;
+  const exampleEntry = anyCounterQuestions
+    ? `{"sense_indices": [0], "counter": []}`
+    : `{"sense_indices": [0]}`;
+  const exampleJson = `{"occurrences": [${exampleEntry}, {"sense_indices": [1, 2]}]}`;
 
   const prompt =
     `You are helping a Japanese language learner understand which sense of a word is used in each of several sentences.\n\n` +
@@ -718,16 +881,19 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
     );
   }
 
-  return parsed.occurrences.map((occ) => ({
+  return parsed.occurrences.map((occ, i) => ({
     senseIndices: (occ.sense_indices ?? []).filter(
       (i) => typeof i === "number" && Number.isInteger(i) && i >= 0 && i < jmWord.sense.length,
     ),
+    counter: counterInfoPerRef[i] ? (Array.isArray(occ.counter) ? occ.counter.filter((c) => typeof c === "string" && c.length > 0) : null) : undefined,
     reasoning: fullText,
   }));
 }
 
 // Run per-reference sense analysis.
 // --no-llm: carry forward cached llm_sense values but skip all Haiku calls.
+let counterPotentialCount = 0;      // counter-capable words with unevaluated senses
+let counterSkippedCount = 0;        // those skipped due to --max-senses or --no-llm
 {
   const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   let refsAnalyzed = 0;
@@ -741,16 +907,51 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
   // Pre-populate every ref that can be resolved without an LLM call so that
   // the incremental vocab.json writes below never clobber previously-computed
   // data for entries not yet reached in the loop.
+
   for (const word of words) {
     const jmWord = jmdictById.get(word.id);
     for (const refs of Object.values(word.references ?? {})) {
       for (const ref of refs) {
-        if (!jmWord || jmWord.sense.length <= 1) {
-          ref.llm_sense = { sense_indices: [0], computed_from: refComputedFrom(ref) };
+        if (ref.counter?.length) {
+          // ref.counter was set from manual counter bullets — we know exactly which
+          // counter(s) are in use, so derive sense_indices directly from counters.json
+          // senseIndex fields without calling Haiku.
+          const counterEntries = (countersByJmdictId.get(word.id) ?? []).filter((c) =>
+            ref.counter.includes(c.id),
+          );
+          const senseIndices = [
+            ...new Set(counterEntries.flatMap((c) => c.senseIndex ?? [])),
+          ].sort((a, b) => a - b);
+          ref.llm_sense = { sense_indices: senseIndices, computed_from: refComputedFrom(ref) };
+          continue;
+        }
+        if (!jmWord) {
+          ref.llm_sense = { sense_indices: [0], computed_from: refComputedFrom(ref), counter: null };
+        } else if (jmWord.sense.length <= 1) {
+          const computedFrom = refComputedFrom(ref);
+          const counterInfo = countersByJmdictId.get(word.id);
+          if (counterInfo && !ref.counter?.length) {
+            const trivialCounter = counterInfo.find(hasSenseIndices);
+            if (trivialCounter) {
+              // The JMDict-tagged counter sense IS the word's only sense — no ambiguity,
+              // no LLM call needed. Mark this counter trivially.
+              ref.llm_sense = { sense_indices: [0], computed_from: computedFrom, counter: [trivialCounter.id] };
+            } else if (computedFrom.length > 0) {
+              // All counters.json entries for this word have senseIndex: null — the JMDict
+              // entry has no ctr-tagged sense, so we can't trivially infer counter usage.
+              // Check cache; if uncached, leave llm_sense unset so the LLM loop handles it.
+              const cached = existingRefSense.get(`${word.id}|${JSON.stringify(computedFrom)}`);
+              if (cached) ref.llm_sense = cached;
+            } else {
+              ref.llm_sense = { sense_indices: [0], computed_from: [], counter: null };
+            }
+          } else {
+            ref.llm_sense = { sense_indices: [0], computed_from: computedFrom, counter: null };
+          }
         } else {
           const computedFrom = refComputedFrom(ref);
           if (computedFrom.length === 0) {
-            ref.llm_sense = { sense_indices: [], computed_from: [] };
+            ref.llm_sense = { sense_indices: [], computed_from: [], counter: null };
           } else {
             const cached = existingRefSense.get(`${word.id}|${JSON.stringify(computedFrom)}`);
             if (cached) ref.llm_sense = cached;
@@ -769,7 +970,15 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
   // are sent in a single batched Haiku call instead of one call per occurrence.
   for (const word of words) {
     const jmWord = jmdictById.get(word.id);
-    if (!jmWord || jmWord.sense.length <= 1) continue;
+    if (!jmWord) continue;
+    if (jmWord.sense.length <= 1) {
+      // Single-sense words are normally resolved trivially in pre-population.
+      // Exception: counter-capable words where all counters.json entries have
+      // senseIndex: null (no ctr-tagged sense in JMDict). Those need an LLM call
+      // to detect counter usage and may have uncached refs left unset above.
+      const ci = countersByJmdictId.get(word.id);
+      if (!ci || ci.some(hasSenseIndices)) continue;
+    }
 
     const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
 
@@ -777,17 +986,24 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
       const uncachedRefs = refs.filter((ref) => !ref.llm_sense);
       if (uncachedRefs.length === 0) continue;
 
+      const counterInfo = countersByJmdictId.get(word.id);
+
       if (refsAnalyzed >= maxSenses) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped, --max-senses limit reached)`);
-          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref).replaceAll(/\n/g, '\n    > ')}\n`);
+          // Only show counter detection prompt if the ref doesn't already have a manual counter annotation
+          const counterInfoForRef = ref.counter?.length ? null : counterInfo;
+          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref, counterInfoForRef).replaceAll(/\n/g, '\n    > ')}\n`);
+          if (counterInfoForRef) counterSkippedCount++;
         }
         continue;
       }
       if (noLlm) {
         for (const ref of uncachedRefs) {
           console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (skipped by --no-llm)`);
-          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref).replaceAll(/\n/g, '\n    > ')}\n`);
+          const counterInfoForRef = ref.counter?.length ? null : counterInfo;
+          console.log(`  Prompt:\n    > ${buildSingleSensePrompt(jmWord, ref, counterInfoForRef).replaceAll(/\n/g, '\n    > ')}\n`);
+          if (counterInfoForRef) counterSkippedCount++;
         }
         noLlmSkippedCount += uncachedRefs.length;
         continue;
@@ -799,15 +1015,17 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
         process.stdout.write(
           `  Analyzing ${displayForm} [${title}:${ref.line}] (${refsAnalyzed + 1}/${maxSenses === Infinity ? "all" : maxSenses})… `,
         );
-        const { senseIndices, reasoning } = await analyzeReferenceSense(anthropic, jmWord, ref);
+        const counterInfoForRef = ref.counter ? null : counterInfo;
+        const { senseIndices, counter, reasoning } = await analyzeReferenceSense(anthropic, jmWord, ref, counterInfoForRef);
         process.stdout.write(`→ [${senseIndices.join(", ")}]\n`);
-        results = [{ senseIndices, reasoning }];
+        results = [{ senseIndices, counter, reasoning }];
       } else {
         const lines = uncachedRefs.map((r) => r.line).join(", ");
         process.stdout.write(
           `  Analyzing ${displayForm} [${title}:lines ${lines}] (${uncachedRefs.length} occurrences, batch; ${refsAnalyzed + 1}–${refsAnalyzed + uncachedRefs.length}/${maxSenses === Infinity ? "all" : maxSenses})… `,
         );
-        results = await analyzeReferencesSenseBatch(anthropic, jmWord, uncachedRefs);
+        const counterInfoPerRef = uncachedRefs.map((ref) => (ref.counter?.length ? null : counterInfo));
+        results = await analyzeReferencesSenseBatch(anthropic, jmWord, uncachedRefs, counterInfoPerRef);
         process.stdout.write(
           `→ [${results.map((r) => `[${r.senseIndices.join(", ")}]`).join(", ")}]\n`,
         );
@@ -815,12 +1033,19 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
 
       for (let i = 0; i < uncachedRefs.length; i++) {
         const ref = uncachedRefs[i];
-        const { senseIndices, reasoning } = results[i];
+        const { senseIndices, counter, reasoning } = results[i];
         const computedFrom = refComputedFrom(ref);
+        // Manual counter annotations go in ref.counter (sibling to llm_sense)
+        // LLM-detected counters go in llm_sense.counter (null = asked but not a counter; key absent = never asked)
+        const llmSenseObj = { sense_indices: senseIndices, computed_from: computedFrom };
+        if (counterInfo && !ref.counter?.length) {
+          llmSenseObj.counter = counter ?? null;
+        }
+        llmSenseObj.reasoning = reasoning;
+        ref.llm_sense = llmSenseObj;
         reasoningLines.push(
-          `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]\n${"=".repeat(60)}\n${reasoning}\n`,
+          `${"=".repeat(60)}\n${displayForm}  [${title}:${ref.line}]  →  [${senseIndices.join(", ")}]${counter?.length ? ` (counter: ${counter.join(", ")})` : ""}${ref.counter?.length ? ` [manual: ${ref.counter.join(", ")}]` : ""}\n${"=".repeat(60)}\n${reasoning}\n`,
         );
-        ref.llm_sense = { sense_indices: senseIndices, computed_from: computedFrom, reasoning };
       }
       writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
       refsAnalyzed += uncachedRefs.length;
@@ -830,6 +1055,23 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs) {
         stories: stories.map(({ title }) => ({ title })),
         words,
       }, null, 2) + "\n");
+    }
+  }
+
+  // Count potential counter senses that exist with llm_sense but lack a counter key
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    const counterInfo = countersByJmdictId.get(word.id);
+    if (counterInfo && jmWord) {
+      const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? word.id;
+      for (const [title, refs] of Object.entries(word.references ?? {})) {
+        for (const ref of refs) {
+          if (ref.llm_sense && !("counter" in ref.llm_sense) && !ref.counter) {
+            console.log(`  Would analyze ${displayForm} [${title}:${ref.line}] (potential counter sense found, counter field unevaluated)`);
+            counterPotentialCount++;
+          }
+        }
+      }
     }
   }
 
@@ -890,6 +1132,9 @@ writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
 console.log(
   `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
 );
+if (counterPotentialCount > 0 || counterSkippedCount > 0) {
+  console.log(`- ${counterPotentialCount} potential counter senses found, ${counterSkippedCount} skipped`);
+}
 
 // --- Grammar JSON ---
 const grammarSources = {
@@ -1006,11 +1251,36 @@ for (const { sources } of grammarMap.values()) {
   }
 }
 
+// Build per-title counter enrollment counts: unique counter IDs seen per story.
+// Sources: manual "- counter:id" bullets (countersByTitleLine) and LLM-detected
+// counter usage (ref.llm_sense?.counter). Counts unique IDs, not occurrences,
+// parallel to how vocabCount counts unique word IDs.
+const counterIdsByTitle = new Map();
+for (const [title, lineMap] of countersByTitleLine) {
+  for (const counterSet of lineMap.values()) {
+    for (const counterId of counterSet) {
+      if (!counterIdsByTitle.has(title)) counterIdsByTitle.set(title, new Set());
+      counterIdsByTitle.get(title).add(counterId);
+    }
+  }
+}
+for (const word of words) {
+  for (const [title, refs] of Object.entries(word.references ?? {})) {
+    for (const ref of refs) {
+      for (const counterId of ref.llm_sense?.counter ?? []) {
+        if (!counterIdsByTitle.has(title)) counterIdsByTitle.set(title, new Set());
+        counterIdsByTitle.get(title).add(counterId);
+      }
+    }
+  }
+}
+
 const corpusEntries = stories.map(({ title, content: rawMarkdown }) => ({
   title,
   markdown: rawMarkdown,
   vocabCount: vocabCountByTitle.get(title) ?? 0,
   grammarCount: grammarCountByTitle.get(title) ?? 0,
+  counterCount: counterIdsByTitle.get(title)?.size ?? 0,
 }));
 
 // Collect all relative image references across all stories.
@@ -1048,5 +1318,4 @@ console.log(
 );
 
 // --- Compound verb detection ---
-console.log("\n=== Compound verb detection ===");
 await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs });

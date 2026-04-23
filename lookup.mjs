@@ -69,8 +69,11 @@ if (existsSync(BCCWJ_PATH)) {
   }
 }
 
+const results = [];
+
 for (const word of deduped.values()) {
   let frequencyInfo = "";
+  let pmw = null;
 
   // Look up frequency in BCCWJ if database is available
   if (getBccwjFrequency) {
@@ -81,6 +84,7 @@ for (const word of deduped.values()) {
     for (const form of kanji) {
       const result = getBccwjFrequency(form, kana[0]);
       if (result) {
+        pmw = result;
         frequencyInfo = `pmw:${result}`;
         break;
       }
@@ -91,6 +95,7 @@ for (const word of deduped.values()) {
       for (const form of kana) {
         const result = getBccwjFrequency(form, form);
         if (result) {
+          pmw = result.pmw;
           frequencyInfo = `freq:${result.frequency} pmw:${result.pmw}`;
           break;
         }
@@ -98,15 +103,28 @@ for (const word of deduped.values()) {
     }
   }
 
-  console.log(
-    word.id,
-    wordFormsPart(word),
-    wordMeanings(word, { partOfSpeech: true, numbered: true, tags }).replace(
+  results.push({
+    id: word.id,
+    forms: wordFormsPart(word),
+    meanings: wordMeanings(word, { partOfSpeech: true, numbered: true, tags }).replace(
       /\s*\(common\) \(futsuumeishi\)/g,
       "",
     ),
     frequencyInfo,
-  );
+    pmw,
+  });
+}
+
+// Sort by pmw descending, with no-pmw at the bottom
+results.sort((a, b) => {
+  if (a.pmw === null && b.pmw === null) return 0;
+  if (a.pmw === null) return 1;
+  if (b.pmw === null) return -1;
+  return b.pmw - a.pmw;
+});
+
+for (const result of results) {
+  console.log(result.id, result.forms, result.meanings, result.frequencyInfo);
 }
 
 if (bccwjDb) bccwjDb.close();

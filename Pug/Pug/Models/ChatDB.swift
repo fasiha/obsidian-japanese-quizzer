@@ -14,6 +14,8 @@ enum ChatContext: Sendable {
     case wordExplore(wordId: String)
     /// Organic discussion in TransitivePairDetailSheet.
     case transitivePairDetail(pairId: String)
+    /// Organic discussion in CounterDetailSheet.
+    case counterDetail(counterId: String)
     /// Organic or canned exchange in GrammarDetailSheet or GrammarAppSession.
     case grammarDetail(topicId: String)
     /// Vocabulary quiz turn (multiple-choice generation, grading, or tutor), and any subsequent
@@ -30,6 +32,7 @@ enum ChatContext: Sendable {
         switch self {
         case .wordExplore(let id):                              return "word:\(id)"
         case .transitivePairDetail(let id):                     return "pair:\(id)"
+        case .counterDetail(let id):                            return "counter:\(id)"
         case .grammarDetail(let id):                            return "grammar:\(id)"
         case .vocabQuiz(let id, let facet, let sessionId):      return "quiz:\(id):\(facet):\(sessionId)"
         case .grammarQuiz(let id, let facet):                   return "quiz:\(id):\(facet)"

@@ -63,6 +63,7 @@ const filesToPublish = [
   { src: path.join(projectRoot, "grammar.json"),     dest: "grammar.json" },
   { src: path.join(projectRoot, "grammar", "grammar-equivalences.json"), dest: "grammar-equivalences.json" },
   { src: path.join(projectRoot, "transitive-intransitive", "transitive-pairs.json"), dest: "transitive-pairs.json" },
+  { src: path.join(projectRoot, "Counters", "counters.json"), dest: "counters.json" },
   { src: path.join(projectRoot, "corpus.json"),      dest: "corpus.json" },
 ];
 

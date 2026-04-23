@@ -43,7 +43,7 @@ function extractVocabBullets(content) {
       const trimmed = innerLines[i].trim();
       if (!trimmed.startsWith("-")) continue;
       const bullet = trimmed.slice(1).trim();
-      if (bullet) bullets.push({ bullet, line: innerStartLine + i });
+      if (bullet && !bullet.startsWith("counter:")) bullets.push({ bullet, line: innerStartLine + i });
     }
   }
   return bullets;

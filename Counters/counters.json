@@ -1,0 +1,6340 @@
+[
+  {
+    "id": "こ",
+    "kanji": "個",
+    "reading": "こ",
+    "category": "Absolutely Must Know",
+    "whatItCounts": "Anything with a distinct shape",
+    "countExamples": [
+      "pretty much anything with a distinct shape or boundary."
+    ],
+    "jmdict": {
+      "id": "1264740",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっこ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にこ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんこ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんこ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごこ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっこ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななこ"
+        ],
+        "rare": [
+          "しちこ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちこ",
+          "はっこ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうこ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっこ"
+        ],
+        "rare": [
+          "じっこ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんこ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ほん",
+    "kanji": "本",
+    "reading": "ほん",
+    "category": "Must Know",
+    "whatItCounts": "Long, cylindrical things",
+    "countExamples": [
+      "pens",
+      "pencils",
+      "asparagus",
+      "soba",
+      "darts",
+      "firewood",
+      "trees",
+      "bamboo",
+      "cords",
+      "threads",
+      "dumplings",
+      "water wells",
+      "injections",
+      "folding fans",
+      "eels",
+      "tails",
+      "nail clippers",
+      "icicles",
+      "fishing rods",
+      "film",
+      "chimneys",
+      "tenugui",
+      "trains",
+      "sashes",
+      "telephone poles",
+      "cylindrical batteries",
+      "bottles",
+      "tires",
+      "ribbons",
+      "cacti",
+      "soda cans"
+    ],
+    "jmdict": {
+      "id": "1522150",
+      "senseIndex": [
+        4
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぽん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にほん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんぼん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんほん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごほん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぽん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななほん"
+        ],
+        "rare": [
+          "しちほん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぽん",
+          "はちほん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうほん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぽん"
+        ],
+        "rare": [
+          "じっぽん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんぼん"
+        ],
+        "rare": [
+          "なんほん",
+          "なんぽん"
+        ]
+      }
+    }
+  },
+  {
+    "id": "まい",
+    "kanji": "枚",
+    "reading": "まい",
+    "category": "Must Know",
+    "whatItCounts": "Flat things",
+    "countExamples": [
+      "paper",
+      "photos",
+      "rafts",
+      "bath mats",
+      "shells",
+      "playing cards",
+      "credit cards",
+      "t-shirts",
+      "pants",
+      "other clothes",
+      "dust cloths",
+      "walls",
+      "a single serving of soba",
+      "a single serving of gyoza"
+    ],
+    "jmdict": {
+      "id": "1524610",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちまい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にまい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんまい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんまい"
+        ],
+        "rare": [
+          "よまい"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごまい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくまい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななまい"
+        ],
+        "rare": [
+          "しちまい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちまい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうまい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうまい"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんまい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ひき",
+    "kanji": "匹",
+    "reading": "ひき",
+    "category": "Must Know",
+    "whatItCounts": "Animals, bugs, fish, monsters that don't like humans",
+    "countExamples": [
+      "dogs",
+      "cats",
+      "monkeys",
+      "fish",
+      "prawns",
+      "shrimps",
+      "lobsters",
+      "wolves",
+      "rabbits (unless they're counted with 羽)",
+      "mosquitoes",
+      "shellfish",
+      "deer",
+      "worms",
+      "caterpillars",
+      "silkworms",
+      "earthworms",
+      "frogs",
+      "snails",
+      "crabs",
+      "tortoises",
+      "turtles",
+      "octopuses",
+      "animals",
+      "insects",
+      "dragonflies",
+      "sea otters",
+      "ogres",
+      "monsters",
+      "naughty children",
+      "animal-like people"
+    ],
+    "jmdict": {
+      "id": "1583370",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぴき"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にひき"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんびき"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんひき"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごひき"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぴき"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななひき"
+        ],
+        "rare": [
+          "しちひき"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぴき",
+          "はちひき"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうひき"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぴき"
+        ],
+        "rare": [
+          "じっぴき"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんびき"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "とう",
+    "kanji": "頭",
+    "reading": "とう",
+    "category": "Must Know",
+    "whatItCounts": "Large animals, farm animals",
+    "countExamples": [
+      "cows",
+      "horses",
+      "livestock",
+      "elephants",
+      "gorillas",
+      "whales",
+      "camels",
+      "tigers",
+      "\"professional\" animals",
+      "insects on display",
+      "animals for sale"
+    ],
+    "jmdict": {
+      "id": "1450690",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっとう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にとう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんとう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんとう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごとう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくとう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななとう"
+        ],
+        "rare": [
+          "しちとう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっとう",
+          "はちとう"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうとう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっとう"
+        ],
+        "rare": [
+          "じっとう"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんとう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "わ",
+    "kanji": "羽",
+    "reading": "わ",
+    "category": "Must Know",
+    "whatItCounts": "Birds, rabbits",
+    "countExamples": [
+      "chickens",
+      "ostriches",
+      "peacocks",
+      "penguins",
+      "other birds",
+      "also rabbits",
+      "origami cranes"
+    ],
+    "jmdict": {
+      "id": "1607310",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちわ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にわ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんわ",
+          "さんば"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんわ",
+          "よんば"
+        ],
+        "rare": [
+          "よわ"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごわ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくわ"
+        ],
+        "rare": [
+          "ろっぱ"
+        ]
+      },
+      "7": {
+        "primary": [
+          "ななわ"
+        ],
+        "rare": [
+          "しちわ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちわ"
+        ],
+        "rare": [
+          "はっぱ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうわ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうわ",
+          "じゅっぱ"
+        ],
+        "rare": [
+          "じっぱ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんわ",
+          "なんば"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "さつ",
+    "kanji": "冊",
+    "reading": "さつ",
+    "category": "Must Know",
+    "whatItCounts": "Books",
+    "countExamples": [
+      "books",
+      "book collections",
+      "albums",
+      "notebooks",
+      "memo pads",
+      "musical scores",
+      "catalogs",
+      "magazines",
+      "dictionaries",
+      "publications",
+      "documents",
+      "booklets"
+    ],
+    "jmdict": {
+      "id": "1298520",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっさつ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にさつ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんさつ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんさつ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごさつ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくさつ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななさつ"
+        ],
+        "rare": [
+          "しちさつ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっさつ",
+          "はちさつ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうさつ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっさつ"
+        ],
+        "rare": [
+          "じっさつ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんさつ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "だい",
+    "kanji": "台",
+    "reading": "だい",
+    "category": "Must Know",
+    "whatItCounts": "Platforms, machines, vehicles",
+    "countExamples": [
+      "playground slides",
+      "beds",
+      "tables",
+      "couches",
+      "harps",
+      "pianos",
+      "cellos",
+      "cars",
+      "trucks",
+      "motors",
+      "washing machines",
+      "dryers",
+      "ovens",
+      "air conditioners",
+      "microwaves",
+      "cellular phones",
+      "keyboards"
+    ],
+    "jmdict": {
+      "id": "1412560",
+      "senseIndex": [
+        3
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちだい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にだい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんだい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんだい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごだい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくだい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななだい"
+        ],
+        "rare": [
+          "しちだい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちだい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうだい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうだい"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんだい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ふん",
+    "kanji": "分",
+    "reading": "ふん",
+    "category": "Must Know",
+    "whatItCounts": "Minutes",
+    "countExamples": [
+      "minutes (time/degree)"
+    ],
+    "jmdict": {
+      "id": "1502840",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぷん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にふん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんぷん",
+          "さんふん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんぷん",
+          "よんふん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごふん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぷん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななふん"
+        ],
+        "rare": [
+          "しちふん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぷん",
+          "はちふん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうふん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぷん"
+        ],
+        "rare": [
+          "じっぷん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんぷん",
+          "なんふん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ねん",
+    "kanji": "年",
+    "reading": "ねん",
+    "category": "Must Know",
+    "whatItCounts": "Years",
+    "countExamples": [
+      "years",
+      "grades"
+    ],
+    "jmdict": {
+      "id": "2084840",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちねん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にねん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんねん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よねん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごねん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくねん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななねん"
+        ],
+        "rare": [
+          "しちねん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちねん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうねん"
+        ],
+        "rare": [
+          "くねん"
+        ]
+      },
+      "10": {
+        "primary": [
+          "じゅうねん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんねん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かい",
+    "kanji": "回",
+    "reading": "かい",
+    "category": "Must Know",
+    "whatItCounts": "The number of times something happens, revolutions",
+    "countExamples": [
+      "the number of times something happens",
+      "chances",
+      "opportunities",
+      "revolutions"
+    ],
+    "jmdict": {
+      "id": "1199330",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかい"
+        ],
+        "rare": [
+          "しちかい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかい",
+          "はちかい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかい"
+        ],
+        "rare": [
+          "じっかい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "り/にん",
+    "kanji": "人",
+    "reading": "り/にん",
+    "category": "Must Know",
+    "whatItCounts": "People",
+    "countExamples": [
+      "humans",
+      "people",
+      "angels",
+      "mermaids",
+      "Doraemon",
+      "humanoids",
+      "pets that are like family"
+    ],
+    "jmdict": {
+      "id": "2149890",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとり"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたり"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんにん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よにん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごにん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくにん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "しちにん",
+          "ななにん"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちにん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "くにん",
+          "きゅうにん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうにん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんにん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "つき",
+    "kanji": "月",
+    "reading": "つき",
+    "category": "Must Know",
+    "whatItCounts": "Months",
+    "countExamples": [
+      "months",
+      "calendar months"
+    ],
+    "jmdict": {
+      "id": "1255430",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとつき"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたつき"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "みつき"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よつき"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "いつつき"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "むつき"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななつき"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "やつき"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "ここのつき"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "とつき"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんつき"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "じ",
+    "kanji": "時",
+    "reading": "じ",
+    "category": "Must Know",
+    "whatItCounts": "Time, in hours (o'clock)",
+    "countExamples": [
+      "o'clock"
+    ],
+    "jmdict": {
+      "id": "2020680",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちじ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にじ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんじ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よじ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごじ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくじ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "しちじ"
+        ],
+        "rare": [
+          "ななじ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちじ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "くじ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうじ"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんじ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "じかん",
+    "kanji": "時間",
+    "reading": "じかん",
+    "category": "Must Know",
+    "whatItCounts": "Hours",
+    "countExamples": [
+      "hours"
+    ],
+    "jmdict": {
+      "id": "1315920",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちじかん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にじかん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんじかん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よじかん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごじかん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくじかん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "しちじかん",
+          "ななじかん"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちじかん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "くじかん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうじかん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんじかん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かい-階",
+    "kanji": "階",
+    "reading": "かい",
+    "category": "Must Know",
+    "whatItCounts": "Floors of a building",
+    "countExamples": [
+      "a building's floors"
+    ],
+    "jmdict": {
+      "id": "1203020",
+      "senseIndex": [
+        3
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかい",
+          "さんがい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかい"
+        ],
+        "rare": [
+          "しちかい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかい",
+          "はちかい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかい"
+        ],
+        "rare": [
+          "じっかい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかい",
+          "なんがい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "さい",
+    "kanji": "歳",
+    "reading": "さい",
+    "category": "Must Know",
+    "whatItCounts": "Age (in years)",
+    "countExamples": [
+      "age in years"
+    ],
+    "jmdict": {
+      "id": "1294940",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっさい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にさい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんさい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんさい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごさい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくさい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななさい"
+        ],
+        "rare": [
+          "しちさい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっさい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうさい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっさい"
+        ],
+        "rare": [
+          "じっさい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんさい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "えん",
+    "kanji": "円",
+    "reading": "えん",
+    "category": "Common",
+    "whatItCounts": "Amounts of Yen",
+    "countExamples": [
+      "yen"
+    ],
+    "jmdict": {
+      "id": "1175570",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちえん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にえん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんえん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よえん"
+        ],
+        "rare": [
+          "よんえん"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごえん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくえん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななえん"
+        ],
+        "rare": [
+          "しちえん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちえん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうえん"
+        ],
+        "rare": [
+          "くえん"
+        ]
+      },
+      "10": {
+        "primary": [
+          "じゅうえん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんえん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かげつ",
+    "kanji": "箇月",
+    "reading": "かげつ",
+    "category": "Common",
+    "whatItCounts": "Months",
+    "countExamples": [
+      "number of months"
+    ],
+    "jmdict": {
+      "id": "1194480",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかげつ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかげつ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかげつ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかげつ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかげつ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかげつ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかげつ"
+        ],
+        "rare": [
+          "しちかげつ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかげつ",
+          "はちかげつ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかげつ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかげつ"
+        ],
+        "rare": [
+          "じっかげつ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかげつ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かこく",
+    "kanji": "箇国",
+    "reading": "かこく",
+    "category": "Common",
+    "whatItCounts": "Individual countries",
+    "countExamples": [
+      "individual countries"
+    ],
+    "jmdict": {
+      "id": "2086750",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかこく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかこく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかこく"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかこく"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかこく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかこく"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかこく"
+        ],
+        "rare": [
+          "しちかこく"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかこく",
+          "はちかこく"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかこく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかこく"
+        ],
+        "rare": [
+          "じっかこく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかこく"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かしょ",
+    "kanji": "箇所",
+    "reading": "かしょ",
+    "category": "Common",
+    "whatItCounts": "Places, spots",
+    "countExamples": [
+      "places",
+      "spots",
+      "points",
+      "passages",
+      "parts",
+      "typos",
+      "water supply points",
+      "movie theaters",
+      "shopping malls",
+      "toilets",
+      "mosquito bites",
+      "scars",
+      "broken parts of something",
+      "parts that need to be fixed",
+      "changed parts",
+      "dangerous areas"
+    ],
+    "jmdict": {
+      "id": "1590250",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかしょ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかしょ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかしょ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかしょ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかしょ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかしょ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかしょ"
+        ],
+        "rare": [
+          "しちかしょ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちかしょ",
+          "はっかしょ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかしょ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかしょ"
+        ],
+        "rare": [
+          "じっかしょ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかしょ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かん",
+    "kanji": "缶",
+    "reading": "かん",
+    "category": "Common",
+    "whatItCounts": "Cans, tins",
+    "countExamples": [
+      "soda cans",
+      "beer cans",
+      "tuna cans",
+      "bean cans",
+      "milk cans",
+      "spray cans",
+      "paint cans",
+      "tea leaves in tins"
+    ],
+    "jmdict": {
+      "id": "1214540",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとかん"
+        ],
+        "rare": [
+          "いっかん"
+        ]
+      },
+      "2": {
+        "primary": [
+          "ふたかん"
+        ],
+        "rare": [
+          "にかん"
+        ]
+      },
+      "3": {
+        "primary": [
+          "さんかん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかん"
+        ],
+        "rare": [
+          "しちかん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかん",
+          "はちかん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかん"
+        ],
+        "rare": [
+          "じっかん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "かん-巻",
+    "kanji": "巻",
+    "reading": "かん",
+    "category": "Common",
+    "whatItCounts": "Volumes of books",
+    "countExamples": [
+      "volumes of books",
+      "cassette tapes",
+      "videotapes",
+      "DVDs",
+      "etc. that are in a series",
+      "and scrolls."
+    ],
+    "jmdict": {
+      "id": "1955950",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっかん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にかん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんかん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんかん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごかん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっかん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななかん"
+        ],
+        "rare": [
+          "しちかん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっかん",
+          "はちかん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうかん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっかん"
+        ],
+        "rare": [
+          "じっかん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんかん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "きょく",
+    "kanji": "曲",
+    "reading": "きょく",
+    "category": "Common",
+    "whatItCounts": "Songs, music",
+    "countExamples": [
+      "songs",
+      "music"
+    ],
+    "jmdict": {
+      "id": "1239700",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっきょく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にきょく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんきょく"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんきょく"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごきょく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっきょく"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななきょく"
+        ],
+        "rare": [
+          "しちきょく"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっきょく",
+          "はちきょく"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうきょく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっきょく"
+        ],
+        "rare": [
+          "じっきょく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんきょく"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "きれ",
+    "kanji": "切れ",
+    "reading": "きれ",
+    "category": "Common",
+    "whatItCounts": "Sliced pieces of fish, meat, cake, bread, cheese etc.",
+    "countExamples": [
+      "sliced pieces of fish (including sashimi)",
+      "slices of meat",
+      "mochi (rice cakes)",
+      "slices of bread",
+      "slices of cake",
+      "slices of pizza",
+      "slices of okonomiyaki",
+      "cuts of cheese"
+    ],
+    "jmdict": {
+      "id": "1384840",
+      "senseIndex": [
+        4
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひときれ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたきれ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんきれ"
+        ],
+        "rare": [
+          "みきれ"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんきれ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごきれ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっきれ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななきれ"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっきれ",
+          "はちきれ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうきれ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっきれ"
+        ],
+        "rare": [
+          "じっきれ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんきれ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "くち",
+    "kanji": "口",
+    "reading": "くち",
+    "category": "Common",
+    "whatItCounts": "Bites, sips",
+    "countExamples": [
+      "bites (e.g.",
+      "\"one bite of chicken\")",
+      "sips (e.g.",
+      "\"one sip of strawberry milk\")",
+      "swords",
+      "suspended temple bells",
+      "submissions to win a prize",
+      "the set price of a contribution",
+      "a set donation amount",
+      "shares of insurance"
+    ],
+    "jmdict": {
+      "id": "1275640",
+      "senseIndex": [
+        11
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとくち"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたくち"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんくち"
+        ],
+        "rare": [
+          "みくち"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんくち"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごくち"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっくち"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななくち"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっくち"
+        ],
+        "rare": [
+          "はちくち"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうくち"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっくち"
+        ],
+        "rare": [
+          "じっくち"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんくち"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "くみ-グループ",
+    "kanji": "組",
+    "reading": "くみ",
+    "category": "Common",
+    "whatItCounts": "Couples, pairs, or groups of something",
+    "countExamples": [
+      "a couple of lovers",
+      "a couple of groups",
+      "a pair of earrings",
+      "a pair of gloves or mittens",
+      "a set of playing cards",
+      "a set of futon bedding",
+      "a set of stacked food boxes",
+      "a jacket and pants suit set"
+    ],
+    "jmdict": {
+      "id": "1397450",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとくみ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたくみ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんくみ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんくみ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごくみ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっくみ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななくみ"
+        ],
+        "rare": [
+          "しちくみ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちくみ"
+        ],
+        "rare": [
+          "はっくみ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうくみ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっくみ"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんくみ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "くみ-クラス",
+    "kanji": "組",
+    "reading": "くみ",
+    "category": "Common",
+    "whatItCounts": "Classroom numbers",
+    "countExamples": [
+      "as an ordinal number suffix for a classroom number."
+    ],
+    "jmdict": {
+      "id": "1397450",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちくみ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にくみ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんくみ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんくみ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごくみ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっくみ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななくみ"
+        ],
+        "rare": [
+          "しちくみ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちくみ"
+        ],
+        "rare": [
+          "はっくみ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうくみ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっくみ"
+        ],
+        "rare": [
+          "じっくみ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんくみ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "けん",
+    "kanji": "件",
+    "reading": "けん",
+    "category": "Common",
+    "whatItCounts": "Matters, cases",
+    "countExamples": [
+      "proposals",
+      "suggestions",
+      "legislative bills",
+      "agenda items",
+      "projects",
+      "plans",
+      "crimes",
+      "incidents",
+      "scandals",
+      "complaints",
+      "objections",
+      "contracts",
+      "agreements",
+      "emails",
+      "financing",
+      "loans",
+      "troubles",
+      "bankruptcies",
+      "page views",
+      "Internet access numbers",
+      "voice mail messages"
+    ],
+    "jmdict": {
+      "id": "1255940",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっけん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にけん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんけん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんけん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごけん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっけん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななけん"
+        ],
+        "rare": [
+          "しちけん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっけん",
+          "はちけん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうけん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっけん"
+        ],
+        "rare": [
+          "じっけん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんけん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "けん-軒",
+    "kanji": "軒",
+    "reading": "けん",
+    "category": "Common",
+    "whatItCounts": "Houses, tenements, shops, restaurants",
+    "countExamples": [
+      "houses",
+      "shops",
+      "restaurants",
+      "warehouses",
+      "factories",
+      "farms",
+      "households",
+      "recipients",
+      "apartment buildings",
+      "apartments",
+      "hermitages",
+      "tenements"
+    ],
+    "jmdict": {
+      "id": "2078590",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっけん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にけん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんけん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんけん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごけん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっけん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななけん"
+        ],
+        "rare": [
+          "しちけん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっけん",
+          "はちけん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうけん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっけん"
+        ],
+        "rare": [
+          "じっけん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんげん"
+        ],
+        "rare": [
+          "なんけん"
+        ]
+      }
+    }
+  },
+  {
+    "id": "ご",
+    "kanji": "語",
+    "reading": "ご",
+    "category": "Common",
+    "whatItCounts": "Words",
+    "countExamples": [
+      "words"
+    ],
+    "jmdict": {
+      "id": "1270910",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちご"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にご"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんご"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんご"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごご"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくご"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななご",
+          "しちご"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちご"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうご"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうご"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんご"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "こう",
+    "kanji": "校",
+    "reading": "こう",
+    "category": "Common",
+    "whatItCounts": "Schools",
+    "countExamples": [
+      "schools",
+      "elementary schools",
+      "pre-schools",
+      "junior high schools",
+      "secondary schools",
+      "private schools",
+      "public schools",
+      "high schools",
+      "colleges",
+      "universities",
+      "cram schools",
+      "proofreading corrections"
+    ],
+    "jmdict": {
+      "id": "2259610",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっこう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にこう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんこう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんこう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごこう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっこう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななこう"
+        ],
+        "rare": [
+          "しちこう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっこう",
+          "はちこう"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうこう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっこう"
+        ],
+        "rare": [
+          "じっこう"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんこう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "さら",
+    "kanji": "皿",
+    "reading": "さら",
+    "category": "Common",
+    "whatItCounts": "Plates, dishes",
+    "countExamples": [
+      "plates",
+      "dishes",
+      "lab dishes",
+      "food on a plate/dish",
+      "one serving of soba (usually cold)"
+    ],
+    "jmdict": {
+      "id": "1299680",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとさら"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたさら"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんさら"
+        ],
+        "rare": [
+          "みさら"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんさら"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごさら"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくさら"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななさら"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっさら",
+          "はちさら"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうさら"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっさら"
+        ],
+        "rare": [
+          "じっさら"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんさら"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しあい",
+    "kanji": "試合",
+    "reading": "しあい",
+    "category": "Common",
+    "whatItCounts": "Games, matches",
+    "countExamples": [
+      "games",
+      "matches"
+    ],
+    "jmdict": {
+      "id": "1312420",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしあい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしあい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしあい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしあい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしあい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしあい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしあい"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっしあい"
+        ],
+        "rare": [
+          "はちしあい"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしあい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしあい"
+        ],
+        "rare": [
+          "じっしあい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしあい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しな/ひん",
+    "kanji": "品",
+    "reading": "しな/ひん",
+    "category": "Common",
+    "whatItCounts": "Dishes of food, specific dishes in a course, items on a menu",
+    "countExamples": [
+      "dishes of food",
+      "a meal's course dish",
+      "items",
+      "products"
+    ],
+    "jmdict": {
+      "id": "2648780",
+      "senseIndex": [
+        2
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとしな",
+          "いっぴん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたしな",
+          "にひん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしな",
+          "さんぴん"
+        ],
+        "rare": [
+          "みしな"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんしな",
+          "よんひん",
+          "よんぴん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしな",
+          "ごひん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしな",
+          "ろっぴん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしな",
+          "ななひん"
+        ],
+        "rare": [
+          "しちひん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしな",
+          "はちしな",
+          "はっぴん"
+        ],
+        "rare": [
+          "はちひん"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしな",
+          "きゅうひん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしな",
+          "じゅっぴん"
+        ],
+        "rare": [
+          "じっしな",
+          "じっぴん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしな",
+          "なんぴん"
+        ],
+        "rare": [
+          "なんひん"
+        ]
+      }
+    }
+  },
+  {
+    "id": "しゃ",
+    "kanji": "社",
+    "reading": "しゃ",
+    "category": "Common",
+    "whatItCounts": "Companies, publishers",
+    "countExamples": [
+      "companies",
+      "publishers",
+      "newspaper companies",
+      "shrines"
+    ],
+    "jmdict": {
+      "id": "2015400",
+      "senseIndex": [
+        3
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしゃ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしゃ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしゃ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしゃ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしゃ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしゃ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしゃ"
+        ],
+        "rare": [
+          "しちしゃ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしゃ"
+        ],
+        "rare": [
+          "はちしゃ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしゃ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしゃ"
+        ],
+        "rare": [
+          "じっしゃ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしゃ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しゅるい",
+    "kanji": "種類",
+    "reading": "しゅるい",
+    "category": "Common",
+    "whatItCounts": "Kinds, varieties, types",
+    "countExamples": [
+      "kinds",
+      "varieties",
+      "types"
+    ],
+    "jmdict": {
+      "id": "1328890",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしゅるい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしゅるい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしゅるい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしゅるい"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしゅるい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしゅるい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしゅるい"
+        ],
+        "rare": [
+          "しちしゅるい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしゅるい"
+        ],
+        "rare": [
+          "はちしゅるい"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしゅるい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしゅるい"
+        ],
+        "rare": [
+          "じっしゅるい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしゅるい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しゅう",
+    "kanji": "週",
+    "reading": "しゅう",
+    "category": "Common",
+    "whatItCounts": "Weeks",
+    "countExamples": [
+      "weeks"
+    ],
+    "jmdict": {
+      "id": "1333450",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしゅう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしゅう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしゅう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしゅう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしゅう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしゅう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしゅう"
+        ],
+        "rare": [
+          "しちしゅう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしゅう"
+        ],
+        "rare": [
+          "はちしゅう"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしゅう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしゅう"
+        ],
+        "rare": [
+          "じっしゅう"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしゅう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しゅう-周",
+    "kanji": "周",
+    "reading": "しゅう",
+    "category": "Common",
+    "whatItCounts": "Numbers of times you go around something, circuits, rounds, laps",
+    "countExamples": [
+      "the number of times you go around something",
+      "circuits",
+      "rounds",
+      "laps",
+      "rounds of golf",
+      "instances of traveling around something/somewhere",
+      "courses",
+      "revolutions"
+    ],
+    "jmdict": {
+      "id": "1331020",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしゅう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしゅう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしゅう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしゅう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしゅう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしゅう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしゅう"
+        ],
+        "rare": [
+          "しちしゅう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしゅう"
+        ],
+        "rare": [
+          "はちしゅう"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしゅう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしゅう"
+        ],
+        "rare": [
+          "じっしゅう"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしゅう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "しょく/いろ",
+    "kanji": "色",
+    "reading": "しょく/いろ",
+    "category": "Common",
+    "whatItCounts": "Colors",
+    "countExamples": [
+      "colors"
+    ],
+    "jmdict": {
+      "id": "2097830",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっしょく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にしょく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんしょく"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんしょく"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごしょく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくしょく"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななしょく",
+          "なないろ"
+        ],
+        "rare": [
+          "しちしょく"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっしょく"
+        ],
+        "rare": [
+          "はちしょく"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうしょく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっしょく"
+        ],
+        "rare": [
+          "じっしょく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんしょく"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "せき",
+    "kanji": "席",
+    "reading": "せき",
+    "category": "Common",
+    "whatItCounts": "Seats, parties, banquets, performances",
+    "countExamples": [
+      "seats",
+      "parties",
+      "banquets",
+      "performances",
+      "Rakugo performances",
+      "drinking parties",
+      "meetings",
+      "as an ordinal number suffix for ranking in a competition/contest"
+    ],
+    "jmdict": {
+      "id": "1382250",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっせき",
+          "ひとせき"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にせき",
+          "ふたせき"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんせき"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんせき"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごせき"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくせき"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななせき"
+        ],
+        "rare": [
+          "しちせき"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっせき",
+          "はちせき"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうせき"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっせき"
+        ],
+        "rare": [
+          "じっせき"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんせき"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "せん",
+    "kanji": "戦",
+    "reading": "せん",
+    "category": "Common",
+    "whatItCounts": "Battles, fights, matches",
+    "countExamples": [
+      "skirmishes in a war",
+      "sports fights",
+      "martial arts fights",
+      "real fights",
+      "matches",
+      "video game matches",
+      "sports games",
+      "games",
+      "board game matches",
+      "Chess matches",
+      "Shōgi matches"
+    ],
+    "jmdict": {
+      "id": "2080730",
+      "senseIndex": [
+        0,
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっせん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にせん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんせん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんせん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごせん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくせん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななせん"
+        ],
+        "rare": [
+          "しちせん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっせん"
+        ],
+        "rare": [
+          "はちせん"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうせん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっせん"
+        ],
+        "rare": [
+          "じっせん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんせん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "そく",
+    "kanji": "足",
+    "reading": "そく",
+    "category": "Common",
+    "whatItCounts": "Shoes, socks, stockings, slippers",
+    "countExamples": [
+      "shoes",
+      "socks",
+      "stockings",
+      "slippers",
+      "zōri (Japanese sandals)",
+      "tabi (Japanese socks)",
+      "geta (wooden Japanese shoes)",
+      "clogs",
+      "roller skates",
+      "rollerblades",
+      "ice skates",
+      "flip flops",
+      "boots",
+      "rain boots",
+      "sheets of dried squid"
+    ],
+    "jmdict": {
+      "id": "2412230",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっそく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にそく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんそく"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんそく"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごそく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくそく"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななそく"
+        ],
+        "rare": [
+          "しちそく"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっそく"
+        ],
+        "rare": [
+          "はちそく"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうそく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっそく"
+        ],
+        "rare": [
+          "じっそく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんそく"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "たば",
+    "kanji": "束",
+    "reading": "たば",
+    "category": "Common",
+    "whatItCounts": "Bundles",
+    "countExamples": [
+      "bundles of asparagus",
+      "soba noodles",
+      "firewood",
+      "scallions",
+      "green onions",
+      "ropes",
+      "konbu",
+      "noodles",
+      "incense sticks",
+      "papers",
+      "bills",
+      "bouquets",
+      "sets of newspapers or origami cranes"
+    ],
+    "jmdict": {
+      "id": "1404450",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとたば"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたたば"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんたば"
+        ],
+        "rare": [
+          "みたば"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんたば"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごたば"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくたば"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななたば"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はったば",
+          "はちたば"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうたば"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅったば"
+        ],
+        "rare": [
+          "じったば"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんたば"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "たま",
+    "kanji": "玉",
+    "reading": "たま",
+    "category": "Common",
+    "whatItCounts": "Ball-shaped things",
+    "countExamples": [
+      "ball-shaped things; round fruit such as peaches",
+      "melons",
+      "watermelons",
+      "tomatoes",
+      "and persimmons; round vegetables such as onions",
+      "cabbage",
+      "lettuce",
+      "and even Chinese cabbage (despite it not being super round); balls of noodles such as yakisoba",
+      "udon",
+      "soba",
+      "ramen",
+      "and konnyaku noodles; balls of yarn",
+      "balls of wire",
+      "pachinko balls"
+    ],
+    "jmdict": {
+      "id": "1240530",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとたま"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたたま"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんたま"
+        ],
+        "rare": [
+          "みたま"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんたま"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごたま"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくたま"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななたま"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はったま",
+          "はちたま"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうたま"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅったま"
+        ],
+        "rare": [
+          "じったま"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんたま"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "だん",
+    "kanji": "段",
+    "reading": "だん",
+    "category": "Common",
+    "whatItCounts": "Steps of stairs, shelves, cake tiers, bunk bed levels, drawers",
+    "countExamples": [
+      "steps of stairs",
+      "shelves (when multiple shelves are installed vertically)",
+      "cake tiers",
+      "bunk bed levels",
+      "drawers (when multiple drawers are installed vertically)",
+      "stages such as rocket stages",
+      "martial arts ranks",
+      "Japanese calligraphy ranks",
+      "paragraphs",
+      "columns"
+    ],
+    "jmdict": {
+      "id": "1633690",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちだん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にだん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんだん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よだん",
+          "よんだん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごだん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくだん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "しちだん",
+          "ななだん"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちだん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうだん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうだん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんだん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ちゃく",
+    "kanji": "着",
+    "reading": "ちゃく",
+    "category": "Common",
+    "whatItCounts": "Clothes or garments, places in a race",
+    "countExamples": [
+      "clothes or garments such as overcoats",
+      "coats",
+      "cloaks",
+      "kimono",
+      "yukata",
+      "suits",
+      "raincoats",
+      "dresses",
+      "skirts",
+      "jackets",
+      "swimsuits",
+      "costumes",
+      "robes",
+      "suits of armor",
+      "etc. It's also the ordinal number suffix for first",
+      "second",
+      "third",
+      "etc.",
+      "place in a race."
+    ],
+    "jmdict": {
+      "id": "1597470",
+      "senseIndex": [
+        1,
+        2
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっちゃく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にちゃく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんちゃく"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんちゃく"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごちゃく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくちゃく"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななちゃく"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっちゃく"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうちゃく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっちゃく"
+        ],
+        "rare": [
+          "じっちゃく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんちゃく"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "つう",
+    "kanji": "通",
+    "reading": "つう",
+    "category": "Common",
+    "whatItCounts": "Written postcards, greeting cards, letters, emails, messages",
+    "countExamples": [
+      "written postcards",
+      "greeting cards",
+      "letters",
+      "mail",
+      "memos",
+      "notes",
+      "wills",
+      "telegrams",
+      "fax messages",
+      "written contracts",
+      "emails",
+      "job applications",
+      "sealed documents",
+      "official papers",
+      "bills",
+      "witness reports",
+      "work invoices",
+      "survey answer responses",
+      "driver's licenses",
+      "passports",
+      "bankbooks",
+      "school report cards"
+    ],
+    "jmdict": {
+      "id": "1432840",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっつう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "につう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんつう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんつう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごつう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくつう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななつう"
+        ],
+        "rare": [
+          "しちつう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっつう"
+        ],
+        "rare": [
+          "はちつう"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうつう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっつう"
+        ],
+        "rare": [
+          "じっつう"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんつう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "つぶ",
+    "kanji": "粒",
+    "reading": "つぶ",
+    "category": "Common",
+    "whatItCounts": "Small, round things",
+    "countExamples": [
+      "manila clams",
+      "beans",
+      "peas",
+      "candy drops",
+      "umeboshi",
+      "teardrops",
+      "raindrops",
+      "water drops",
+      "caviar",
+      "fish roe balls",
+      "pills",
+      "tablets",
+      "grains of rice",
+      "other grains",
+      "raisins",
+      "blueberries",
+      "raspberries",
+      "strawberries",
+      "blackberries",
+      "grains of sand",
+      "rubies",
+      "small stones",
+      "pebbles",
+      "sea salt grains",
+      "seeds",
+      "almonds",
+      "other nuts"
+    ],
+    "jmdict": {
+      "id": "1552890",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとつぶ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたつぶ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんつぶ"
+        ],
+        "rare": [
+          "みつぶ"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんつぶ"
+        ],
+        "rare": [
+          "よつぶ"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごつぶ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくつぶ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななつぶ"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっつぶ",
+          "はちつぶ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうつぶ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっつぶ"
+        ],
+        "rare": [
+          "じっつぶ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんつぶ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "てん",
+    "kanji": "点",
+    "reading": "てん",
+    "category": "Common",
+    "whatItCounts": "Dots, points, items and products, test scores, sports game scores",
+    "countExamples": [
+      "dots",
+      "points",
+      "fulcrums; items and products such as accessories",
+      "curtains",
+      "furniture",
+      "vases",
+      "pottery",
+      "cloth",
+      "stuffed animals",
+      "and rings; artwork such as carvings",
+      "pictures",
+      "paintings",
+      "drawings",
+      "portraits",
+      "novels and other literature; test scores",
+      "sports game scores",
+      "eye drops"
+    ],
+    "jmdict": {
+      "id": "1441390",
+      "senseIndex": [
+        7
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いってん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にてん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんてん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんてん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごてん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくてん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななてん"
+        ],
+        "rare": [
+          "しちてん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はってん",
+          "はちてん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうてん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅってん"
+        ],
+        "rare": [
+          "じってん"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんてん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ど",
+    "kanji": "度",
+    "reading": "ど",
+    "category": "Common",
+    "whatItCounts": "Number of times something happens, chances, opportunities, experiences",
+    "countExamples": [
+      "the number of times something happens",
+      "chances",
+      "opportunities",
+      "experiences",
+      "series of actions",
+      "divided actions",
+      "degrees",
+      "temperature"
+    ],
+    "jmdict": {
+      "id": "1445160",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちど",
+          "ひとたび"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にど",
+          "ふたたび"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんど",
+          "みたび"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんど"
+        ],
+        "rare": [
+          "よたび"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごど"
+        ],
+        "rare": [
+          "いつたび"
+        ]
+      },
+      "6": {
+        "primary": [
+          "ろくど"
+        ],
+        "rare": [
+          "むたび"
+        ]
+      },
+      "7": {
+        "primary": [
+          "ななど"
+        ],
+        "rare": [
+          "しちど",
+          "ななたび"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちど"
+        ],
+        "rare": [
+          "やたび"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうど"
+        ],
+        "rare": [
+          "ここたび"
+        ]
+      },
+      "10": {
+        "primary": [
+          "じゅうど"
+        ],
+        "rare": [
+          "とたび"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんど",
+          "いくど"
+        ],
+        "rare": [
+          "いくたび"
+        ]
+      }
+    }
+  },
+  {
+    "id": "はい",
+    "kanji": "杯",
+    "reading": "はい",
+    "category": "Common",
+    "whatItCounts": "Bowls of food/soup, cups/glasses/mugs of drink/soup",
+    "countExamples": [
+      "bowls of rice",
+      "donburi",
+      "soba",
+      "ramen",
+      "udon",
+      "stew",
+      "curry",
+      "ochazuke",
+      "and so on; cups/glasses/mugs of milk",
+      "water",
+      "beer",
+      "whiskey",
+      "cocktails",
+      "juice",
+      "tea",
+      "coffee",
+      "and other drinks; octopuses",
+      "squid",
+      "crabs",
+      "various ships"
+    ],
+    "jmdict": {
+      "id": "2019640",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぱい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にはい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんばい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんはい"
+        ],
+        "rare": [
+          "よんばい"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごはい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぱい",
+          "ろくはい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななはい"
+        ],
+        "rare": [
+          "しちはい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぱい",
+          "はちはい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうはい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぱい"
+        ],
+        "rare": [
+          "じっぱい"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんばい"
+        ],
+        "rare": [
+          "なんはい"
+        ]
+      }
+    }
+  },
+  {
+    "id": "はく",
+    "kanji": "泊",
+    "reading": "はく",
+    "category": "Common",
+    "whatItCounts": "Number of overnight stays or rentals",
+    "countExamples": [
+      "number of overnight stays",
+      "number of overnights",
+      "number of overnight rentals"
+    ],
+    "jmdict": {
+      "id": "1919550",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぱく"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にはく"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんぱく"
+        ],
+        "rare": [
+          "さんはく"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんはく"
+        ],
+        "rare": [
+          "よんぱく"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごはく"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぱく"
+        ],
+        "rare": [
+          "ろくはく"
+        ]
+      },
+      "7": {
+        "primary": [
+          "ななはく"
+        ],
+        "rare": [
+          "しちはく"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぱく"
+        ],
+        "rare": [
+          "はちはく"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうはく"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぱく"
+        ],
+        "rare": [
+          "じっぱく"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんぱく"
+        ],
+        "rare": [
+          "なんはく"
+        ]
+      }
+    }
+  },
+  {
+    "id": "はこ",
+    "kanji": "箱",
+    "reading": "はこ",
+    "category": "Common",
+    "whatItCounts": "Boxes",
+    "countExamples": [
+      "cardboard boxes",
+      "wooden boxes",
+      "lunchboxes",
+      "boxes",
+      "boxes",
+      "boxes"
+    ],
+    "jmdict": {
+      "id": "1585650",
+      "senseIndex": [
+        6
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとはこ"
+        ],
+        "rare": [
+          "いっぱこ"
+        ]
+      },
+      "2": {
+        "primary": [
+          "ふたはこ"
+        ],
+        "rare": [
+          "にはこ"
+        ]
+      },
+      "3": {
+        "primary": [
+          "さんぱこ"
+        ],
+        "rare": [
+          "さんはこ",
+          "みはこ"
+        ]
+      },
+      "4": {
+        "primary": [
+          "よんはこ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごはこ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぱこ"
+        ],
+        "rare": [
+          "ろくはこ"
+        ]
+      },
+      "7": {
+        "primary": [
+          "ななはこ"
+        ],
+        "rare": [
+          "しちはこ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぱこ"
+        ],
+        "rare": [
+          "はちはこ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうはこ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぱこ"
+        ],
+        "rare": [
+          "じっぱこ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんはこ"
+        ],
+        "rare": [
+          "なんぱこ"
+        ]
+      }
+    }
+  },
+  {
+    "id": "はつ",
+    "kanji": "発",
+    "reading": "はつ",
+    "category": "Common",
+    "whatItCounts": "Bullets, bullet marks, explosives, fireworks, shots",
+    "countExamples": [
+      "bullets",
+      "bullet marks",
+      "explosives",
+      "fireworks",
+      "shots fired",
+      "farts",
+      "punches",
+      "kicks",
+      "bombs",
+      "cannons",
+      "missiles",
+      "rockets",
+      "tennis shots",
+      "kendo attacks",
+      "baseball hits",
+      "home runs",
+      "sex",
+      "jokes"
+    ],
+    "jmdict": {
+      "id": "1477120",
+      "senseIndex": [
+        3
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぱつ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にはつ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんぱつ",
+          "さんはつ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんはつ",
+          "よんぱつ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごはつ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぱつ",
+          "ろくはつ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななはつ"
+        ],
+        "rare": [
+          "しちはつ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はっぱつ",
+          "はちはつ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうはつ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぱつ"
+        ],
+        "rare": [
+          "じっぱつ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんぱつ",
+          "なんはつ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ばん",
+    "kanji": "番",
+    "reading": "ばん",
+    "category": "Common",
+    "whatItCounts": "Turns, orders, ranks, numbers",
+    "countExamples": [
+      "turns",
+      "orders",
+      "rank",
+      "numbers",
+      "Go/Shōgi/Chess matches",
+      "sumo matches",
+      "Noh theaters",
+      "verses of a song"
+    ],
+    "jmdict": {
+      "id": "2022640",
+      "senseIndex": [
+        0,
+        3
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちばん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にばん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんばん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんばん"
+        ],
+        "rare": [
+          "よばん"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごばん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくばん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななばん",
+          "（しちばん）"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちばん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうばん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうばん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんばん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "びょう",
+    "kanji": "秒",
+    "reading": "びょう",
+    "category": "Common",
+    "whatItCounts": "Seconds",
+    "countExamples": [
+      "seconds as a unit of time",
+      "angles",
+      "latitude",
+      "longitude"
+    ],
+    "jmdict": {
+      "id": "1490430",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちびょう"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にびょう"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんびょう"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんびょう"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごびょう"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくびょう"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななびょう"
+        ],
+        "rare": [
+          "しちびょう"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちびょう"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうびょう"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうびょう"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんびょう"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "びん",
+    "kanji": "便",
+    "reading": "びん",
+    "category": "Common",
+    "whatItCounts": "Flights, ships, instances of shipping out, long-distance bus trips, deliveries",
+    "countExamples": [
+      "flights",
+      "ships shipping out",
+      "long-distance bus trips",
+      "deliveries",
+      "instances of transportation",
+      "flight numbers",
+      "bus numbers"
+    ],
+    "jmdict": {
+      "id": "1512360",
+      "senseIndex": [
+        0,
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちびん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にびん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんびん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よびん",
+          "（よんびん）"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごびん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくびん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななびん"
+        ],
+        "rare": [
+          "しちびん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちびん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうびん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうびん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんびん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "ふくろ",
+    "kanji": "袋",
+    "reading": "ふくろ",
+    "category": "Common",
+    "whatItCounts": "Bags, sacks, pouches",
+    "countExamples": [
+      "bags",
+      "sacks",
+      "pouches",
+      "plastic bags",
+      "paper bags",
+      "shopping bags",
+      "garbage bags",
+      "etc. These bags can be filled with anything too: candy",
+      "snacks",
+      "rice",
+      "spinach",
+      "flowers",
+      "whatever."
+    ],
+    "jmdict": {
+      "id": "2707020",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとふくろ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたふくろ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんふくろ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんふくろ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごふくろ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぷくろ",
+          "ろくふくろ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななふくろ"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっぷくろ",
+          "はちふくろ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうふくろ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぷくろ"
+        ],
+        "rare": [
+          "じっぷくろ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんふくろ"
+        ],
+        "rare": [
+          "なんぷくろ",
+          "なんぶくろ"
+        ]
+      }
+    }
+  },
+  {
+    "id": "へや",
+    "kanji": "部屋",
+    "reading": "へや",
+    "category": "Common",
+    "whatItCounts": "Rooms",
+    "countExamples": [
+      "all rooms",
+      "like back rooms",
+      "closets",
+      "storage rooms",
+      "hotel rooms",
+      "bedrooms",
+      "bathrooms",
+      "living rooms"
+    ],
+    "jmdict": {
+      "id": "1499320",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひとへや"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたへや"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんへや",
+          "みへや"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんへや"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごへや"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくへや"
+        ],
+        "rare": [
+          "ろっぺや"
+        ]
+      },
+      "7": {
+        "primary": [
+          "ななへや"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はちへや"
+        ],
+        "rare": [
+          "はっぺや"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうへや"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぺや"
+        ],
+        "rare": [
+          "じっへや"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんへや"
+        ],
+        "rare": [
+          "なんべや",
+          "なんぺや"
+        ]
+      }
+    }
+  },
+  {
+    "id": "ほ",
+    "kanji": "歩",
+    "reading": "ほ",
+    "category": "Common",
+    "whatItCounts": "Steps",
+    "countExamples": [
+      "steps taken while walking",
+      "steps of progress in your work",
+      "steps of progress in your education/learning"
+    ],
+    "jmdict": {
+      "id": "1514300",
+      "senseIndex": [
+        1
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いっぽ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にほ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんぽ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんほ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごほ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろっぽ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななほ"
+        ],
+        "rare": []
+      },
+      "8": {
+        "primary": [
+          "はっぽ"
+        ],
+        "rare": [
+          "はちほ"
+        ]
+      },
+      "9": {
+        "primary": [
+          "きゅうほ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅっぽ"
+        ],
+        "rare": [
+          "じっぽ"
+        ]
+      },
+      "how-many": {
+        "primary": [
+          "なんぽ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "めい",
+    "kanji": "名",
+    "reading": "めい",
+    "category": "Common",
+    "whatItCounts": "Number of people",
+    "countExamples": [
+      "number of people"
+    ],
+    "jmdict": {
+      "id": "2153790",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちめい"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にめい"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんめい"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんめい"
+        ],
+        "rare": [
+          "よめい"
+        ]
+      },
+      "5": {
+        "primary": [
+          "ごめい"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくめい"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななめい"
+        ],
+        "rare": [
+          "しちめい"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちめい"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうめい"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうめい"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんめい"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "もじ",
+    "kanji": "文字",
+    "reading": "もじ",
+    "category": "Common",
+    "whatItCounts": "Letters, characters, moras in poetry",
+    "countExamples": [
+      "letters",
+      "characters",
+      "morae in poetry"
+    ],
+    "jmdict": {
+      "id": "1505390",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "ひともじ",
+          "いちもじ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "ふたもじ",
+          "にもじ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんもじ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんもじ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごもじ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくもじ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななもじ"
+        ],
+        "rare": [
+          "しちもじ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちもじ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうもじ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうもじ"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんもじ"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "もん",
+    "kanji": "問",
+    "reading": "もん",
+    "category": "Common",
+    "whatItCounts": "Questions and problems in a quiz, tests, exams, textbooks, worksheets, etc.",
+    "countExamples": [
+      "questions and problems in a quiz",
+      "test",
+      "exam",
+      "textbook",
+      "worksheet"
+    ],
+    "jmdict": {
+      "id": "1634040",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちもん"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にもん"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんもん"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんもん"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごもん"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくもん"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななもん"
+        ],
+        "rare": [
+          "しちもん"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちもん"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうもん"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうもん"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんもん"
+        ],
+        "rare": []
+      }
+    }
+  },
+  {
+    "id": "わ-話",
+    "kanji": "話",
+    "reading": "わ",
+    "category": "Common",
+    "whatItCounts": "Stories, episodes",
+    "countExamples": [
+      "stories",
+      "episodes",
+      "drama episodes",
+      "manga chapters",
+      "anime episodes",
+      "narratives",
+      "myths",
+      "folk stories",
+      "folk tales",
+      "legends"
+    ],
+    "jmdict": {
+      "id": "2100460",
+      "senseIndex": [
+        0
+      ]
+    },
+    "pronunciations": {
+      "1": {
+        "primary": [
+          "いちわ"
+        ],
+        "rare": []
+      },
+      "2": {
+        "primary": [
+          "にわ"
+        ],
+        "rare": []
+      },
+      "3": {
+        "primary": [
+          "さんわ"
+        ],
+        "rare": []
+      },
+      "4": {
+        "primary": [
+          "よんわ"
+        ],
+        "rare": []
+      },
+      "5": {
+        "primary": [
+          "ごわ"
+        ],
+        "rare": []
+      },
+      "6": {
+        "primary": [
+          "ろくわ"
+        ],
+        "rare": []
+      },
+      "7": {
+        "primary": [
+          "ななわ"
+        ],
+        "rare": [
+          "しちわ"
+        ]
+      },
+      "8": {
+        "primary": [
+          "はちわ"
+        ],
+        "rare": []
+      },
+      "9": {
+        "primary": [
+          "きゅうわ"
+        ],
+        "rare": []
+      },
+      "10": {
+        "primary": [
+          "じゅうわ"
+        ],
+        "rare": []
+      },
+      "how-many": {
+        "primary": [
+          "なんわ"
+        ],
+        "rare": []
+      }
+    }
+  }
+]

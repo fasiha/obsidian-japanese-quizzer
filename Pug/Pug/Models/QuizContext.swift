@@ -264,7 +264,8 @@ struct QuizContext {
     /// hasKanji is inferred from whether kanji facets exist in ebisu_models.
     /// - Parameter jmdict: Optional jmdict DB reader used to fill in word texts and forms.
     /// - Parameter pairCorpus: Optional transitive-pair corpus; enrolled pairs are appended as pair-discrimination items.
-    static func build(db: QuizDB, jmdict: (any DatabaseReader)? = nil, pairCorpus: TransitivePairCorpus? = nil) async throws -> [QuizItem] {
+    /// - Parameter counterCorpus: Optional counter corpus; enrolled counters are appended as counter quiz items.
+    static func build(db: QuizDB, jmdict: (any DatabaseReader)? = nil, pairCorpus: TransitivePairCorpus? = nil, counterCorpus: CounterCorpus? = nil) async throws -> [QuizItem] {
         let records        = try await db.enrolledEbisuRecords()
         var wordTexts      = try await db.wordTexts()
         let reviewCounts   = try await db.reviewCounts()
@@ -450,6 +451,57 @@ struct QuizContext {
                     wordType: "transitive-pair", wordId: pairItem.id, wordText: wordText,
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
                     facet: "pair-discrimination", status: status,
+                    senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
+                    corpusSenseIndices: []
+                ))
+            }
+        }
+
+        // Include enrolled counter items.
+        if let counterCorpus {
+            let counterRecords = try await db.enrolledCounterRecords()
+            // Group counter records by wordId, then build recall map for each facet.
+            var counterRecallByFacet: [String: [String: (recall: Double, halflife: Double)]] = [:]
+            for record in counterRecords {
+                let elapsed = max(now.timeIntervalSince(iso8601Date(record.lastReview)), 1e-6) / 3600.0
+                let facetRecall = (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
+                counterRecallByFacet[record.wordId, default: [:]][record.quizType] = facetRecall
+            }
+            let counterItems = await MainActor.run { counterCorpus.items }
+            for counterItem in counterItems where counterItem.state == .learning {
+                guard let facetRecalls = counterRecallByFacet[counterItem.id] else { continue }
+                // Pick the most-urgent (lowest-recall) facet.
+                let meaningData = facetRecalls["meaning-to-reading"]
+                let numberData = facetRecalls["counter-number-to-reading"]
+                let (facet, recall, halflife): (String, Double, Double)
+                if let meaning = meaningData, let number = numberData {
+                    if meaning.recall < number.recall {
+                        facet = "meaning-to-reading"
+                        recall = meaning.recall
+                        halflife = meaning.halflife
+                    } else {
+                        facet = "counter-number-to-reading"
+                        recall = number.recall
+                        halflife = number.halflife
+                    }
+                } else if let meaning = meaningData {
+                    facet = "meaning-to-reading"
+                    recall = meaning.recall
+                    halflife = meaning.halflife
+                } else if let number = numberData {
+                    facet = "counter-number-to-reading"
+                    recall = number.recall
+                    halflife = number.halflife
+                } else {
+                    continue
+                }
+
+                let status = QuizStatus.reviewed(recall: recall, isFree: true, halflife: halflife)
+                let wordText = "\(counterItem.counter.kanji)(\(counterItem.counter.reading))"
+                items.append(QuizItem(
+                    wordType: "counter", wordId: counterItem.id, wordText: wordText,
+                    writtenTexts: [counterItem.counter.kanji], kanaTexts: [counterItem.counter.reading],
+                    hasKanji: false, facet: facet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
                     corpusSenseIndices: []
                 ))

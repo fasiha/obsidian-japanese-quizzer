@@ -75,6 +75,13 @@ struct VocabItem: Identifiable {
     /// Whether this word has any kanji forms at all (determines if kanji row is shown).
     var hasKanjiOptions: Bool { !writtenTexts.isEmpty }
 
+    /// True when at least one corpus occurrence of this word carries counter IDs.
+    var hasCounterAnnotation: Bool {
+        references.values.contains { refs in
+            refs.contains { !$0.attestedCounterIds.isEmpty }
+        }
+    }
+
     /// True when every furigana segment across all written forms lacks an `rt` (superscript).
     /// These are orthographic kana variants (e.g. そっと / そうっと) — no form picker needed.
     var isKanaOnly: Bool {

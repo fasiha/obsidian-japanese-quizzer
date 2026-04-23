@@ -1,0 +1,365 @@
+# Counters and Numbers Quiz
+
+## Motivation
+
+Counting in Japanese requires two compounding skills that we can drill:
+
+1. **Counter selection** — knowing that pencils use 本 (ほん), animals use 匹 (ひき), flat things use 枚 (まい), etc.
+2. **Phonetic modification** — knowing that 6+本 is ろっぽん (not ろくほん), or that 3+匹 is さんびき (not さんひき).
+
+Pug should have custom question generation for each number+counter combination. With pre-compiled pronunciation table per counter, this is now tractable.
+
+Additionally, **wago (native Japanese numbers)**: ひとつ、ふたつ、みっつ… through とお are a separate, self-contained skill. They appear in literary content and conversation and should get dedicated drill time.
+
+---
+
+## Key Design Decisions
+
+### Counters are a new `word_type`, not overloaded onto `word_type="jmdict"`
+
+Early designs tried to enroll counters as ordinary `word_type="jmdict"` vocab words and detect counter status at runtime by checking whether the word's JMDict ID appears in `counters.json`. This was abandoned for three reasons:
+
+1. **Ebisu key collision** — a word like 本 has both a "book" meaning and a "cylindrical objects" counter meaning sharing the same JMDict ID. The Ebisu model key `(word_type, word_id, quiz_type)` would conflate quiz performance across the two entirely different meanings.
+2. **Dual-context counters** — 月 has two TSV rows (つき duration months vs. がつ calendar months) and 組 has two rows (groups vs. classroom numbers), both pairs sharing a single JMDict ID. A new `word_type` gives each row its own stable `word_id`.
+3. **No-counter-sense entries** — five counters in the top-66 scope (番、秒、便、部屋、文字) have JMDict entries but no `ctr` part-of-speech tag. They need a JMDict reference for the detail sheet but cannot be anchored to a counter sense index.
+
+Each `counters.json` entry carries a stable `id` (kana-based, unique across all entries) that serves as `word_id` in the Ebisu model key `(word_type="counter", word_id="{id}", quiz_type="…")`.
+
+Enrollment still flows through the existing Markdown reading workflow — a `counters-must-know.md` file references counter IDs, and the user enrolls them by reading and committing as usual.
+
+### Facet design — production only, two facets
+
+The target skill is production during conversation: given what you want to count, produce the right counter with the right pronunciation. This scopes to exactly two facets:
+
+| Facet | Prompt | Answer | Notes |
+|---|---|---|---|
+| `meaning-to-reading` | "small animal counter" (`whatItCounts`) or one example item (from `countExamples`) | ひき | tests counter selection only, no number |
+| `counter-number-to-reading` | 6 + <ruby>匹<rt>ひき</rt></ruby> | ろっぴき | **new facet**; number drawn at quiz time from the hard ones (1, 3, etc.) |
+
+**Why `meaning-to-reading` does not include a number:** injecting a number would conflate counter selection with phonetic modification — a single Ebisu model cannot distinguish which skill failed. Keeping them separate allows targeted remediation.
+
+**Why `counter-number-to-reading` shows both kanji and kana:** in real conversation, you know the number and the counter shape—the challenge is producing the correct phonetic modification. The prompt displays `{number} + {kanji}({kana})` to reflect this real-world skill: given the number and the counter, produce the right pronunciation.
+
+**Number sampling for `counter-number-to-reading`:** draw from {1, 3, 6, 8, 10} (and ignore {2, 4, 5, 7, 9}, since phonetically interesting modifications only occur on the former set). The Ebisu model tracks overall mastery of the counter's phonetic pattern, not per-number mastery.
+
+**Out of scope for version 1** (enumerate as future work if desired): `reading-to-meaning` (recognition, not production), `kanji-to-reading` (same answer as `meaning-to-reading`, different prompt), `meaning-reading-to-kanji` (kanji writing).
+
+### Pronunciation encoding in `counters.json`
+
+The Tofugu TSV uses two distinct conventions in each pronunciation cell:
+
+- **Space-separated** (no parens) — equally valid alternates, no preference (e.g. `はっぽん はちほん` for 8本)
+- **Parenthesized** — rare or less-preferred variant (e.g. `ななほん (しちほん)` for 7本, `じっぽん` in `じゅっぽん (じっぽん)`)
+
+The `pronunciations` values in `counters.json` are therefore parsed into structured objects:
+
+```json
+"8": { "primary": ["はっぽん", "はちほん"], "rare": [] },
+"7": { "primary": ["ななほん"], "rare": ["しちほん"] }
+```
+
+The quiz engine accepts any `primary` reading as correct. `rare` readings may optionally be accepted but are not shown in the prompt or as distractors.
+
+### Wago is a Markdown reading file, not a special corpus
+
+The ten wago forms (一つ through 十, plus the standalone とお) are a fixed, closed set. All are in JMDict. The right treatment is a short Markdown reading file (like our other story/lyrics content) with the ten words enrolled as normal vocab. No new infrastructure needed.
+
+---
+
+## `counters.json` schema
+
+```json
+{
+  "id": "ほん",
+  "kanji": "本",
+  "reading": "ほん",
+  "category": "Must Know",
+  "whatItCounts": "Long, cylindrical things",
+  "countExamples": ["pens", "asparagus", "..."],
+  "jmdict": {
+    "id": "1522150",
+    "senseIndex": 4
+  },
+  "pronunciations": {
+    "1": { "primary": ["いっぽん"], "rare": [] },
+    "7": { "primary": ["ななほん"], "rare": ["しちほん"] },
+    "8": { "primary": ["はっぽん", "はちほん"], "rare": [] },
+    "how-many": { "primary": ["なんぼん"], "rare": [] }
+  }
+}
+```
+
+- `id` — stable kana-based word_id for Ebisu models; unique across all entries. For entries whose reading collides with a more common word, a kanji suffix is appended (e.g. `かい-階` for floors, `かん-巻` for volumes). For 組's two contexts, descriptive suffixes are used (`くみ-グループ`, `くみ-クラス`).
+- `countExamples` — initially empty; fill in manually from the Tofugu article for each counter (e.g. for 台: "playground slides, beds, tables, couches, harps, pianos, cellos, cars, trucks, motors, washing machines, dryers, ovens, air conditioners, microwaves, cellular phones, keyboards, and more").
+- `jmdict` — `null` if didn't find a meaningful JMDict entry (no entries have this now). `senseIndex` can be null if we haven't found any senses that match, or is an array of 0-based indices of the counter senses in the JMDict entry. Indexed senses may be tagged by JMDict as `ctr` (counter), `n-suf` (noun-suffix, typical for counters), or plain `n` (noun) that has been hand-verified to match the counter meaning — all have been validated against JMDict. Most entries have exactly one index. 着 has two indices (`[1, 2]`), because it counts both clothing items and race placements.
+
+---
+
+## Data Sources
+
+### Tofugu TSV (`counters/TofuguList.tsv`)
+
+351 rows, hand-authored by Tofugu. Each row contains:
+- Kanji, reading, what it counts, frequency category (Absolutely Must Know / Must Know / Common / Somewhat Common / Rare / Gairaigo)
+- Full 1–10 pronunciation table, including space-separated equal alternates and parenthesized rare forms
+- A "How Many" (何+counter) column
+- Link to a special Tofugu article for some counters
+
+This is the authoritative source for `counters.json`. We do not need to classify counters into DBJG phonetic types and regenerate pronunciations algorithmically — the TSV already has every cell filled in.
+
+### DBJG appendix (`counters/counters-613.jpg` through `counters-616.jpg`)
+
+Provides a pedagogically useful type classification (Type A through F plus irregular types). Useful for explanatory text in WordDetailSheet ("this counter follows the Type B pattern: h→p with 1, 6, 8, 10") but not needed for quiz generation.
+
+### Tofugu frequency groupings (`counters/tofugu-350.json`)
+
+| Group | Count |
+|---|---|
+| Absolutely Must Know | 2 |
+| Must Know | 17 |
+| Common | 47 |
+| Somewhat Common | 205 |
+| Rare But Interesting | 22 |
+| Gairaigo | 57 |
+
+**Scope for version 1:** the top three tiers (2 + 17 + 47 = 66 counters). The Somewhat Common and below tiers may include obscure kanji not in JMDict; punted to a future version.
+
+---
+
+## Known Unknowns
+
+1. **~~JMDict coverage of the 66 counters~~** — resolved. `build-counters-json.mjs` looks up all 66 via `ctr` part-of-speech filtering plus a manual override map. All 66 resolved. Five entries (番、秒、便、部屋、文字) had no counter-tagged sense in JMDict; these were manually hand-verified and indexed to their semantic noun senses.
+
+2. **~~Multiple `counters.json` entries sharing the same JMDict ID~~** — resolved. Each TSV row gets its own stable `id` derived from the reading. Collisions between distinct counters sharing a reading (e.g. 階 vs 回, both かい) are resolved by appending the kanji: `かい-階`. The two 組 rows get descriptive suffixes: `くみ-グループ` and `くみ-クラス`. The Ebisu model key `(word_type="counter", word_id="{id}", quiz_type="…")` is unambiguous for all 66 entries.
+
+3. **~~Alternate readings in the TSV~~** — resolved. Space-separated entries are equal alternates (all `primary`); parenthesized entries are rare variants. The `pronunciations` field stores `{ primary: string[], rare: string[] }` per number. The quiz engine accepts any `primary` reading as correct.
+
+4. **`countExamples` population** — `build-counters-json.mjs` writes `countExamples: []` for every entry. These should be filled in manually from each counter's Tofugu article. Not blocking for quiz functionality, but useful for WordDetailSheet and future quiz prompt enrichment.
+
+5. **Markdown reading files** — need to author: (a) a wago file (10 words, trivial), (b) a must-know counters file (19 counters), (c) a common counters file (47 counters). These are the enrollment vehicle — counters only enter the quiz queue when a user reads and commits to the word.
+
+6. **WordDetailSheet counter section** — when a word has `word_type="counter"`, the detail sheet should display the 1–10 pronunciation table (analogous to how transitive pairs show both verb forms). If `jmdict.senseIndex` points to a sense without an explicit `ctr` part-of-speech tag (noun or noun-suffix), include a note that the sense has been hand-verified as counter-relevant. Design TBD.
+
+7. **Quiz prompt wording for `counter-number-to-reading`** — multiple-choice distractors can be generated without LLM: pick three other readings from the same counter's 1–10 table (e.g. for 六匹→ろっぴき, offer いっぴき, さんびき, はっぴき). Free-answer phase: app builds stem locally, LLM grades. Needs a system prompt.
+
+8. **`counter-number-to-reading` in TestHarness** — needs a new prompt variation enumerated in `--dump-prompts`.
+
+9. **`pronunciations` parsing in `build-counters-json.mjs`** — ✅ resolved. Each TSV cell now parsed into `{ primary: string[], rare: string[] }`.
+
+---
+
+## Counter Detection in `prepare-publish.mjs` for `vocab.json`
+
+### Where counter info lives in a vocab reference
+
+A vocabulary reference object in `vocab.json` can carry counter information in two distinct places, depending on source:
+
+**Manual annotation** (`- counter:id` bullet in Markdown) → stored as a **sibling to `llm_sense`**:
+```json
+{
+  "line": 82,
+  "context": "赤ちゃんは３ヶ月で笑い始めます。",
+  "counter": ["つき"],
+  "llm_sense": { "sense_indices": [1], "computed_from": [...], "reasoning": "..." }
+}
+```
+
+Multiple `- counter:id` bullets for the same sentence (e.g. `くみ-クラス` and `くみ-グループ` both appearing in a single sentence) all get collected:
+```json
+{
+  "line": 12,
+  "context": "一組と二組が…",
+  "counter": ["くみ-クラス", "くみ-グループ"],
+  "llm_sense": { "sense_indices": [0, 1], "computed_from": [...], "reasoning": "..." }
+}
+```
+
+**LLM-detected counter** → stored **inside `llm_sense`** as an array:
+```json
+{
+  "line": 67,
+  "context": "１００枚の折り紙が必要です。",
+  "llm_sense": { "sense_indices": [0], "counter": ["まい"], "computed_from": [...], "reasoning": "..." }
+}
+```
+
+Consumers resolve counter IDs as: `[...(ref.counter ?? []), ...(ref.llm_sense?.counter ?? [])]` — or simply check each source independently.
+
+A ref's `counter` array and its `llm_sense.counter` are mutually exclusive: if `ref.counter` is non-empty (manual annotations present), the LLM counter-detection question is skipped entirely for that ref.
+
+### Detection strategy
+
+1. **Manual annotation**: `- counter:id` in a `<details><summary>Vocab</summary>` block explicitly tags a word as a counter with a known ID. This is stored in `ref.counter` (sibling to `llm_sense`) and skips LLM inference.
+2. **LLM inference**: For words whose JMDict ID appears in `counters.json`, `prepare-publish.mjs` adds a counter-detection question to the sense analysis prompt. The LLM result is stored in `llm_sense.counter`.
+
+### LLM prompt for counter detection
+
+`countersByJmdictId` maps each JMDict ID to the array of `counters.json` entries that reference it. Most IDs have exactly one entry; a few ambiguous readings (e.g. 月 with ID 1255430) have two.
+
+For any number of candidates, the prompt asks the LLM to return an array of matching counter IDs (e.g. `["つき"]`), or an empty array if the word is not used as a counter. Multiple IDs are allowed when a sentence genuinely uses the word in more than one counter role simultaneously.
+
+Three meaningful states for `llm_sense.counter`:
+- **key absent** — LLM was never asked (word not counter-capable, or entry predates counter detection). Gap detection flags these.
+- **`counter: null`** — LLM was asked but returned a non-array response (parse failure).
+- **`counter: []`** — LLM was asked and confirmed the word is not used as a counter here.
+- **`counter: ["id", …]`** — LLM confirmed counter usage and identified one or more counter IDs.
+
+### Gap detection
+
+`prepare-publish.mjs` scans all refs after analysis and reports any counter-capable words (JMDict ID in `countersByJmdictId`) whose `llm_sense` lacks a `counter` key. These are logged per-ref and summarised at the end:
+
+```
+  Would analyze 月 [Music/Shiki no Uta:65] (potential counter sense found, counter field unevaluated)
+- 1 potential counter senses found, 0 skipped
+```
+
+---
+
+## Work Plan
+
+### Phase 1: Data pipeline — `counters.json`
+
+1. ✅ `.claude/scripts/build-counters-json.mjs` written and working. Uses `ctr` part-of-speech filtering to auto-resolve JMDict matches, with manual override maps for the 22 ambiguous entries and 8 reading-collision IDs.
+2. ✅ All 66 counters resolved. New schema: `id`, `countExamples`, `jmdict: { id, senseIndex }`, `pronunciations` with `{ primary, rare }` objects.
+3. ✅ `build-counters-json.mjs` parses TSV pronunciation cells into `{ primary, rare }` objects.
+4. ✅ Commit `counters.json` to published Gist (alongside `transitive-pairs.json`): added to `filesToPublish` in `publish.mjs`.
+
+### Phase 2: Enrollment via `prepare-publish.mjs`
+
+5. ✅ Counter detection wired into `prepare-publish.mjs`: for any word appearing in `counters.json`, the sense analysis includes a counter-detection question.
+6. ✅ LLM-detected counters stored in `llm_sense.counter` (array); manual `- counter:id` annotations stored as sibling `ref.counter` (array). Multiple counters per sentence are supported in both sources.
+7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
+8. ✅ Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
+
+### Phase 3: iOS — Counter meta-documents, WordDetailSheet, and enrollment ✅
+
+9. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
+10. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
+11. Author two counter meta-documents surfaced in `VocabBrowserView` (no separate `CounterBrowserView`):
+    a. "Must Know" — the 2 "Absolutely Must Know" + 17 "Must Know" counters (19 total)
+    b. "Common" — the 47 "Common" counters
+    These parallel how transitive pairs appear as a meta-document in `VocabBrowserView`.
+12. Tapping a counter entry opens `WordDetailSheet` directly. `WordDetailSheet` gains a counter-aware section:
+    - An icon or badge next to counter senses in the senses list. The sense is highlighted if the tap source used that sense; the icon appears regardless.
+    - A collapsed pronunciation table (1–10 grid plus "how many") below the senses section.
+    - If a sense has no `ctr` part-of-speech tag but was hand-verified (see `counters.json` schema notes), include a brief note to that effect.
+    - Optionally: a DBJG phonetic type label and one-sentence pattern explanation (Type B: h→p with 1, 6, 8, 10, etc.).
+13. ✅ Committing to a counter entry creates two Ebisu model entries regardless of kanji state:
+    - `(word_type="counter", word_id="{id}", quiz_type="meaning-to-reading")`
+    - `(word_type="counter", word_id="{id}", quiz_type="counter-number-to-reading")` (always created, even if user hasn't learned kanji)
+
+### Phase 4: iOS — Both counter quiz facets ✅
+
+#### 4.1: `meaning-to-reading` facet ✅
+
+Prompt: first entry from `countExamples`; answer: the counter reading (kana). Additional examples appended on demand.
+
+**Completed:**
+- ✅ Integrated into existing `QuizView` (no separate `CounterMeaningToReadingQuizView` needed).
+- ✅ Implement example cycling: display the first `countExamples` entry; "Another example" button appends up to 3 additional entries, then shows `whatItCounts`. Button disables when done.
+- ✅ Free-answer: accept any kana input; compare against the counter's reading (deterministic).
+- ✅ Grade: local/deterministic, no LLM. Records to Ebisu via `applyLocalGrade()`.
+
+**Multiple-choice:** deferred to future (free-answer sufficient for v1).
+
+#### 4.2: `counter-number-to-reading` facet ✅
+
+Prompt: a number from {1, 3, 6, 8, 10} + the counter kanji; answer: the counter reading after phonetic modification. Free-answer only.
+
+**Completed:**
+- ✅ Integrated into existing `QuizView`.
+- ✅ At quiz time, draw a random number from {1, 3, 6, 8, 10}. Look up pronunciation in `counter.pronunciations[number].primary`.
+- ✅ Display: `{number} + {counter_kanji}({counter_kana})` (e.g., `6 + 匹(ひき)`).
+- ✅ Grading: deterministic, no LLM. Accept any kana string from `primary` pronunciations list.
+- ✅ Records to Ebisu via `applyLocalGrade()`.
+
+#### 4.3: Coaching prompts for both quizzes ✅
+
+Implement a coaching prompt like transitive pair quiz tutor. Explains phonetic patterns and counter meanings.
+
+**Completed:**
+- ✅ `counterTutorSystemPrompt()` — builds context-aware prompts for `meaning-to-reading` (counter meaning) and `counter-number-to-reading` (phonetic pattern).
+- ✅ `canStartCounterTutorSession` — guard to show "Tutor me" button only when answer is wrong.
+- ✅ `startCounterTutorSession()` — auto-fires opening tutor turn with student's question and answer context.
+- ✅ Tutor chat uses standard vocab quiz toolset (`lookup_jmdict`, `lookup_kanjidic`, etc.).
+
+---
+
+### Phase 4 Decisions & Refinements
+
+**"Another example" UX:** Instead of replacing the question stem, tapping "Another example" appends additional examples as bubbles below the initial example. The button disables (rather than hides) when all 3 have been shown. This lets users compare multiple examples without losing the context of what they're trying to learn.
+
+**Removed redundancy in `canStartCounterTutorSession`:** Simplified the guard from `score == 0.0 && !answer.isCorrect` to just `!answer.isCorrect` (the score is always 0.0 when an answer is incorrect).
+
+**Details sheet for counter items:** Counter items now correctly open `WordDetailSheet` by looking up their JMDict ID (`counter.jmdict?.id`) in the vocab corpus. This unifies counter detail view with vocabulary detail view, reusing existing pronunciation tables and sense lists.
+
+---
+
+### Phase 4 Implementation Notes
+
+**QuizContext.build() — Counter item creation**
+- Counter records are grouped by `wordId` and facet, then ranked by recall (lowest = most urgent).
+- For each enrolled counter, the most-urgent facet is selected for the quiz.
+- QuizItem is created with `wordType="counter"`, facet name matching the Ebisu quizType (`"meaning-to-reading"` or `"counter-number-to-reading"`), and the counter's kanji/reading as display text.
+
+**freeAnswerStem() — Stem builders**
+- `meaning-to-reading`: returns the first `countExamples` entry (or `whatItCounts` as fallback). Additional examples are revealed via "Another example" button.
+- `counter-number-to-reading`: handled specially by `buildCounterNumberStem()` — displays `{number} + {kanji}({kana})` with number drawn from {1, 3, 6, 8, 10}.
+
+**submitFreeAnswer() — Answer grading**
+- Counter answers are graded deterministically (no LLM):
+  - `meaning-to-reading`: check if answer matches counter's `reading`.
+  - `counter-number-to-reading`: extract number from stem, look up correct pronunciations in `counter.pronunciations[number].primary`, check if answer matches any.
+- Score is 1.0 (correct) or 0.0 (incorrect); user can review and mark "No idea" / "Inkling" to adjust grade afterward.
+- applyLocalGrade() records the result to Ebisu and prefetches the next question.
+
+**generateQuestion() — Phase dispatch**
+- Counter items are detected early (before free-answer check) and routed to counter-specific handlers.
+- Both facets go straight to `.awaitingText` phase (no LLM question generation).
+- Transitive-pair drills and counter quizzes are deterministic and run app-side; no generation loop needed.
+
+**prefetchQuestion() — Prefetch support**
+- Counter questions (both facets) are prefetched deterministically and stored, just like pair drills.
+- No LLM call is made during prefetch.
+
+**PugApp setup** 
+- `QuizSession.counterCorpus` is set in `setup()` after `counterCorpus` is loaded.
+- Both quiz session initiation and redownload pass `counterCorpus` to the quiz system.
+
+---
+
+### Phase 5: Polish & Remaining work
+
+**Completed in Phase 4:**
+- ✅ Both counter facets fully implemented and integrated into QuizView
+- ✅ Tutor chat for wrong answers
+- ✅ Details sheet support for counter items
+
+**Remaining:**
+1. Author Markdown reading files for counter enrollment:
+   - `counters-must-know.md` — top 19 counters (2 "Absolutely Must Know" + 17 "Must Know")
+   - `counters-common.md` — 47 "Common" counters
+   - `wago-numbers.md` — the 11 native Japanese numbers (ひとつ–とお)
+
+2. Enrich `WordDetailSheet` with counter-specific affordances (deferred, not blocking for v1):
+   - Pronunciation table display (1–10 grid + "how many")
+   - DBJG phonetic type label and pattern explanation (e.g., "Type B: h→p with 1, 6, 8, 10")
+   - Hand-verification note for senses without explicit `ctr` part-of-speech tag
+
+3. Run TestHarness validation (if needed):
+   - Spot-check `counter-number-to-reading` prompts for representative samples
+   - Manual end-to-end test: enroll a counter, trigger both facets, verify grading
+
+---
+
+### Feature Parity Review (vs. `docs/feature-parity.md`)
+
+**Counter quiz pre-answer phase (awaiting text input):**
+- ✅ Skip button — present
+- ⚠️ Don't know / Inkling buttons — missing (deferred; affects all free-answer vocab facets, not counter-specific)
+
+**Counter quiz post-answer phase (chatting):**
+- ✅ Details button — opens WordDetailSheet via counter.jmdict.id lookup
+- ✅ Post-answer chat — available
+- ✅ Chat tools (`lookup_jmdict`, `lookup_kanjidic`, etc.) — all standard tools available
+- ✅ Tutor me button — shows for wrong answers with context-aware coaching prompts

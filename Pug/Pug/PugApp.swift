@@ -25,6 +25,7 @@ struct AppRootView: View {
     @State private var grammarStore = GrammarStore()
     @State private var corpus = VocabCorpus()
     @State private var pairCorpus = TransitivePairCorpus()
+    @State private var counterCorpus = CounterCorpus()
     @State private var corpusStore = CorpusStore()
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
@@ -45,6 +46,7 @@ struct AppRootView: View {
                         .environment(preferences)
                         .environment(corpus)
                         .environment(pairCorpus)
+                        .environment(counterCorpus)
                         .environment(grammarStore)
                         .environment(corpusStore)
                         .environment(clipPlayer)
@@ -135,13 +137,16 @@ struct AppRootView: View {
             grammarSession  = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
                                                jmdict: toolHandler.jmdict, preferences: preferences)
 
-            // Load vocab corpus, pair corpus, grammar manifest, and corpus entries concurrently.
+            // Load vocab corpus, pair corpus, counter corpus, grammar manifest, and corpus entries concurrently.
             async let grammarLoad = loadGrammarManifest()
             async let corpusLoad = loadCorpusEntries()
             async let pairLoad: () = pairCorpus.load(db: quizDB, jmdict: toolHandler.jmdict)
+            async let counterLoad: () = counterCorpus.load(db: quizDB)
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await pairLoad
+            await counterLoad
             session!.pairCorpus = pairCorpus
+            session!.counterCorpus = counterCorpus
             grammarStore.manifest = await grammarLoad
             if let m = grammarStore.manifest { try await quizDB.backfillEquivalenceGroupEbisu(from: m) }
             let corpusManifest = await corpusLoad
@@ -194,10 +199,12 @@ struct AppRootView: View {
         // Run vocab, pairs, grammar, and corpus downloads concurrently.
         async let vocabReload: () = corpus.load(db: db, jmdict: jmdict, download: true)
         async let pairsReload: () = pairCorpus.load(db: db, jmdict: jmdict, download: true)
+        async let countersReload: () = counterCorpus.load(db: db, download: true)
         async let grammarReload = forceDownloadGrammar()
         async let corpusReload: () = forceDownloadCorpus()
         await vocabReload
         await pairsReload
+        await countersReload
         if let m = await grammarReload {
             grammarStore.manifest = m
             try? await db.backfillEquivalenceGroupEbisu(from: m)
