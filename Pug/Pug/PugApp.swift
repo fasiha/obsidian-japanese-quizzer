@@ -146,6 +146,7 @@ struct AppRootView: View {
             await pairLoad
             await counterLoad
             session!.pairCorpus = pairCorpus
+            session!.counterCorpus = counterCorpus
             grammarStore.manifest = await grammarLoad
             if let m = grammarStore.manifest { try await quizDB.backfillEquivalenceGroupEbisu(from: m) }
             let corpusManifest = await corpusLoad

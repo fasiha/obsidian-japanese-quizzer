@@ -38,7 +38,7 @@ The target skill is production during conversation: given what you want to count
 
 **Why `meaning-to-reading` does not include a number:** injecting a number would conflate counter selection with phonetic modification — a single Ebisu model cannot distinguish which skill failed. Keeping them separate allows targeted remediation.
 
-**Why `counter-number-to-reading` is kanji-gated:** the prompt must show the counter unambiguously. Showing the kana reading (ひき) leaks the answer — the student sees the h- initial and can apply the rendaku rule mechanically. Showing the kanji (匹) is opaque until the student knows it.
+**Why `counter-number-to-reading` shows both kanji and kana:** in real conversation, you know the number and the counter shape—the challenge is producing the correct phonetic modification. The prompt displays `{number} + {kanji}({kana})` to reflect this real-world skill: given the number and the counter, produce the right pronunciation.
 
 **Number sampling for `counter-number-to-reading`:** draw from {1, 3, 6, 8, 10} (and ignore {2, 4, 5, 7, 9}, since phonetically interesting modifications only occur on the former set). The Ebisu model tracks overall mastery of the counter's phonetic pattern, not per-number mastery.
 
@@ -231,7 +231,7 @@ Three meaningful states for `llm_sense.counter`:
 7. ✅ Counter extraction wired: `prepare-publish.mjs` collects counter enrollments from both `- counter:id` bullets and LLM-detected counter usage.
 8. ✅ Update `prepare-publish.mjs` to emit counter enrollments into `corpus.json` (parallel to vocab/grammar counts).
 
-### Phase 3: iOS — Counter meta-documents, WordDetailSheet, and enrollment
+### Phase 3: iOS — Counter meta-documents, WordDetailSheet, and enrollment ✅
 
 9. Add `CounterSync.swift` (parallel to `TransitivePairSync.swift`) — downloads and caches `counters.json`.
 10. Add `CounterCorpus` — loads `counters.json`, indexed by `id`. Provides lookup by `id` and by `jmdict.id`.
@@ -244,20 +244,122 @@ Three meaningful states for `llm_sense.counter`:
     - A collapsed pronunciation table (1–10 grid plus "how many") below the senses section.
     - If a sense has no `ctr` part-of-speech tag but was hand-verified (see `counters.json` schema notes), include a brief note to that effect.
     - Optionally: a DBJG phonetic type label and one-sentence pattern explanation (Type B: h→p with 1, 6, 8, 10, etc.).
-13. Committing to a counter entry creates two Ebisu model entries:
+13. ✅ Committing to a counter entry creates two Ebisu model entries regardless of kanji state:
     - `(word_type="counter", word_id="{id}", quiz_type="meaning-to-reading")`
-    - `(word_type="counter", word_id="{id}", quiz_type="counter-number-to-reading")` — only if the user has also committed to the kanji form, since the prompt must show kanji to avoid leaking the reading.
+    - `(word_type="counter", word_id="{id}", quiz_type="counter-number-to-reading")` (always created, even if user hasn't learned kanji)
 
-### Phase 4: iOS — Both counter quiz facets
+### Phase 4: iOS — Both counter quiz facets ✅
 
-14. Implement `meaning-to-reading`: prompt is `whatItCounts` (or a random entry from `countExamples`), answer is the counter reading. Distractors are other counter readings from the same frequency tier.
-15. Implement `counter-number-to-reading` (kanji-committed entries only):
-    - Number drawn at quiz time from {1, 3, 6, 8, 10} — the phonetically interesting set.
-    - Multiple choice: three distractors drawn from the same counter's 1–10 table.
-    - Free-answer: app builds the stem locally, LLM grades.
-16. Add the system prompt for `counter-number-to-reading` grading and enumerate it in TestHarness `--dump-prompts`.
+#### 4.1: `meaning-to-reading` facet ✅
 
-### Phase 5: Validation
+Prompt: first entry from `countExamples`; answer: the counter reading (kana). Additional examples appended on demand.
 
-17. Run TestHarness against `counter-number-to-reading` prompts for a representative sample of counters (Type B, Type C, irregular).
-18. Manual end-to-end test in simulator: enroll 本, commit to kanji, trigger both counter facets, verify correct and incorrect answers grade correctly.
+**Completed:**
+- ✅ Integrated into existing `QuizView` (no separate `CounterMeaningToReadingQuizView` needed).
+- ✅ Implement example cycling: display the first `countExamples` entry; "Another example" button appends up to 3 additional entries, then shows `whatItCounts`. Button disables when done.
+- ✅ Free-answer: accept any kana input; compare against the counter's reading (deterministic).
+- ✅ Grade: local/deterministic, no LLM. Records to Ebisu via `applyLocalGrade()`.
+
+**Multiple-choice:** deferred to future (free-answer sufficient for v1).
+
+#### 4.2: `counter-number-to-reading` facet ✅
+
+Prompt: a number from {1, 3, 6, 8, 10} + the counter kanji; answer: the counter reading after phonetic modification. Free-answer only.
+
+**Completed:**
+- ✅ Integrated into existing `QuizView`.
+- ✅ At quiz time, draw a random number from {1, 3, 6, 8, 10}. Look up pronunciation in `counter.pronunciations[number].primary`.
+- ✅ Display: `{number} + {counter_kanji}({counter_kana})` (e.g., `6 + 匹(ひき)`).
+- ✅ Grading: deterministic, no LLM. Accept any kana string from `primary` pronunciations list.
+- ✅ Records to Ebisu via `applyLocalGrade()`.
+
+#### 4.3: Coaching prompts for both quizzes ✅
+
+Implement a coaching prompt like transitive pair quiz tutor. Explains phonetic patterns and counter meanings.
+
+**Completed:**
+- ✅ `counterTutorSystemPrompt()` — builds context-aware prompts for `meaning-to-reading` (counter meaning) and `counter-number-to-reading` (phonetic pattern).
+- ✅ `canStartCounterTutorSession` — guard to show "Tutor me" button only when answer is wrong.
+- ✅ `startCounterTutorSession()` — auto-fires opening tutor turn with student's question and answer context.
+- ✅ Tutor chat uses standard vocab quiz toolset (`lookup_jmdict`, `lookup_kanjidic`, etc.).
+
+---
+
+### Phase 4 Decisions & Refinements
+
+**"Another example" UX:** Instead of replacing the question stem, tapping "Another example" appends additional examples as bubbles below the initial example. The button disables (rather than hides) when all 3 have been shown. This lets users compare multiple examples without losing the context of what they're trying to learn.
+
+**Removed redundancy in `canStartCounterTutorSession`:** Simplified the guard from `score == 0.0 && !answer.isCorrect` to just `!answer.isCorrect` (the score is always 0.0 when an answer is incorrect).
+
+**Details sheet for counter items:** Counter items now correctly open `WordDetailSheet` by looking up their JMDict ID (`counter.jmdict?.id`) in the vocab corpus. This unifies counter detail view with vocabulary detail view, reusing existing pronunciation tables and sense lists.
+
+---
+
+### Phase 4 Implementation Notes
+
+**QuizContext.build() — Counter item creation**
+- Counter records are grouped by `wordId` and facet, then ranked by recall (lowest = most urgent).
+- For each enrolled counter, the most-urgent facet is selected for the quiz.
+- QuizItem is created with `wordType="counter"`, facet name matching the Ebisu quizType (`"meaning-to-reading"` or `"counter-number-to-reading"`), and the counter's kanji/reading as display text.
+
+**freeAnswerStem() — Stem builders**
+- `meaning-to-reading`: returns the first `countExamples` entry (or `whatItCounts` as fallback). Additional examples are revealed via "Another example" button.
+- `counter-number-to-reading`: handled specially by `buildCounterNumberStem()` — displays `{number} + {kanji}({kana})` with number drawn from {1, 3, 6, 8, 10}.
+
+**submitFreeAnswer() — Answer grading**
+- Counter answers are graded deterministically (no LLM):
+  - `meaning-to-reading`: check if answer matches counter's `reading`.
+  - `counter-number-to-reading`: extract number from stem, look up correct pronunciations in `counter.pronunciations[number].primary`, check if answer matches any.
+- Score is 1.0 (correct) or 0.0 (incorrect); user can review and mark "No idea" / "Inkling" to adjust grade afterward.
+- applyLocalGrade() records the result to Ebisu and prefetches the next question.
+
+**generateQuestion() — Phase dispatch**
+- Counter items are detected early (before free-answer check) and routed to counter-specific handlers.
+- Both facets go straight to `.awaitingText` phase (no LLM question generation).
+- Transitive-pair drills and counter quizzes are deterministic and run app-side; no generation loop needed.
+
+**prefetchQuestion() — Prefetch support**
+- Counter questions (both facets) are prefetched deterministically and stored, just like pair drills.
+- No LLM call is made during prefetch.
+
+**PugApp setup** 
+- `QuizSession.counterCorpus` is set in `setup()` after `counterCorpus` is loaded.
+- Both quiz session initiation and redownload pass `counterCorpus` to the quiz system.
+
+---
+
+### Phase 5: Polish & Remaining work
+
+**Completed in Phase 4:**
+- ✅ Both counter facets fully implemented and integrated into QuizView
+- ✅ Tutor chat for wrong answers
+- ✅ Details sheet support for counter items
+
+**Remaining:**
+1. Author Markdown reading files for counter enrollment:
+   - `counters-must-know.md` — top 19 counters (2 "Absolutely Must Know" + 17 "Must Know")
+   - `counters-common.md` — 47 "Common" counters
+   - `wago-numbers.md` — the 11 native Japanese numbers (ひとつ–とお)
+
+2. Enrich `WordDetailSheet` with counter-specific affordances (deferred, not blocking for v1):
+   - Pronunciation table display (1–10 grid + "how many")
+   - DBJG phonetic type label and pattern explanation (e.g., "Type B: h→p with 1, 6, 8, 10")
+   - Hand-verification note for senses without explicit `ctr` part-of-speech tag
+
+3. Run TestHarness validation (if needed):
+   - Spot-check `counter-number-to-reading` prompts for representative samples
+   - Manual end-to-end test: enroll a counter, trigger both facets, verify grading
+
+---
+
+### Feature Parity Review (vs. `docs/feature-parity.md`)
+
+**Counter quiz pre-answer phase (awaiting text input):**
+- ✅ Skip button — present
+- ⚠️ Don't know / Inkling buttons — missing (deferred; affects all free-answer vocab facets, not counter-specific)
+
+**Counter quiz post-answer phase (chatting):**
+- ✅ Details button — opens WordDetailSheet via counter.jmdict.id lookup
+- ✅ Post-answer chat — available
+- ✅ Chat tools (`lookup_jmdict`, `lookup_kanjidic`, etc.) — all standard tools available
+- ✅ Tutor me button — shows for wrong answers with context-aware coaching prompts

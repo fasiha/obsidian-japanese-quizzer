@@ -30,12 +30,14 @@ struct VocabBrowserView: View {
     let onSync: () async -> Void
 
     @Environment(VocabCorpus.self) private var corpus
+    @Environment(CounterCorpus.self) private var counterCorpus
     @Environment(GrammarStore.self) private var grammarStore
     @Environment(CorpusStore.self) private var corpusStore
 
     @State private var filter: VocabFilter? = .notYetLearning  // nil = all
     @State private var selectedItem: VocabItemSelection? = nil
     @State private var selectedPair: TransitivePairItem? = nil
+    @State private var selectedCounter: CounterItem? = nil
 
     @State private var showQuiz = false
     @State private var showSettings = false
@@ -73,6 +75,19 @@ struct VocabBrowserView: View {
         }
     }
 
+    private var filteredCounters: [CounterItem] {
+        let f = filter
+        let statusFiltered = counterCorpus.items.filter { f == nil || $0.matches(filter: f!) }
+        let q = searchText.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return statusFiltered }
+        return statusFiltered.filter { item in
+            let c = item.counter
+            return c.kanji.localizedCaseInsensitiveContains(q)
+                || c.reading.localizedCaseInsensitiveContains(q)
+                || c.whatItCounts.localizedCaseInsensitiveContains(q)
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -91,7 +106,7 @@ struct VocabBrowserView: View {
                         systemImage: "books.vertical",
                         description: Text("Download vocab via the ··· menu or set up the app URL.")
                     )
-                } else if filteredItems.isEmpty && filteredPairs.isEmpty {
+                } else if filteredItems.isEmpty && filteredPairs.isEmpty && filteredCounters.isEmpty {
                     if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                         ContentUnavailableView.search(text: searchText)
                     } else {
@@ -115,6 +130,7 @@ struct VocabBrowserView: View {
                             Button("Quiz all") { startQuiz(filter: .all) }
                             Button("Quiz vocab only") { startQuiz(filter: .vocabOnly) }
                             Button("Quiz transitive pairs only") { startQuiz(filter: .pairsOnly) }
+                            Button("Quiz counters only") { startQuiz(filter: .countersOnly) }
                         }
                         BrowserToolbarMenu(
                             showSettings: $showSettings,
@@ -142,6 +158,13 @@ struct VocabBrowserView: View {
             .sheet(item: $selectedPair) { pair in
                 TransitivePairDetailSheet(initialItem: pair, pairCorpus: pairCorpus, db: db, jmdict: jmdict,
                                           client: session.client, toolHandler: session.toolHandler)
+            }
+            .sheet(item: $selectedCounter) { counterItem in
+                if let jmdictId = counterItem.counter.jmdict?.id,
+                   let vocabItem = corpus.items.first(where: { $0.id == jmdictId }) {
+                    WordDetailSheet(initialItem: vocabItem, db: db,
+                                    client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
+                }
             }
 
             .sheet(isPresented: $showSettings) { SettingsView(db: db) }
@@ -194,6 +217,7 @@ struct VocabBrowserView: View {
 
     private var wordList: some View {
         let pairs = filteredPairs
+        let counters = filteredCounters
         return List {
             ForEach(pairs) { pairItem in
                 Button { selectedPair = pairItem } label: {
@@ -202,6 +226,15 @@ struct VocabBrowserView: View {
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     pairSwipeButtons(for: pairItem)
+                }
+            }
+            ForEach(counters) { counterItem in
+                Button { selectedCounter = counterItem } label: {
+                    counterRowView(counterItem)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    counterSwipeButtons(for: counterItem)
                 }
             }
             ForEach(filteredItems) { item in
@@ -230,6 +263,7 @@ struct VocabBrowserView: View {
     private var groupedWordList: some View {
         let roots = buildSourceTree(sources: activeSources, items: filteredItems)
         let pairs = filteredPairs
+        let counters = filteredCounters
         return List {
             Section {
                 MotivationDashboardView(db: db, refreshID: dashboardRefreshID)
@@ -239,6 +273,9 @@ struct VocabBrowserView: View {
             .listSectionSeparator(.hidden)
             if !pairs.isEmpty {
                 pairsSection(pairs: pairs)
+            }
+            if !counters.isEmpty {
+                countersSection(counters: counters)
             }
             ForEach(roots, id: \.pathKey) { node in
                 SourceSectionView(
@@ -288,6 +325,57 @@ struct VocabBrowserView: View {
         if !item.pair.isAmbiguous && item.state == .unknown {
             Button {
                 Task { await pairCorpus.setPairLearning(pairId: item.id, db: db) }
+            } label: {
+                Label("Learn", systemImage: "plus.circle.fill")
+            }
+            .tint(.green)
+        }
+    }
+
+    // MARK: - Counters section
+
+    @ViewBuilder
+    private func countersSection(counters: [CounterItem]) -> some View {
+        let isExpanded = Binding(
+            get: { !collapsedSections.contains("__counters__") },
+            set: { expanded in
+                if expanded { collapsedSections.remove("__counters__") }
+                else { collapsedSections.insert("__counters__") }
+            }
+        )
+        DisclosureGroup(isExpanded: isExpanded) {
+            ForEach(counters) { counterItem in
+                Button { selectedCounter = counterItem } label: {
+                    counterRowView(counterItem)
+                }
+                .buttonStyle(.plain)
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    counterSwipeButtons(for: counterItem)
+                }
+            }
+        } label: {
+            Text("Counters")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .textCase(nil)
+        }
+    }
+
+    private func counterRowView(_ item: CounterItem) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(item.counter.kanji) (\(item.counter.reading))")
+                .font(.body)
+            Text(item.counter.whatItCounts)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func counterSwipeButtons(for item: CounterItem) -> some View {
+        if item.state == .unknown {
+            Button {
+                Task { await counterCorpus.setCounterLearning(counterId: item.id, db: db) }
             } label: {
                 Label("Learn", systemImage: "plus.circle.fill")
             }

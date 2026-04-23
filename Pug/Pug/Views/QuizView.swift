@@ -64,6 +64,11 @@ struct QuizView: View {
                        let pairItem = pairCorpus.items.first(where: { $0.id == item.wordId }) {
                         TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus, db: session.db, jmdict: jmdict,
                                                   client: session.client, toolHandler: session.toolHandler)
+                    } else if item.wordType == "counter",
+                              let jmdictId = session.counterCorpus?.items.first(where: { $0.id == item.wordId })?.counter.jmdict?.id,
+                              let vocabItem = corpus.items.first(where: { $0.id == jmdictId }) {
+                        WordDetailSheet(initialItem: vocabItem, db: session.db,
+                                        client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
                     } else if let vocabItem = corpus.items.first(where: { $0.id == item.wordId }) {
                         WordDetailSheet(initialItem: vocabItem, db: session.db,
                                         client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
@@ -184,13 +189,31 @@ struct QuizView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
 
+                // Additional examples for counter meaning-to-reading, revealed one at a time
+                if let item = session.currentItem,
+                   item.wordType == "counter",
+                   item.facet == "meaning-to-reading" {
+                    ForEach(Array(session.counterAdditionalExamples.enumerated()), id: \.offset) { _, example in
+                        SelectableText(example)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                    }
+                    Button("Another example") {
+                        session.showAnotherCounterExample()
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(maxWidth: .infinity)
+                    .disabled(session.counterAdditionalExamples.count >= 3)
+                }
+
                 // Answer input
                 HStack(alignment: .bottom, spacing: 8) {
                     TextField("Your answer…", text: $session.chatInput, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(1...4)
                     Button {
-                        session.submitFreeAnswer()
+                        Task { await session.submitFreeAnswer() }
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.title2)
@@ -335,6 +358,11 @@ struct QuizView: View {
                         } else if session.canStartPairTutorSession {
                             Spacer()
                             Button("Tutor me") { session.startPairTutorSession() }
+                                .buttonStyle(.bordered)
+                                .tint(.blue)
+                        } else if session.canStartCounterTutorSession {
+                            Spacer()
+                            Button("Tutor me") { session.startCounterTutorSession() }
                                 .buttonStyle(.bordered)
                                 .tint(.blue)
                         }

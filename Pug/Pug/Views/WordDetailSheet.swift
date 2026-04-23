@@ -707,7 +707,7 @@ struct WordDetailSheet: View {
                     rescaleTarget = RescaleTarget(record: record, reviewCount: ebisuReviewCounts[record.id])
                 } label: {
                     HStack {
-                        Text(facetDisplayName(record.quizType))
+                        Text(facetDisplayName(record.quizType, wordType: record.wordType))
                             .font(.subheadline)
                             .foregroundStyle(.primary)
                         Spacer()
@@ -759,7 +759,14 @@ struct WordDetailSheet: View {
         }
     }
 
-    private func facetDisplayName(_ quizType: String) -> String {
+    private func facetDisplayName(_ quizType: String, wordType: String = "jmdict") -> String {
+        if wordType == "counter" {
+            switch quizType {
+            case "meaning-to-reading": return "Counter: Meaning → Reading"
+            case "counter-number-to-reading": return "Counter: Number → Reading"
+            default: return quizType
+            }
+        }
         switch quizType {
         case "reading-to-meaning":      return "Reading → Meaning"
         case "meaning-to-reading":      return "Meaning → Reading"
@@ -964,18 +971,31 @@ struct WordDetailSheet: View {
 
     private func loadEbisuModels() async {
         guard let quizDB = toolHandler?.quizDB else { return }
-        if let records = try? await quizDB.ebisuRecords(wordType: "jmdict", wordId: item.id) {
-            let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji"]
-            ebisuModels = records.sorted {
-                (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
-            }
-            var counts: [String: Int] = [:]
-            for record in records {
-                counts[record.id] = (try? await quizDB.reviewCount(
-                    wordType: record.wordType, wordId: record.wordId, quizType: record.quizType)) ?? 0
-            }
-            ebisuReviewCounts = counts
+        var allRecords: [EbisuRecord] = []
+
+        // Load vocab halflives
+        if let vocabRecords = try? await quizDB.ebisuRecords(wordType: "jmdict", wordId: item.id) {
+            allRecords.append(contentsOf: vocabRecords)
         }
+
+        // Load counter halflives for counters associated with this vocab word
+        for counterItem in counterItemsToShow {
+            if let counterRecords = try? await quizDB.ebisuRecords(wordType: "counter", wordId: counterItem.id) {
+                allRecords.append(contentsOf: counterRecords)
+            }
+        }
+
+        let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji", "counter-number-to-reading"]
+        ebisuModels = allRecords.sorted {
+            (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
+        }
+
+        var counts: [String: Int] = [:]
+        for record in allRecords {
+            counts[record.id] = (try? await quizDB.reviewCount(
+                wordType: record.wordType, wordId: record.wordId, quizType: record.quizType)) ?? 0
+        }
+        ebisuReviewCounts = counts
     }
 
     private func doRescale(record: EbisuRecord, hours: Double) async {

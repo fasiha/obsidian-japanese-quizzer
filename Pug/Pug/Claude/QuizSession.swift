@@ -69,6 +69,7 @@ final class QuizSession {
         case all
         case vocabOnly
         case pairsOnly
+        case countersOnly
     }
 
     var quizFilter: QuizFilter = .all
@@ -78,6 +79,7 @@ final class QuizSession {
     var documentScope: String? = nil
 
     var pairCorpus: TransitivePairCorpus? = nil
+    var counterCorpus: CounterCorpus? = nil
     var pairIntransitiveInput: String = ""
     var pairTransitiveInput: String = ""
     var lastPairQuestion: PairQuestion? = nil   // saved after grading so "Tutor me" can reference it
@@ -85,6 +87,11 @@ final class QuizSession {
     /// the tutor prompt can reference what the student actually wrote.
     var lastPairAnswers: (intrAnswer: String, tranAnswer: String, intrCorrect: Bool, tranCorrect: Bool)? = nil
     var currentPairSystemPrompt: String? = nil  // set when pair tutor session starts; used by doChatTurn
+
+    var counterAdditionalExamples: [String] = []  // examples appended by "Another example" taps; max 3 entries
+    var lastCounterQuestion: (stem: String, facet: String, counterId: String)? = nil  // saved for tutoring
+    var lastCounterAnswer: (text: String, isCorrect: Bool)? = nil  // student's answer and correctness
+    var currentCounterSystemPrompt: String? = nil  // set when counter tutor session starts
 
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
@@ -158,6 +165,25 @@ final class QuizSession {
             phase = .finished
         } else {
             Task { await generateQuestion() }
+        }
+    }
+
+    /// Called when the student taps "Another example" on a counter meaning-to-reading quiz.
+    /// Appends the next example (or whatItCounts on the 3rd tap) to counterAdditionalExamples.
+    func showAnotherCounterExample() {
+        guard case .awaitingText(_) = phase, let item = currentItem, item.wordType == "counter",
+              item.facet == "meaning-to-reading",
+              counterAdditionalExamples.count < 3,
+              let counter = counterCorpus?.items.first(where: { $0.id == item.wordId })?.counter
+        else { return }
+
+        let nextIndex = counterAdditionalExamples.count + 1  // initial example is at index 0
+        if counterAdditionalExamples.count == 2 {
+            counterAdditionalExamples.append(counter.whatItCounts)
+        } else if nextIndex < counter.countExamples.count {
+            counterAdditionalExamples.append(counter.countExamples[nextIndex])
+        } else {
+            counterAdditionalExamples.append(counter.whatItCounts)
         }
     }
 
@@ -455,6 +481,95 @@ final class QuizSession {
             && chatMessages.count <= 2 && !isSendingChat
     }
 
+    /// True when the student got a counter question wrong and has not yet started a tutor chat.
+    var canStartCounterTutorSession: Bool {
+        guard let _ = gradedScore, let answer = lastCounterAnswer, lastCounterQuestion != nil else { return false }
+        return !answer.isCorrect && currentCounterSystemPrompt == nil
+            && chatMessages.count <= 2 && !isSendingChat
+    }
+
+    /// Builds a system prompt for the counter tutor, explaining phonetic patterns.
+    private func counterTutorSystemPrompt(for item: QuizItem, counter: Counter, facet: String) -> String {
+        if facet == "meaning-to-reading" {
+            return """
+            You are a friendly Japanese tutor helping a learner understand how counter words work.
+
+            The counter being studied: \(counter.kanji)(\(counter.reading))
+            What it counts: \(counter.whatItCounts)
+
+            When the student describes their wrong answer, briefly explain:
+            - Why this counter uses that specific reading
+            - If relevant, any variant readings (rare pronunciations) and when they appear
+            - A memorable phrase or example from the counter's `countExamples` list that illustrates the reading
+
+            The learner is aiming for N4–N3 level. Keep the response concise and conversational. Respond in English.
+            """
+        } else {
+            // counter-number-to-reading
+            return """
+            You are a friendly Japanese tutor helping a learner understand phonetic modifications in counter words.
+
+            The counter being studied: \(counter.kanji)(\(counter.reading))
+            Phonetic pattern: Some initial sounds change when combined with certain numbers (e.g., h→p with 1, 6, 8, 10).
+
+            When the student describes their wrong answer, briefly explain:
+            - Why the number triggers that specific phonetic change
+            - The rule or pattern that governs the change (if known)
+            - A memory tip or reference to DBJG phonetic types (Type A, B, C, etc.) if it helps
+
+            The learner is aiming for N4–N3 level. Keep the response concise and conversational. Respond in English.
+            """
+        }
+    }
+
+    /// Builds the opening user message for a counter tutor session.
+    private func counterTutorOpeningMessage(for question: (stem: String, facet: String, counterId: String), answer: (text: String, isCorrect: Bool), counter: Counter) -> String {
+        let facetLabel = question.facet == "meaning-to-reading" ? "Meaning-to-reading" : "Number-to-reading"
+        return """
+        I got this \(facetLabel) counter question wrong.
+        Question: \(question.stem)
+        I answered: \(answer.text)
+        Please explain why I was wrong and what the correct answer is.
+        """
+    }
+
+    /// Auto-fires a tutor chat turn explaining the counter phonetic pattern.
+    func startCounterTutorSession() {
+        guard canStartCounterTutorSession, let question = lastCounterQuestion, let answer = lastCounterAnswer,
+              let counterCorpus, let counterItem = counterCorpus.items.first(where: { $0.id == question.counterId }),
+              let item = currentItem else { return }
+        isSendingChat = true
+        let systemPromptText = counterTutorSystemPrompt(for: item, counter: counterItem.counter, facet: question.facet)
+        currentCounterSystemPrompt = systemPromptText
+        let msg = counterTutorOpeningMessage(for: question, answer: answer, counter: counterItem.counter)
+        chatMessages.append((isUser: true, text: msg))
+        Task { await doCounterTutorOpeningTurn(msg, systemPromptText: systemPromptText, item: item) }
+    }
+
+    private func doCounterTutorOpeningTurn(_ message: String, systemPromptText: String, item: QuizItem) async {
+        conversation = [AnthropicMessage(role: "user", content: [.text(message)])]
+        do {
+            let (response, updatedMsgs, _) = try await client.send(
+                messages: conversation,
+                system: systemPromptText,
+                tools: [.lookupJmdict],
+                maxTokens: 1024,
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: "counter-tutor", sessionId: item.id.uuidString),
+                templateId: nil
+            )
+            conversation = updatedMsgs
+            let displayText = response.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !displayText.isEmpty {
+                chatMessages.append((isUser: false, text: displayText))
+            }
+            isSendingChat = false
+        } catch {
+            chatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
+            isSendingChat = false
+        }
+    }
+
     /// Builds a system prompt for the pair tutor, explaining the transitive/intransitive distinction.
     private func pairTutorSystemPrompt(for q: PairQuestion) -> String {
         let intrKanji = q.intransitiveKanji.first ?? q.intransitiveKana
@@ -550,15 +665,17 @@ final class QuizSession {
         print("[QuizSession] loadItems: building quiz context")
         do {
             statusMessage = "Loading items…"
-            let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus)
+            let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus, counterCorpus: counterCorpus)
             var candidates: [QuizItem]
             switch quizFilter {
             case .all:
                 candidates = allBuilt
             case .vocabOnly:
-                candidates = allBuilt.filter { $0.wordType != "transitive-pair" }
+                candidates = allBuilt.filter { $0.wordType != "transitive-pair" && $0.wordType != "counter" }
             case .pairsOnly:
                 candidates = allBuilt.filter { $0.wordType == "transitive-pair" }
+            case .countersOnly:
+                candidates = allBuilt.filter { $0.wordType == "counter" }
             }
 
             // Restrict to a specific document when documentScope is set.
@@ -620,6 +737,26 @@ final class QuizSession {
     func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
         let meanings = item.corpusSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+
+        // Counter facets are handled specially.
+        if item.wordType == "counter" {
+            switch item.facet {
+            case "meaning-to-reading":
+                // Show the first example as the initial prompt; additional examples are appended via "Another example".
+                if let counter = counterCorpus?.items.first(where: { $0.id == item.wordId })?.counter,
+                   let first = counter.countExamples.first {
+                    return first
+                }
+                return item.wordText
+            case "counter-number-to-reading":
+                // Will be handled specially in generateQuestion()
+                return ""
+            default:
+                return item.wordText
+            }
+        }
+
+        // Vocab facets.
         switch item.facet {
         case "meaning-to-reading":
             return meanings.isEmpty ? item.wordText : meanings
@@ -633,6 +770,70 @@ final class QuizSession {
         default:
             return "What is \(item.wordText)?"
         }
+    }
+
+    // MARK: - Counter question builder
+
+    /// Build stem for counter-number-to-reading: "6 + 匹(ひき)"
+    private func buildCounterNumberStem(counter: Counter) -> String {
+        let numbers = ["1", "3", "6", "8", "10"]
+        let number = numbers.randomElement() ?? "3"
+        return "\(number) + \(counter.kanji)(\(counter.reading))"
+    }
+
+    // MARK: - Counter grading
+
+    private func gradeCounterAnswer(text: String, stem: String, item: QuizItem) async {
+        guard let counterCorpus,
+              let counterItem = counterCorpus.items.first(where: { $0.id == item.wordId }) else {
+            chatMessages = [(isUser: false, text: stem), (isUser: true, text: text)]
+            chatMessages.append((isUser: false, text: "Error: counter not found"))
+            phase = .chatting
+            return
+        }
+
+        let counter = counterItem.counter
+        var isCorrect = false
+        var resultBubble = ""
+
+        switch item.facet {
+        case "meaning-to-reading":
+            // Check if answer matches counter reading
+            isCorrect = text == counter.reading
+            let resultText = isCorrect
+                ? "✓ \(text)"
+                : "✗ Wrong: \(text)\n✓ Correct: \(counter.reading)"
+            resultBubble = resultText
+
+        case "counter-number-to-reading":
+            // Extract number from stem: "6 + 匹(ひき)" → "6"
+            let numberPart = stem.split(separator: " ").first.flatMap { String($0) } ?? ""
+            // Look up correct pronunciation from counter data
+            if let pronunciations = counter.pronunciations[numberPart] {
+                let primaryAnswers = pronunciations.primary
+                isCorrect = primaryAnswers.contains(text)
+                let correctAnswer = primaryAnswers.first ?? ""
+                let resultText = isCorrect
+                    ? "✓ \(text)"
+                    : "✗ Wrong: \(text)\n✓ Correct: \(correctAnswer)"
+                resultBubble = resultText
+            } else {
+                resultBubble = "Error: could not find pronunciation data"
+            }
+
+        default:
+            resultBubble = "Unknown counter facet"
+        }
+
+        let score = isCorrect ? 1.0 : 0.0
+        let resultSummary = "Question: \(stem)\nStudent answered: \(text) — \(isCorrect ? "Correct ✓" : "Incorrect ✗")"
+
+        // Save question and answer for tutoring (if wrong)
+        lastCounterQuestion = (stem: stem, facet: item.facet, counterId: item.wordId)
+        lastCounterAnswer = (text: text, isCorrect: isCorrect)
+
+        applyLocalGrade(score: score, questionBubble: stem, answerBubble: resultBubble,
+                        resultSummary: resultSummary, notes: "autograder: counter", item: item)
     }
 
     // MARK: - Private: generate question
@@ -687,6 +888,10 @@ final class QuizSession {
         chatMessages = []
         chatInput = ""
         isSendingChat = false
+        counterAdditionalExamples = []
+        lastCounterQuestion = nil
+        lastCounterAnswer = nil
+        currentCounterSystemPrompt = nil
         gradedScore       = nil
         gradedHalflife    = nil
         multipleChoiceResult = nil
@@ -729,6 +934,33 @@ final class QuizSession {
             return
         }
 
+        // Handle counter items: deterministic, no LLM call needed.
+        if item.wordType == "counter" {
+            guard let counterCorpus,
+                  let counterItem = counterCorpus.items.first(where: { $0.id == item.wordId }) else {
+                print("[QuizSession] counter corpus not available, skipping \(item.wordId)")
+                nextQuestion()
+                return
+            }
+            switch item.facet {
+            case "meaning-to-reading":
+                let stem = freeAnswerStem(for: item)
+                currentQuestion = stem
+                print("[QuizSession] counter meaning-to-reading (app-side) for \(item.wordText): \(stem)")
+                phase = .awaitingText(stem)
+            case "counter-number-to-reading":
+                let stem = buildCounterNumberStem(counter: counterItem.counter)
+                currentQuestion = stem
+                print("[QuizSession] counter number-to-reading (app-side) for \(item.wordText): \(stem)")
+                phase = .awaitingText(stem)
+            default:
+                print("[QuizSession] unknown counter facet \(item.facet), skipping")
+                nextQuestion()
+                return
+            }
+            return
+        }
+
         // Free-answer: construct stem app-side, no LLM call needed.
         if item.isFreeAnswer {
             let stem = freeAnswerStem(for: item)
@@ -768,10 +1000,15 @@ final class QuizSession {
     }
 
     /// Called when the student submits a free-text answer.
-    func submitFreeAnswer() {
+    func submitFreeAnswer() async {
         let text = chatInput.trimmingCharacters(in: .whitespaces)
         guard case .awaitingText(let stem) = phase, let item = currentItem, !text.isEmpty else { return }
         chatInput = ""
+
+        // Counter quizzes are graded locally (deterministic).
+        if item.wordType == "counter" {
+            return await gradeCounterAnswer(text: text, stem: stem, item: item)
+        }
 
         // For reading facets, check for an exact kana match locally before calling Claude.
         // An exact match means the student's answer (stripped of whitespace) equals either
@@ -864,10 +1101,12 @@ final class QuizSession {
             // After the user's first reply, fetch and inject mnemonics into the system prompt.
             let mnemonicBlock = await fetchMnemonicBlock(for: item)
             let chatTurnNumber = conversation.filter { $0.role == "user" }.count
-            // Pair tutor sessions use a dedicated system prompt; all other facets use the vocab prompt.
+            // Pair tutor and counter tutor sessions use dedicated system prompts; all other facets use the vocab prompt.
             let activeSystemPrompt: String
             if let pairPrompt = currentPairSystemPrompt {
                 activeSystemPrompt = pairPrompt
+            } else if let counterPrompt = currentCounterSystemPrompt {
+                activeSystemPrompt = counterPrompt
             } else {
                 activeSystemPrompt = systemPrompt(for: item, preRecall: preQuizRecall,
                                                    preHalflife: preQuizHalflife,
@@ -1103,6 +1342,32 @@ final class QuizSession {
                           conversation: [],
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch (transitive-pair, app-side) stored for index \(index): \(item.wordText)")
+            return
+        }
+
+        // Counter: build deterministic stem app-side, no LLM call needed.
+        if item.wordType == "counter" {
+            guard currentIndex <= index else { return }
+            guard let counterCorpus,
+                  let counterItem = counterCorpus.items.first(where: { $0.id == item.wordId }) else {
+                print("[QuizSession] prefetch: counter not found for \(item.wordId), skipping")
+                return
+            }
+            let stem: String
+            switch item.facet {
+            case "meaning-to-reading":
+                stem = freeAnswerStem(for: item)
+            case "counter-number-to-reading":
+                stem = buildCounterNumberStem(counter: counterItem.counter)
+            default:
+                print("[QuizSession] prefetch: unknown counter facet \(item.facet), skipping")
+                return
+            }
+            prefetched = (index: index, question: stem, multipleChoice: nil,
+                          pairQuestion: nil,
+                          conversation: [],
+                          preRecall: preRecall, preHalflife: preHalflife)
+            print("[QuizSession] prefetch (counter, app-side) stored for index \(index): \(item.wordText)")
             return
         }
 
