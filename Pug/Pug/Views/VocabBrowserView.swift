@@ -641,6 +641,14 @@ struct VocabRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if item.hasCounterAnnotation {
+                    Text("123")
+                        .font(.caption2).fontWeight(.medium)
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.orange.opacity(0.15))
+                        .foregroundStyle(.orange)
+                        .clipShape(Capsule())
+                }
                 statusBadge
             }
             let corpusSenseGlosses: [String] = item.corpusSenseIndices.isEmpty

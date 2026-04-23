@@ -39,6 +39,17 @@ Each unique combination of **facet × question format × kanji commitment level*
 | 1 committed kanji | 7 | + kanji-to-reading full (multiple choice + free) + meaning-reading-to-kanji full (multiple choice only) |
 | 2+ committed kanji | 10 | + kanji-to-reading partial (multiple choice + free) + meaning-reading-to-kanji partial (multiple choice only) |
 
+## Prefetching
+
+`QuizSession` (vocabulary quizzes only — grammar quizzes do not prefetch) prefetches the next question in the background while the student reads feedback on the current one. `prefetchQuestion(for:item:)` in `QuizSession.swift` is a **parallel implementation** of `generateQuestion()` and must stay in sync with it.
+
+Critical rule: **the type-dispatch order in `prefetchQuestion` must match `generateQuestion` exactly.** In particular, counter items must be handled before the `isFreeAnswer` check, because counter facets such as `counter-number-to-reading` can have `isFreeAnswer == true` but require their own stem-building logic (`buildCounterNumberStem`). If the `isFreeAnswer` branch runs first, it calls `freeAnswerStem`, which returns `""` for that facet, producing an empty question and a grading failure.
+
+Whenever you add a new word type or facet:
+1. Update `generateQuestion()` to handle it.
+2. Update `prefetchQuestion()` in the same way, in the same order.
+3. Update `freeAnswerStem()` if the facet is free-answer.
+
 ## Testing
 
 See `docs/TESTING.md` for TestHarness usage (`--dump-prompts`, `--live`, `--grade`).

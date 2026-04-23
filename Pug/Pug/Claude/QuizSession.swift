@@ -1305,18 +1305,6 @@ final class QuizSession {
             preHalflife = nil
         }
 
-        // Free-answer: stem is app-side — instant, no network call.
-        if item.isFreeAnswer {
-            guard currentIndex <= index else { return }
-            let stem = freeAnswerStem(for: item)
-            prefetched = (index: index, question: stem, multipleChoice: nil,
-                          pairQuestion: nil,
-                          conversation: [],
-                          preRecall: preRecall, preHalflife: preHalflife)
-            print("[QuizSession] prefetch (free-answer, app-side) stored for index \(index): \(item.wordText)")
-            return
-        }
-
         // Transitive-pair: pick a random drill app-side, no LLM call needed.
         if item.wordType == "transitive-pair" {
             guard currentIndex <= index else { return }
@@ -1368,6 +1356,18 @@ final class QuizSession {
                           conversation: [],
                           preRecall: preRecall, preHalflife: preHalflife)
             print("[QuizSession] prefetch (counter, app-side) stored for index \(index): \(item.wordText)")
+            return
+        }
+
+        // Free-answer: stem is app-side — instant, no network call.
+        if item.isFreeAnswer {
+            guard currentIndex <= index else { return }
+            let stem = freeAnswerStem(for: item)
+            prefetched = (index: index, question: stem, multipleChoice: nil,
+                          pairQuestion: nil,
+                          conversation: [],
+                          preRecall: preRecall, preHalflife: preHalflife)
+            print("[QuizSession] prefetch (free-answer, app-side) stored for index \(index): \(item.wordText)")
             return
         }
 
