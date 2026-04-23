@@ -96,6 +96,7 @@ so within the bounds of these databases — not from its own training data.
 | [DBJG](https://www.amazon.com/dp/4789004546) (*A Dictionary of Basic Japanese Grammar*) | ~370 grammar topics | Manually typed from the book's index |
 | [sljfaq.org](https://www.sljfaq.org/afaq/jitadoushi.html) | 154 linguist-curated transitive/intransitive verb pairs | Merged into `all-transitive-pairs.json` candidate pool |
 | [Anki shared deck](https://ankiweb.net/shared/info/92409330) | Additional transitive/intransitive pairs | Merged into `all-transitive-pairs.json` candidate pool; Opus downselected to ~56 core pairs in `transitive-pairs.json` |
+| [Tofugu Japanese Counters Guide](https://www.tofugu.com/japanese/japanese-counters-guide/) | ~60 common counter nouns (助数詞) | Manually extracted from Tofugu's comprehensive guide; compiled into `Counters/corpus.json` for counter-noun quizzing |
 
 ---
 
@@ -177,6 +178,26 @@ Transitive-intransitive pairs are shown alongside vocab in the Vocab browser and
 included in the default quiz. Tapping the Quiz button starts a session covering both
 vocab and pairs; long-pressing it shows a menu to quiz only vocab or only transitive
 pairs.
+
+### Counter (助数詞) quizzes
+
+Drilling counter nouns and phonetic modifications when counting. Two facets:
+
+| Facet | Prompt shows | Student produces |
+|---|---|---|
+| meaning-to-reading | An example item (e.g. "small animal") | Counter reading (e.g. ひき) |
+| counter-number-to-reading | Number + counter kanji and reading | Pronunciation after phonetic modification (e.g. 6+匹 → ろっぴき) |
+
+The `counter-number-to-reading` facet tests phonetic patterns, with numbers drawn
+from {1, 3, 6, 8, 10} where modifications occur. Both facets are free-answer (no
+multiple choice) and grade deterministically without LLM assistance. Counter quiz
+questions are generated on-device without API calls.
+
+Counter enrollment flows through the same Markdown reading workflow as vocabulary:
+read a counters-focused document, commit to the counters you want to learn, and they
+enter the default quiz pool alongside vocab and grammar. Counters are drawn from the
+curated ~60-item list in `Counters/counters.json` (extracted from the
+[Tofugu Japanese Counters Guide](https://www.tofugu.com/japanese/japanese-counters-guide/)).
 
 ## Learn mode (planting)
 
