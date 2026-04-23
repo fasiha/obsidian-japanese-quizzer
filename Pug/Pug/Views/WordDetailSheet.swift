@@ -519,7 +519,7 @@ struct WordDetailSheet: View {
     private func counterEnrollmentControl(counterItem: CounterItem) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             let label = counterCorpus.items(forJMDictId: item.id).count > 1
-                ? "Counter (\(counterItem.counter.kanji))"
+                ? "Counter (\(counterItem.counter.whatItCounts))"
                 : "Counter"
             Text(label)
                 .font(.caption).fontWeight(.semibold)
@@ -707,7 +707,10 @@ struct WordDetailSheet: View {
                     rescaleTarget = RescaleTarget(record: record, reviewCount: ebisuReviewCounts[record.id])
                 } label: {
                     HStack {
-                        Text(facetDisplayName(record.quizType, wordType: record.wordType))
+                        let counterItem = record.wordType == "counter"
+                            ? counterCorpus.items.first(where: { $0.id == record.wordId })
+                            : nil
+                        Text(facetDisplayName(record.quizType, wordType: record.wordType, counterItem: counterItem))
                             .font(.subheadline)
                             .foregroundStyle(.primary)
                         Spacer()
@@ -759,11 +762,12 @@ struct WordDetailSheet: View {
         }
     }
 
-    private func facetDisplayName(_ quizType: String, wordType: String = "jmdict") -> String {
+    private func facetDisplayName(_ quizType: String, wordType: String = "jmdict", counterItem: CounterItem? = nil) -> String {
         if wordType == "counter" {
+            let counterPrefix = counterItem.map { "\($0.counter.kanji) (\($0.counter.whatItCounts)): " } ?? "Counter: "
             switch quizType {
-            case "meaning-to-reading": return "Counter: Meaning → Reading"
-            case "counter-number-to-reading": return "Counter: Number → Reading"
+            case "meaning-to-reading": return "\(counterPrefix)Meaning → Reading"
+            case "counter-number-to-reading": return "\(counterPrefix)Number → Reading"
             default: return quizType
             }
         }
