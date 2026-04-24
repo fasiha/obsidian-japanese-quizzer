@@ -88,7 +88,9 @@ final class QuizSession {
     var lastPairAnswers: (intrAnswer: String, tranAnswer: String, intrCorrect: Bool, tranCorrect: Bool)? = nil
     var currentPairSystemPrompt: String? = nil  // set when pair tutor session starts; used by doChatTurn
 
-    var counterAdditionalExamples: [String] = []  // examples appended by "Another example" taps; max 3 entries
+    var counterExampleQueue: [String] = []         // shuffled countExamples for the current question; index 0 is the initial stem
+    var counterAdditionalExamples: [String] = []  // examples shown after the initial one via "Another example" taps
+    var counterStartingExampleIndex: Int = 0      // randomly chosen starting index into countExamples for the current question
     var lastCounterQuestion: (stem: String, facet: String, counterId: String)? = nil  // saved for tutoring
     var lastCounterAnswer: (text: String, isCorrect: Bool)? = nil  // student's answer and correctness
     var currentCounterSystemPrompt: String? = nil  // set when counter tutor session starts
@@ -169,20 +171,19 @@ final class QuizSession {
     }
 
     /// Called when the student taps "Another example" on a counter meaning-to-reading quiz.
-    /// Appends the next example (or whatItCounts on the 3rd tap) to counterAdditionalExamples.
+    /// Appends the next example from the shuffled queue to counterAdditionalExamples,
+    /// or whatItCounts once the queue is exhausted.
     func showAnotherCounterExample() {
         guard case .awaitingText(_) = phase, let item = currentItem, item.wordType == "counter",
               item.facet == "meaning-to-reading",
-              counterAdditionalExamples.count < 3,
               let counter = counterCorpus?.items.first(where: { $0.id == item.wordId })?.counter
         else { return }
 
-        let nextIndex = counterAdditionalExamples.count + 1  // initial example is at index 0
-        if counterAdditionalExamples.count == 2 {
-            counterAdditionalExamples.append(counter.whatItCounts)
-        } else if nextIndex < counter.countExamples.count {
-            counterAdditionalExamples.append(counter.countExamples[nextIndex])
-        } else {
+        // Queue index 0 is the initial stem; subsequent taps show indices 1, 2, then whatItCounts.
+        let nextQueueIndex = counterAdditionalExamples.count + 1
+        if nextQueueIndex < counterExampleQueue.count {
+            counterAdditionalExamples.append(counterExampleQueue[nextQueueIndex])
+        } else if counterAdditionalExamples.last != counter.whatItCounts {
             counterAdditionalExamples.append(counter.whatItCounts)
         }
     }
@@ -742,9 +743,8 @@ final class QuizSession {
         if item.wordType == "counter" {
             switch item.facet {
             case "meaning-to-reading":
-                // Show the first example as the initial prompt; additional examples are appended via "Another example".
-                if let counter = counterCorpus?.items.first(where: { $0.id == item.wordId })?.counter,
-                   let first = counter.countExamples.first {
+                // Show the first entry from the pre-shuffled queue as the initial prompt.
+                if let first = counterExampleQueue.first {
                     return first
                 }
                 return item.wordText
@@ -832,8 +832,15 @@ final class QuizSession {
         lastCounterQuestion = (stem: stem, facet: item.facet, counterId: item.wordId)
         lastCounterAnswer = (text: text, isCorrect: isCorrect)
 
+        let counterNotes: String
+        if item.facet == "meaning-to-reading" {
+            let shownExamples = ([stem] + counterAdditionalExamples).joined(separator: "; ")
+            counterNotes = "autograder: counter; examples shown: \(shownExamples); answer: \(text)"
+        } else {
+            counterNotes = "autograder: counter; answer: \(text)"
+        }
         applyLocalGrade(score: score, questionBubble: stem, answerBubble: resultBubble,
-                        resultSummary: resultSummary, notes: "autograder: counter", item: item)
+                        resultSummary: resultSummary, notes: counterNotes, item: item)
     }
 
     // MARK: - Private: generate question
@@ -888,6 +895,7 @@ final class QuizSession {
         chatMessages = []
         chatInput = ""
         isSendingChat = false
+        counterExampleQueue = []
         counterAdditionalExamples = []
         lastCounterQuestion = nil
         lastCounterAnswer = nil
@@ -944,6 +952,7 @@ final class QuizSession {
             }
             switch item.facet {
             case "meaning-to-reading":
+                counterExampleQueue = Array(counterItem.counter.countExamples.shuffled().prefix(3))
                 let stem = freeAnswerStem(for: item)
                 currentQuestion = stem
                 print("[QuizSession] counter meaning-to-reading (app-side) for \(item.wordText): \(stem)")
