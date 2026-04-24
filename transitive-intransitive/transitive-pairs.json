@@ -1379,14 +1379,14 @@
     "drills": [
       {
         "intransitive": {
-          "en": "The baby woke up crying at midnight.",
-          "ja": "赤ちゃんが夜中に泣きながら起きた。",
-          "jaFurigana": "<ruby>赤<rt>あか</rt></ruby>ちゃんが<ruby>夜<rt>よ</rt></ruby><ruby>中<rt>なか</rt></ruby>に<ruby>泣<rt>な</rt></ruby>きながら<ruby>起<rt>お</rt></ruby>きた。"
+          "en": "The puppy woke up and knocked its bowl over.",
+          "ja": "子犬が起きてお皿をひっくり返した。",
+          "jaFurigana": "<ruby>子<rt>こ</rt></ruby><ruby>犬<rt>いぬ</rt></ruby>が<ruby>起<rt>お</rt></ruby>きてお<ruby>皿<rt>さら</rt></ruby>をひっくり<ruby>返<rt>かえ</rt></ruby>した。"
         },
         "transitive": {
-          "en": "Dad gently woke the older sister too.",
-          "ja": "お父さんがお姉ちゃんも優しく起こした。",
-          "jaFurigana": "お<ruby>父<rt>ちち</rt></ruby>さんがお<ruby>姉<rt>あね</rt></ruby>ちゃんも<ruby>優<rt>やさ</rt></ruby>しく<ruby>起<rt>お</rt></ruby>こした。"
+          "en": "The crash woke the sleeping cat up.",
+          "ja": "その音が眠っていた猫を起こした。",
+          "jaFurigana": "その<ruby>音<rt>おと</rt></ruby>が<ruby>眠<rt>ねむ</rt></ruby>っていた<ruby>猫<rt>ねこ</rt></ruby>を<ruby>起<rt>お</rt></ruby>こした。"
         }
       },
       {
