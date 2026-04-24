@@ -533,6 +533,7 @@ struct WordDetailSheet: View {
                         case .learning: await counterCorpus.setCounterLearning(counterId: counterItem.id, db: db)
                         case .known:    await counterCorpus.setCounterKnown(counterId: counterItem.id, db: db)
                         }
+                        await loadEbisuModels()
                     }
                 }
             )) {

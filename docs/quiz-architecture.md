@@ -50,6 +50,10 @@ Whenever you add a new word type or facet:
 2. Update `prefetchQuestion()` in the same way, in the same order.
 3. Update `freeAnswerStem()` if the facet is free-answer.
 
+## State changes and Ebisu models
+
+Whenever you add a new state-change action in `WordDetailSheet` (reading, kanji, counter, etc.), **always call `await loadEbisuModels()` after the state is persisted**. This ensures the Ebisu halflives section refreshes to show the newly created models without requiring the user to close and reopen the sheet. See `setReadingState()`, `setKanjiState()`, and the counter enrollment picker for examples.
+
 ## Testing
 
 See `docs/TESTING.md` for TestHarness usage (`--dump-prompts`, `--live`, `--grade`).
