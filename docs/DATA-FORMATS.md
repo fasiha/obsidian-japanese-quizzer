@@ -73,8 +73,8 @@ Manually curated list of transitive/intransitive verb pairs. Each entry:
 
 ```
 {
-  "intransitive": { "kana": "あく", "jmdictId": "1586270", "kanji": ["開く"] },
-  "transitive":   { "kana": "あける", "jmdictId": "1202450", "kanji": ["開ける"] },
+  "intransitive": { "kana": "あく", "jmdictId": "1586270", "kanji": ["開く"], "bccwjPerMillionWords": 1.38 },
+  "transitive":   { "kana": "あける", "jmdictId": "1202450", "kanji": ["開ける"], "bccwjPerMillionWords": 129.26 },
   "ambiguousReason": null,          // string describing ambiguity, or null
   "examples": {
     "intransitive": "ドアが開いた。 — The door opened.",
@@ -88,6 +88,8 @@ Manually curated list of transitive/intransitive verb pairs. Each entry:
   ]
 }
 ```
+
+`bccwjPerMillionWords` is populated by `transitive-intransitive/add-bccwj-pmw.mjs` from `bccwj.sqlite`, using the same override mechanism as `vocab.json` (see `bccwj-overrides.json`). Null when the verb is absent from the BCCWJ long-unit-word list.
 
 `jaFurigana` uses HTML `<ruby>/<rt>` markup for in-app display.
 

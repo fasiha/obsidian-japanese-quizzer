@@ -190,13 +190,13 @@ struct WordDetailSheet: View {
                     .foregroundStyle(.secondary)
             }
 
-            senseExtrasSection
-
             if let pmw = item.bccwjPerMillionWords {
                 Text("Corpus: \(pmw, specifier: "%.2f") per million words")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+
+            senseExtrasSection
 
             if let pairItem = pairCorpus.items.first(where: {
                 $0.pair.intransitive.jmdictId == item.id ||

@@ -67,7 +67,8 @@ struct TransitivePairDetailSheet: View {
                         member: item.pair.intransitive,
                         furigana: item.intransitiveFurigana,
                         senses: intransitiveSenses,
-                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.intransitive.jmdictId }?.corpusSenseIndices ?? []
+                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.intransitive.jmdictId }?.corpusSenseIndices ?? [],
+                        pmw: item.pair.intransitive.bccwjPerMillionWords
                     )
 
                     Divider()
@@ -78,7 +79,8 @@ struct TransitivePairDetailSheet: View {
                         member: item.pair.transitive,
                         furigana: item.transitiveFurigana,
                         senses: transitiveSenses,
-                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.transitive.jmdictId }?.corpusSenseIndices ?? []
+                        originSenseIndices: vocabCorpus.items.first { $0.id == item.pair.transitive.jmdictId }?.corpusSenseIndices ?? [],
+                        pmw: item.pair.transitive.bccwjPerMillionWords
                     )
 
                     // Ambiguous reason
@@ -442,7 +444,8 @@ struct TransitivePairDetailSheet: View {
         member: TransitivePairMember,
         furigana: [FuriganaSegment]?,
         senses: [SenseExtra],
-        originSenseIndices: [Int]
+        originSenseIndices: [Int],
+        pmw: Double? = nil
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(heading)
@@ -467,6 +470,13 @@ struct TransitivePairDetailSheet: View {
             // Alternate kanji forms
             if member.kanji.count > 1 {
                 Text("Also: \(member.kanji.dropFirst().joined(separator: ", "))")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
+            // BCCWJ frequency
+            if let pmw {
+                Text("Corpus: \(pmw, specifier: "%.2f") per million words")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }

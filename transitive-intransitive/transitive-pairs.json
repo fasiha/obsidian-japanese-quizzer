@@ -5,14 +5,16 @@
       "jmdictId": "1586270",
       "kanji": [
         "開く"
-      ]
+      ],
+      "bccwjPerMillionWords": 1.3828242
     },
     "transitive": {
       "kana": "あける",
       "jmdictId": "1202450",
       "kanji": [
         "開ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 129.2634672
     },
     "ambiguousReason": null,
     "examples": {
@@ -64,14 +66,16 @@
       "jmdictId": "1436560",
       "kanji": [
         "閉まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 12.9349129
     },
     "transitive": {
       "kana": "しめる",
       "jmdictId": "1508590",
       "kanji": [
         "閉める"
-      ]
+      ],
+      "bccwjPerMillionWords": 38.8292134
     },
     "ambiguousReason": null,
     "examples": {
@@ -123,14 +127,16 @@
       "jmdictId": "1465590",
       "kanji": [
         "入る"
-      ]
+      ],
+      "bccwjPerMillionWords": 697.8979017
     },
     "transitive": {
       "kana": "いれる",
       "jmdictId": "1465610",
       "kanji": [
         "入れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 457.8983637
     },
     "ambiguousReason": null,
     "examples": {
@@ -182,14 +188,16 @@
       "jmdictId": "1338240",
       "kanji": [
         "出る"
-      ]
+      ],
+      "bccwjPerMillionWords": 963.5347551
     },
     "transitive": {
       "kana": "だす",
       "jmdictId": "1338180",
       "kanji": [
         "出す"
-      ]
+      ],
+      "bccwjPerMillionWords": 415.2877992
     },
     "ambiguousReason": null,
     "examples": {
@@ -241,14 +249,16 @@
       "jmdictId": "1441400",
       "kanji": [
         "点く"
-      ]
+      ],
+      "bccwjPerMillionWords": 488.748804
     },
     "transitive": {
       "kana": "つける",
       "jmdictId": "1610400",
       "kanji": [
         "点ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 437.4374609
     },
     "ambiguousReason": null,
     "examples": {
@@ -300,14 +310,16 @@
       "jmdictId": "1350040",
       "kanji": [
         "消える"
-      ]
+      ],
+      "bccwjPerMillionWords": 94.2890291
     },
     "transitive": {
       "kana": "けす",
       "jmdictId": "1350110",
       "kanji": [
         "消す"
-      ]
+      ],
+      "bccwjPerMillionWords": 47.6156538
     },
     "ambiguousReason": null,
     "examples": {
@@ -359,14 +371,16 @@
       "jmdictId": "1199900",
       "kanji": [
         "壊れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 26.7264425
     },
     "transitive": {
       "kana": "こわす",
       "jmdictId": "1199890",
       "kanji": [
         "壊す"
-      ]
+      ],
+      "bccwjPerMillionWords": 20.5710393
     },
     "ambiguousReason": null,
     "examples": {
@@ -418,14 +432,16 @@
       "jmdictId": "1179005",
       "kanji": [
         "汚れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 20.4119534
     },
     "transitive": {
       "kana": "よごす",
       "jmdictId": "1178960",
       "kanji": [
         "汚す"
-      ]
+      ],
+      "bccwjPerMillionWords": 7.5994143
     },
     "ambiguousReason": null,
     "examples": {
@@ -477,14 +493,16 @@
       "jmdictId": "1548550",
       "kanji": [
         "落ちる"
-      ]
+      ],
+      "bccwjPerMillionWords": 111.7762482
     },
     "transitive": {
       "kana": "おとす",
       "jmdictId": "1589260",
       "kanji": [
         "落とす"
-      ]
+      ],
+      "bccwjPerMillionWords": 71.2215639
     },
     "ambiguousReason": null,
     "examples": {
@@ -536,14 +554,16 @@
       "jmdictId": "1606680",
       "kanji": [
         "沸く"
-      ]
+      ],
+      "bccwjPerMillionWords": 29.3697171
     },
     "transitive": {
       "kana": "わかす",
       "jmdictId": "1501660",
       "kanji": [
         "沸かす"
-      ]
+      ],
+      "bccwjPerMillionWords": 5.2375995
     },
     "ambiguousReason": null,
     "examples": {
@@ -595,14 +615,16 @@
       "jmdictId": "1495740",
       "kanji": [
         "付く"
-      ]
+      ],
+      "bccwjPerMillionWords": 488.748804
     },
     "transitive": {
       "kana": "つける",
       "jmdictId": "1495770",
       "kanji": [
         "付ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 437.4374609
     },
     "ambiguousReason": null,
     "examples": {
@@ -654,14 +676,16 @@
       "jmdictId": "1436560",
       "kanji": [
         "締まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 12.9349129
     },
     "transitive": {
       "kana": "しめる",
       "jmdictId": "1436570",
       "kanji": [
         "締める"
-      ]
+      ],
+      "bccwjPerMillionWords": 38.8292134
     },
     "ambiguousReason": null,
     "examples": {
@@ -713,14 +737,16 @@
       "jmdictId": "1307500",
       "kanji": [
         "始まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 179.7549058
     },
     "transitive": {
       "kana": "はじめる",
       "jmdictId": "1307550",
       "kanji": [
         "始める"
-      ]
+      ],
+      "bccwjPerMillionWords": 152.8204278
     },
     "ambiguousReason": null,
     "examples": {
@@ -772,14 +798,16 @@
       "jmdictId": "1591420",
       "kanji": [
         "決まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 111.898622
     },
     "transitive": {
       "kana": "きめる",
       "jmdictId": "1254180",
       "kanji": [
         "決める"
-      ]
+      ],
+      "bccwjPerMillionWords": 166.6486696
     },
     "ambiguousReason": null,
     "examples": {
@@ -831,14 +859,16 @@
       "jmdictId": "1333550",
       "kanji": [
         "集まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 81.0971312
     },
     "transitive": {
       "kana": "あつめる",
       "jmdictId": "1333560",
       "kanji": [
         "集める"
-      ]
+      ],
+      "bccwjPerMillionWords": 81.5254396
     },
     "ambiguousReason": null,
     "examples": {
@@ -890,14 +920,16 @@
       "jmdictId": "1310620",
       "kanji": [
         "止まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 80.2160397
     },
     "transitive": {
       "kana": "とめる",
       "jmdictId": "1310670",
       "kanji": [
         "止める"
-      ]
+      ],
+      "bccwjPerMillionWords": 113.9545022
     },
     "ambiguousReason": null,
     "examples": {
@@ -949,14 +981,16 @@
       "jmdictId": "1510790",
       "kanji": [
         "変わる"
-      ]
+      ],
+      "bccwjPerMillionWords": 320.8641589
     },
     "transitive": {
       "kana": "かえる",
       "jmdictId": "1510650",
       "kanji": [
         "変える"
-      ]
+      ],
+      "bccwjPerMillionWords": 189.9364077
     },
     "ambiguousReason": null,
     "examples": {
@@ -1008,14 +1042,16 @@
       "jmdictId": "1352290",
       "kanji": [
         "上がる"
-      ]
+      ],
+      "bccwjPerMillionWords": 132.2126763
     },
     "transitive": {
       "kana": "あげる",
       "jmdictId": "1352320",
       "kanji": [
         "上げる"
-      ]
+      ],
+      "bccwjPerMillionWords": 444.7554154
     },
     "ambiguousReason": null,
     "examples": {
@@ -1067,14 +1103,16 @@
       "jmdictId": "1184160",
       "kanji": [
         "下がる"
-      ]
+      ],
+      "bccwjPerMillionWords": 53.0001019
     },
     "transitive": {
       "kana": "さげる",
       "jmdictId": "1184170",
       "kanji": [
         "下げる"
-      ]
+      ],
+      "bccwjPerMillionWords": 56.7569782
     },
     "ambiguousReason": null,
     "examples": {
@@ -1126,14 +1164,16 @@
       "jmdictId": "1597040",
       "kanji": [
         "立つ"
-      ]
+      ],
+      "bccwjPerMillionWords": 265.6613282
     },
     "transitive": {
       "kana": "たてる",
       "jmdictId": "1551530",
       "kanji": [
         "立てる"
-      ]
+      ],
+      "bccwjPerMillionWords": 158.9880684
     },
     "ambiguousReason": null,
     "examples": {
@@ -1185,14 +1225,16 @@
       "jmdictId": "1355120",
       "kanji": [
         "乗る"
-      ]
+      ],
+      "bccwjPerMillionWords": 221.8392629
     },
     "transitive": {
       "kana": "のせる",
       "jmdictId": "1600270",
       "kanji": [
         "乗せる"
-      ]
+      ],
+      "bccwjPerMillionWords": 102.867434
     },
     "ambiguousReason": null,
     "examples": {
@@ -1244,14 +1286,16 @@
       "jmdictId": "1473960",
       "kanji": [
         "売れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 36.638722
     },
     "transitive": {
       "kana": "うる",
       "jmdictId": "1473950",
       "kanji": [
         "売る"
-      ]
+      ],
+      "bccwjPerMillionWords": 105.302673
     },
     "ambiguousReason": null,
     "examples": {
@@ -1303,14 +1347,16 @@
       "jmdictId": "1378690",
       "kanji": [
         "生まれる"
-      ]
+      ],
+      "bccwjPerMillionWords": 180.4891487
     },
     "transitive": {
       "kana": "うむ",
       "jmdictId": "1588410",
       "kanji": [
         "生む"
-      ]
+      ],
+      "bccwjPerMillionWords": 57.9562417
     },
     "ambiguousReason": null,
     "examples": {
@@ -1362,14 +1408,16 @@
       "jmdictId": "1223640",
       "kanji": [
         "起きる"
-      ]
+      ],
+      "bccwjPerMillionWords": 127.207587
     },
     "transitive": {
       "kana": "おこす",
       "jmdictId": "1223660",
       "kanji": [
         "起こす"
-      ]
+      ],
+      "bccwjPerMillionWords": 110.234338
     },
     "ambiguousReason": null,
     "examples": {
@@ -1421,14 +1469,16 @@
       "jmdictId": "1451210",
       "kanji": [
         "動く"
-      ]
+      ],
+      "bccwjPerMillionWords": 122.3003968
     },
     "transitive": {
       "kana": "うごかす",
       "jmdictId": "1451170",
       "kanji": [
         "動かす"
-      ]
+      ],
+      "bccwjPerMillionWords": 60.3792433
     },
     "ambiguousReason": null,
     "examples": {
@@ -1480,14 +1530,16 @@
       "jmdictId": "1604300",
       "kanji": [
         "回る"
-      ]
+      ],
+      "bccwjPerMillionWords": 89.7489604
     },
     "transitive": {
       "kana": "まわす",
       "jmdictId": "1199350",
       "kanji": [
         "回す"
-      ]
+      ],
+      "bccwjPerMillionWords": 51.4459544
     },
     "ambiguousReason": null,
     "examples": {
@@ -1539,14 +1591,16 @@
       "jmdictId": "1405790",
       "kanji": [
         "続く"
-      ]
+      ],
+      "bccwjPerMillionWords": 241.0519528
     },
     "transitive": {
       "kana": "つづける",
       "jmdictId": "1405800",
       "kanji": [
         "続ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 165.4861183
     },
     "ambiguousReason": null,
     "examples": {
@@ -1598,14 +1652,16 @@
       "jmdictId": "1441900",
       "kanji": [
         "伝わる"
-      ]
+      ],
+      "bccwjPerMillionWords": 50.9442217
     },
     "transitive": {
       "kana": "つたえる",
       "jmdictId": "1441870",
       "kanji": [
         "伝える"
-      ]
+      ],
+      "bccwjPerMillionWords": 136.238775
     },
     "ambiguousReason": null,
     "examples": {
@@ -1657,14 +1713,16 @@
       "jmdictId": "1251880",
       "kanji": [
         "繋がる"
-      ]
+      ],
+      "bccwjPerMillionWords": 88.2804745
     },
     "transitive": {
       "kana": "つなぐ",
       "jmdictId": "1251900",
       "kanji": [
         "繋ぐ"
-      ]
+      ],
+      "bccwjPerMillionWords": 41.9375085
     },
     "ambiguousReason": null,
     "examples": {
@@ -1716,14 +1774,16 @@
       "jmdictId": "1508380",
       "kanji": [
         "並ぶ"
-      ]
+      ],
+      "bccwjPerMillionWords": 90.1772688
     },
     "transitive": {
       "kana": "ならべる",
       "jmdictId": "1508390",
       "kanji": [
         "並べる"
-      ]
+      ],
+      "bccwjPerMillionWords": 44.6786821
     },
     "ambiguousReason": null,
     "examples": {
@@ -1775,14 +1835,16 @@
       "jmdictId": "1304510",
       "kanji": [
         "残る"
-      ]
+      ],
+      "bccwjPerMillionWords": 190.7440749
     },
     "transitive": {
       "kana": "のこす",
       "jmdictId": "1600260",
       "kanji": [
         "残す"
-      ]
+      ],
+      "bccwjPerMillionWords": 128.3211888
     },
     "ambiguousReason": null,
     "examples": {
@@ -1834,14 +1896,16 @@
       "jmdictId": "1535880",
       "kanji": [
         "戻る"
-      ]
+      ],
+      "bccwjPerMillionWords": 220.1382668
     },
     "transitive": {
       "kana": "もどす",
       "jmdictId": "1535850",
       "kanji": [
         "戻す"
-      ]
+      ],
+      "bccwjPerMillionWords": 49.1330892
     },
     "ambiguousReason": null,
     "examples": {
@@ -1893,14 +1957,16 @@
       "jmdictId": "1433030",
       "kanji": [
         "通る"
-      ]
+      ],
+      "bccwjPerMillionWords": 67.6115362
     },
     "transitive": {
       "kana": "とおす",
       "jmdictId": "1432900",
       "kanji": [
         "通す"
-      ]
+      ],
+      "bccwjPerMillionWords": 100.6647052
     },
     "ambiguousReason": null,
     "examples": {
@@ -1952,14 +2018,16 @@
       "jmdictId": "1457200",
       "kanji": [
         "届く"
-      ]
+      ],
+      "bccwjPerMillionWords": 84.7928206
     },
     "transitive": {
       "kana": "とどける",
       "jmdictId": "1457210",
       "kanji": [
         "届ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 22.1374242
     },
     "ambiguousReason": null,
     "examples": {
@@ -2011,14 +2079,16 @@
       "jmdictId": "1604550",
       "kanji": [
         "見つかる"
-      ]
+      ],
+      "bccwjPerMillionWords": 63.1448917
     },
     "transitive": {
       "kana": "みつける",
       "jmdictId": "1604570",
       "kanji": [
         "見つける"
-      ]
+      ],
+      "bccwjPerMillionWords": 104.0789348
     },
     "ambiguousReason": null,
     "examples": {
@@ -2070,14 +2140,16 @@
       "jmdictId": "1602360",
       "kanji": [
         "広がる"
-      ]
+      ],
+      "bccwjPerMillionWords": 84.2176637
     },
     "transitive": {
       "kana": "ひろげる",
       "jmdictId": "1602370",
       "kanji": [
         "広げる"
-      ]
+      ],
+      "bccwjPerMillionWords": 51.3725301
     },
     "ambiguousReason": null,
     "examples": {
@@ -2129,14 +2201,16 @@
       "jmdictId": "1365980",
       "kanji": [
         "進む"
-      ]
+      ],
+      "bccwjPerMillionWords": 178.0294349
     },
     "transitive": {
       "kana": "すすめる",
       "jmdictId": "1365990",
       "kanji": [
         "進める"
-      ]
+      ],
+      "bccwjPerMillionWords": 155.2189547
     },
     "ambiguousReason": null,
     "examples": {
@@ -2188,14 +2262,16 @@
       "jmdictId": "1511770",
       "kanji": [
         "片付く"
-      ]
+      ],
+      "bccwjPerMillionWords": 4.7603416
     },
     "transitive": {
       "kana": "かたづける",
       "jmdictId": "1511790",
       "kanji": [
         "片付ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 20.2773422
     },
     "ambiguousReason": null,
     "examples": {
@@ -2247,14 +2323,16 @@
       "jmdictId": "1344380",
       "kanji": [
         "助かる"
-      ]
+      ],
+      "bccwjPerMillionWords": 20.3630038
     },
     "transitive": {
       "kana": "たすける",
       "jmdictId": "1344410",
       "kanji": [
         "助ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 51.7029394
     },
     "ambiguousReason": null,
     "examples": {
@@ -2306,14 +2384,16 @@
       "jmdictId": "1586430",
       "kanji": [
         "温まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 7.0487321
     },
     "transitive": {
       "kana": "あたためる",
       "jmdictId": "1586440",
       "kanji": [
         "温める"
-      ]
+      ],
+      "bccwjPerMillionWords": 20.8647365
     },
     "ambiguousReason": null,
     "examples": {
@@ -2365,14 +2445,16 @@
       "jmdictId": "1556630",
       "kanji": [
         "冷える"
-      ]
+      ],
+      "bccwjPerMillionWords": 11.6866999
     },
     "transitive": {
       "kana": "ひやす",
       "jmdictId": "1556770",
       "kanji": [
         "冷やす"
-      ]
+      ],
+      "bccwjPerMillionWords": 15.1743538
     },
     "ambiguousReason": null,
     "examples": {
@@ -2424,14 +2506,16 @@
       "jmdictId": "1209650",
       "kanji": [
         "乾く"
-      ]
+      ],
+      "bccwjPerMillionWords": 23.1653643
     },
     "transitive": {
       "kana": "かわかす",
       "jmdictId": "1209630",
       "kanji": [
         "乾かす"
-      ]
+      ],
+      "bccwjPerMillionWords": 4.9683771
     },
     "ambiguousReason": null,
     "examples": {
@@ -2483,14 +2567,16 @@
       "jmdictId": "1350610",
       "kanji": [
         "焼ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 14.6603838
     },
     "transitive": {
       "kana": "やく",
       "jmdictId": "1350600",
       "kanji": [
         "焼く"
-      ]
+      ],
+      "bccwjPerMillionWords": 61.5050825
     },
     "ambiguousReason": null,
     "examples": {
@@ -2542,14 +2628,16 @@
       "jmdictId": "1322490",
       "kanji": [
         "煮える"
-      ]
+      ],
+      "bccwjPerMillionWords": 1.7132335
     },
     "transitive": {
       "kana": "にる",
       "jmdictId": "1322540",
       "kanji": [
         "煮る"
-      ]
+      ],
+      "bccwjPerMillionWords": 24.5849007
     },
     "ambiguousReason": null,
     "examples": {
@@ -2601,14 +2689,16 @@
       "jmdictId": "1469570",
       "kanji": [
         "燃える"
-      ]
+      ],
+      "bccwjPerMillionWords": 25.0499212
     },
     "transitive": {
       "kana": "もやす",
       "jmdictId": "1582900",
       "kanji": [
         "燃やす"
-      ]
+      ],
+      "bccwjPerMillionWords": 11.2339168
     },
     "ambiguousReason": null,
     "examples": {
@@ -2660,14 +2750,16 @@
       "jmdictId": "1467620",
       "kanji": [
         "濡れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 25.9554875
     },
     "transitive": {
       "kana": "ぬらす",
       "jmdictId": "1467610",
       "kanji": [
         "濡らす"
-      ]
+      ],
+      "bccwjPerMillionWords": 6.9630704
     },
     "ambiguousReason": null,
     "examples": {
@@ -2719,14 +2811,16 @@
       "jmdictId": "1350730",
       "kanji": [
         "焦げる"
-      ]
+      ],
+      "bccwjPerMillionWords": 3.267381
     },
     "transitive": {
       "kana": "こがす",
       "jmdictId": "1350710",
       "kanji": [
         "焦がす"
-      ]
+      ],
+      "bccwjPerMillionWords": 2.9614465
     },
     "ambiguousReason": null,
     "examples": {
@@ -2778,14 +2872,16 @@
       "jmdictId": "1160540",
       "kanji": [
         "育つ"
-      ]
+      ],
+      "bccwjPerMillionWords": 47.8236893
     },
     "transitive": {
       "kana": "そだてる",
       "jmdictId": "1160570",
       "kanji": [
         "育てる"
-      ]
+      ],
+      "bccwjPerMillionWords": 62.386174
     },
     "ambiguousReason": null,
     "examples": {
@@ -2837,14 +2933,16 @@
       "jmdictId": "1602440",
       "kanji": [
         "増える"
-      ]
+      ],
+      "bccwjPerMillionWords": 134.2807939
     },
     "transitive": {
       "kana": "ふやす",
       "jmdictId": "1602880",
       "kanji": [
         "増やす"
-      ]
+      ],
+      "bccwjPerMillionWords": 38.8414508
     },
     "ambiguousReason": null,
     "examples": {
@@ -2896,14 +2994,16 @@
       "jmdictId": "1263120",
       "kanji": [
         "減る"
-      ]
+      ],
+      "bccwjPerMillionWords": 61.8722039
     },
     "transitive": {
       "kana": "へらす",
       "jmdictId": "1263110",
       "kanji": [
         "減らす"
-      ]
+      ],
+      "bccwjPerMillionWords": 29.528803
     },
     "ambiguousReason": null,
     "examples": {
@@ -2955,14 +3055,16 @@
       "jmdictId": "1358870",
       "kanji": [
         "伸びる"
-      ]
+      ],
+      "bccwjPerMillionWords": 63.4141141
     },
     "transitive": {
       "kana": "のばす",
       "jmdictId": "1600290",
       "kanji": [
         "伸ばす"
-      ]
+      ],
+      "bccwjPerMillionWords": 72.4085899
     },
     "ambiguousReason": null,
     "examples": {
@@ -3014,14 +3116,16 @@
       "jmdictId": "1599400",
       "kanji": [
         "治る"
-      ]
+      ],
+      "bccwjPerMillionWords": 41.570387
     },
     "transitive": {
       "kana": "なおす",
       "jmdictId": "2856318",
       "kanji": [
         "治す"
-      ]
+      ],
+      "bccwjPerMillionWords": 40.0774264
     },
     "ambiguousReason": null,
     "examples": {
@@ -3073,14 +3177,16 @@
       "jmdictId": "1552140",
       "kanji": [
         "流れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 92.4167097
     },
     "transitive": {
       "kana": "ながす",
       "jmdictId": "1552120",
       "kanji": [
         "流す"
-      ]
+      ],
+      "bccwjPerMillionWords": 57.8828174
     },
     "ambiguousReason": null,
     "examples": {
@@ -3132,14 +3238,16 @@
       "jmdictId": "1385920",
       "kanji": [
         "折れる"
-      ]
+      ],
+      "bccwjPerMillionWords": 15.9208341
     },
     "transitive": {
       "kana": "おる",
       "jmdictId": "1385910",
       "kanji": [
         "折る"
-      ]
+      ],
+      "bccwjPerMillionWords": 14.5257726
     },
     "ambiguousReason": null,
     "examples": {
@@ -3191,14 +3299,16 @@
       "jmdictId": "1478200",
       "kanji": [
         "抜ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 51.1400198
     },
     "transitive": {
       "kana": "ぬく",
       "jmdictId": "1478190",
       "kanji": [
         "抜く"
-      ]
+      ],
+      "bccwjPerMillionWords": 52.6941674
     },
     "ambiguousReason": null,
     "examples": {
@@ -3250,14 +3360,16 @@
       "jmdictId": "1429700",
       "kanji": [
         "飛ぶ"
-      ]
+      ],
+      "bccwjPerMillionWords": 77.4871035
     },
     "transitive": {
       "kana": "とばす",
       "jmdictId": "1485230",
       "kanji": [
         "飛ばす"
-      ]
+      ],
+      "bccwjPerMillionWords": 19.8857459
     },
     "ambiguousReason": null,
     "examples": {
@@ -3309,14 +3421,16 @@
       "jmdictId": "1598800",
       "kanji": [
         "整う"
-      ]
+      ],
+      "bccwjPerMillionWords": 19.0291292
     },
     "transitive": {
       "kana": "ととのえる",
       "jmdictId": "1376140",
       "kanji": [
         "整える"
-      ]
+      ],
+      "bccwjPerMillionWords": 38.2051069
     },
     "ambiguousReason": null,
     "examples": {
@@ -3368,14 +3482,16 @@
       "jmdictId": "1552650",
       "kanji": [
         "溜まる"
-      ]
+      ],
+      "bccwjPerMillionWords": 34.1422961
     },
     "transitive": {
       "kana": "ためる",
       "jmdictId": "1552630",
       "kanji": [
         "溜める"
-      ]
+      ],
+      "bccwjPerMillionWords": 16.7285013
     },
     "ambiguousReason": null,
     "examples": {
@@ -3427,14 +3543,16 @@
       "jmdictId": "1382990",
       "kanji": [
         "積もる"
-      ]
+      ],
+      "bccwjPerMillionWords": 7.7707376
     },
     "transitive": {
       "kana": "つむ",
       "jmdictId": "1382970",
       "kanji": [
         "積む"
-      ]
+      ],
+      "bccwjPerMillionWords": 30.360945
     },
     "examples": {
       "intransitive": "雪が屋根に積もった。 — Snow piled up on the roof.",
@@ -3486,14 +3604,16 @@
       "jmdictId": "1207590",
       "kanji": [
         "掛かる"
-      ]
+      ],
+      "bccwjPerMillionWords": 394.6922852
     },
     "transitive": {
       "kana": "かける",
       "jmdictId": "1207610",
       "kanji": [
         "掛ける"
-      ]
+      ],
+      "bccwjPerMillionWords": 447.2518413
     },
     "ambiguousReason": null,
     "examples": {

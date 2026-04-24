@@ -25,6 +25,7 @@ struct TransitivePairMember: Codable {
     let kana: String
     let jmdictId: String
     let kanji: [String]
+    let bccwjPerMillionWords: Double?
 }
 
 struct TransitivePairExamples: Codable {
