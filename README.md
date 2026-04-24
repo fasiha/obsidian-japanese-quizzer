@@ -88,6 +88,7 @@ so within the bounds of these databases — not from its own training data.
 |---|---|---|
 | [JMDict](http://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project) | ~200k Japanese–English dictionary entries | Jim Breen's EDRDG project; we use [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) JSON |
 | [JmdictFurigana](https://github.com/Doublevil/JmdictFurigana) | Character-level ruby spans for JMDict words | Doublevil's project; handles irregular readings like 日本→にほん |
+| [BCCWJ Frequency Tables](https://clrd.ninjal.ac.jp/bccwj/en/freq-list.html) | Per-million-word frequency for ~170k words | NINJAL's Balanced Corpus of Contemporary Written Japanese; LUW list provides lemma frequencies |
 | [KANJIDIC2](http://www.edrdg.org/wiki/index.php/KANJIDIC_Project) | Per-kanji readings, meanings, stroke counts, JLPT/grade levels | EDRDG; we use jmdict-simplified's JSON export |
 | [kradfile](http://www.edrdg.org/krad/kradinf.html) | Kanji → radical decomposition | EDRDG; used for kanji breakdowns in quiz chat |
 | [WaniKani](https://www.wanikani.com/) | Kanji → component mappings with mnemonic-friendly names | Community-extracted data in `wanikani/` |

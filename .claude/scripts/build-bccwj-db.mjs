@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Converts BCCWJ frequency TSV files to bccwj.sqlite.
 //
+// Get these from https://clrd.ninjal.ac.jp/bccwj/en/freq-list.html
+//
 // Table bccwj: built from BCCWJ_frequencylist_luw2_ver1_0.tsv
 //   columns: kanji TEXT, reading TEXT, frequency INTEGER, pmw REAL
 //   "kanji" = lemma column (may be kana-only). "reading" = lForm in hiragana.
