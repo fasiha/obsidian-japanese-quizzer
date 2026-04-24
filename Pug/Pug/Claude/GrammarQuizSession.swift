@@ -483,23 +483,10 @@ final class GrammarQuizSession {
             descriptionBlock = "\n" + lines
         }
 
-        // Recent sub-uses: injected only in generation calls to guide diversity.
-        var recentNotesBlock = ""
-        if isGenerating && !item.recentNotes.isEmpty {
-            // Extract just the sub_use phrase from each note (notes may contain verbose result summaries).
-            let subUses = item.recentNotes.compactMap { note -> String? in
-                for line in note.components(separatedBy: "\n") {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if trimmed.hasPrefix("sub_use:") {
-                        return trimmed.dropFirst("sub_use:".count).trimmingCharacters(in: .whitespaces)
-                    }
-                }
-                return nil
-            }
-            if !subUses.isEmpty {
-                let list = subUses.map { "- \($0)" }.joined(separator: "\n")
-                recentNotesBlock = "\nRecently exercised sub-uses (prefer a different sub-use; if all have been recently exercised, any is fine):\n\(list)"
-            }
+        // Sub-use directive: injected only in generation calls to enforce round-robin diversity.
+        var subUseDirective = ""
+        if isGenerating, let idx = item.nextSubUseIndex, let subUses = item.subUses, idx < subUses.count {
+            subUseDirective = "\nTarget this specific sub-use: \(subUses[idx])"
         }
 
         // Verb-variety nudge is only relevant for generation calls, not grading.
@@ -598,7 +585,7 @@ final class GrammarQuizSession {
         \(topicLine)
         \(metaLine)\(descriptionBlock)
         Memory: \(ebisuLine)
-        \(facetRule)\(quirkyNote)\(recentNotesBlock)
+        \(facetRule)\(quirkyNote)\(subUseDirective)
         """
 
         if isGenerating && isFreeTextStemGeneration {

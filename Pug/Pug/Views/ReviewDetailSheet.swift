@@ -98,6 +98,17 @@ struct ReviewDetailSheet: View {
                             .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
                     }
 
+                    // quiz_data: structured metadata written by Swift (not Haiku).
+                    // Grammar reviews store the sub_use_index used for this session.
+                    if let jsonText = review.quizData,
+                       let data = jsonText.data(using: .utf8),
+                       let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                       let idx  = obj["sub_use_index"] as? Int {
+                        Text("sub-use index: \(idx)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     Divider()
 
                     // Past turns from the quiz session and any prior review discussions

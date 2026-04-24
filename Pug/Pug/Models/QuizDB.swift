@@ -21,6 +21,9 @@ struct Review: Codable, FetchableRecord, MutablePersistableRecord {
     /// UUID shared with chat.sqlite turns so ReviewDetailSheet can load the exact post-quiz conversation.
     /// nil for reviews recorded before migration v11.
     var sessionId: String?
+    /// Optional JSON blob for review-type-specific structured metadata (added in migration v12).
+    /// Grammar reviews store {"sub_use_index": N}. Nil for all other review types.
+    var quizData: String?
 
     mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 
@@ -33,6 +36,7 @@ struct Review: Codable, FetchableRecord, MutablePersistableRecord {
         case quizType = "quiz_type"
         case notes
         case sessionId = "session_id"
+        case quizData = "quiz_data"
     }
 }
 
@@ -505,6 +509,16 @@ final class QuizDB: Sendable {
             // NULL for reviews recorded before this migration.
             try db.alter(table: "reviews") { t in
                 t.add(column: "session_id", .text)
+            }
+        }
+        migrator.registerMigration("v12") { db in
+            // quiz_data: optional JSON blob for review-type-specific structured metadata.
+            // Grammar reviews store {"sub_use_index": N} to mechanically track which sub-use
+            // was exercised, enabling deterministic round-robin sub-use selection without
+            // relying on the LLM to pick a new sub-use from free-text notes.
+            // NULL for all review types that don't need structured metadata.
+            try db.alter(table: "reviews") { t in
+                t.add(column: "quiz_data", .text)
             }
         }
         try migrator.migrate(pool)

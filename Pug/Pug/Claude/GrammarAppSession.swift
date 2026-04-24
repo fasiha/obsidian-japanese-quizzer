@@ -390,6 +390,12 @@ final class GrammarAppSession {
 
     private func recordReview(item: GrammarQuizItem, score: Double, notes: String) async throws {
         let now = ISO8601DateFormatter().string(from: Date())
+        let quizDataJson: String?
+        if let idx = item.nextSubUseIndex {
+            quizDataJson = "{\"sub_use_index\": \(idx)}"
+        } else {
+            quizDataJson = nil
+        }
         let review = Review(
             reviewer: deviceName(),
             timestamp: now,
@@ -398,7 +404,8 @@ final class GrammarAppSession {
             wordText: item.titleEn,
             score: score,
             quizType: item.facet,
-            notes: notes.isEmpty ? nil : notes
+            notes: notes.isEmpty ? nil : notes,
+            quizData: quizDataJson
         )
         try await db.insert(review: review)
 

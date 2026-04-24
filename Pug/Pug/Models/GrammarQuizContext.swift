@@ -55,9 +55,10 @@ struct GrammarQuizItem: Identifiable {
     let cautions: [String]?
     let isStub: Bool?
     let classicalJapanese: Bool?
-    /// Recent review notes for this topic+facet (from reviews.notes). Used by generation
-    /// prompts to avoid repeating the same sub-use across consecutive quiz sessions.
-    let recentNotes: [String]
+    /// The sub-use index to target in the next quiz generation for this topic+facet.
+    /// Derived from the most recent review's quiz_data sub_use_index, incremented mod subUses.count.
+    /// Nil when subUses is empty/nil or no prior review has recorded a sub_use_index.
+    let nextSubUseIndex: Int?
 
     var recall: Double {
         switch status { case .reviewed(let r, _, _): return r }
@@ -98,10 +99,10 @@ struct GrammarQuizContext {
     /// Only topics with active ebisu_models rows (word_type='grammar') are included.
     /// Items are sorted by ascending recall probability (most urgent first).
     static func build(db: QuizDB, manifest: GrammarManifest) async throws -> [GrammarQuizItem] {
-        let records   = try await db.enrolledGrammarRecords()
-        let counts    = try await db.grammarReviewCounts()
-        let allNotes  = try await db.grammarAllRecentNotes()
-        let now       = Date()
+        let records          = try await db.enrolledGrammarRecords()
+        let counts           = try await db.grammarReviewCounts()
+        let lastSubUseIndices = try await db.grammarLastSubUseIndices()
+        let now              = Date()
 
         // Group records by topic ID, tracking facets.
         var byTopic: [String: [EbisuRecord]] = [:]
@@ -147,7 +148,20 @@ struct GrammarQuizContext {
 
                 let isFree = tier >= 2  // used only to satisfy QuizStatus shape; isFreeAnswer is tier-based
                 let equivalenceGroupIds = topic.equivalenceGroup ?? []
-                let recentNotes = allNotes["\(topicId):\(r.quizType)"] ?? []
+
+                // Compute next sub-use index: advance from the last recorded index by one,
+                // wrapping around when all sub-uses have been cycled through.
+                let nextSubUseIndex: Int?
+                if let subUses = topic.subUses, !subUses.isEmpty {
+                    let key = "\(topicId):\(r.quizType)"
+                    if let last = lastSubUseIndices[key] {
+                        nextSubUseIndex = (last + 1) % subUses.count
+                    } else {
+                        nextSubUseIndex = 0
+                    }
+                } else {
+                    nextSubUseIndex = nil
+                }
 
                 items.append(GrammarQuizItem(
                     topicId:             topicId,
@@ -166,7 +180,7 @@ struct GrammarQuizContext {
                     cautions:            topic.cautions,
                     isStub:              topic.isStub,
                     classicalJapanese:   topic.classicalJapanese,
-                    recentNotes:         recentNotes
+                    nextSubUseIndex:     nextSubUseIndex
                 ))
             }
         }
@@ -228,26 +242,28 @@ extension QuizDB {
         }
     }
 
-    /// Recent review notes for all grammar topics and facets, keyed by "topicId:facet".
-    /// Returns up to `limit` notes per key, ordered most-recent first.
-    /// Used by GrammarQuizContext.build() to populate GrammarQuizItem.recentNotes.
-    func grammarAllRecentNotes(limit: Int = 3) async throws -> [String: [String]] {
+    /// Most-recent sub_use_index per grammar topic+facet, keyed by "topicId:facet".
+    /// Reads the quiz_data JSON column from the most recent grammar review that has one.
+    /// Used by GrammarQuizContext.build() to compute GrammarQuizItem.nextSubUseIndex.
+    func grammarLastSubUseIndices() async throws -> [String: Int] {
         try await pool.read { db in
             let rows = try Row.fetchAll(db, sql: """
-                SELECT word_id, quiz_type, notes FROM reviews
+                SELECT word_id, quiz_type, quiz_data FROM reviews
                 WHERE word_type = 'grammar'
-                  AND notes IS NOT NULL AND notes != ''
+                  AND quiz_data IS NOT NULL
                 ORDER BY word_id, quiz_type, timestamp DESC
                 """)
-            var result: [String: [String]] = [:]
+            var result: [String: Int] = [:]
             for row in rows {
-                guard let wid  = row["word_id"]  as? String,
-                      let qt   = row["quiz_type"] as? String,
-                      let note = row["notes"]     as? String else { continue }
+                guard let wid      = row["word_id"]   as? String,
+                      let qt       = row["quiz_type"]  as? String,
+                      let jsonText = row["quiz_data"]  as? String else { continue }
                 let key = "\(wid):\(qt)"
-                if result[key, default: []].count < limit {
-                    result[key, default: []].append(note)
-                }
+                guard result[key] == nil else { continue }  // keep only most-recent row per key
+                guard let data = jsonText.data(using: .utf8),
+                      let obj  = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let idx  = obj["sub_use_index"] as? Int else { continue }
+                result[key] = idx
             }
             return result
         }

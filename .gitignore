@@ -16,6 +16,7 @@ kradfile-*.json
 
 # Xcode
 Pug/DerivedData/
+Pug/.build/
 Pug/*.xcodeproj/xcuserdata/
 Pug/*.xcworkspace/xcuserdata/
 Pug/Pug.xcodeproj/xcuserdata/

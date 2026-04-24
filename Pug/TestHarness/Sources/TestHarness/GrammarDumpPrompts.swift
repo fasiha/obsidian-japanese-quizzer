@@ -75,13 +75,24 @@ let allGrammarPaths: [GrammarPromptPath] = [
 /// Build a GrammarQuizItem for a given topic and path.
 func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
                            extraGrammarTopics: [GrammarExtraTopic] = [],
-                           recentNotes: [String] = []) -> GrammarQuizItem {
+                           lastSubUseIndex: Int? = nil) -> GrammarQuizItem {
     // Halflife chosen to sit above the tier-N threshold for realistic prompt content.
     let halflife: Double
     switch path.tier {
     case 3:  halflife = 144.0   // above tier-3 threshold (120 h)
     case 2:  halflife = 96.0    // above tier-2 threshold (72 h)
     default: halflife = 24.0
+    }
+    // Compute nextSubUseIndex from lastSubUseIndex, mirroring GrammarQuizContext.build().
+    let nextSubUseIndex: Int?
+    if let subUses = topic.subUses, !subUses.isEmpty {
+        if let last = lastSubUseIndex {
+            nextSubUseIndex = (last + 1) % subUses.count
+        } else {
+            nextSubUseIndex = 0
+        }
+    } else {
+        nextSubUseIndex = nil
     }
     return GrammarQuizItem(
         topicId:             topic.prefixedId,
@@ -100,7 +111,7 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         cautions:            topic.cautions,
         isStub:              topic.isStub,
         classicalJapanese:   topic.classicalJapanese,
-        recentNotes:         recentNotes
+        nextSubUseIndex:     nextSubUseIndex
     )
 }
 
@@ -147,7 +158,7 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
 
 @MainActor func dumpGrammarPrompts(topic: GrammarTopic, quizDB: QuizDB,
                                    extraGrammarTopics: [GrammarExtraTopic] = [],
-                                   recentNotes: [String] = [],
+                                   lastSubUseIndex: Int? = nil,
                                    onlyTiers: Set<Int>? = nil) {
     let client = AnthropicClient(apiKey: "dummy", model: "dummy")
     let session = GrammarQuizSession(client: client, db: quizDB)
@@ -166,9 +177,8 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
         print("# Extra grammar topics (\(extraGrammarTopics.count)):")
         for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
     }
-    if !recentNotes.isEmpty {
-        print("# Recent review notes (mocked via --recent-note):")
-        for n in recentNotes { print("#   \(n)") }
+    if let idx = lastSubUseIndex {
+        print("# Last sub-use index (mocked via --last-sub-use-index): \(idx)")
     }
     print("")
     print("# Review each path below. For each, check:")
@@ -188,7 +198,7 @@ func loadGrammarManifestFromTSVs(findFile: (String) -> String?) -> GrammarManife
     for (i, path) in paths.enumerated() {
         let item = buildGrammarQuizItem(topic: topic, path: path,
                                         extraGrammarTopics: extraGrammarTopics,
-                                        recentNotes: recentNotes)
+                                        lastSubUseIndex: lastSubUseIndex)
 
         printGrammarPathHeader(index: i, total: paths.count, path: path)
 
@@ -363,7 +373,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
                                     onlyFacet: String? = nil,
                                     onlyTiers: Set<Int>? = nil,
                                     extraGrammarTopics: [GrammarExtraTopic] = [],
-                                    recentNotes: [String] = []) async {
+                                    lastSubUseIndex: Int? = nil) async {
     var allPaths: [GrammarPromptPath]
     if let facet = onlyFacet {
         allPaths = allGrammarPaths.filter { $0.facet == facet }
@@ -399,9 +409,8 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
         print("# Extra grammar topics (\(extraGrammarTopics.count)):")
         for s in extraGrammarTopics { print("#   \(s.topicId) — \(s.titleEn)") }
     }
-    if !recentNotes.isEmpty {
-        print("# Recent review notes (mocked via --recent-note):")
-        for n in recentNotes { print("#   \(n)") }
+    if let idx = lastSubUseIndex {
+        print("# Last sub-use index (mocked via --last-sub-use-index): \(idx)")
     }
     print("")
 
@@ -412,7 +421,7 @@ func validateGradingResponseFlexible(_ response: String) -> [String] {
     for (i, path) in allPaths.enumerated() {
         let item  = buildGrammarQuizItem(topic: topic, path: path,
                                           extraGrammarTopics: extraGrammarTopics,
-                                          recentNotes: recentNotes)
+                                          lastSubUseIndex: lastSubUseIndex)
         printGrammarPathHeader(index: i, total: allPaths.count, path: path)
         let start = Date()
 

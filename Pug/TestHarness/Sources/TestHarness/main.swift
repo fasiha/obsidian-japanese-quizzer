@@ -20,10 +20,10 @@
 // Grammar mode flags:
 //   --grammar <topic_id>
 //     → switch to grammar quiz mode; all flags below apply only in grammar mode
-//   --recent-note "sub_use: godan potential affirmative"  (repeatable)
-//     → simulate a review note from the real app; the generation system prompt shows these
-//       as "Recently exercised sub-uses" and asks Haiku to pick a different sub-use.
-//       This mirrors iOS behavior where GrammarQuizSession reads recentNotes from the DB.
+//   --last-sub-use-index <N>
+//     → simulate the sub_use_index stored in the most recent review for this topic+facet.
+//       The generation system prompt will direct Haiku to target sub-use index (N+1) mod count.
+//       This mirrors iOS behavior where GrammarQuizSession reads quiz_data from the DB.
 //
 // Reads ANTHROPIC_API_KEY from .env in the project root (two levels up from Pug/).
 
@@ -37,9 +37,9 @@ guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--tier 2,3] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
-    fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2] [--recent-note \"text\"...]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--tier 2,3] [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
+    fputs("       TestHarness --grammar <topic_id> [facet] [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
     exit(1)
 }
 
@@ -101,17 +101,14 @@ if let mIdx = args.firstIndex(of: "--extra-grammar-mode"), mIdx + 1 < args.count
     extraGrammarMode = .all
 }
 
-// --recent-note "text": simulate a mocked review note for the grammar topic (can be repeated).
-// Passed to buildGrammarQuizItem so the generation system prompt shows recently tested sub-uses.
-var recentNotesArg: [String] = []
-var argIdx = 0
-while argIdx < args.count {
-    if args[argIdx] == "--recent-note" && argIdx + 1 < args.count {
-        recentNotesArg.append(args[argIdx + 1])
-        argIdx += 2
-    } else {
-        argIdx += 1
-    }
+// --last-sub-use-index N: simulate the sub_use_index from the most recent grammar review.
+// The next quiz will target sub-use (N+1) mod subUses.count, mirroring iOS behavior.
+let lastSubUseIndexArg: Int?
+if let sIdx = args.firstIndex(of: "--last-sub-use-index"), sIdx + 1 < args.count,
+   let n = Int(args[sIdx + 1]) {
+    lastSubUseIndexArg = n
+} else {
+    lastSubUseIndexArg = nil
 }
 
 // --tier 2 or --tier 2,3: restrict grammar --live/--dump-prompts to specific tiers
@@ -285,15 +282,15 @@ if isGrammarMode {
         print("Extra grammar topics: \(extraGrammarTopics.map { $0.topicId }.joined(separator: ", "))")
         print("")
     }
-    if !recentNotesArg.isEmpty {
-        print("Recent notes (mocked): \(recentNotesArg.joined(separator: "; "))")
+    if let idx = lastSubUseIndexArg {
+        print("Last sub-use index (mocked): \(idx)")
         print("")
     }
 
     if isDumpMode {
         dumpGrammarPrompts(topic: topic, quizDB: grammarDB,
                            extraGrammarTopics: extraGrammarTopics,
-                           recentNotes: recentNotesArg,
+                           lastSubUseIndex: lastSubUseIndexArg,
                            onlyTiers: onlyTiers)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
@@ -307,7 +304,7 @@ if isGrammarMode {
                                   genOnly: isGenOnly, onlyFacet: liveOnlyFacet,
                                   onlyTiers: onlyTiers,
                                   extraGrammarTopics: extraGrammarTopics,
-                                  recentNotes: recentNotesArg)
+                                  lastSubUseIndex: lastSubUseIndexArg)
         try? FileManager.default.removeItem(atPath: tmpPath)
         exit(0)
     }
@@ -323,7 +320,7 @@ if isGrammarMode {
     let item = buildGrammarQuizItem(topic: topic,
                                     path: GrammarPromptPath(facet: grammarFacet, tier: 1, mode: "multiple-choice-generation"),
                                     extraGrammarTopics: extraGrammarTopics,
-                                    recentNotes: recentNotesArg)
+                                    lastSubUseIndex: lastSubUseIndexArg)
     let start = Date()
     do {
         let (question, _, conversation) = try await session.generateQuestionForTesting(item: item)

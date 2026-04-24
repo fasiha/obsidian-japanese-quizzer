@@ -85,13 +85,10 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 .build/debug/TestHarness --grammar genki:potential-verbs [--facet production]
 # facet defaults to "production"; other option: "recognition"
 
-# Simulate recently-seen sub-uses so Haiku picks a different one (mirrors iOS behavior):
-.build/debug/TestHarness --grammar genki:potential-verbs \
-    --recent-note "sub_use: godan potential affirmative" \
-    --recent-note "sub_use: ichidan potential"
-# --recent-note can be repeated; each value is one entry from reviews.notes in the real app.
-# The generation system prompt will show these as "Recently exercised sub-uses" and ask
-# Haiku to prefer a sub-use not already listed.
+# Simulate a prior review so the next quiz targets a specific sub-use (mirrors iOS behavior):
+.build/debug/TestHarness --grammar genki:potential-verbs --last-sub-use-index 0
+# --last-sub-use-index N means the previous review used sub-use index N.
+# The generation system prompt will direct Haiku to target sub-use index (N+1) mod count.
 
 # Dump all system prompts for every grammar path (NO API calls):
 .build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts
@@ -99,9 +96,8 @@ Pass `--grammar <topic_id>` as the first argument instead of a word ID.
 # Dump prompts with scaffolding — simulates a student who also knows causative and passive:
 .build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts --extra-grammar "bunpro:causative,bunpro:Verb[passive]"
 
-# Dump prompts with mocked recent sub-uses:
-.build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts \
-    --recent-note "sub_use: godan potential affirmative"
+# Dump prompts with a mocked last sub-use index:
+.build/debug/TestHarness --grammar genki:potential-verbs --dump-prompts --last-sub-use-index 1
 
 # Live test: send all grammar paths to Haiku and validate responses:
 .build/debug/TestHarness --grammar genki:potential-verbs --live
