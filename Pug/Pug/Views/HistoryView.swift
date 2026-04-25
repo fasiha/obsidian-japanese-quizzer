@@ -43,8 +43,7 @@ struct HistoryView: View {
                         ReviewRowContainer(
                             review: review,
                             formatter: Self.localFormatter,
-                            isoParser: Self.isoParser,
-                            chatDB: client.chatDB
+                            isoParser: Self.isoParser
                         ) {
                             selectedReview = IdentifiableReview(id: index, review: review)
                         }
@@ -74,81 +73,13 @@ private struct ReviewRowContainer: View {
     let review: Review
     let formatter: DateFormatter
     let isoParser: ISO8601DateFormatter
-    let chatDB: ChatDB?
     let onTap: () -> Void
 
-    @State private var isExpanded = false
-    @State private var turns: [ChatTurn] = []
-    @State private var didLoad = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button(action: onTap) {
-                ReviewRow(review: review, formatter: formatter, isoParser: isoParser)
-            }
-            .buttonStyle(.plain)
-
-            if let chatDB {
-                QuizChatDisclosure(
-                    review: review,
-                    chatDB: chatDB,
-                    isExpanded: $isExpanded,
-                    turns: $turns,
-                    didLoad: $didLoad
-                )
-            }
+        Button(action: onTap) {
+            ReviewRow(review: review, formatter: formatter, isoParser: isoParser)
         }
-    }
-}
-
-// MARK: - Collapsible chat disclosure
-
-private struct QuizChatDisclosure: View {
-    let review: Review
-    let chatDB: ChatDB
-    @Binding var isExpanded: Bool
-    @Binding var turns: [ChatTurn]
-    @Binding var didLoad: Bool
-
-    /// Exact context tag for this review's chat turns.
-    /// Grammar reviews with a session ID use the per-attempt grammarQuiz context.
-    /// Legacy grammar reviews without a session ID fall back to the topic-level grammarDetail context.
-    /// Vocab reviews without a session ID (pre-UUID legacy) return nil.
-    private var contextTag: String? {
-        if review.wordType == "grammar" {
-            if let sessionId = review.sessionId {
-                return ChatContext.grammarQuiz(topicId: review.wordId, facet: review.quizType, sessionId: sessionId).tag
-            }
-            return ChatContext.grammarDetail(topicId: review.wordId).tag
-        }
-        guard let sessionId = review.sessionId else { return nil }
-        return ChatContext.vocabQuiz(wordId: review.wordId, facet: review.quizType, sessionId: sessionId).tag
-    }
-
-    var body: some View {
-        Group {
-            if contextTag == nil || (didLoad && turns.isEmpty) {
-                EmptyView()
-            } else {
-                DisclosureGroup(isExpanded: $isExpanded) {
-                    ForEach(Array(turns.enumerated()), id: \.offset) { _, turn in
-                        ChatBubble(turn: turn)
-                    }
-                } label: {
-                    Label(
-                        didLoad ? "\(turns.count) message\(turns.count == 1 ? "" : "s")" : "Chat",
-                        systemImage: "bubble.left.and.bubble.right"
-                    )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                }
-                .task {
-                    guard !didLoad, let tag = contextTag else { return }
-                    turns = await chatDB.organicTurns(context: tag)
-                    didLoad = true
-                }
-            }
-        }
+        .buttonStyle(.plain)
     }
 }
 
