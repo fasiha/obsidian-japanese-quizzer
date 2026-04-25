@@ -552,6 +552,18 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// Fetch all reviews for a set of word IDs (same word_type), newest first.
+    /// Used by GrammarDetailSheet to show quiz history across an equivalence group.
+    func reviews(wordType: String, wordIds: [String]) async throws -> [Review] {
+        guard !wordIds.isEmpty else { return [] }
+        return try await pool.read { db in
+            try Review
+                .filter(Column("word_type") == wordType && wordIds.contains(Column("word_id")))
+                .order(Column("timestamp").desc)
+                .fetchAll(db)
+        }
+    }
+
     // TODO: add reviewCounts(for: [EbisuRecord]) -> [String: Int] to replace the
     // triplicated loop in WordDetailSheet, TransitivePairDetailSheet, GrammarDetailSheet.
     func reviewCount(wordType: String, wordId: String, quizType: String) async throws -> Int {

@@ -38,6 +38,10 @@ struct GrammarDetailSheet: View {
     @State private var isSendingChat = false
     @State private var pastTurns: [ChatTurn] = []
 
+    // Quiz history for this topic and its equivalence group.
+    @State private var topicReviews: [Review] = []
+    @State private var selectedReview: IdentifiableReview? = nil
+
     init(topic: GrammarTopic, manifest: GrammarManifest, db: QuizDB, client: AnthropicClient,
          toolHandler: ToolHandler? = nil,
          isEnrolled: Bool, jmdict: any DatabaseReader,
@@ -75,6 +79,9 @@ struct GrammarDetailSheet: View {
                             ebisuHalflivesSection
                         }
                         chatSection
+                        if !topicReviews.isEmpty {
+                            quizHistorySection
+                        }
                     }
                 }
                 .padding()
@@ -85,6 +92,10 @@ struct GrammarDetailSheet: View {
                 await loadMnemonic()
                 await loadEbisuModels()
                 await loadPastTurns()
+                await loadTopicReviews()
+            }
+            .sheet(item: $selectedReview) { wrapper in
+                ReviewDetailSheet(review: wrapper.review, client: client, db: db)
             }
             .sheet(item: $rescaleTarget) { target in
                 RescaleSheet(currentHalflife: target.record.t, reviewCount: target.reviewCount) { hours in
@@ -310,6 +321,11 @@ struct GrammarDetailSheet: View {
         pastTurns = await chatDB.organicTurns(contexts: contexts)
     }
 
+    private func loadTopicReviews() async {
+        let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
+        topicReviews = (try? await db.reviews(wordType: "grammar", wordIds: allIds)) ?? []
+    }
+
     private func loadMnemonic() async {
         guard let quizDB = toolHandler?.quizDB else { return }
         let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
@@ -487,6 +503,69 @@ struct GrammarDetailSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: - Quiz history
+
+    private static let isoParser: ISO8601DateFormatter = ISO8601DateFormatter()
+    private static let localFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    private var quizHistorySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Quiz History")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(Array(topicReviews.enumerated()), id: \.offset) { index, review in
+                Button {
+                    selectedReview = IdentifiableReview(id: index, review: review)
+                } label: {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(scoreColor(review.score))
+                            .frame(width: 10, height: 10)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(review.wordId)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Text(review.quizType.replacingOccurrences(of: "-", with: " "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(formattedTimestamp(review.timestamp))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                if index < topicReviews.count - 1 {
+                    Divider()
+                }
+            }
+        }
+    }
+
+    private func scoreColor(_ score: Double) -> Color {
+        switch score {
+        case 0.8...: return .green
+        case 0.5...: return .orange
+        default:     return .red
+        }
+    }
+
+    private func formattedTimestamp(_ iso: String) -> String {
+        guard let date = Self.isoParser.date(from: iso) else { return iso }
+        return Self.localFormatter.string(from: date)
     }
 
     // MARK: - Actions
