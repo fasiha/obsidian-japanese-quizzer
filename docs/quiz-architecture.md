@@ -181,3 +181,41 @@ Tier 1 production/recognition use a 4-step chain-of-thought in the generation pr
 
 For the complete grammar quiz design including tiers 2 & 3, open items, prompt
 engineering, and alternatives considered, see `docs/TODO-grammar.md`.
+
+## Quiz history in detail sheets
+
+Every detail sheet — `WordDetailSheet`, `TransitivePairDetailSheet`, and
+`GrammarDetailSheet` — shows a **Quiz History** section at the bottom listing all past
+reviews for the item, newest first. Tapping any row opens `ReviewDetailSheet` where the
+student can read the full question and answer and continue a chat about it.
+
+**Word and counter quizzes** (`WordDetailSheet`): reviews are fetched for both
+`word_type="jmdict"` (the vocabulary word) and `word_type="counter"` (any counter nouns
+linked to the same JMDict entry), merged and sorted by timestamp. Counter IDs are
+reading strings like `し`; JMDict IDs are numeric strings.
+
+**Transitive pair quizzes** (`TransitivePairDetailSheet`): reviews are fetched for
+`word_type="transitive-pair"` using the pair's string ID.
+
+**Grammar quizzes** (`GrammarDetailSheet`): reviews are fetched across all topics in
+the equivalence group (e.g. `genki:naru-to-become` and `bunpro:naru-to-become` together)
+using `word_type="grammar"`.
+
+### Per-attempt chat linking
+
+Each quiz review row is linked to its post-quiz chat via `session_id`:
+- Vocab, counter, and transitive-pair reviews have had `session_id` since the feature was
+  introduced (migration v11).
+- Grammar reviews gained `session_id` in April 2026. Legacy grammar reviews without a
+  `session_id` fall back to the topic-level `grammar:<topicId>` chat context when
+  `ReviewDetailSheet` opens.
+
+The `session_id` on the review row matches the `context` column suffix in `chat.sqlite`:
+- Vocab/counter/pair: `quiz:<wordId>:<facet>:<sessionId>`
+- Grammar: `quiz:<topicId>:<facet>:<sessionId>`
+
+### HistoryView
+
+`HistoryView` shows all recent reviews across all word types as a flat list. Tapping any
+row opens `ReviewDetailSheet`. There is no inline chat expansion in the list — the detail
+sheet is the single place to read and continue a post-quiz chat.

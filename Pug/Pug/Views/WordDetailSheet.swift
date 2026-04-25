@@ -99,6 +99,8 @@ struct WordDetailSheet: View {
     @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleTarget: RescaleTarget? = nil
     @State private var pastTurns: [ChatTurn] = []
+    @State private var wordReviews: [Review] = []
+    @State private var selectedReview: IdentifiableReview? = nil
 
     var body: some View {
         NavigationStack {
@@ -109,6 +111,10 @@ struct WordDetailSheet: View {
                     actionsSection
                     Divider()
                     exploreChatSection
+                    if !wordReviews.isEmpty {
+                        Divider()
+                        quizHistorySection
+                    }
                 }
                 .padding()
             }
@@ -131,6 +137,10 @@ struct WordDetailSheet: View {
                 Task { await loadEbisuModels() }
                 Task { await autoCommitFirstForm() }
                 Task { await loadPastTurns() }
+                Task { await loadWordReviews() }
+            }
+            .sheet(item: $selectedReview) { wrapper in
+                ReviewDetailSheet(review: wrapper.review, client: client, db: db)
             }
             .onChange(of: explore?.turnCount) { Task { await loadMnemonics() } }
             .navigationDestination(item: $readerTarget) { target in
@@ -846,6 +856,76 @@ struct WordDetailSheet: View {
                 }
             }
         }
+    }
+
+    // MARK: - Quiz history
+
+    private static let isoParser: ISO8601DateFormatter = ISO8601DateFormatter()
+    private static let localFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    private func loadWordReviews() async {
+        let jmdictReviews = (try? await db.reviews(wordType: "jmdict", wordIds: [item.id])) ?? []
+        let counterIds = counterItemsToShow.map(\.id)
+        let counterReviews = counterIds.isEmpty ? [] : (try? await db.reviews(wordType: "counter", wordIds: counterIds)) ?? []
+        wordReviews = (jmdictReviews + counterReviews).sorted { $0.timestamp > $1.timestamp }
+    }
+
+    private var quizHistorySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Quiz History")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            ForEach(Array(wordReviews.enumerated()), id: \.offset) { index, review in
+                Button {
+                    selectedReview = IdentifiableReview(id: index, review: review)
+                } label: {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(scoreColor(review.score))
+                            .frame(width: 10, height: 10)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(review.wordType == "counter" ? review.wordId : review.wordText)
+                                .font(.body)
+                                .foregroundStyle(.primary)
+                            Text(review.quizType.replacingOccurrences(of: "-", with: " "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Text(formattedTimestamp(review.timestamp))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                if index < wordReviews.count - 1 {
+                    Divider()
+                }
+            }
+        }
+    }
+
+    private func scoreColor(_ score: Double) -> Color {
+        switch score {
+        case 0.8...: return .green
+        case 0.5...: return .orange
+        default:     return .red
+        }
+    }
+
+    private func formattedTimestamp(_ iso: String) -> String {
+        guard let date = Self.isoParser.date(from: iso) else { return iso }
+        return Self.localFormatter.string(from: date)
     }
 
     // MARK: - Action implementations
