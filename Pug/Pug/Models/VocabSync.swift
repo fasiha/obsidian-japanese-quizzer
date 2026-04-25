@@ -15,6 +15,11 @@ struct VocabManifest: Codable {
     let generatedAt: String
     let stories: [VocabStory]
     let words: [VocabWordEntry]
+    /// Maps source paths and directory paths to explicit sort positions.
+    /// Source path example: "Counters/Wago" → 0.
+    /// Directory path example: "Counters" → 1 (from _index.md).
+    /// Absent entries sort alphabetically after all explicitly ordered entries at the same level.
+    let sourceOrders: [String: Int]?
 }
 
 struct VocabStory: Codable {

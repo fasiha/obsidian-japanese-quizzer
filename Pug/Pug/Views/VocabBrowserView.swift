@@ -251,9 +251,12 @@ struct VocabBrowserView: View {
 
     // MARK: - Grouped word list (tree of DisclosureGroups — used when search is inactive)
 
-    /// Alphabetically sorted list of source titles that have at least one word in filteredItems.
+    /// Source titles that have at least one word in filteredItems, sorted by explicit order
+    /// from sourceOrders then alphabetically within each level.
     private var activeSources: [String] {
-        return Array(Set(filteredItems.flatMap(\.sources))).sorted()
+        let orders = corpus.sourceOrders
+        return Array(Set(filteredItems.flatMap(\.sources)))
+            .sorted { compareSourcePaths($0, $1, orders: orders) }
     }
 
     // Note: buildSourceTree recomputes on every redraw. Fine for current corpus sizes
@@ -461,6 +464,46 @@ indirect enum SourceTreeNode {
         case .leaf(_, let key, _): return key
         }
     }
+}
+
+/// Compare two source paths using explicit order values where available, falling back to
+/// alphabetical. Paths are compared component by component (split on "/"). At each level,
+/// paths with an explicit order in `orders` sort before unordered ones; among ordered paths
+/// the integer value determines the order; among unordered paths the component sorts
+/// alphabetically.
+///
+/// Example with orders = ["Counters": 1, "Counters/Wago": 0, "Counters/Counters-Must-Know": 1]:
+///   "Counters/Wago" < "Counters/Counters-Must-Know" (orders 0 < 1 within directory)
+///   "Counters/Wago" < "Genki 1/L11" ("Counters" is ordered, "Genki 1" is not)
+///   "Ad Hoc Vocab" < "Genki 1/L11" (both unordered; "Ad" < "Genki" alphabetically)
+func compareSourcePaths(_ a: String, _ b: String, orders: [String: Int]) -> Bool {
+    let aComps = a.components(separatedBy: "/")
+    let bComps = b.components(separatedBy: "/")
+    let depth = max(aComps.count, bComps.count)
+    var aPrefix = ""
+    var bPrefix = ""
+    for i in 0..<depth {
+        let aComp = i < aComps.count ? aComps[i] : nil
+        let bComp = i < bComps.count ? bComps[i] : nil
+        let aKey = aComp.map { aPrefix.isEmpty ? $0 : "\(aPrefix)/\($0)" }
+        let bKey = bComp.map { bPrefix.isEmpty ? $0 : "\(bPrefix)/\($0)" }
+        let aOrder = aKey.flatMap { orders[$0] }
+        let bOrder = bKey.flatMap { orders[$0] }
+        if let ao = aOrder, let bo = bOrder {
+            if ao != bo { return ao < bo }
+        } else if aOrder != nil {
+            return true   // a is explicitly ordered; b is not → a comes first
+        } else if bOrder != nil {
+            return false  // b is explicitly ordered; a is not → b comes first
+        } else {
+            let as_ = aComp ?? ""
+            let bs_ = bComp ?? ""
+            if as_ != bs_ { return as_ < bs_ }
+        }
+        if let ac = aComp { aPrefix = aPrefix.isEmpty ? ac : "\(aPrefix)/\(ac)" }
+        if let bc = bComp { bPrefix = bPrefix.isEmpty ? bc : "\(bPrefix)/\(bc)" }
+    }
+    return false
 }
 
 /// Build a sorted tree from a list of source title paths and a flat item list.

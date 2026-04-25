@@ -102,6 +102,9 @@ final class VocabCorpus {
     private(set) var items: [VocabItem] = []
     // TODO: add func item(for id: String) -> VocabItem? backed by a [String: VocabItem] index,
     // to replace the O(n) .first { $0.id == ... } scans in TransitivePairDetailSheet.
+    /// Explicit sort positions from vocab.json sourceOrders. Keys are source paths
+    /// (e.g. "Counters/Wago") or directory paths (e.g. "Counters"). Empty when absent from manifest.
+    private(set) var sourceOrders: [String: Int] = [:]
     private(set) var isLoading = false
     private(set) var syncError: String? = nil
     private(set) var lastSyncedAt: String? = nil
@@ -141,6 +144,7 @@ final class VocabCorpus {
             return
         }
         lastSyncedAt = manifest.generatedAt
+        sourceOrders = manifest.sourceOrders ?? [:]
 
         // Enrich with JMdict data.
         let allIds = manifest.words.map(\.id)

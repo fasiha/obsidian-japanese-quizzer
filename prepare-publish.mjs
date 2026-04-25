@@ -665,6 +665,30 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   }
 }
 
+// --- Source ordering ---
+// Build a map from source path (or directory path) to an integer sort order.
+// Content files contribute their own path using the `order` frontmatter field.
+// Directory-level _index.md files contribute the directory path using `order`.
+// Files without an `order` field are absent from the map and sort alphabetically
+// after all explicitly ordered entries at the same level.
+const sourceOrders = {};
+for (const filePath of mdFiles) {
+  const content = readFileSync(filePath, "utf8");
+  const fm = parseFrontmatter(content);
+  if (!fm || fm["order"] === undefined) continue;
+  const orderVal = parseInt(fm["order"], 10);
+  if (isNaN(orderVal)) continue;
+  const relPath = path.relative(projectRoot, filePath);
+  if (path.basename(relPath) === "_index.md") {
+    // Directory entry: key is the directory path (e.g. "Counters")
+    const dirPath = path.dirname(relPath);
+    if (dirPath !== ".") sourceOrders[dirPath] = orderVal;
+  } else if (fm["llm-review"]) {
+    // Content file entry: key is the source title (e.g. "Counters/Wago")
+    sourceOrders[relPath.replace(/\.md$/i, "")] = orderVal;
+  }
+}
+
 // --- LLM sense analysis ---
 
 /**
@@ -1054,6 +1078,7 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
         generatedAt: new Date().toISOString(),
         stories: stories.map(({ title }) => ({ title })),
         words,
+        sourceOrders,
       }, null, 2) + "\n");
     }
   }
@@ -1126,6 +1151,7 @@ const output = {
   generatedAt: new Date().toISOString(),
   stories: stories.map(({ title }) => ({ title })),
   words,
+  sourceOrders,
 };
 
 writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
