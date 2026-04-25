@@ -37,8 +37,18 @@ struct ReviewDetailSheet: View {
         return Self.localFormatter.string(from: date)
     }
 
-    /// The context tag for this quiz session's chat turns, or nil for pre-UUID legacy reviews.
+    /// The context tag for this quiz session's chat turns.
+    /// Grammar reviews with a session ID use the per-attempt grammarQuiz context.
+    /// Legacy grammar reviews without a session ID fall back to the topic-level grammarDetail context
+    /// (recorded before per-attempt session tracking was added).
+    /// Vocab reviews without a session ID (pre-UUID legacy) return nil.
     private var chatContext: ChatContext? {
+        if review.wordType == "grammar" {
+            if let sessionId = review.sessionId {
+                return .grammarQuiz(topicId: review.wordId, facet: review.quizType, sessionId: sessionId)
+            }
+            return .grammarDetail(topicId: review.wordId)
+        }
         guard let sessionId = review.sessionId else { return nil }
         return .vocabQuiz(wordId: review.wordId, facet: review.quizType, sessionId: sessionId)
     }

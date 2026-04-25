@@ -430,7 +430,7 @@ final class GrammarQuizSession {
             tools: [],
             maxTokens: 512,
             toolHandler: nil,
-            chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+            chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet, sessionId: item.id.uuidString),
             templateId: "grammar-llm-grade"
         )
         return text
@@ -979,7 +979,7 @@ final class GrammarQuizSession {
                 tools: [],
                 maxTokens: 512,
                 toolHandler: nil,
-                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: "grammar-tier2-grade"
             )
             messages    = msgs
@@ -1114,7 +1114,7 @@ final class GrammarQuizSession {
                 tools: [],
                 maxTokens: 512,
                 toolHandler: nil,
-                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: "grammar-tier3-grade"
             )
             messages     = msgs
@@ -1149,7 +1149,7 @@ final class GrammarQuizSession {
                 tools: [],
                 maxTokens: 1500,
                 toolHandler: nil,
-                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet),
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: "grammar-mc-\(item.facet)"
             )
             finalMsgs = msgs

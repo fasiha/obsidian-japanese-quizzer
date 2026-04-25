@@ -357,7 +357,7 @@ final class GrammarAppSession {
                 tools: tools,
                 maxTokens: 512,
                 toolHandler: handler,
-                chatContext: .grammarDetail(topicId: item.topicId),
+                chatContext: .grammarQuiz(topicId: item.topicId, facet: item.facet, sessionId: item.id.uuidString),
                 templateId: nil
             )
             conversation = updatedMsgs
@@ -405,6 +405,7 @@ final class GrammarAppSession {
             score: score,
             quizType: item.facet,
             notes: notes.isEmpty ? nil : notes,
+            sessionId: item.id.uuidString,
             quizData: quizDataJson
         )
         try await db.insert(review: review)

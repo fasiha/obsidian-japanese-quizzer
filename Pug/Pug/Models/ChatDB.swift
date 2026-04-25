@@ -22,8 +22,9 @@ enum ChatContext: Sendable {
     /// ReviewDetailSheet conversation about the same quiz attempt.
     /// sessionId is QuizItem.id.uuidString, shared with the Review row in quiz.sqlite.
     case vocabQuiz(wordId: String, facet: String, sessionId: String)
-    /// Grammar quiz turn (multiple-choice generation, grading, or tutor).
-    case grammarQuiz(topicId: String, facet: String)
+    /// Grammar quiz turn (multiple-choice generation, grading, or tutor) for a specific quiz attempt.
+    /// sessionId is GrammarQuizItem.id.uuidString, shared with the Review row in quiz.sqlite.
+    case grammarQuiz(topicId: String, facet: String, sessionId: String)
     /// Internal question-generation helpers (gap disambiguation, answer refinement, vocab gloss).
     case grammarQuizGeneration(topicId: String)
 
@@ -35,7 +36,7 @@ enum ChatContext: Sendable {
         case .counterDetail(let id):                            return "counter:\(id)"
         case .grammarDetail(let id):                            return "grammar:\(id)"
         case .vocabQuiz(let id, let facet, let sessionId):      return "quiz:\(id):\(facet):\(sessionId)"
-        case .grammarQuiz(let id, let facet):                   return "quiz:\(id):\(facet)"
+        case .grammarQuiz(let id, let facet, let sessionId):    return "quiz:\(id):\(facet):\(sessionId)"
         case .grammarQuizGeneration(let id):                    return "quiz-gen:\(id)"
         }
     }
@@ -116,7 +117,8 @@ final class ChatDB: Sendable {
         try migrator.migrate(queue)
     }
 
-    /// Fetch organic (templateId IS NULL) turns for a context tag, optionally filtered by a time window.
+    /// Fetch organic (templateId IS NULL, role != system) turns for a context tag,
+    /// optionally filtered by a time window.
     /// afterMs and beforeMs are unix epoch milliseconds; pass 0 / .max to skip the bound.
     func organicTurns(context: String, afterMs: Int64 = 0, beforeMs: Int64 = .max) async -> [ChatTurn] {
         do {
@@ -124,6 +126,7 @@ final class ChatDB: Sendable {
                 try ChatTurn
                     .filter(ChatTurn.Columns.context == context)
                     .filter(ChatTurn.Columns.templateId == nil)
+                    .filter(ChatTurn.Columns.role != "system")
                     .filter(ChatTurn.Columns.ts >= afterMs)
                     .filter(ChatTurn.Columns.ts <= beforeMs)
                     .order(ChatTurn.Columns.ts)
@@ -131,6 +134,26 @@ final class ChatDB: Sendable {
             }
         } catch {
             print("[ChatDB] organicTurns failed: \(error)")
+            return []
+        }
+    }
+
+    /// Fetch organic turns across multiple context tags, merged and sorted by timestamp.
+    /// Used by GrammarDetailSheet to show the full conversation history across all topics
+    /// in an equivalence group (e.g. genki:naru-to-become and bunpro:naru-to-become together).
+    func organicTurns(contexts: [String]) async -> [ChatTurn] {
+        guard !contexts.isEmpty else { return [] }
+        do {
+            return try await queue.read { db in
+                try ChatTurn
+                    .filter(contexts.contains(ChatTurn.Columns.context))
+                    .filter(ChatTurn.Columns.templateId == nil)
+                    .filter(ChatTurn.Columns.role != "system")
+                    .order(ChatTurn.Columns.ts)
+                    .fetchAll(db)
+            }
+        } catch {
+            print("[ChatDB] organicTurns(contexts:) failed: \(error)")
             return []
         }
     }

@@ -110,9 +110,17 @@ private struct QuizChatDisclosure: View {
     @Binding var turns: [ChatTurn]
     @Binding var didLoad: Bool
 
-    /// Exact context tag derived from the review's session UUID.
-    /// nil for legacy reviews recorded before session tracking was added.
+    /// Exact context tag for this review's chat turns.
+    /// Grammar reviews with a session ID use the per-attempt grammarQuiz context.
+    /// Legacy grammar reviews without a session ID fall back to the topic-level grammarDetail context.
+    /// Vocab reviews without a session ID (pre-UUID legacy) return nil.
     private var contextTag: String? {
+        if review.wordType == "grammar" {
+            if let sessionId = review.sessionId {
+                return ChatContext.grammarQuiz(topicId: review.wordId, facet: review.quizType, sessionId: sessionId).tag
+            }
+            return ChatContext.grammarDetail(topicId: review.wordId).tag
+        }
         guard let sessionId = review.sessionId else { return nil }
         return ChatContext.vocabQuiz(wordId: review.wordId, facet: review.quizType, sessionId: sessionId).tag
     }

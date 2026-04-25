@@ -305,8 +305,9 @@ struct GrammarDetailSheet: View {
 
     private func loadPastTurns() async {
         guard let chatDB = client.chatDB else { return }
-        let context = ChatContext.grammarDetail(topicId: topic.prefixedId).tag
-        pastTurns = await chatDB.organicTurns(context: context)
+        let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).removingDuplicates()
+        let contexts = allIds.map { ChatContext.grammarDetail(topicId: $0).tag }
+        pastTurns = await chatDB.organicTurns(contexts: contexts)
     }
 
     private func loadMnemonic() async {
