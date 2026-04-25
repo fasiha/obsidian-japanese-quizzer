@@ -25,9 +25,32 @@ All facets start as multiple choice and graduate to free-answer once the facet h
 
 ## Who generates and grades
 
-- **Multiple choice**: LLM generates the question (stem + 4 choices + correct index as JSON). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.
+- **Multiple choice**: LLM generates the question (stem + 4 choices + correct index as JSON), or the app builds it locally if conditions allow (see below). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.
 - **Free-answer**: App builds the question stem locally (no LLM call). Student types answer. LLM grades and emits `SCORE: X.X` (Bayesian confidence 0.0–1.0, not percentage-correct).
-- **Tool usage**: reading-to-meaning and meaning-to-reading need **no tools** (LLM writes distractors from its own knowledge). kanji-to-reading uses `lookup_kanjidic`; meaning-reading-to-kanji uses `lookup_jmdict`.
+- **Tool usage**: reading-to-meaning and meaning-to-reading need **no tools** (distractors come from the corpus of enrolled words, or from the LLM's own knowledge as fallback). kanji-to-reading uses `lookup_kanjidic`; meaning-reading-to-kanji uses `lookup_jmdict`.
+
+## Distractor source: documents vs. AI
+
+**Motivation:** Some learners want to drill only the words they've committed to learning. Document-based distractors ensure all 4 choices (correct answer + 3 distractors) are enrolled words drawn from the same corpus texts the student is reading. This eliminates distracting interference from unenrolled words or vaguely familiar words from other sources.
+
+**Two modes:**
+
+1. **Documents mode** (`DistractorSource.documents`): For `reading-to-meaning` and `meaning-to-reading` facets, the app builds multiple-choice questions locally from enrolled words that appear in the same documents as the quiz word.
+
+2. **AI mode** (default): The LLM generates distractors using its own knowledge. No document constraints; optimal distraction difficulty chosen by the model.
+
+**App-side generation (documents mode):**
+
+When building a question for `reading-to-meaning` or `meaning-to-reading`, the app:
+
+1. Looks up all enrolled words that appear in the same corpus documents as the quiz word.
+2. If fewer than 3 other enrolled words share documents, expands the search to adjacent documents in the story list (±1, ±2, … offsets).
+3. If still fewer than 3, gives up and falls back to AI mode.
+4. When successful: picks 3 of these enrolled words as distractors, selecting one random corpus-attested sense per candidate word, then one random gloss within that sense (two-stage selection ensures even sense weight). The correct answer uses the same two-stage selection from the quiz word's corpus senses.
+
+**Sense selection strategy:**
+
+Both correct answers and distractors use two-stage random selection: pick one random corpus-attested sense (equal weight per sense), then pick one random gloss string within that sense (equal weight per gloss). This prevents senses with more gloss strings from being over-represented and produces clean, singular answers like "to eat" instead of "to eat, to consume; to live on, to subsist on, …".
 
 ## Prompt variations
 

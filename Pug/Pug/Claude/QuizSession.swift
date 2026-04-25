@@ -979,12 +979,19 @@ final class QuizSession {
             return
         }
 
+        // Documents distractor mode: build multiple-choice app-side, no LLM call needed.
+        if let appSideQuestion = appSideMultipleChoice(for: item) {
+            currentQuestion = appSideQuestion.stem
+            print("[QuizSession] app-side multiple choice (documents) for \(item.wordText) facet:\(item.facet)")
+            phase = .awaitingTap(appSideQuestion)
+            return
+        }
+
         phase = .generating
         print("[QuizSession] generating multiple choice question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
         let system = systemPrompt(for: item, isGenerating: true,
-                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife,
-                                  distractorCandidateList: buildDistractorCandidateList(for: item))
+                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         do {
@@ -1380,9 +1387,19 @@ final class QuizSession {
             return
         }
 
+        // Documents distractor mode: build multiple-choice app-side, no LLM call needed.
+        if let appSideQuestion = appSideMultipleChoice(for: item) {
+            guard currentIndex <= index else { return }
+            prefetched = (index: index, question: appSideQuestion.stem, multipleChoice: appSideQuestion,
+                          pairQuestion: nil,
+                          conversation: [],
+                          preRecall: preRecall, preHalflife: preHalflife)
+            print("[QuizSession] prefetch (app-side multiple choice, documents) stored for index \(index): \(item.wordText)")
+            return
+        }
+
         let system  = systemPrompt(for: item, isGenerating: true,
-                                   preRecall: preRecall, preHalflife: preHalflife,
-                                   distractorCandidateList: buildDistractorCandidateList(for: item))
+                                   preRecall: preRecall, preHalflife: preHalflife)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
 
         print("[QuizSession] prefetch multiple choice: starting for index \(index): \(item.wordText) facet:\(item.facet)")
@@ -1451,23 +1468,7 @@ final class QuizSession {
         }
     }
 
-    /// Collect up to `targetCount` candidate (Japanese display text → English gloss) pairs
-    /// Build the distractor candidate list string for the system prompt, or nil to fall back to AI distractors.
-    /// Handles both reading-to-meaning (display → gloss) and meaning-to-reading (kana only) formats.
-    private func buildDistractorCandidateList(for item: QuizItem) -> String? {
-        let facetNeedsDocumentDistractors = (item.facet == "reading-to-meaning" || item.facet == "meaning-to-reading")
-        guard facetNeedsDocumentDistractors && preferences.distractorSource == .documents else { return nil }
-        let candidates = distractorCandidates(for: item)
-        guard !candidates.isEmpty else { return nil }
-        if item.facet == "meaning-to-reading" {
-            let kanas = candidates.compactMap { $0.kana.isEmpty ? nil : $0.kana }
-            return kanas.isEmpty ? nil : kanas.joined(separator: "\n")
-        } else {
-            return candidates.map { "\($0.display) → \($0.gloss)" }.joined(separator: "\n")
-        }
-    }
-
-    /// from the corpus for use as reading-to-meaning and meaning-to-reading distractors.
+    /// Collect candidate words from the corpus for use as reading-to-meaning and meaning-to-reading distractors.
     ///
     /// Strategy:
     ///   1. Find which documents contain the quiz word (via VocabManifest sources).
@@ -1541,7 +1542,7 @@ final class QuizSession {
 
         print("[QuizSession] distractorCandidates: \(candidateIDs.count) candidate ID(s) after document expansion")
 
-        // Convert IDs to (display, gloss) pairs using senseExtras already on each QuizItem.
+        // Convert IDs to (display, gloss, kana) tuples using senseExtras already on each QuizItem.
         // We rely on the items loaded in the session for senseExtras, falling back to the
         // manifest's written forms for the display text.
         var result: [(display: String, gloss: String, kana: String)] = []
@@ -1564,7 +1565,8 @@ final class QuizSession {
                 continue
             }
 
-            // Pick a random gloss of a random corpus-attested sense.
+            // Pick one random corpus-attested sense, then one random gloss within it.
+            // Two-stage selection gives each sense equal weight regardless of gloss count.
             let activeIndex = corpusIndices.randomElement() ?? 0
             guard activeIndex < senseExtras.count else { continue }
             let gloss = senseExtras[activeIndex].glosses.randomElement() ?? ""
@@ -1712,10 +1714,55 @@ final class QuizSession {
 
     // MARK: - Private: prompt helpers
 
+    /// Build a multiple-choice question entirely in Swift from corpus candidates, no LLM call.
+    /// Returns nil if there are not enough distinct candidates to form 3 distractors.
+    private func appSideMultipleChoice(for item: QuizItem) -> MultipleChoiceQuestion? {
+        guard preferences.distractorSource == .documents,
+              item.facet == "reading-to-meaning" || item.facet == "meaning-to-reading" else { return nil }
+
+        let candidates = distractorCandidates(for: item)
+
+        if item.facet == "reading-to-meaning" {
+            let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
+            let stem = "What does \(kana) mean?"
+            // Two-stage: random corpus sense, then random gloss within it.
+            let correctGloss = item.corpusSenses.randomElement()?.glosses.randomElement() ?? ""
+            guard !correctGloss.isEmpty else { return nil }
+
+            let distractorGlosses = candidates
+                .map { $0.gloss }
+                .filter { !$0.isEmpty && $0 != correctGloss }
+            guard distractorGlosses.count >= 3 else { return nil }
+            let picked = Array(distractorGlosses.shuffled().prefix(3))
+
+            let correctIndex = Int.random(in: 0...3)
+            var choices = picked
+            choices.insert(correctGloss, at: correctIndex)
+            return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+
+        } else { // meaning-to-reading
+            let meanings = item.corpusSenses.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+            guard !meanings.isEmpty else { return nil }
+            let stem = meanings
+            let correctKana = item.committedReading ?? item.kanaTexts.first ?? ""
+            guard !correctKana.isEmpty else { return nil }
+
+            let distractorKanas = candidates
+                .compactMap { $0.kana.isEmpty ? nil : $0.kana }
+                .filter { $0 != correctKana }
+            guard distractorKanas.count >= 3 else { return nil }
+            let picked = Array(distractorKanas.shuffled().prefix(3))
+
+            let correctIndex = Int.random(in: 0...3)
+            var choices = picked
+            choices.insert(correctKana, at: correctIndex)
+            return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+        }
+    }
+
     func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
-                              postHalflife: Double? = nil, mnemonicBlock: String = "",
-                              distractorCandidateList: String? = nil) -> String {
+                              postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
         let facetRule: String
         let wordLine: String
         // Full entry data injected into every facet so Claude never needs to look up the target word.
@@ -1755,20 +1802,7 @@ final class QuizSession {
         case "reading-to-meaning":
             if isGenerating {
                 let stemKana = item.committedReading ?? item.kanaTexts.first ?? "unknown"
-                if let candidateList = distractorCandidateList {
-                    facetRule = """
-                    Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). \
-                    Ask for English meaning. All A/B/C/D options MUST be in English. \
-                    The correct answer is one of: \(allMeanings). \
-                    Choose exactly 3 distractors from this candidate list (Japanese word → English gloss):\n\(candidateList)\n\
-                    Rules for distractor selection:\
-                    \n1. Do NOT choose a candidate whose meaning is too close to the correct answer.\
-                    \n2. Prefer candidates with the same part of speech as the quiz word.\
-                    \n3. If fewer than 3 suitable candidates remain after rule 1, fill remaining slots with any candidate — do not invent new English.
-                    """
-                } else {
-                    facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
-                }
+                facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
                 wordLine = "Word: \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning). Enrolled senses: \(allMeanings)."
@@ -1776,19 +1810,7 @@ final class QuizSession {
             }
         case "meaning-to-reading":
             if isGenerating {
-                if let candidateList = distractorCandidateList {
-                    facetRule = """
-                    Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. \
-                    Do not reference other JMDict senses. \
-                    Choose exactly 3 wrong kana readings from this candidate list:\n\(candidateList)\n\
-                    Rules for distractor selection:\
-                    \n1. Do NOT choose a candidate whose meaning is too close to the correct answer.\
-                    \n2. Prefer candidates of approximately the same mora length as the correct answer.\
-                    \n3. If fewer than 3 suitable candidates remain after rule 1, fill remaining slots with any candidate — do not invent new kana.
-                    """
-                } else {
-                    facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
-                }
+                facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
                 // No explicit correct-answer pin here: for kana-only words with multiple readings
                 // (e.g. そっと/そうっと/そおっと/そーっと) the model seems to pick the first
                 // listed kana, which is the primary reading. That's acceptable behaviour.
