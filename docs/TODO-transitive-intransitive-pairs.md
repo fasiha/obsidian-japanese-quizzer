@@ -280,6 +280,106 @@ This eliminates the need for a romaji conversion utility — the LLM handles any
 5. **Wire up Ebisu cross-updates**: on pair review, passive Ebisu update on both individual word models if enrolled; on individual word review, passive Ebisu update on any associated pair model
 6. **Cross-link word detail sheets**: show pair partner info (and a tap target to it) on each word's detail sheet
 
+---
+
+## Step 7: Single-leg facets (`transitive` and `intransitive`)
+
+### Motivation
+
+The `pair-discrimination` quiz shows both English cues simultaneously, which provides scaffolding: the contrasting sentences make it easier to sort the two verbs. A single-leg quiz removes that scaffolding — the student sees one English cue and must cold-produce the correct verb, with the other verb implicitly lurking as the natural wrong answer. This is a different cognitive skill (production under isolation) and arguably more naturalistic (in real conversation you need one verb, not both at once). It is not strictly harder in all dimensions, but it exercises a distinct ability.
+
+### Decisions
+
+1. **All three Ebisu rows planted at enrollment**: when a pair is enrolled (or on migration for existing pairs), three rows are created in `ebisu_models`: `pair-discrimination`, `transitive`, `intransitive`. The single-leg rows use the default alpha/beta but inherit the pair-discrimination halflife so the scheduler doesn't immediately over-schedule them relative to the pair.
+
+2. **Scheduler-level facet suppression (unlock/graduation)**: the single-leg facets exist in the database from day one but `QuizContext.build()` suppresses them from the candidate queue until `pair-discrimination` halflife ≥ `singleLegUnlockHalflife` (72 hours, ~3 days). This is different from the existing multiple-choice → free-answer graduation, which is a question-format switch within a single Ebisu model checked at generation time. Here the suppression is cross-facet, enforced at scheduling time. The threshold is intentionally low and can be tuned after real-world usage.
+
+3. **After unlock, all three facets compete normally**: the scheduler picks the most-urgent facet among the three for each enrolled pair. There is no retirement of `pair-discrimination` after unlock.
+
+4. **Passive cross-updates**: after any pair facet review, the other pair facets receive passive Ebisu updates (score = 0.5) via the existing `passiveMap` mechanism:
+   - `pair-discrimination` → passively updates `transitive` and `intransitive` (both legs revealed)
+   - `transitive` → passively updates `pair-discrimination` (one leg demonstrated)
+   - `intransitive` → passively updates `pair-discrimination` (one leg demonstrated)
+   Single-leg facets do NOT passively update each other: answering a `transitive` quiz does not reveal the intransitive verb.
+
+5. **Partial pair scores (0.5) are left as-is**: when a `pair-discrimination` quiz is scored 0.5 (one leg correct), the pair model is updated with 0.5 as before. The passive update to the single-leg models still fires at 0.5 regardless of the pair score. This is the simplest consistent behavior.
+
+6. **Single-leg scoring**: 1.0 or 0.0 only (no partial credit — there is only one field). Grading uses the same fast path (kana/kanji/romaji string match) and LLM slow path as `pair-discrimination`.
+
+### Implementation plan
+
+#### 7a. QuizDB migration v13
+
+For every existing `ebisu_models` row with `word_type = "transitive-pair"` and `quiz_type = "pair-discrimination"`, insert `transitive` and `intransitive` rows with:
+- `alpha = 4.0, beta = 4.0` (default new-card shape)
+- `t` = pair-discrimination's current `t` (inherit halflife so the single-legs start at the same maturity level as the pair)
+- `last_review` = now
+
+`setFacetLearning` already guards against duplicate inserts, so this migration is idempotent if re-run.
+
+#### 7b. TransitivePairCorpus: plant all three rows at enrollment
+
+`setPairLearning` currently calls `setFacetLearning` once with `quiz_type = "pair-discrimination"`. Change it to call `setFacetLearning` three times: `pair-discrimination`, `transitive`, `intransitive`, all with the same default halflife (24h). The single-leg rows will start at 24h halflife alongside the pair, so they will be suppressed by the scheduler until the pair matures past 72h.
+
+`clearPair` and `setPairKnown` must also handle all three facets.
+
+#### 7c. QuizContext.build(): unlock-aware pair scheduling
+
+Replace the current flat per-pair loop with a grouped approach:
+
+1. Group all `word_type = "transitive-pair"` Ebisu records by `wordId`.
+2. For each pair, find the `pair-discrimination` record.
+3. If its halflife < `singleLegUnlockHalflife` (72h): build a `QuizItem` for `pair-discrimination` only.
+4. If its halflife ≥ threshold: consider all three facets, pick the most-urgent (lowest predicted recall).
+5. The chosen facet is stored in `QuizItem.facet` as `"pair-discrimination"`, `"transitive"`, or `"intransitive"`.
+
+Constant: `static let singleLegUnlockHalflife = 72.0` hours.
+
+#### 7d. QuizSession.PairQuestion: add `askedLeg`
+
+Add an `askedLeg: AskedLeg?` field to `PairQuestion`. `nil` = both legs (pair-discrimination). `AskedLeg` is:
+
+```swift
+enum AskedLeg: Equatable { case transitive, intransitive }
+```
+
+Existing pair-discrimination code passes `askedLeg: nil`.
+
+#### 7e. QuizSession: generateQuestion and prefetchQuestion
+
+When `item.facet == "transitive"` or `item.facet == "intransitive"`, build a `PairQuestion` with `askedLeg` set to the matching case. The drill is selected the same way as `pair-discrimination` (random from the 3 drills). The `PairQuestion` still carries both verbs' kana/kanji/Japanese fields — the view and grader use `askedLeg` to know which leg to display/evaluate.
+
+Set `phase = .awaitingPair(q)` as before (no new phase case needed).
+
+#### 7f. QuizSession: submitPairAnswer and passiveMap
+
+`submitPairAnswer` currently grades both fields. Extend it to check `pairQuestion.askedLeg`:
+- `nil` → grade both fields (existing logic, score 1.0 / 0.5 / 0.0)
+- `.intransitive` → grade only the intransitive field; score 1.0 or 0.0; ignore the transitive input
+- `.transitive` → grade only the transitive field; score 1.0 or 0.0; ignore the intransitive input
+
+Extend `passiveMap` with the pair facets:
+```swift
+"pair-discrimination": ["transitive", "intransitive"],
+"transitive":          ["pair-discrimination"],
+"intransitive":        ["pair-discrimination"],
+```
+
+The existing `applyPassiveUpdates` already uses `item.wordType` and `item.wordId`, so it will correctly look up `word_type = "transitive-pair"` rows without any further changes.
+
+#### 7g. QuizView: single-leg card rendering
+
+`awaitingPairView` currently renders two cue/field pairs unconditionally. Extend it to check `pairQuestion.askedLeg`:
+- `nil` → existing two-field layout, facet badge shows `"pair-discrimination"`
+- `.intransitive` → render only the intransitive cue + field; badge shows `"intransitive"`
+- `.transitive` → render only the transitive cue + field; badge shows `"transitive"`
+
+The graded-result reveal (after submission, in `.chatting` phase) currently shows both Japanese sentences via `lastPairQuestion`. For single-leg, still show both Japanese sentences in the reveal — seeing the paired sentence in context after answering just one leg reinforces the distinction.
+
+### Work order
+
+7a → 7b → 7c → 7d → 7e → 7f → 7g
+
 ## Appendix: Enrolling new pairs from all-transitive-pairs.json
 
 The curated `transitive-pairs.json` is a subset of the candidate pool in `all-transitive-pairs.json`. To promote a pair:

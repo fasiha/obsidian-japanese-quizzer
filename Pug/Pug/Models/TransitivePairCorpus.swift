@@ -103,36 +103,45 @@ final class TransitivePairCorpus {
 
     // MARK: - Learning actions
 
-    /// Enroll a pair for learning (creates one ebisu_models row with quiz_type "pair-discrimination").
+    /// All three quiz types for a transitive pair.
+    private static let pairQuizTypes = ["pair-discrimination", "transitive", "intransitive"]
+
+    /// Enroll a pair for learning (creates three ebisu_models rows: pair-discrimination, transitive, intransitive).
     func setPairLearning(pairId: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == pairId }) else { return }
         do {
-            try await db.setFacetLearning(wordType: "transitive-pair", wordId: pairId,
-                                           quizType: "pair-discrimination")
+            for quizType in Self.pairQuizTypes {
+                try await db.setFacetLearning(wordType: "transitive-pair", wordId: pairId,
+                                               quizType: quizType)
+            }
             items[idx].state = .learning
         } catch {
             print("[TransitivePairCorpus] setPairLearning error for \(pairId): \(error)")
         }
     }
 
-    /// Mark a pair as known (moves to learned table).
+    /// Mark a pair as known (moves all three facets to learned table).
     func setPairKnown(pairId: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == pairId }) else { return }
         do {
-            try await db.setFacetKnown(wordType: "transitive-pair", wordId: pairId,
-                                        quizType: "pair-discrimination")
+            for quizType in Self.pairQuizTypes {
+                try await db.setFacetKnown(wordType: "transitive-pair", wordId: pairId,
+                                            quizType: quizType)
+            }
             items[idx].state = .known
         } catch {
             print("[TransitivePairCorpus] setPairKnown error for \(pairId): \(error)")
         }
     }
 
-    /// Clear a pair back to unknown.
+    /// Clear a pair back to unknown (removes all three facets from ebisu_models and learned).
     func clearPair(pairId: String, db: QuizDB) async {
         guard let idx = items.firstIndex(where: { $0.id == pairId }) else { return }
         do {
-            try await db.setFacetUnknown(wordType: "transitive-pair", wordId: pairId,
-                                          quizType: "pair-discrimination")
+            for quizType in Self.pairQuizTypes {
+                try await db.setFacetUnknown(wordType: "transitive-pair", wordId: pairId,
+                                              quizType: quizType)
+            }
             items[idx].state = .unknown
         } catch {
             print("[TransitivePairCorpus] clearPair error for \(pairId): \(error)")

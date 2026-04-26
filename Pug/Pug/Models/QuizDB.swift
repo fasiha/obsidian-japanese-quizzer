@@ -521,6 +521,28 @@ final class QuizDB: Sendable {
                 t.add(column: "quiz_data", .text)
             }
         }
+        migrator.registerMigration("v13") { db in
+            // Single-leg pair facets: for every enrolled pair-discrimination row, plant
+            // companion "transitive" and "intransitive" rows. These start with the default
+            // shape (α = β = 1.25) but inherit the pair-discrimination halflife so the
+            // scheduler's unlock check (halflife ≥ 72h) is evaluated against a consistent
+            // baseline. INSERT OR IGNORE is safe if the migration runs twice.
+            let now = ISO8601DateFormatter().string(from: Date())
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO ebisu_models
+                    (word_type, word_id, quiz_type, alpha, beta, t, last_review)
+                SELECT word_type, word_id, 'transitive', 1.25, 1.25, t, ?
+                FROM ebisu_models
+                WHERE word_type = 'transitive-pair' AND quiz_type = 'pair-discrimination'
+                """, arguments: [now])
+            try db.execute(sql: """
+                INSERT OR IGNORE INTO ebisu_models
+                    (word_type, word_id, quiz_type, alpha, beta, t, last_review)
+                SELECT word_type, word_id, 'intransitive', 1.25, 1.25, t, ?
+                FROM ebisu_models
+                WHERE word_type = 'transitive-pair' AND quiz_type = 'pair-discrimination'
+                """, arguments: [now])
+        }
         try migrator.migrate(pool)
     }
 
@@ -610,6 +632,26 @@ final class QuizDB: Sendable {
     func enrolledTransitivePairRecords() async throws -> [EbisuRecord] {
         try await pool.read { db in
             try EbisuRecord.filter(Column("word_type") == "transitive-pair").fetchAll(db)
+        }
+    }
+
+    /// Review counts for transitive-pair words, keyed by "wordId\0quizType".
+    func pairReviewCounts() async throws -> [String: Int] {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT word_id, quiz_type, COUNT(*) as count
+                FROM reviews
+                WHERE word_type = 'transitive-pair'
+                GROUP BY word_id, quiz_type
+                """)
+            var result: [String: Int] = [:]
+            for row in rows {
+                guard let id = row["word_id"] as? String,
+                      let qt = row["quiz_type"] as? String,
+                      let count = (row["count"] as? Int64).map(Int.init) else { continue }
+                result["\(id)\0\(qt)"] = count
+            }
+            return result
         }
     }
 

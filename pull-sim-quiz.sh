@@ -12,7 +12,7 @@ fi
 echo "Simulator: $SIM_UUID"
 
 # Find quiz.sqlite inside that simulator's data
-SIM_DB=$(find ~/Library/Developer/CoreSimulator/Devices/"$SIM_UUID" -name "quiz.sqlite" 2>/dev/null | head -1)
+SIM_DB=$(find ~/Library/Developer/CoreSimulator/Devices/"$SIM_UUID" -name "quiz.sqlite" 2>/dev/null | grep /Documents/ | head -1)
 if [[ -z "$SIM_DB" ]]; then
   echo "quiz.sqlite not found in simulator $SIM_UUID" >&2
   exit 1

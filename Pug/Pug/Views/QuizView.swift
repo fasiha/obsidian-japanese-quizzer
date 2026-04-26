@@ -232,7 +232,19 @@ struct QuizView: View {
     // MARK: - Awaiting pair (two-field dictionary form input)
 
     private func awaitingPairView(pairQuestion: QuizSession.PairQuestion) -> some View {
-        ScrollView {
+        let askedLeg = pairQuestion.askedLeg
+        let badgeLabel: String = askedLeg == .transitive ? "transitive"
+                               : askedLeg == .intransitive ? "intransitive"
+                               : "pair-discrimination"
+        let submitDisabled: Bool = {
+            switch askedLeg {
+            case .intransitive: return session.pairIntransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty
+            case .transitive:   return session.pairTransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty
+            case nil:           return session.pairIntransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty ||
+                                       session.pairTransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty
+            }
+        }()
+        return ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 // Progress + facet badge
                 HStack {
@@ -240,53 +252,54 @@ struct QuizView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
-                    facetBadge("pair-discrimination")
+                    facetBadge(badgeLabel)
                 }
 
-                // Intransitive field
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(pairQuestion.intransitiveEnglish)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-                    HStack {
-                        Text("Dictionary form:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("e.g. あく or 開く", text: $session.pairIntransitiveInput)
-                            .textFieldStyle(.roundedBorder)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                // Intransitive field (shown for pair-discrimination or intransitive single-leg)
+                if askedLeg == nil || askedLeg == .intransitive {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(pairQuestion.intransitiveEnglish)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                        HStack {
+                            Text("Dictionary form:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            TextField("e.g. あく or 開く", text: $session.pairIntransitiveInput)
+                                .textFieldStyle(.roundedBorder)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        }
                     }
                 }
 
-                // Transitive field
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(pairQuestion.transitiveEnglish)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-                    HStack {
-                        Text("Dictionary form:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        TextField("e.g. あける or 開ける", text: $session.pairTransitiveInput)
-                            .textFieldStyle(.roundedBorder)
-                            .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                // Transitive field (shown for pair-discrimination or transitive single-leg)
+                if askedLeg == nil || askedLeg == .transitive {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(pairQuestion.transitiveEnglish)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+                        HStack {
+                            Text("Dictionary form:")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            TextField("e.g. あける or 開ける", text: $session.pairTransitiveInput)
+                                .textFieldStyle(.roundedBorder)
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                        }
                     }
                 }
 
                 // Submit button
                 Button("Submit") {
-                    session.submitPairAnswer()
+                    session.submitTransitivePairDrillAnswer()
                 }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
-                .disabled(
-                    session.pairIntransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty ||
-                    session.pairTransitiveInput.trimmingCharacters(in: .whitespaces).isEmpty
-                )
+                .disabled(submitDisabled)
 
                 // Don't know row
                 HStack(spacing: 8) {
@@ -294,7 +307,7 @@ struct QuizView: View {
                         .buttonStyle(.bordered)
                         .tint(session.uncertaintyUnlocked ? .secondary : .orange)
                     Button("Reveal answers") {
-                        session.tapPairDontKnow()
+                        session.tapTransitiveDrillDontKnow()
                     }
                     .buttonStyle(.bordered)
                     .tint(.red)
@@ -355,9 +368,9 @@ struct QuizView: View {
                             Button("Tutor me") { session.startTutorSession() }
                                 .buttonStyle(.bordered)
                                 .tint(.blue)
-                        } else if session.canStartPairTutorSession {
+                        } else if session.canStartTransitiveDrillTutorSession {
                             Spacer()
-                            Button("Tutor me") { session.startPairTutorSession() }
+                            Button("Tutor me") { session.startTransitiveDrillTutorSession() }
                                 .buttonStyle(.bordered)
                                 .tint(.blue)
                         } else if session.canStartCounterTutorSession {

@@ -20,6 +20,10 @@ final class QuizSession {
         let correctIndex: Int     // 0–3
     }
 
+    /// Which single leg of a transitive pair is being asked.
+    /// nil in a PairQuestion means both legs (pair-discrimination).
+    enum AskedLeg: Equatable { case transitive, intransitive }
+
     struct PairQuestion: Equatable {
         let intransitiveEnglish: String
         let transitiveEnglish: String
@@ -29,6 +33,8 @@ final class QuizSession {
         let transitiveKanji: [String]
         let intransitiveJapanese: String
         let transitiveJapanese: String
+        /// nil = pair-discrimination (both fields shown); non-nil = single-leg (one field shown).
+        let askedLeg: AskedLeg?
     }
 
     enum Phase: Equatable {
@@ -277,23 +283,70 @@ final class QuizSession {
         Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
     }
 
-    /// Called when the student submits both fields of a pair-discrimination drill.
-    func submitPairAnswer() {
+    /// Called when the student submits the answer field(s) of a pair drill.
+    /// Handles both pair-discrimination (two fields) and single-leg (one field) drills.
+    func submitTransitivePairDrillAnswer() {
         guard case .awaitingPair(let q) = phase, let item = currentItem else { return }
+
+        // Single-leg path: only one field is shown and graded.
+        if let leg = q.askedLeg {
+            let answer: String
+            let isIntransitive: Bool
+            switch leg {
+            case .intransitive:
+                answer = pairIntransitiveInput.trimmingCharacters(in: .whitespaces)
+                isIntransitive = true
+            case .transitive:
+                answer = pairTransitiveInput.trimmingCharacters(in: .whitespaces)
+                isIntransitive = false
+            }
+            guard !answer.isEmpty else { return }
+            let correct: Bool
+            let questionBubble: String
+            if isIntransitive {
+                correct = isTransitiveDrillAnswerCorrect(answer, kana: q.intransitiveKana, kanji: q.intransitiveKanji)
+                questionBubble = q.intransitiveEnglish
+            } else {
+                correct = isTransitiveDrillAnswerCorrect(answer, kana: q.transitiveKana, kanji: q.transitiveKanji)
+                questionBubble = q.transitiveEnglish
+            }
+            let legLabel = isIntransitive ? "intransitive" : "transitive"
+            let cue = isIntransitive ? q.intransitiveEnglish : q.transitiveEnglish
+            if correct {
+                applyTransitiveDrillGrade(score: 1.0, questionBubble: questionBubble,
+                               answerBubble: "✓ \(answer)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)",
+                               notes: "\(legLabel) [\(cue)]: \(answer)(correct)",
+                               item: item, pairQuestion: q,
+                               answers: isIntransitive ? (answer, "", true, false) : ("", answer, false, true))
+            } else {
+                // Slow path: answer didn't match exactly — ask LLM to grade conjugated forms.
+                chatMessages = [(isUser: false, text: questionBubble)]
+                isSendingChat = true
+                phase = .chatting
+                let intrAnswer = isIntransitive ? answer : ""
+                let tranAnswer = isIntransitive ? "" : answer
+                Task { await gradeTransitiveDrillWithLLM(q: q, item: item, intrAnswer: intrAnswer, tranAnswer: tranAnswer,
+                                              intrMatchedByString: isIntransitive ? false : true,
+                                              tranMatchedByString: isIntransitive ? true : false) }
+            }
+            return
+        }
+
+        // Pair-discrimination path: both fields graded.
         let intrAnswer = pairIntransitiveInput.trimmingCharacters(in: .whitespaces)
         let tranAnswer = pairTransitiveInput.trimmingCharacters(in: .whitespaces)
         guard !intrAnswer.isEmpty || !tranAnswer.isEmpty else { return }
 
-        let intrCorrect = isPairAnswerCorrect(intrAnswer, kana: q.intransitiveKana, kanji: q.intransitiveKanji)
-        let tranCorrect = isPairAnswerCorrect(tranAnswer, kana: q.transitiveKana, kanji: q.transitiveKanji)
+        let intrCorrect = isTransitiveDrillAnswerCorrect(intrAnswer, kana: q.intransitiveKana, kanji: q.intransitiveKanji)
+        let tranCorrect = isTransitiveDrillAnswerCorrect(tranAnswer, kana: q.transitiveKana, kanji: q.transitiveKanji)
 
         let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
 
         // Fast path: both fields matched exactly — no LLM call needed.
         if intrCorrect && tranCorrect {
-            applyPairGrade(score: 1.0, questionBubble: questionBubble,
+            applyTransitiveDrillGrade(score: 1.0, questionBubble: questionBubble,
                            answerBubble: "✓ \(intrAnswer)\n✓ \(tranAnswer)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)",
-                           notes: "pair: intr=\(intrAnswer)(correct) tran=\(tranAnswer)(correct)",
+                           notes: "pair: [\(q.intransitiveEnglish)] intr=\(intrAnswer)(correct) [\(q.transitiveEnglish)] tran=\(tranAnswer)(correct)",
                            item: item, pairQuestion: q,
                            answers: (intrAnswer, tranAnswer, true, true))
             return
@@ -305,44 +358,102 @@ final class QuizSession {
         chatMessages = [(isUser: false, text: questionBubble)]
         isSendingChat = true
         phase = .chatting  // hide the input fields while we wait
-        Task { await gradePairWithLLM(q: q, item: item, intrAnswer: intrAnswer, tranAnswer: tranAnswer,
+        Task { await gradeTransitiveDrillWithLLM(q: q, item: item, intrAnswer: intrAnswer, tranAnswer: tranAnswer,
                                       intrMatchedByString: intrCorrect, tranMatchedByString: tranCorrect) }
     }
 
     /// LLM fallback grading for pair answers that failed the string match.
-    /// Grades both fields in one API call, accepting any conjugated form of the correct verb.
-    private func gradePairWithLLM(q: PairQuestion, item: QuizItem,
+    /// For pair-discrimination (askedLeg == nil), grades both fields; score is 1.0/0.5/0.0.
+    /// For single-leg (askedLeg non-nil), grades only the asked field; score is 1.0 or 0.0.
+    private func gradeTransitiveDrillWithLLM(q: PairQuestion, item: QuizItem,
                                    intrAnswer: String, tranAnswer: String,
                                    intrMatchedByString: Bool, tranMatchedByString: Bool) async {
         let intrKanji = q.intransitiveKanji.first ?? q.intransitiveKana
         let tranKanji = q.transitiveKanji.first ?? q.transitiveKana
-        let system = """
-        You are grading a transitive/intransitive verb pair quiz for a Japanese learner at the N4–N3 level.
-        The student was shown two English cues and asked to type the dictionary form of each Japanese verb.
+        let askedLeg = q.askedLeg
 
-        The correct pair:
+        // Build the prompt: for single-leg, ask the LLM to grade only the one field.
+        let pairDescription = """
         - Intransitive: \(intrKanji) (\(q.intransitiveKana)) — something happens on its own (no agent)
         - Transitive: \(tranKanji) (\(q.transitiveKana)) — someone deliberately causes it (takes を)
-
-        Drill cues used:
-        - Intransitive cue: "\(q.intransitiveEnglish)"
-        - Transitive cue: "\(q.transitiveEnglish)"
-
-        The quiz tests only whether the student knows which verb is transitive and which is intransitive — not conjugation accuracy. Accept any surface form of the correct verb: dictionary form, past tense (-た), te-form (-て), te-iru (-ています/-ている), polite form (-ます), negative (-ない), potential, causative, passive, or romaji equivalents. If the student's answer is any recognizable inflection of the correct verb, it is correct.
-
-        Respond in English only.
-
-        Emit exactly two lines, in this order:
-        SCORE_INTRANSITIVE: 1 or 0 — <one short English grading sentence>
-        SCORE_TRANSITIVE: 1 or 0 — <one short English grading sentence>
-
-        Use 1 if the student's answer is the correct verb in any form. Use 0 if it is the wrong verb or blank.
         """
-        let userMessage = """
-        Student's intransitive answer: "\(intrAnswer)"
-        Student's transitive answer: "\(tranAnswer)"
-        Please grade both answers.
-        """
+        let conjugationNote = "Accept any surface form of the correct verb: dictionary form, past tense (-た), te-form (-て), te-iru (-ています/-ている), polite form (-ます), negative (-ない), potential, causative, passive, or romaji equivalents."
+
+        let system: String
+        let userMessage: String
+        switch askedLeg {
+        case nil:
+            system = """
+            You are grading a transitive/intransitive verb pair quiz for a Japanese learner at the N4–N3 level.
+            The student was shown two English cues and asked to type the dictionary form of each Japanese verb.
+
+            The correct pair:
+            \(pairDescription)
+
+            Drill cues used:
+            - Intransitive cue: "\(q.intransitiveEnglish)"
+            - Transitive cue: "\(q.transitiveEnglish)"
+
+            The quiz tests only whether the student knows which verb is transitive and which is intransitive — not conjugation accuracy. \(conjugationNote) If the student's answer is any recognizable inflection of the correct verb, it is correct.
+
+            Respond in English only.
+
+            Emit exactly two lines, in this order:
+            SCORE_INTRANSITIVE: 1 or 0 — <one short English grading sentence>
+            SCORE_TRANSITIVE: 1 or 0 — <one short English grading sentence>
+
+            Use 1 if the student's answer is the correct verb in any form. Use 0 if it is the wrong verb or blank.
+            """
+            userMessage = """
+            Student's intransitive answer: "\(intrAnswer)"
+            Student's transitive answer: "\(tranAnswer)"
+            Please grade both answers.
+            """
+        case .intransitive:
+            system = """
+            You are grading a single-leg transitive/intransitive verb quiz for a Japanese learner at the N4–N3 level.
+            The student was shown one English cue and asked to type the intransitive Japanese verb.
+
+            The correct pair (for context):
+            \(pairDescription)
+
+            Cue shown: "\(q.intransitiveEnglish)"
+            Correct answer: \(intrKanji) (\(q.intransitiveKana))
+
+            \(conjugationNote) If the student's answer is any recognizable inflection of the correct intransitive verb, it is correct.
+
+            Respond in English only.
+
+            Emit exactly one line:
+            SCORE_INTRANSITIVE: 1 or 0 — <one short English grading sentence>
+
+            Use 1 if correct (any conjugation), 0 if wrong or blank.
+            """
+            userMessage = "Student's answer: \"\(intrAnswer)\"\nPlease grade."
+        case .transitive:
+            system = """
+            You are grading a single-leg transitive/intransitive verb quiz for a Japanese learner at the N4–N3 level.
+            The student was shown one English cue and asked to type the transitive Japanese verb.
+
+            The correct pair (for context):
+            \(pairDescription)
+
+            Cue shown: "\(q.transitiveEnglish)"
+            Correct answer: \(tranKanji) (\(q.transitiveKana))
+
+            \(conjugationNote) If the student's answer is any recognizable inflection of the correct transitive verb, it is correct.
+
+            Respond in English only.
+
+            Emit exactly one line:
+            SCORE_TRANSITIVE: 1 or 0 — <one short English grading sentence>
+
+            Use 1 if correct (any conjugation), 0 if wrong or blank.
+            """
+            userMessage = "Student's answer: \"\(tranAnswer)\"\nPlease grade."
+        }
+
+        let facetLabel = askedLeg == nil ? "pair-grade" : "single-leg-grade"
         do {
             let (response, _, _) = try await client.send(
                 messages: [AnthropicMessage(role: "user", content: [.text(userMessage)])],
@@ -350,45 +461,80 @@ final class QuizSession {
                 tools: [],
                 maxTokens: 256,
                 toolHandler: makeToolHandler(),
-                chatContext: .vocabQuiz(wordId: item.wordId, facet: "pair-grade", sessionId: item.id.uuidString),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: facetLabel, sessionId: item.id.uuidString),
                 templateId: "pair-llm-grade"
             )
             let (intrCorrect, tranCorrect) = parsePairLLMScores(from: response,
                                                                   intrMatchedByString: intrMatchedByString,
                                                                   tranMatchedByString: tranMatchedByString)
-            let score: Double = intrCorrect && tranCorrect ? 1.0 : (intrCorrect || tranCorrect ? 0.5 : 0.0)
-            let intrMark = intrCorrect ? "✓" : "✗"
-            let tranMark = tranCorrect ? "✓" : "✗"
+            let score: Double
+            switch askedLeg {
+            case nil:    score = intrCorrect && tranCorrect ? 1.0 : (intrCorrect || tranCorrect ? 0.5 : 0.0)
+            case .intransitive: score = intrCorrect ? 1.0 : 0.0
+            case .transitive:   score = tranCorrect ? 1.0 : 0.0
+            }
             let intrKanjiDisplay = q.intransitiveKanji.first ?? q.intransitiveKana
             let tranKanjiDisplay = q.transitiveKanji.first ?? q.transitiveKana
-            let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
-            let intrLine = intrCorrect
-                ? "\(intrMark) \(intrAnswer)"
-                : "\(intrMark) \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
-            let tranLine = tranCorrect
-                ? "\(tranMark) \(tranAnswer)"
-                : "\(tranMark) \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
-            let answerBubble = "\(intrLine)\n\(tranLine)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
-            let notes = "pair: intr=\(intrAnswer)(\(intrCorrect ? "correct" : "wrong")) tran=\(tranAnswer)(\(tranCorrect ? "correct" : "wrong")) [llm-graded]"
-            applyPairGrade(score: score, questionBubble: questionBubble, answerBubble: answerBubble,
+            let questionBubble: String
+            let answerBubble: String
+            let notes: String
+            switch askedLeg {
+            case nil:
+                let intrMark = intrCorrect ? "✓" : "✗"
+                let tranMark = tranCorrect ? "✓" : "✗"
+                let intrLine = intrCorrect ? "\(intrMark) \(intrAnswer)" : "\(intrMark) \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
+                let tranLine = tranCorrect ? "\(tranMark) \(tranAnswer)" : "\(tranMark) \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
+                questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
+                answerBubble = "\(intrLine)\n\(tranLine)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "pair: [\(q.intransitiveEnglish)] intr=\(intrAnswer)(\(intrCorrect ? "correct" : "wrong")) [\(q.transitiveEnglish)] tran=\(tranAnswer)(\(tranCorrect ? "correct" : "wrong")) [llm-graded]"
+            case .intransitive:
+                let mark = intrCorrect ? "✓" : "✗"
+                let line = intrCorrect ? "\(mark) \(intrAnswer)" : "\(mark) \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
+                questionBubble = q.intransitiveEnglish
+                answerBubble = "\(line)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "intransitive [\(q.intransitiveEnglish)]: \(intrAnswer)(\(intrCorrect ? "correct" : "wrong")) [llm-graded]"
+            case .transitive:
+                let mark = tranCorrect ? "✓" : "✗"
+                let line = tranCorrect ? "\(mark) \(tranAnswer)" : "\(mark) \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
+                questionBubble = q.transitiveEnglish
+                answerBubble = "\(line)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "transitive [\(q.transitiveEnglish)]: \(tranAnswer)(\(tranCorrect ? "correct" : "wrong")) [llm-graded]"
+            }
+            applyTransitiveDrillGrade(score: score, questionBubble: questionBubble, answerBubble: answerBubble,
                            notes: notes, item: item, pairQuestion: q,
                            answers: (intrAnswer, tranAnswer, intrCorrect, tranCorrect))
         } catch {
             // On API failure, fall back to the string-match results already computed.
-            let score: Double = intrMatchedByString && tranMatchedByString ? 1.0
-                : (intrMatchedByString || tranMatchedByString ? 0.5 : 0.0)
+            let score: Double
+            switch askedLeg {
+            case nil:         score = intrMatchedByString && tranMatchedByString ? 1.0 : (intrMatchedByString || tranMatchedByString ? 0.5 : 0.0)
+            case .intransitive: score = intrMatchedByString ? 1.0 : 0.0
+            case .transitive:   score = tranMatchedByString ? 1.0 : 0.0
+            }
             let intrKanjiDisplay = q.intransitiveKanji.first ?? q.intransitiveKana
             let tranKanjiDisplay = q.transitiveKanji.first ?? q.transitiveKana
-            let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
-            let intrLine = intrMatchedByString
-                ? "✓ \(intrAnswer)"
-                : "✗ \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
-            let tranLine = tranMatchedByString
-                ? "✓ \(tranAnswer)"
-                : "✗ \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
-            let answerBubble = "\(intrLine)\n\(tranLine)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
-            let notes = "pair: intr=\(intrAnswer)(\(intrMatchedByString ? "correct" : "wrong")) tran=\(tranAnswer)(\(tranMatchedByString ? "correct" : "wrong")) [string-match fallback: llm error]"
-            applyPairGrade(score: score, questionBubble: questionBubble, answerBubble: answerBubble,
+            let questionBubble: String
+            let answerBubble: String
+            let notes: String
+            switch askedLeg {
+            case nil:
+                let intrLine = intrMatchedByString ? "✓ \(intrAnswer)" : "✗ \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
+                let tranLine = tranMatchedByString ? "✓ \(tranAnswer)" : "✗ \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
+                questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
+                answerBubble = "\(intrLine)\n\(tranLine)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "pair: [\(q.intransitiveEnglish)] intr=\(intrAnswer)(\(intrMatchedByString ? "correct" : "wrong")) [\(q.transitiveEnglish)] tran=\(tranAnswer)(\(tranMatchedByString ? "correct" : "wrong")) [string-match fallback: llm error]"
+            case .intransitive:
+                let line = intrMatchedByString ? "✓ \(intrAnswer)" : "✗ \(intrAnswer)  (correct: \(intrKanjiDisplay)/\(q.intransitiveKana))"
+                questionBubble = q.intransitiveEnglish
+                answerBubble = "\(line)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "intransitive [\(q.intransitiveEnglish)]: \(intrAnswer)(\(intrMatchedByString ? "correct" : "wrong")) [string-match fallback: llm error]"
+            case .transitive:
+                let line = tranMatchedByString ? "✓ \(tranAnswer)" : "✗ \(tranAnswer)  (correct: \(tranKanjiDisplay)/\(q.transitiveKana))"
+                questionBubble = q.transitiveEnglish
+                answerBubble = "\(line)\n\n\(q.intransitiveJapanese)\n\(q.transitiveJapanese)"
+                notes = "transitive [\(q.transitiveEnglish)]: \(tranAnswer)(\(tranMatchedByString ? "correct" : "wrong")) [string-match fallback: llm error]"
+            }
+            applyTransitiveDrillGrade(score: score, questionBubble: questionBubble, answerBubble: answerBubble,
                            notes: notes, item: item, pairQuestion: q,
                            answers: (intrAnswer, tranAnswer, intrMatchedByString, tranMatchedByString))
         }
@@ -417,15 +563,32 @@ final class QuizSession {
     }
 
     /// Called when the student taps "Don't know" on a pair-discrimination drill.
-    func tapPairDontKnow() {
+    func tapTransitiveDrillDontKnow() {
         guard case .awaitingPair(let q) = phase, let item = currentItem else { return }
-        let questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
-        let answerBubble = "Intransitive: \(q.intransitiveKanji.first ?? q.intransitiveKana) (\(q.intransitiveKana))\n\(q.intransitiveJapanese)\n\nTransitive: \(q.transitiveKanji.first ?? q.transitiveKana) (\(q.transitiveKana))\n\(q.transitiveJapanese)"
-        applyPairGrade(score: 0.0, questionBubble: questionBubble, answerBubble: answerBubble, notes: "pair: don't know", item: item, pairQuestion: q)
+        let intrDisplay = "\(q.intransitiveKanji.first ?? q.intransitiveKana) (\(q.intransitiveKana))"
+        let tranDisplay = "\(q.transitiveKanji.first ?? q.transitiveKana) (\(q.transitiveKana))"
+        let questionBubble: String
+        let answerBubble: String
+        let notes: String
+        switch q.askedLeg {
+        case nil:
+            questionBubble = "Intransitive: \(q.intransitiveEnglish)\nTransitive: \(q.transitiveEnglish)"
+            answerBubble = "Intransitive: \(intrDisplay)\n\(q.intransitiveJapanese)\n\nTransitive: \(tranDisplay)\n\(q.transitiveJapanese)"
+            notes = "pair: [\(q.intransitiveEnglish)] [\(q.transitiveEnglish)] don't know"
+        case .intransitive:
+            questionBubble = q.intransitiveEnglish
+            answerBubble = "\(intrDisplay)\n\(q.intransitiveJapanese)"
+            notes = "intransitive [\(q.intransitiveEnglish)]: don't know"
+        case .transitive:
+            questionBubble = q.transitiveEnglish
+            answerBubble = "\(tranDisplay)\n\(q.transitiveJapanese)"
+            notes = "transitive [\(q.transitiveEnglish)]: don't know"
+        }
+        applyTransitiveDrillGrade(score: 0.0, questionBubble: questionBubble, answerBubble: answerBubble, notes: notes, item: item, pairQuestion: q)
     }
 
-    /// Grading path for pair-discrimination items.
-    private func applyPairGrade(score: Double, questionBubble: String, answerBubble: String,
+    /// Shared grading path for all transitive drill facets (pair-discrimination, transitive, intransitive).
+    private func applyTransitiveDrillGrade(score: Double, questionBubble: String, answerBubble: String,
                                  notes: String, item: QuizItem, pairQuestion: PairQuestion? = nil,
                                  answers: (intrAnswer: String, tranAnswer: String, intrCorrect: Bool, tranCorrect: Bool)? = nil) {
         // Preserve any pre-populated question bubble already shown during the LLM slow path.
@@ -452,7 +615,7 @@ final class QuizSession {
 
     /// Check whether a student's typed answer is correct for a pair member.
     /// Accepts: exact kana, any kanji form, or romaji that converts to the correct kana.
-    private func isPairAnswerCorrect(_ answer: String, kana: String, kanji: [String]) -> Bool {
+    private func isTransitiveDrillAnswerCorrect(_ answer: String, kana: String, kanji: [String]) -> Bool {
         let trimmed = answer.trimmingCharacters(in: .whitespaces)
         if trimmed == kana { return true }
         if kanji.contains(trimmed) { return true }
@@ -476,7 +639,7 @@ final class QuizSession {
     }
 
     /// True when the student scored ≤ 0.6 on a pair drill and has not yet started a tutor chat.
-    var canStartPairTutorSession: Bool {
+    var canStartTransitiveDrillTutorSession: Bool {
         guard let score = gradedScore else { return false }
         return score <= 0.6 && lastPairQuestion != nil && currentPairSystemPrompt == nil
             && chatMessages.count <= 2 && !isSendingChat
@@ -571,47 +734,81 @@ final class QuizSession {
         }
     }
 
-    /// Builds a system prompt for the pair tutor, explaining the transitive/intransitive distinction.
-    private func pairTutorSystemPrompt(for q: PairQuestion) -> String {
+    /// Builds a system prompt for the transitive drill tutor, explaining the transitive/intransitive distinction.
+    private func transitiveDrillTutorSystemPrompt(for q: PairQuestion) -> String {
         let intrKanji = q.intransitiveKanji.first ?? q.intransitiveKana
         let tranKanji = q.transitiveKanji.first ?? q.transitiveKana
-        return """
-        You are a friendly Japanese tutor helping a learner understand the difference between a transitive and intransitive verb pair.
-
+        let pairContext = """
         The pair being studied:
         - Intransitive: \(intrKanji) (\(q.intransitiveKana)) — something happens on its own (no agent)
         - Transitive: \(tranKanji) (\(q.transitiveKana)) — someone deliberately causes it (takes a direct object with を)
+        """
+        let drillContext: String
+        switch q.askedLeg {
+        case nil:
+            drillContext = """
+            The drill used in this quiz:
+            - Intransitive cue: "\(q.intransitiveEnglish)" → correct answer: \(q.intransitiveJapanese)
+            - Transitive cue: "\(q.transitiveEnglish)" → correct answer: \(q.transitiveJapanese)
+            """
+        case .intransitive:
+            drillContext = """
+            The student was shown this single cue and asked for the intransitive verb:
+            Cue: "\(q.intransitiveEnglish)" → correct answer: \(intrKanji) (\(q.intransitiveKana)) — \(q.intransitiveJapanese)
+            """
+        case .transitive:
+            drillContext = """
+            The student was shown this single cue and asked for the transitive verb:
+            Cue: "\(q.transitiveEnglish)" → correct answer: \(tranKanji) (\(q.transitiveKana)) — \(q.transitiveJapanese)
+            """
+        }
+        return """
+        You are a friendly Japanese tutor helping a learner understand the difference between a transitive and intransitive verb pair.
 
-        The drill sentence used in this quiz:
-        - Intransitive cue: "\(q.intransitiveEnglish)" → correct answer: \(q.intransitiveJapanese)
-        - Transitive cue: "\(q.transitiveEnglish)" → correct answer: \(q.transitiveJapanese)
+        \(pairContext)
 
-        When the student describes their wrong answers, first briefly diagnose the failure mode (mixed up transitive/intransitive, close but wrong verb, or unrelated word), then suggest how to avoid this mistake, by explaining the core distinction or giving a memory tip. You have access to lookup_jmdict if you want to verify dictionary forms or cite alternate readings. Keep the response concise and conversational. The learner is aiming for N4–N3 level. Respond in English.
+        \(drillContext)
+
+        The student's wrong answer and the correct answer are in the first message. Briefly diagnose the failure mode (mixed up transitive/intransitive, close but wrong verb, or unrelated word), then suggest how to avoid this mistake by explaining the core distinction or giving a memory tip. You have access to lookup_jmdict if you want to verify dictionary forms or cite alternate readings. Keep the response concise and conversational. The learner is aiming for N4–N3 level. Respond in English.
         """
     }
 
-    /// Builds the opening user message for the tutor session, referencing the student's actual answers.
-    private func pairTutorOpeningMessage(for q: PairQuestion) -> String {
-        guard let answers = lastPairAnswers else {
-            return "I got this wrong. Please explain the difference between these two verbs and how to remember which is which."
-        }
+    /// Builds the opening user message for the tutor session, referencing the student's actual answer.
+    private func transitiveDrillTutorOpeningMessage(for q: PairQuestion) -> String {
         let intrKanji = q.intransitiveKanji.first ?? q.intransitiveKana
         let tranKanji = q.transitiveKanji.first ?? q.transitiveKana
-        var lines: [String] = []
-        lines.append("Here's what I answered:")
-        lines.append("- Intransitive (\(q.intransitiveEnglish)): I wrote \"\(answers.intrAnswer)\" — \(answers.intrCorrect ? "correct ✓" : "wrong ✗ (correct: \(intrKanji)/\(q.intransitiveKana))")")
-        lines.append("- Transitive (\(q.transitiveEnglish)): I wrote \"\(answers.tranAnswer)\" — \(answers.tranCorrect ? "correct ✓" : "wrong ✗ (correct: \(tranKanji)/\(q.transitiveKana))")")
-        lines.append("First, diagnose what went wrong for the fields I got wrong: did I mix up which verb is transitive and which is intransitive, did I write something close but not quite the right verb (e.g. a related but different word), or did I write something unrelated? Then explain the difference between these two verbs and how to remember which is which.")
-        return lines.joined(separator: "\n")
+        switch q.askedLeg {
+        case nil:
+            guard let answers = lastPairAnswers else {
+                return "I tapped \"don't know\" — I had no idea. The correct pair is: intransitive \(intrKanji) (\(q.intransitiveKana)) for \"\(q.intransitiveEnglish)\", transitive \(tranKanji) (\(q.transitiveKana)) for \"\(q.transitiveEnglish)\". Please explain the distinction and how to remember which is which."
+            }
+            var lines: [String] = ["Here's what I answered:"]
+            lines.append("- Intransitive (\(q.intransitiveEnglish)): I wrote \"\(answers.intrAnswer)\" — \(answers.intrCorrect ? "correct ✓" : "wrong ✗ (correct: \(intrKanji)/\(q.intransitiveKana))")")
+            lines.append("- Transitive (\(q.transitiveEnglish)): I wrote \"\(answers.tranAnswer)\" — \(answers.tranCorrect ? "correct ✓" : "wrong ✗ (correct: \(tranKanji)/\(q.transitiveKana))")")
+            lines.append("Diagnose what went wrong for the fields I got wrong, then explain the difference and how to remember which is which.")
+            return lines.joined(separator: "\n")
+        case .intransitive:
+            guard let answers = lastPairAnswers else {
+                return "I tapped \"don't know\" — I had no idea. The cue was \"\(q.intransitiveEnglish)\" and the correct intransitive verb is \(intrKanji) (\(q.intransitiveKana)). Please explain how to remember which verb is intransitive."
+            }
+            let answer = answers.intrAnswer.isEmpty ? "(blank)" : answers.intrAnswer
+            return "The cue was \"\(q.intransitiveEnglish)\" and I wrote \"\(answer)\" but the correct intransitive verb is \(intrKanji) (\(q.intransitiveKana)). Why did I get this wrong, and how do I remember which verb is intransitive?"
+        case .transitive:
+            guard let answers = lastPairAnswers else {
+                return "I tapped \"don't know\" — I had no idea. The cue was \"\(q.transitiveEnglish)\" and the correct transitive verb is \(tranKanji) (\(q.transitiveKana)). Please explain how to remember which verb is transitive."
+            }
+            let answer = answers.tranAnswer.isEmpty ? "(blank)" : answers.tranAnswer
+            return "The cue was \"\(q.transitiveEnglish)\" and I wrote \"\(answer)\" but the correct transitive verb is \(tranKanji) (\(q.transitiveKana)). Why did I get this wrong, and how do I remember which verb is transitive?"
+        }
     }
 
     /// Auto-fires a tutor chat turn explaining the transitive/intransitive distinction for pairs.
-    func startPairTutorSession() {
-        guard canStartPairTutorSession, let q = lastPairQuestion, let item = currentItem else { return }
+    func startTransitiveDrillTutorSession() {
+        guard canStartTransitiveDrillTutorSession, let q = lastPairQuestion, let item = currentItem else { return }
         isSendingChat = true
-        let systemPromptText = pairTutorSystemPrompt(for: q)
+        let systemPromptText = transitiveDrillTutorSystemPrompt(for: q)
         currentPairSystemPrompt = systemPromptText
-        let msg = pairTutorOpeningMessage(for: q)
+        let msg = transitiveDrillTutorOpeningMessage(for: q)
         chatMessages.append((isUser: true, text: msg))
         Task { await doPairTutorOpeningTurn(msg, systemPromptText: systemPromptText, item: item) }
     }
@@ -944,6 +1141,9 @@ final class QuizSession {
                 return
             }
             let drill = drills.randomElement()!
+            let askedLeg: AskedLeg? = item.facet == "transitive" ? .transitive
+                                    : item.facet == "intransitive" ? .intransitive
+                                    : nil
             let q = PairQuestion(
                 intransitiveEnglish: drill.intransitive.en,
                 transitiveEnglish: drill.transitive.en,
@@ -952,7 +1152,8 @@ final class QuizSession {
                 transitiveKana: pairItem.pair.transitive.kana,
                 transitiveKanji: pairItem.pair.transitive.kanji,
                 intransitiveJapanese: drill.intransitive.ja,
-                transitiveJapanese: drill.transitive.ja
+                transitiveJapanese: drill.transitive.ja,
+                askedLeg: askedLeg
             )
             pairIntransitiveInput = ""
             pairTransitiveInput = ""
@@ -1289,6 +1490,12 @@ final class QuizSession {
         "reading-to-meaning":       ["meaning-to-reading"],
         "meaning-to-reading":       ["reading-to-meaning"],
         "meaning-reading-to-kanji": ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading"],
+        // pair-discrimination reveals both legs (student sees and answers both verbs).
+        "pair-discrimination":      ["transitive", "intransitive"],
+        // single-leg quizzes reveal one verb; passively update the pair model (partial evidence).
+        // The other single-leg facet is NOT updated: answering a transitive quiz doesn't reveal the intransitive verb.
+        "transitive":               ["pair-discrimination"],
+        "intransitive":             ["pair-discrimination"],
     ]
 
     /// Apply passive Ebisu updates (score=0.5) for the given facets of an item.
@@ -1349,6 +1556,9 @@ final class QuizSession {
                 return
             }
             let drill = drills.randomElement()!
+            let askedLeg: AskedLeg? = item.facet == "transitive" ? .transitive
+                                    : item.facet == "intransitive" ? .intransitive
+                                    : nil
             let q = PairQuestion(
                 intransitiveEnglish: drill.intransitive.en,
                 transitiveEnglish: drill.transitive.en,
@@ -1357,7 +1567,8 @@ final class QuizSession {
                 transitiveKana: pairItem.pair.transitive.kana,
                 transitiveKanji: pairItem.pair.transitive.kanji,
                 intransitiveJapanese: drill.intransitive.ja,
-                transitiveJapanese: drill.transitive.ja
+                transitiveJapanese: drill.transitive.ja,
+                askedLeg: askedLeg
             )
             prefetched = (index: index, question: "", multipleChoice: nil,
                           pairQuestion: q,

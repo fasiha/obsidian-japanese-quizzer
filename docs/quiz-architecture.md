@@ -1,5 +1,49 @@
 # iOS vocabulary quiz architecture (Pug app)
 
+## Checklist for new quiz types
+
+Every new facet or quiz type must satisfy all of the following. Verify each one by smoke-testing before shipping.
+
+### Question and answer display
+
+- [ ] **Question bubble** identifies exactly which question was asked — if the drill has multiple variants (e.g. two cues), the specific one shown to the student must appear in the question bubble, not just a generic label.
+- [ ] **"Don't know" / reveal path** preserves the question bubble so the student can see which question they were on. The answer bubble shows only the answer(s) relevant to the specific question asked — not every possible answer for the whole drill.
+- [ ] **Answer bubble (graded path)** includes the student's answer and the correct answer for wrong/partial results.
+
+### Notes field (review record)
+
+- [ ] The `notes` string stored on the `reviews` row must be enough to reconstruct the quiz from history without the chat transcript. It must include: which cue/drill was shown, the student's answer(s), and correct/wrong verdict per field.
+- [ ] Fast-path (no LLM call) notes are as informative as slow-path notes — the notes field is the only record when no chat is written to `chat.sqlite`.
+
+### Tutor mode
+
+- [ ] **System prompt** tells the model exactly what was asked (the specific cue), what the correct answer is, and what the student answered. It must not say "when the student describes their answer" — the opening message already contains everything.
+- [ ] **Opening message** is fully self-contained: cue + student's answer (or "tapped don't know") + correct answer. Claude must be able to respond immediately without asking clarifying questions.
+- [ ] **"Don't know" → tutor** works: when the student tapped "don't know" rather than submitting an answer, `lastAnswers` is nil — the opening message must handle this case with a "I had no idea" framing that still includes the cue and correct answer.
+- [ ] Tutor session fires with the right `chatContext` so the conversation is linked to the review via `session_id`.
+
+### Passive Ebisu updates
+
+- [ ] Declare which sibling facets receive passive updates (score = 0.5) after an active review of this facet, and why (what information is revealed by the Q+A pair).
+- [ ] Passive updates use `item.wordType` and `item.wordId` — verify these are correct for the new quiz type.
+
+### Scheduling and Ebisu rows
+
+- [ ] All Ebisu rows for the new facet are planted at enrollment. If there is an unlock/graduation condition, document the threshold and where it is enforced (enrollment time vs. scheduler time).
+- [ ] Any unlock condition is enforced in `QuizContext.build()` at scheduling time, not at question-generation time.
+
+### History and chat linking
+
+- [ ] Reviews appear in the correct detail sheet (`WordDetailSheet`, `TransitivePairDetailSheet`, `GrammarDetailSheet`), queryable by `word_type` and `word_id`.
+- [ ] `quiz_type` value is human-readable when displayed in the history list (no raw snake_case that needs translation).
+- [ ] `session_id` is set on every review row so `ReviewDetailSheet` can load the post-quiz chat.
+
+### Prefetch parity
+
+- [ ] `prefetchQuestion()` handles the new facet in the same dispatch order as `generateQuestion()`. See the type-dispatch order note in the counter section below.
+
+# Vocab quiz architecture
+
 ## Four facets
 
 | Facet | Prompt shows | Student produces |
@@ -124,13 +168,63 @@ full `counters.json` schema.
 - **Grading**: deterministic string matching. No LLM call. `applyLocalGrade()` records the result to Ebisu immediately.
 - **Free-answer input**: `submitFreeAnswer()` checks the student's kana input against the correct reading(s).
 
+---
+
+# Transitive-intransitive pair quiz architecture
+
+## Three facets
+
+| Facet | Prompt shows | Student produces | Score |
+|---|---|---|---|
+| `pair-discrimination` | Two English cues (intransitive + transitive) | Both dictionary forms | 1.0 / 0.5 / 0.0 |
+| `intransitive` | One English cue (intransitive) | Intransitive dictionary form | 1.0 or 0.0 |
+| `transitive` | One English cue (transitive) | Transitive dictionary form | 1.0 or 0.0 |
+
+All three facets are free-answer only. No multiple-choice variant.
+
+## Ebisu rows per pair
+
+All three Ebisu rows are planted at enrollment (or by migration v13 for existing pairs). `pair-discrimination` gets the enrollment halflife (24h); `transitive` and `intransitive` inherit the pair-discrimination halflife so they start at the same maturity level.
+
+## Unlock / scheduler suppression
+
+`QuizContext.build()` suppresses `transitive` and `intransitive` from the candidate queue until `pair-discrimination` meets **both** unlock criteria:
+- halflife ≥ `singleLegUnlockHalflife` (72h)
+- review count ≥ `singleLegUnlockMinReviews` (4)
+
+After unlock, all three facets compete normally; the most-urgent (lowest predicted recall) is scheduled.
+
+## Passive cross-updates
+
+After any pair facet review, sibling facets receive a passive update (score = 0.5):
+- `pair-discrimination` → passively updates `transitive` and `intransitive` (both legs revealed in Q+A)
+- `transitive` → passively updates `pair-discrimination` (one leg demonstrated)
+- `intransitive` → passively updates `pair-discrimination` (one leg demonstrated)
+Single-leg facets do **not** passively update each other.
+
+## Grading
+
+**Fast path** (no LLM): string match against kana, any kanji form, or romaji equivalent.
+
+**Slow path** (LLM): when string match fails, one LLM call grades the asked field(s). For `pair-discrimination`, the LLM grades both fields in one call. For single-leg facets, the prompt asks about only the one field.
+
+## Question generation
+
+Questions are built app-side from the `drills` array in `transitive-pairs.json` — no LLM call at question-generation time. A random drill is selected; `PairQuestion.askedLeg` (nil / `.transitive` / `.intransitive`) tells the view and grader which fields to show and evaluate.
+
+## Post-quiz chat and history
+
+Post-quiz coaching chat is available for all three facets (via "Tutor me" on wrong answers). Review history for all three facets appears in `TransitivePairDetailSheet`'s Quiz History section. Tapping any row opens `ReviewDetailSheet`, which loads the post-quiz chat using `review.sessionId`.
+
+---
+
 ## Implementation order in generateQuestion() and prefetchQuestion()
 
 Counter items must be detected and routed **before** the `isFreeAnswer` check. This is critical: the free-answer dispatcher assumes it can call `freeAnswerStem()`, which returns `""` for counter facets because their stems are deterministic. If `isFreeAnswer` runs first, it will create a question with an empty stem.
 
 **Type dispatch order** (same in both `generateQuestion()` and `prefetchQuestion()`):
 1. Counter items (both facets)
-2. Transitive-intransitive pair drills
+2. Transitive-intransitive pair drills (all three facets: pair-discrimination, transitive, intransitive)
 3. Vocabulary items (split by `isFreeAnswer`)
 4. Grammar items
 
@@ -235,7 +329,9 @@ linked to the same JMDict entry), merged and sorted by timestamp. Counter IDs ar
 reading strings like `し`; JMDict IDs are numeric strings.
 
 **Transitive pair quizzes** (`TransitivePairDetailSheet`): reviews are fetched for
-`word_type="transitive-pair"` using the pair's string ID.
+`word_type="transitive-pair"` using the pair's string ID. The query returns rows for all
+three quiz types (`pair-discrimination`, `transitive`, `intransitive`) together, sorted by
+timestamp. The `quiz_type` column is displayed verbatim in the history list.
 
 **Grammar quizzes** (`GrammarDetailSheet`): reviews are fetched across all topics in
 the equivalence group (e.g. `genki:naru-to-become` and `bunpro:naru-to-become` together)

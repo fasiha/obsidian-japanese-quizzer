@@ -261,6 +261,11 @@ struct QuizContext {
     static let freeAnswerMinReviews  = 3
     static let freeAnswerMinHalflife = 48.0   // hours
 
+    /// Minimum pair-discrimination halflife (hours) before single-leg facets enter the queue.
+    static let singleLegUnlockHalflife = 72.0   // hours (~3 days of successful pair reviews)
+    /// Minimum pair-discrimination review count before single-leg facets enter the queue.
+    static let singleLegUnlockMinReviews = 4
+
     /// Number of top-urgency candidates to sample from when building a session.
     static let selectionPoolSize = 10
 
@@ -441,24 +446,52 @@ struct QuizContext {
         }
 
         // Include enrolled transitive-pair items.
+        // Single-leg facets ("transitive", "intransitive") are suppressed until the
+        // pair-discrimination model meets both unlock criteria:
+        //   halflife ≥ singleLegUnlockHalflife AND review count ≥ singleLegUnlockMinReviews
         if let pairCorpus {
+            let pairReviewCounts = try await db.pairReviewCounts()
             let pairRecords = try await db.enrolledTransitivePairRecords()
-            var pairRecallMap: [String: (recall: Double, halflife: Double)] = [:]
+            // Group all facet records by wordId so we can consider all three facets together.
+            var pairRecallByFacet: [String: [String: (recall: Double, halflife: Double)]] = [:]
             for record in pairRecords {
                 let elapsed = max(now.timeIntervalSince(iso8601Date(record.lastReview)), 1e-6) / 3600.0
-                pairRecallMap[record.wordId] = (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
+                pairRecallByFacet[record.wordId, default: [:]][record.quizType] =
+                    (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
             }
             let pairItems = await MainActor.run { pairCorpus.items }
             for pairItem in pairItems where pairItem.state == .learning {
-                guard let (recall, halflife) = pairRecallMap[pairItem.id] else { continue }
-                let status = QuizStatus.reviewed(recall: recall, isFree: false, halflife: halflife)
+                guard let facetRecalls = pairRecallByFacet[pairItem.id],
+                      let pairData = facetRecalls["pair-discrimination"] else { continue }
+
+                // Which facets are eligible depends on whether the pair has matured enough.
+                let pairReviewCount = pairReviewCounts["\(pairItem.id)\0pair-discrimination"] ?? 0
+                let unlocked = pairData.halflife >= singleLegUnlockHalflife
+                            && pairReviewCount >= singleLegUnlockMinReviews
+                let eligibleFacets: [String] = unlocked
+                    ? ["pair-discrimination", "transitive", "intransitive"]
+                    : ["pair-discrimination"]
+
+                // Pick the most-urgent (lowest recall) eligible facet.
+                var lowestRecall = Double.infinity
+                var chosenFacet = "pair-discrimination"
+                var chosenHalflife = pairData.halflife
+                for facet in eligibleFacets {
+                    if let (recall, halflife) = facetRecalls[facet], recall < lowestRecall {
+                        lowestRecall = recall
+                        chosenFacet = facet
+                        chosenHalflife = halflife
+                    }
+                }
+
+                let status = QuizStatus.reviewed(recall: lowestRecall, isFree: false, halflife: chosenHalflife)
                 let kanjiIntr = pairItem.pair.intransitive.kanji.first ?? pairItem.pair.intransitive.kana
                 let kanjiTran = pairItem.pair.transitive.kanji.first ?? pairItem.pair.transitive.kana
                 let wordText = "\(kanjiIntr) ↔ \(kanjiTran)"
                 items.append(QuizItem(
                     wordType: "transitive-pair", wordId: pairItem.id, wordText: wordText,
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
-                    facet: "pair-discrimination", status: status,
+                    facet: chosenFacet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
                     committedWrittenText: nil, corpusSenseIndices: []
                 ))
