@@ -85,8 +85,7 @@ Sample rows:
 館|16|3|3|["カン"]|["やかた","たて"]|["building","mansion","large building","palace"]|["口","食","宀","｜"]
 ```
 
-The iOS app will need kanjidic2.sqlite bundled alongside jmdict.sqlite, or its
-data merged into jmdict.sqlite. **TBD: decide on bundling strategy.**
+The iOS app already has kanjidic2.sqlite bundled alongside jmdict.sqlite.
 
 ### Reading used in this word
 
@@ -154,14 +153,16 @@ Each card shows two zones:
 - The kanjidic2 meanings active in this word (from `kanji_meanings` in
   vocab.json, populated by the new LLM step)
 
-**This kanji in general** (omit if identical to "this word" data):
+**This kanji in general** (omit if all 3 are identical to "this word" data):
 - Top on-reading from kanjidic2, if different from the reading used here
 - Top kun-reading from kanjidic2, if different from the reading used here
 - Top 2 kanjidic2 meanings, if different from the active meanings shown above
 
-**Optional disclosure** (future, not blocking):
+**Extra disclosure**:
 - "Also learning this kanji in: 図形, 地図" — a list of other enrolled words
-  that share this kanji, purely informational.
+  that share this kanji. Tapping on those will raise a new WordDetailSheet
+  for that word (potentially with null origin, so the new sheet may show
+  full-corpus senses, instead of the senses in any one document/sentence).
 
 ---
 
@@ -169,24 +170,26 @@ Each card shows two zones:
 
 ### Facet: kanji-to-reading
 
-- **Question stem**: the kanji character (large, centered), with the parent word
-  shown small below as context ("as used in 図書館")
+- **Question stem**: the kanji character (large, centered), by itself: NO parent word
 - **Expected answer**: the on-reading used in this word (e.g., "ズ")
-- **Multiple choice distractors**: other on-readings of the same kanji (e.g.,
-  "ト"), plus on-readings of visually similar kanji — sourced from kanjidic2
-  without LLM
+- **Multiple choice distractors**: on-readings of visually or linguistically similar kanji
+  — sourced from kanjidic2 without LLM (perhaps using radicals?); readings of other kanji
+  in this word; DO NOT INCLUDE valid on/kun readings of the kanji under test as
+  distractors.
 - **Graduation to free-answer**: same rule as other facets (≥ 3 reviews and
   halflife ≥ 48 hours)
 
 ### Facet: kanji-to-meaning
 
-- **Question stem**: the kanji character, with parent word as context
+- **Question stem**: the kanji character, large and centered; no parent word
 - **Expected answer**: one or more of the active kanjidic2 meanings for this
   word (match any)
-- **Multiple choice distractors**: other meanings from kanjidic2 for the same
-  kanji, plus meanings from other kanji in the same word
+- **Multiple choice distractors**: other meanings from kanjidic2 for different
+  kanji, plus meanings from other kanji in the same word. No LLM. Hopefully
+  the large sample size will make synonyms unlikely.
 - **Format**: always multiple choice (meanings are English words/phrases, not
-  character production)
+  character production; though note that we have prior art of Haiku grading
+  reading-to-meaning vocab quizzes)
 
 ---
 
@@ -194,9 +197,9 @@ Each card shows two zones:
 
 ### Step 1 — kanjidic2 data available in app (prerequisite for everything)
 
-- [ ] Decide: bundle `kanjidic2.sqlite` separately, or import its `kanji` table
+- [x] Decide: bundle `kanjidic2.sqlite` separately, or import its `kanji` table
   into `jmdict.sqlite` as a new table. Separate file keeps concerns separated;
-  merged file reduces bundle count. Either works; pick one.
+  merged file reduces bundle count. Either works; pick one. — DONE. Kanjidic2 is already bundled with the app.
 - [ ] Add the chosen data source to the Xcode target and document it in
   `docs/DATA-FORMATS.md`.
 
