@@ -10,7 +10,7 @@ enum ChatContext: Sendable {
     case transitivePairDetail(pairId: String)
     case grammarDetail(topicId: String)
     case vocabQuiz(wordId: String, facet: String, sessionId: String)
-    case grammarQuiz(topicId: String, facet: String)
+    case grammarQuiz(topicId: String, facet: String, sessionId: String)
     case grammarQuizGeneration(topicId: String)
 
     var tag: String {
@@ -19,7 +19,7 @@ enum ChatContext: Sendable {
         case .transitivePairDetail(let id):                 return "pair:\(id)"
         case .grammarDetail(let id):                        return "grammar:\(id)"
         case .vocabQuiz(let id, let facet, let sessionId):  return "quiz:\(id):\(facet):\(sessionId)"
-        case .grammarQuiz(let id, let facet):               return "quiz:\(id):\(facet)"
+        case .grammarQuiz(let id, let facet, let sessionId): return "quiz:\(id):\(facet):\(sessionId)"
         case .grammarQuizGeneration(let id):                return "quiz-gen:\(id)"
         }
     }

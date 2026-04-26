@@ -220,6 +220,12 @@ struct QuizItem: Identifiable {
     /// Full kana reading derived from the committed furigana segments (concat rt ?? ruby for each segment).
     /// nil when there is no word commitment. Used for local exact-match grading on reading facets.
     let committedReading: String?
+    /// The exact written form the user committed to (ruby fields of furigana segments joined).
+    /// nil when there is no word commitment. Used as the explicit correct answer in meaning-reading-to-kanji
+    /// prompts so the LLM picks the enrolled form rather than any valid JMDict written form.
+    /// Built from furigana ruby fields joined (not from JMDict wordWritten), so alternate orthographies
+    /// like 閉じ籠もる are correctly preserved even if JMDict lists a different canonical form.
+    let committedWrittenText: String?
 
     /// Zero-based indices into senseExtras for senses attested in the corpus (from llm_sense.sense_indices).
     /// Defaults to [0] (first sense) when absent or empty, so quiz prompts always have at least one meaning.
@@ -406,14 +412,15 @@ struct QuizContext {
                     }
                 }
                 // Only set if there were actual uncommitted kanji replaced.
-                let allKanjiInWord = Set(
-                    (wordWritten[wordId]?.first ?? "").unicodeScalars
-                        .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
-                                  ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
-                                  ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
-                        .map { String($0) }
+                // Scan the committed form's furigana ruby fields (not the first JMDict written
+                // form) so that alternate-orthography words like 閉じ籠もる are handled correctly.
+                // The first JMDict written form may use a different kanji (e.g. 閉じ込もる) or
+                // hiragana (閉じこもる), causing the check to miss kanji that are present in the
+                // committed form and therefore incorrectly suppress the partial template.
+                let allKanjiInCommittedForm = Set(
+                    QuizSession.extractKanji(from: segments.map { $0["ruby"] ?? "" }.joined())
                 )
-                if !allKanjiInWord.subtracting(committedSet).isEmpty {
+                if !allKanjiInCommittedForm.subtracting(committedSet).isEmpty {
                     partialKanjiTemplate = template
                 }
             } else {
@@ -429,6 +436,7 @@ struct QuizContext {
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate,
                 committedReading: committedReading,
+                committedWrittenText: commitments[wordId]?.committedWrittenText,
                 corpusSenseIndices: corpusSensesMap[wordId] ?? [0]))
         }
 
@@ -452,7 +460,7 @@ struct QuizContext {
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
                     facet: "pair-discrimination", status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
-                    corpusSenseIndices: []
+                    committedWrittenText: nil, corpusSenseIndices: []
                 ))
             }
         }
@@ -503,7 +511,7 @@ struct QuizContext {
                     writtenTexts: [counterItem.counter.kanji], kanaTexts: [counterItem.counter.reading],
                     hasKanji: false, facet: facet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
-                    corpusSenseIndices: []
+                    committedWrittenText: nil, corpusSenseIndices: []
                 ))
             }
         }

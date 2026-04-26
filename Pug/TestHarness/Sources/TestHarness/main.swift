@@ -35,6 +35,10 @@ import GRDB
 let args = CommandLine.arguments
 guard args.count >= 2 else {
     fputs("Usage: TestHarness <word_id> [facet] [--grade \"ans1\" \"ans2\" ...]\n", stderr)
+    fputs("       TestHarness <word_id> kanji-to-reading --committed-kanji 前,例\n", stderr)
+    fputs("       TestHarness <word_id> meaning-reading-to-kanji --committed-kanji 前,例\n", stderr)
+    fputs("       TestHarness <word_id> meaning-reading-to-kanji --committed-kanji 前\n", stderr)
+    fputs("       TestHarness <word_id> meaning-reading-to-kanji --committed-kanji 閉,籠 --committed-written-form 閉じ籠もる\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
     fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
@@ -149,6 +153,32 @@ if let gradeIdx = args.firstIndex(of: "--grade") {
 }
 
 let isGradeMode = !gradeAnswers.isEmpty
+
+// --committed-kanji 前,例 : comma-separated kanji characters the user has committed to learning.
+// Provide all kanji in the word for full commitment; a strict subset for partial commitment.
+// Required when using --facet kanji-to-reading or --facet meaning-reading-to-kanji in
+// generate/grade mode (those facets need commitment data to build the quiz prompt).
+let committedKanjiArg: [String]?
+if let ckIdx = args.firstIndex(of: "--committed-kanji"), ckIdx + 1 < args.count {
+    committedKanjiArg = args[ckIdx + 1]
+        .components(separatedBy: ",")
+        .map { $0.trimmingCharacters(in: .whitespaces) }
+        .filter { !$0.isEmpty }
+} else {
+    committedKanjiArg = nil
+}
+
+// --committed-written-form 閉じ籠もる : the specific orthographic form the user enrolled.
+// Optional. When omitted, defaults to entry.writtenTexts.first (the first JMDict kanji form).
+// Needed when the committed form is not the first JMDict written form — for example, a word
+// with many alternate orthographies (閉じこもる, 閉じ籠もる, …) where the student chose a
+// non-default form. Also used as the furigana lookup key when building partial templates.
+let committedWrittenFormArg: String?
+if let cwIdx = args.firstIndex(of: "--committed-written-form"), cwIdx + 1 < args.count {
+    committedWrittenFormArg = args[cwIdx + 1]
+} else {
+    committedWrittenFormArg = nil
+}
 
 // Load API key from .env (project root is four directories up from this file's build location,
 // but we'll resolve relative to the working directory where the user invokes the binary).
@@ -383,8 +413,12 @@ let hasKanji = !entry.writtenTexts.isEmpty
 
 // MARK: - Load JmdictFurigana.json (required for dump-prompts and live modes)
 
+// Furigana is needed for dump/live modes and for kanji-facet generate/grade mode when
+// the user provides --committed-kanji (so partial-commitment templates can be computed).
+let needsFurigana = isDumpMode || isLiveMode ||
+    ((facet == "kanji-to-reading" || facet == "meaning-reading-to-kanji") && committedKanjiArg != nil)
 let furiganaMap: [String: [JmdictFuriganaEntry]]
-if isDumpMode || isLiveMode {
+if needsFurigana {
     guard let furiganaPath = findFile("JmdictFurigana.json") else {
         fputs("Error: JmdictFurigana.json not found (searched up from cwd)\n", stderr)
         fputs("Download from: https://github.com/Doublevil/JmdictFurigana/releases\n", stderr)
@@ -400,7 +434,9 @@ if isDumpMode || isLiveMode {
 // MARK: - Dump prompts mode (no API calls)
 
 if isDumpMode {
-    dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB, furiganaMap: furiganaMap)
+    dumpPrompts(entry: entry, wordId: wordId, jmdict: jmdictDB, furiganaMap: furiganaMap,
+                committedWrittenFormOverride: committedWrittenFormArg,
+                committedKanjiOverride: committedKanjiArg)
     exit(0)
 }
 
@@ -431,6 +467,40 @@ print("")
 
 // MARK: - Build QuizItem
 
+// Build kanji commitment data from --committed-kanji when provided.
+// partialKanjiTemplate is built from JmdictFurigana (already loaded above when needed).
+// --committed-written-form overrides the default (entry.writtenTexts.first) so that
+// alternate-orthography words (e.g. 閉じ籠もる vs. the first JMDict form 閉じこもる)
+// are handled correctly for both the prompt and the furigana lookup.
+let itemCommittedKanji: [String]?
+let itemPartialKanjiTemplate: String?
+let itemCommittedWrittenText: String?
+if let committed = committedKanjiArg, !committed.isEmpty {
+    itemCommittedKanji = committed
+    let enrolledForm = committedWrittenFormArg ?? entry.writtenTexts.first ?? entry.kanaTexts.first
+    itemCommittedWrittenText = enrolledForm
+    // Build partial template if user committed only a subset of the word's kanji.
+    let allKanjiInForm: [String] = (enrolledForm ?? "").unicodeScalars
+        .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+                  ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+                  ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
+        .map { String($0) }
+    let committedSet = Set(committed)
+    let hasUncommitted = !Set(allKanjiInForm).subtracting(committedSet).isEmpty
+    if hasUncommitted,
+       let written = enrolledForm,
+       let reading = entry.kanaTexts.first,
+       let furigana = lookupFurigana(text: written, reading: reading, furiganaMap: furiganaMap) {
+        itemPartialKanjiTemplate = buildPartialTemplate(furigana: furigana, committedKanji: committedSet)
+    } else {
+        itemPartialKanjiTemplate = nil
+    }
+} else {
+    itemCommittedKanji = nil
+    itemPartialKanjiTemplate = nil
+    itemCommittedWrittenText = nil
+}
+
 let item = QuizItem(
     wordType: "jmdict",
     wordId: wordId,
@@ -441,9 +511,10 @@ let item = QuizItem(
     facet: facet,
     status: .reviewed(recall: 0.5, isFree: isGradeMode, halflife: 24.0),
     senseExtras: Array(entry.senseExtras.prefix(5)),
-    committedKanji: nil,
-    partialKanjiTemplate: nil,
+    committedKanji: itemCommittedKanji,
+    partialKanjiTemplate: itemPartialKanjiTemplate,
     committedReading: nil,
+    committedWrittenText: itemCommittedWrittenText,
     corpusSenseIndices: [0]
 )
 
@@ -502,8 +573,10 @@ if isGradeMode {
         print("")
     }
 } else {
-    if facet == "kanji-to-reading" || facet == "meaning-reading-to-kanji" {
-        fputs("Error: \(facet) generation requires kanji commitment data (not yet supported in TestHarness)\n", stderr)
+    if (facet == "kanji-to-reading" || facet == "meaning-reading-to-kanji") && committedKanjiArg == nil {
+        fputs("Error: \(facet) requires --committed-kanji <kanji1,kanji2,...>\n", stderr)
+        fputs("  Provide all kanji in the word for full commitment, or a subset for partial commitment.\n", stderr)
+        fputs("  Example: --committed-kanji 前,例\n", stderr)
         exit(1)
     }
     print("Generating question…\n")

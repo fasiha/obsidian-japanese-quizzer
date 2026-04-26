@@ -11,6 +11,23 @@
 
 The last two facets **only exist** for words where the user has committed to learning kanji (via `word_commitment.kanji_chars`).
 
+## Meaning-reading-to-kanji distractor generation
+
+This facet uses a **substitution-based strategy** distinct from the other three facets:
+
+1. **App builds the stem locally**: `meaningReadingToKanjiStem()` picks a random corpus-attested sense, joins all its glosses with "; ", then appends the kana reading. No LLM call for the stem.
+
+2. **LLM provides replacement kanji only**: The system prompt specifies which kanji position(s) are substitutable (the committed kanji for partial commitment, or all kanji for full commitment). The prompt asks Haiku to fill a pre-populated array of kanji slots with visually-similar or same-reading replacements. The LLM returns **only** the replacement kanji, not full distractor strings.
+
+3. **Swift parser reconstructs distractors**: `parseMeaningReadingToKanjiSubstitutions()` applies the LLM's substitutions to the correct form to build the three distractor strings. All generated distractors are validated against the word's known written forms (`word_commitment.writtenTexts`) — any valid written form is rejected, ensuring the student sees only **incorrect** forms.
+
+**Rationale:**
+
+- **Stem consistency**: Fixing the stem to a single sense with full glosses prevents students from pattern-matching on a fixed English phrase.
+- **Controlled distractors**: Substitution-based generation ensures distractors are always one-kanji-difference away from the correct form (pedagogically gradual). Limiting to visually-similar or same-reading kanji results in nonsense words, but again, ok for learners.
+- **Enforcement**: The Swift parser's `seen` set (seeded with all written forms) is the ground truth. The system prompt's "forbidden replacements" is a hint to Haiku; the real correctness guarantee lives in the parser.
+- **Fallback**: If Haiku violates constraints (e.g., uses a forbidden kanji), the parser simply rejects that pair and moves to the next one. The prompt asks for 4 pairs to provide slack. After a few weeks, check `chat.sqlite` for whether that 4th backup was ever used. If not, consider removing it and saving some tokens.
+
 ## Word commitment & partial kanji
 
 When a user commits to a word, they choose:

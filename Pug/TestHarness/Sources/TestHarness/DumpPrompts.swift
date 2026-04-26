@@ -82,6 +82,9 @@ struct PromptPath {
     let commitment: String     // "none", "full", "partial"
     let committedKanji: [String]?
     let partialKanjiTemplate: String?
+    /// The enrolled written form (ruby fields of furigana segments joined). Used as the correct
+    /// answer in meaning-reading-to-kanji quizzes so the test harness can validate it deterministically.
+    let committedWrittenText: String?
 
     var isFreeAnswer: Bool { mode == "free-grading" }
 
@@ -101,35 +104,63 @@ struct PromptPath {
 
 /// Build the list of prompt paths for a given word's kanji structure.
 /// Uses real JmdictFurigana data for partial templates (matching iOS app behavior).
-func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFuriganaEntry]]) -> (paths: [PromptPath], kanjiChars: [String], partialTemplate: String?) {
+///
+/// - Parameters:
+///   - committedWrittenFormOverride: When provided, uses this written form instead of
+///     `entry.writtenTexts.first` for kanji extraction, partial-template building, and
+///     `committedWrittenText`. Needed for words with alternate orthographies (e.g. the
+///     student enrolled 閉じ籠もる but JMDict lists 閉じこもる first).
+///   - committedKanjiOverride: When provided, uses these kanji as the committed set for
+///     the full-commitment path instead of all kanji found in the written form.
+func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFuriganaEntry]],
+                committedWrittenFormOverride: String? = nil,
+                committedKanjiOverride: [String]? = nil) -> (paths: [PromptPath], kanjiChars: [String], partialTemplate: String?) {
     let hasKanji = !entry.writtenTexts.isEmpty
-    let written = entry.writtenTexts.first ?? ""
+    // Use the override form for kanji extraction and furigana lookup when provided;
+    // fall back to the first JMDict written form otherwise.
+    let written = committedWrittenFormOverride ?? entry.writtenTexts.first ?? ""
     let reading = entry.kanaTexts.first ?? ""
 
-    // Detect kanji characters in the written form
+    // Detect kanji characters in the (possibly overridden) written form
     let kanjiChars: [String] = written.unicodeScalars
         .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
                   ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
                   ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
         .map { String($0) }
 
+    // The committed kanji for the full-commitment path: use override when provided.
+    let fullCommitKanji: [String] = committedKanjiOverride ?? kanjiChars
+
     let hasMultipleKanji = kanjiChars.count >= 2
 
-    // Build partial template using real furigana data
+    // Build partial template using real furigana data.
+    // Partial means: first kanji in fullCommitKanji committed, remaining kanji uncommitted.
     let partialTemplate: String?
-    if hasMultipleKanji {
+    if hasMultipleKanji && fullCommitKanji.count < kanjiChars.count {
+        // Explicit partial override: some kanji committed, some not.
         guard let furigana = lookupFurigana(text: written, reading: reading, furiganaMap: furiganaMap) else {
             fputs("Error: no JmdictFurigana entry for text='\(written)' reading='\(reading)'\n", stderr)
             fputs("The JmdictFurigana.json file may be outdated or the word may not have furigana data.\n", stderr)
             exit(1)
         }
-        // Partial commitment: first kanji committed, rest uncommitted
-        let committedSet = Set([kanjiChars[0]])
-        let template = buildPartialTemplate(furigana: furigana, committedKanji: committedSet)
-        // Only set if there's actually something different (uncommitted kanji were replaced)
+        let committedSet = Set(fullCommitKanji)
         let allKanjiSet = Set(kanjiChars)
         if !allKanjiSet.subtracting(committedSet).isEmpty {
-            partialTemplate = template
+            partialTemplate = buildPartialTemplate(furigana: furigana, committedKanji: committedSet)
+        } else {
+            partialTemplate = nil
+        }
+    } else if hasMultipleKanji && committedKanjiOverride == nil {
+        // Default partial path: commit first kanji only.
+        guard let furigana = lookupFurigana(text: written, reading: reading, furiganaMap: furiganaMap) else {
+            fputs("Error: no JmdictFurigana entry for text='\(written)' reading='\(reading)'\n", stderr)
+            fputs("The JmdictFurigana.json file may be outdated or the word may not have furigana data.\n", stderr)
+            exit(1)
+        }
+        let committedSet = Set([kanjiChars[0]])
+        let allKanjiSet = Set(kanjiChars)
+        if !allKanjiSet.subtracting(committedSet).isEmpty {
+            partialTemplate = buildPartialTemplate(furigana: furigana, committedKanji: committedSet)
         } else {
             partialTemplate = nil
         }
@@ -144,10 +175,12 @@ func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFur
     if hasKanji {
         var commitments: [(String, [String]?, String?)] = [
             ("none", nil, nil),
-            ("full", kanjiChars, nil),
+            ("full", fullCommitKanji, nil),
         ]
-        if hasMultipleKanji, let tmpl = partialTemplate {
-            commitments.append(("partial", [kanjiChars[0]], tmpl))
+        // Only add a partial path when there are uncommitted kanji remaining.
+        let uncommittedExist = !Set(kanjiChars).subtracting(Set(fullCommitKanji)).isEmpty
+        if hasMultipleKanji && uncommittedExist, let tmpl = partialTemplate {
+            commitments.append(("partial", fullCommitKanji, tmpl))
         }
         allCommitments = commitments
     } else {
@@ -170,9 +203,13 @@ func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFur
                 // 3. meaning-reading-to-kanji is always multiple choice (no free-grading)
                 if facet == "meaning-reading-to-kanji" && mode == "free-grading" { continue }
 
+                // For meaning-reading-to-kanji the correct answer is the enrolled written form.
+                // Uses the override form when provided; falls back to the first JMDict written form.
+                let committedWritten: String? = (facet == "meaning-reading-to-kanji") ? written : nil
                 paths.append(PromptPath(
                     facet: facet, mode: mode, commitment: commitLabel,
-                    committedKanji: commitKanji, partialKanjiTemplate: commitTemplate))
+                    committedKanji: commitKanji, partialKanjiTemplate: commitTemplate,
+                    committedWrittenText: committedWritten))
             }
         }
     }
@@ -197,6 +234,7 @@ func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptP
         committedKanji: path.committedKanji,
         partialKanjiTemplate: path.partialKanjiTemplate,
         committedReading: nil,
+        committedWrittenText: path.committedWrittenText,
         corpusSenseIndices: [0]
     )
 }
@@ -219,9 +257,13 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 // MARK: - Dump mode (no API calls)
 
 @MainActor func dumpPrompts(entry: QuizContext.JmdictEntry, wordId: String, jmdict: any DatabaseReader,
-                             furiganaMap: [String: [JmdictFuriganaEntry]]) {
-    let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
-    let (paths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap)
+                             furiganaMap: [String: [JmdictFuriganaEntry]],
+                             committedWrittenFormOverride: String? = nil,
+                             committedKanjiOverride: [String]? = nil) {
+    let wordText = committedWrittenFormOverride ?? entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
+    let (paths, kanjiChars, _) = buildPaths(entry: entry, furiganaMap: furiganaMap,
+                                             committedWrittenFormOverride: committedWrittenFormOverride,
+                                             committedKanjiOverride: committedKanjiOverride)
 
     // Create a dummy session (no API calls needed)
     let client = AnthropicClient(apiKey: "dummy", model: "dummy")
@@ -435,27 +477,17 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                             issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kanaTexts)")
                         }
                     case "meaning-reading-to-kanji":
-                        // For full commitment, correct choice is the written form (e.g. 前例).
-                        // For partial commitment, Haiku may show the full template (前れい)
-                        // OR just the individual kanji that fills the blank (例).
-                        // Both are valid UX — accept either.
-                        let written = entry.writtenTexts.first ?? ""
+                        // Correct answer is now deterministic: Swift reconstructs it from the enrolled form.
+                        // For partial commitment the correct answer is the partial template (e.g. 前れい).
+                        // For full commitment it is the enrolled written form (committedWrittenText).
                         if let template = path.partialKanjiTemplate {
-                            // Extract the uncommitted kanji (those replaced by kana in the template)
-                            let committedSet = Set(path.committedKanji ?? [])
-                            let allKanji = written.unicodeScalars
-                                .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
-                                          ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
-                                          ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
-                                .map { String($0) }
-                            let uncommitted = allKanji.filter { !committedSet.contains($0) }
-                            let validAnswers = [template, written] + uncommitted
-                            if !validAnswers.contains(correct) {
-                                issues.append("WARN: correct choice '\(correct)' not in valid answers \(validAnswers)")
+                            if correct != template {
+                                issues.append("WARN: correct choice '\(correct)' != partial template '\(template)'")
                             }
                         } else {
-                            if correct != written {
-                                issues.append("WARN: correct choice '\(correct)' != expected '\(written)'")
+                            let expected = path.committedWrittenText ?? (entry.writtenTexts.first ?? "")
+                            if correct != expected {
+                                issues.append("WARN: correct choice '\(correct)' != enrolled form '\(expected)'")
                             }
                         }
                     default: break
@@ -565,7 +597,8 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                 results.append((path: PromptPath(facet: path.facet, mode: "free-grading-wrong",
                                                   commitment: path.commitment,
                                                   committedKanji: path.committedKanji,
-                                                  partialKanjiTemplate: path.partialKanjiTemplate),
+                                                  partialKanjiTemplate: path.partialKanjiTemplate,
+                                                  committedWrittenText: path.committedWrittenText),
                                  passed: wrongPassed, issue: wrongIssues.first))
 
                 // Extra test for kanji-to-reading: answer with reading + meaning to elicit MEANING_DEMONSTRATED
@@ -610,7 +643,8 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                     results.append((path: PromptPath(facet: path.facet, mode: "free-meaning-demonstrated",
                                                       commitment: path.commitment,
                                                       committedKanji: path.committedKanji,
-                                                      partialKanjiTemplate: path.partialKanjiTemplate),
+                                                      partialKanjiTemplate: path.partialKanjiTemplate,
+                                                      committedWrittenText: path.committedWrittenText),
                                      passed: mdPassed, issue: mdIssues.first))
                 }
             }

@@ -772,6 +772,24 @@ final class QuizSession {
         }
     }
 
+    /// Build the app-side stem for meaning-reading-to-kanji multiple choice.
+    /// Picks a random corpus-attested sense and joins all its glosses with "; ", then appends the kana reading.
+    /// Using all glosses for the chosen sense (not just the first) avoids ambiguity when a sense has multiple
+    /// sub-glosses (e.g. "to seclude oneself; to shut oneself away"). Rotating the sense across quiz sessions
+    /// prevents the student from pattern-matching on a single fixed English phrase.
+    func meaningReadingToKanjiStem(for item: QuizItem) -> String {
+        let senses = item.corpusSenses.isEmpty ? item.senseExtras : item.corpusSenses
+        let gloss: String
+        if senses.isEmpty {
+            gloss = item.wordText
+        } else {
+            let sense = senses[Int.random(in: 0..<senses.count)]
+            gloss = sense.glosses.joined(separator: "; ")
+        }
+        let kana = item.committedReading ?? item.kanaTexts.first ?? ""
+        return kana.isEmpty ? gloss : "\(gloss) — \(kana)"
+    }
+
     // MARK: - Counter question builder
 
     /// Build stem for counter-number-to-reading: "6 + 匹(ひき)"
@@ -1609,7 +1627,15 @@ final class QuizSession {
             let genToolsJSON = meta.toolsCalled.isEmpty ? nil :
                 (try? JSONSerialization.data(withJSONObject: meta.toolsCalled)).flatMap { String(data: $0, encoding: .utf8) }
             // Parse multiple-choice JSON (generation loop is only used for multiple choice; free-answer stems are built app-side)
-            if let multipleChoice = parseMultipleChoiceJSON(raw) {
+            let parsedMC: MultipleChoiceQuestion?
+            if item.facet == "meaning-reading-to-kanji" {
+                let correctForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+                let stem = meaningReadingToKanjiStem(for: item)
+                parsedMC = parseMeaningReadingToKanjiSubstitutions(raw, correctForm: correctForm, stem: stem, forbiddenForms: Set(item.writtenTexts))
+            } else {
+                parsedMC = parseMultipleChoiceJSON(raw)
+            }
+            if let multipleChoice = parsedMC {
                 finalMultipleChoice = multipleChoice
                 let letters = ["A", "B", "C", "D"]
                 let choicesText = multipleChoice.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
@@ -1633,6 +1659,94 @@ final class QuizSession {
             print("[QuizSession] \(label) attempt \(attempt): multiple choice parse failed, retrying")
         }
         return (finalQuestion, finalMultipleChoice, finalMsgs)
+    }
+
+    /// Returns kanji characters (CJK Unified Ideographs) from a string, preserving order, with duplicates removed.
+    nonisolated static func extractKanji(from text: String) -> [String] {
+        var seen = Set<String>()
+        return text.unicodeScalars
+            .filter { ($0.value >= 0x4E00 && $0.value <= 0x9FFF) ||
+                      ($0.value >= 0x3400 && $0.value <= 0x4DBF) ||
+                      ($0.value >= 0xF900 && $0.value <= 0xFAFF) }
+            .map { String($0) }
+            .filter { seen.insert($0).inserted }
+    }
+
+    /// Builds a pre-populated substitution-slots string for the meaning-reading-to-kanji distractor prompt.
+    /// Cycles through `kanji` to fill `count` slots, each with a "?" placeholder for the replacement.
+    /// Example: kanji=["閉","籠"], count=3 → `[["閉","?"], ["籠","?"], ["閉","?"]]`
+    static func substitutionSlotsString(kanji: [String], count: Int = 3) -> String {
+        guard !kanji.isEmpty else { return "[]" }
+        let slots = (0..<count).map { i in "[\"\(kanji[i % kanji.count])\", \"?\"]" }
+        return "[\(slots.joined(separator: ", "))]"
+    }
+
+    /// Parses the meaning-reading-to-kanji substitutions response.
+    /// Expects a plain JSON array of [original, replacement] pairs (no wrapper object).
+    /// Applies substitutions to `correctForm` to build distractors, uses `stem` as the question stem.
+    /// `forbiddenForms` seeds the deduplication set so no valid written form of the word appears as a distractor.
+    private func parseMeaningReadingToKanjiSubstitutions(_ raw: String, correctForm: String, stem: String, forbiddenForms: Set<String> = []) -> MultipleChoiceQuestion? {
+        // Extract the outermost [...] array from the response (may be inside a code fence).
+        func extractArray() -> String? {
+            var search = raw[...]
+            while let fenceStart = search.range(of: "```") {
+                let afterFence = search[fenceStart.upperBound...]
+                let body = afterFence.drop(while: { $0 != "\n" }).dropFirst()
+                if let closeRange = body.range(of: "```") {
+                    let candidate = String(body[..<closeRange.lowerBound])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if candidate.hasPrefix("[") { return candidate }
+                    search = body[closeRange.upperBound...]
+                } else { break }
+            }
+            if let open = raw.firstIndex(of: "["), let close = raw.lastIndex(of: "]") {
+                return String(raw[open...close])
+            }
+            return nil
+        }
+        guard let jsonText = extractArray(),
+              let data = jsonText.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data)
+        else { return nil }
+
+        // Resolve substitutions: either flat ["r1","r2","r3"] (single kanji) or pairs [["k","r"],...] (multi kanji).
+        let substitutableKanji = Self.extractKanji(from: correctForm)
+        var seen = forbiddenForms.union([correctForm])
+        var distractors: [String] = []
+
+        if let replacements = parsed as? [String], substitutableKanji.count == 1 {
+            // Single-kanji format: flat array of replacement strings.
+            let kanji = substitutableKanji[0]
+            for replacement in replacements {
+                guard !replacement.isEmpty else { continue }
+                // replacingOccurrences replaces all instances of the kanji, which is safe:
+                // Japanese dictionary headwords (single morphemes) don't have the same kanji twice.
+                let distractor = correctForm.replacingOccurrences(of: kanji, with: replacement)
+                guard distractor != correctForm, seen.insert(distractor).inserted else { continue }
+                distractors.append(distractor)
+                if distractors.count == 3 { break }
+            }
+        } else if let pairs = parsed as? [[String]] {
+            // Multi-kanji format: array of [original, replacement] pairs.
+            // Prompt asks for 4 pairs to handle cases where Haiku violates constraints (e.g., uses a forbidden
+            // replacement). We take the first 3 that produce unique valid distractors. User chat.sqlite is logged
+            // for monitoring how often the 4th pair is actually needed.
+            guard pairs.count >= 4 else { return nil }
+            for pair in pairs {
+                guard pair.count == 2, !pair[0].isEmpty, !pair[1].isEmpty else { continue }
+                let distractor = correctForm.replacingOccurrences(of: pair[0], with: pair[1])
+                guard distractor != correctForm, seen.insert(distractor).inserted else { continue }
+                distractors.append(distractor)
+                if distractors.count == 3 { break }
+            }
+        } else { return nil }
+
+        guard distractors.count == 3 else { return nil }
+
+        let newCorrectIndex = Int.random(in: 0..<4)
+        var choices = [correctForm] + distractors
+        choices.swapAt(0, newCorrectIndex)
+        return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: newCorrectIndex)
     }
 
     private func parseMultipleChoiceJSON(_ raw: String) -> MultipleChoiceQuestion? {
@@ -1763,6 +1877,40 @@ final class QuizSession {
     func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
                               postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
+        // meaning-reading-to-kanji generation only needs the word form, kana, and substitution rules.
+        // The full shared-scaffold prompt (entry ref, memory, facet label) carries irrelevant noise for this task.
+        if item.facet == "meaning-reading-to-kanji" && isGenerating {
+            let correctForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+            let kana = item.committedReading ?? item.kanaTexts.first ?? ""
+            let substitutableKanji: [String]
+            if let committed = item.committedKanji, !committed.isEmpty {
+                substitutableKanji = committed
+            } else {
+                substitutableKanji = Self.extractKanji(from: correctForm)
+            }
+            let forbidden = Self.extractKanji(from: item.writtenTexts.joined()).joined(separator: ", ")
+            let kanaNote = kana.isEmpty ? "" : " (\(kana))"
+            if substitutableKanji.count == 1 {
+                let kanji = substitutableKanji[0]
+                return """
+                Word: \(correctForm)\(kanaNote)
+                Replace \(kanji) with 3 distinct kanji, each visually similar to or sharing a reading with \(kanji).
+                Kana characters in the word are fixed — only \(kanji) is being replaced.
+                Forbidden (valid written forms of this word — never use): \(forbidden).
+                """
+            } else {
+                let slots = Self.substitutionSlotsString(kanji: substitutableKanji, count: 4)
+                return """
+                Word: \(correctForm)\(kanaNote)
+                For each pre-filled pair below, replace the ? with a single kanji that is visually similar to or shares a reading with the original.
+                Only the kanji positions listed are substituted — kana characters in the word are fixed and must appear unchanged in every option.
+                Pairs: \(slots)
+                Forbidden replacements (valid written forms of this word — never use): \(forbidden).
+                All 4 replacements must produce distinct strings when substituted.
+                """
+            }
+        }
+
         let facetRule: String
         let wordLine: String
         // Full entry data injected into every facet so Claude never needs to look up the target word.
@@ -1855,29 +2003,16 @@ final class QuizSession {
                 }
             }
         case "meaning-reading-to-kanji":
-            let kana = item.kanaTexts.first ?? "unknown"
+            // Generation is handled by the early return above; this branch is coaching-only.
             if let template = item.partialKanjiTemplate,
                let committed = item.committedKanji, !committed.isEmpty {
                 let committedList = committed.joined(separator: "、")
-                if isGenerating {
-                    facetRule = """
-                    Show English + kana ONLY (never kanji). Ask which option is the correct kanji form. A/B/C/D kanji options.
-                    Partial commitment: studying \(committedList). Correct template: \(template).
-                    Distractors: swap ONLY the committed kanji (\(committedList)) with 3 different plausible kanji (semantically related or visually similar) — no lookup needed. Keep all other characters identical.
-                    """
-                    wordLine = "Word: \(entryRef). Stem kana: \(kana). Correct option: \(template) — NEVER in stem."
-                } else {
-                    facetRule = "Facet tested: meaning-reading-to-kanji partial (studying \(committedList), correct form: \(template)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
-                    wordLine = "Word: \(entryRef)"
-                }
+                facetRule = "Facet tested: meaning-reading-to-kanji partial (studying \(committedList), correct form: \(template)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
+                wordLine = "Word: \(entryRef)"
             } else {
-                if isGenerating {
-                    facetRule = "Show English + kana ONLY (never kanji). A/B/C/D kanji options."
-                    wordLine = "Word: \(entryRef). Correct written form (option only, NEVER in stem)."
-                } else {
-                    facetRule = "Facet tested: meaning-reading-to-kanji (student sees English + kana, answers with kanji form)."
-                    wordLine = "Word: \(entryRef)"
-                }
+                let enrolledForm = item.committedWrittenText ?? item.wordText
+                facetRule = "Facet tested: meaning-reading-to-kanji (student sees English + kana, answers with kanji form). Correct form: \(enrolledForm)."
+                wordLine = "Word: \(entryRef)"
             }
         default:
             facetRule = "Standard quiz-purity rules."
@@ -1909,19 +2044,16 @@ final class QuizSession {
                 } else {
                     distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Use alternate on/kun readings of the kanji or swap one mora. Keep the same length and rhythm as the correct answer."
                 }
-            case "meaning-reading-to-kanji":
-                // Partial meaning-reading-to-kanji already has specific distractor instructions in facetRule
-                if item.partialKanjiTemplate != nil {
-                    distractorLine = ""
-                } else {
-                    let allWritten = item.writtenTexts.joined(separator: ", ")
-                    distractorLine = "\nDistractors: write 3 wrong kanji forms directly — no lookup needed. Substitute one kanji with a visually similar or same-reading alternative, or use a semantically related word you know. CRITICAL: Every listed written form (\(allWritten)) is a correct answer — do NOT use any of them as a distractor."
-                }
             default:
                 distractorLine = ""
             }
         }
-        let stemLeakGuard = isGenerating ? "\nCRITICAL: Never leak the answer form into the question stem. Silently verify before outputting." : ""
+        let stemLeakGuard: String
+        if isGenerating && item.facet != "meaning-reading-to-kanji" {
+            stemLeakGuard = "\nCRITICAL: Never leak the answer form into the question stem. Silently verify before outputting."
+        } else {
+            stemLeakGuard = ""
+        }
         let sharedCore = """
         You are quizzing a Japanese learner.
         \(wordLine)
@@ -1965,6 +2097,32 @@ final class QuizSession {
 
     func questionRequest(for item: QuizItem) -> String {
         // Free-answer stems are built app-side (freeAnswerStem); only multiple-choice generation goes through the LLM.
+        if item.facet == "meaning-reading-to-kanji" {
+            let substitutableKanji: [String]
+            if let committed = item.committedKanji, !committed.isEmpty {
+                substitutableKanji = committed
+            } else {
+                let correctForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+                substitutableKanji = Self.extractKanji(from: correctForm)
+            }
+            if substitutableKanji.count == 1 {
+                return """
+                Think first if helpful, then end with a ```json code block containing exactly a 3-element array of replacement kanji:
+                ["replacement_1", "replacement_2", "replacement_3"]
+                No other keys or wrapper — just the array.
+                """
+            } else {
+                let examplePairs: String = (0..<4).map { i -> String in
+                    let k = substitutableKanji[i % substitutableKanji.count]
+                    return "[\"\(k)\", \"replacement_\(i + 1)\"]"
+                }.joined(separator: ", ")
+                return """
+                Fill in the replacement kanji for each pre-filled pair. Think first if helpful, then end with a ```json code block containing exactly a 4-element array:
+                [\(examplePairs)]
+                No other keys or wrapper — just the array.
+                """
+            }
+        }
         return """
         Generate ONE multiple-choice question for the \(item.facet) facet.
         Think first if helpful, then end with a ```json code block containing:

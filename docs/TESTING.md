@@ -17,6 +17,15 @@ swift build
 .build/debug/TestHarness <word_id> [facet] --grade "answer1" "answer2"
 # e.g.: .build/debug/TestHarness 1358340 meaning-to-reading --grade "たべもの" "tabemono"
 
+# Generate a meaning-reading-to-kanji question with full commitment (all kanji known):
+.build/debug/TestHarness 1394190 meaning-reading-to-kanji --committed-kanji 前,例
+# Generate with partial commitment (only 前 committed; 例 shown as kana in the template):
+.build/debug/TestHarness 1394190 meaning-reading-to-kanji --committed-kanji 前
+# Same flag works for kanji-to-reading:
+.build/debug/TestHarness 1394190 kanji-to-reading --committed-kanji 前,例
+# When the committed form is not the first JMDict written form, use --committed-written-form:
+.build/debug/TestHarness 1508570 meaning-reading-to-kanji --committed-kanji 閉,籠 --committed-written-form 閉じ籠もる
+
 # Dump all system prompts for every quiz path (NO API calls):
 .build/debug/TestHarness <word_id> --dump-prompts
 # Pipe to an LLM for sanity-checking prompt correctness
@@ -29,8 +38,8 @@ swift build
 ```
 
 **Modes**:
-- **generate** (default): builds a `QuizItem`, calls `generateQuestionForTesting()`, prints the multiple-choice question. Only supports reading-to-meaning and meaning-to-reading facets (kanji-to-reading/meaning-reading-to-kanji require kanji commitment data not available in the harness).
-- **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. Same facet restrictions as generate.
+- **generate** (default): builds a `QuizItem`, calls `generateQuestionForTesting()`, prints the multiple-choice question. All four facets are supported. kanji-to-reading and meaning-reading-to-kanji require `--committed-kanji <kanji1,kanji2,...>` to specify which kanji the student has committed to learning; provide all kanji for full commitment or a strict subset for partial commitment.
+- **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. reading-to-meaning and meaning-to-reading only (kanji facets are always multiple choice in the app).
 - **dump-prompts**: iterates a triple loop over **facet × mode × commitment** and prints every system prompt + user message. Covers all 4–10 paths depending on word shape. No API key needed. Requires `JmdictFurigana.json` (see below).
 - **live**: sends all prompt paths to Haiku (or `ANTHROPIC_MODEL`) and validates responses automatically — checks for answer leakage, correct-answer accuracy, SCORE parsing, and A/B/C/D contamination. Requires API key and `JmdictFurigana.json`. Flags: `--facet <name>` restricts the run to a single facet (omit for all); `--repeat N` repeats each generation path N times; `--gen-only` skips free-text grading paths.
 
