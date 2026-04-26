@@ -84,35 +84,26 @@ final class PlantingSession {
     /// Kanji-facet toggle per wordId; set when the user taps "Got it" on the introduce card.
     private(set) var kanjiEnabled: [String: Bool] = [:]
 
-    /// Review counts keyed by "wordId\0facet".
-    /// Seeded from the DB at session start; incremented locally after each drill answer.
+    /// Review counts keyed by "wordId\0facet", seeded from the DB at session start.
+    /// Used at load time to filter out words whose facets are already past threshold.
     private(set) var reviewCounts: [String: Int] = [:]
 
-    // MARK: - Interleaved drill state
+    // MARK: - Drill queue
     //
-    // Drilling is organized into "rounds". A round is a pre-built, shuffled list containing
-    // one drill question for each word introduced so far in the batch — specifically the first
-    // facet of that word that is still below reviewThreshold.
-    //
-    // The session works through the round question by question. When the round is exhausted:
-    //   • If there are more words to introduce in the batch → show the next introduce card.
-    //   • Else if any (word, facet) is still below threshold → build another round and continue.
-    //   • Else → advance to the next batch.
-    //
-    // This produces the interleaved Memrise-style pattern:
-    //   Introduce word 1 → round [w1] → Introduce word 2 → round [w1, w2] →
-    //   Introduce word 3 → round [w1, w2, w3] → ... → rounds until all at threshold.
-    //
-    // Words introduced earlier naturally accumulate more total drills, but every word
-    // reaches the same minimum of reviewThreshold reviews per facet.
+    // One shuffled queue feeds the whole session. Each "Got it" appends a chunk:
+    //   • all facets of the newly introduced word
+    //   • one facet per older word in the batch (lowest sessionCounts wins)
+    //   • on the LAST intro of the batch: extra entries so every (word, facet) in the
+    //     batch reaches reviewThreshold reviews this session
+    // The chunk is shuffled before append, with a light adjacency fix to avoid the
+    // same word appearing back-to-back across the queue/chunk boundary.
 
-    /// The pre-built question sequence for the current round.
-    /// Items are consumed from the front by advanceAfterDrill().
-    private var currentRoundQueue: [PlantQuizItem] = []
+    /// Drill questions waiting to be shown, consumed front-to-back.
+    private var pendingQueue: [PlantQuizItem] = []
 
-    /// The wordId of the most recently answered drill question.
-    /// Used to avoid presenting the same word back-to-back across round boundaries.
-    private var lastDrilledWordId: String? = nil
+    /// Per-(word, facet) counter of reviews completed *this session*. Used to drive
+    /// the topup at end-of-batch independently of long-term DB review counts.
+    private var sessionCounts: [String: Int] = [:]
 
     /// The word being introduced in the current introduce-card phase (nil otherwise).
     private(set) var currentIntroWord: VocabItem? = nil
@@ -169,8 +160,10 @@ final class PlantingSession {
                 // Word may already have Ebisu models (recovery from a prior session).
                 print("[PlantingSession] setFacetLearning: \(error)")
             }
+            let isLast = batchIntroducedCount + 1 == currentBatch.count
+            enqueueAfterIntroduction(word: word, isLastInBatch: isLast)
             batchIntroducedCount += 1
-            startDrillRound()
+            drainOrAdvance()
         }
     }
 
@@ -226,7 +219,8 @@ final class PlantingSession {
             explanation = "✗  \(mc.choices[choiceIndex])   →   ✓  \(mc.choices[mc.correctIndex])"
         }
         phase = .tapFeedback(correct: correct, explanation)
-        lastDrilledWordId = mc.item.wordId
+        let key = "\(mc.item.wordId)\0\(mc.item.facet)"
+        sessionCounts[key, default: 0] += 1
         Task { await recordPlantingReview(item: mc.item, score: score) }
     }
 
@@ -248,6 +242,14 @@ final class PlantingSession {
         let enrolledRecords = (try? await db.enrolledEbisuRecords()) ?? []
         let enrolledWordIds = Set(enrolledRecords.map(\.wordId))
         let learnedWordIds = (try? await db.learnedWordIds()) ?? []
+
+        // Recovered words inherit kanji-enabled state from whatever facets their
+        // existing Ebisu records cover — we never re-prompt the kanji toggle for them.
+        let kanjiFacets: Set<String> = ["kanji-to-reading", "meaning-reading-to-kanji"]
+        var recoveredKanji: [String: Bool] = [:]
+        for rec in enrolledRecords where kanjiFacets.contains(rec.quizType) {
+            recoveredKanji[rec.wordId] = true
+        }
 
         // Skip words whose reading facets are already above the review threshold,
         // or that the user has explicitly marked as known (present in the learned table).
@@ -271,9 +273,9 @@ final class PlantingSession {
         documentWords      = recovered
         remainingWords     = recovered
         totalToPlant       = recovered.count
-        kanjiEnabled       = [:]
-        currentRoundQueue  = []
-        lastDrilledWordId  = nil
+        kanjiEnabled       = recoveredKanji
+        pendingQueue       = []
+        sessionCounts      = [:]
 
         if recovered.isEmpty {
             phase = .noNewWords
@@ -285,7 +287,30 @@ final class PlantingSession {
         let firstBatch = Array(recovered.prefix(Self.batchSize))
         batchIntroducedCount = firstBatch.filter { enrolledWordIds.contains($0.id) }.count
 
+        // Edge case: every word in the first batch is recovered (no new word will be
+        // introduced to trigger an enqueue). Build the topup chunk now so they get drilled.
+        if batchIntroducedCount == firstBatch.count {
+            enqueueRecoveredOnlyBatch()
+        }
+
         introduceNextWord()
+    }
+
+    /// When a batch consists entirely of recovered words, no "Got it" tap will fire to
+    /// build a chunk. Seed the queue with the end-of-batch topup directly.
+    private func enqueueRecoveredOnlyBatch() {
+        let batch = currentBatch
+        var chunk: [PlantQuizItem] = []
+        for word in batch {
+            for facet in activeFacets(for: word) {
+                for _ in 0..<Self.reviewThreshold {
+                    chunk.append(makePlantQuizItem(word: word, facet: facet))
+                }
+            }
+        }
+        chunk.shuffle()
+        avoidAdjacentRepeats(&chunk, prevTailWordId: nil)
+        pendingQueue.append(contentsOf: chunk)
     }
 
     // MARK: - Private: introduce flow
@@ -293,8 +318,8 @@ final class PlantingSession {
     private func introduceNextWord() {
         let batch = currentBatch
         guard batchIntroducedCount < batch.count else {
-            // All words in the batch have been introduced — go straight to drill.
-            startDrillRound()
+            // All words in the batch have been introduced — drain the queue or advance.
+            drainOrAdvance()
             return
         }
         currentIntroWord             = batch[batchIntroducedCount]
@@ -305,47 +330,25 @@ final class PlantingSession {
 
     // MARK: - Private: drill flow
 
-    /// Called after "Got it" (a new word was just introduced) and after each drill answer.
-    /// Presents the next question from the current round, or decides what comes next when
-    /// the round is exhausted.
-    private func startDrillRound() {
-        // If the current round still has questions, show the next one immediately.
-        if let next = currentRoundQueue.first {
-            currentRoundQueue.removeFirst()
+    /// Show the next queued drill question, or — if the queue is empty — introduce the
+    /// next word in the batch, or advance to the next batch when the batch is finished.
+    private func drainOrAdvance() {
+        if !pendingQueue.isEmpty {
+            let next = pendingQueue.removeFirst()
             phase = .awaitingTap(buildMultipleChoice(item: next))
             return
         }
-
-        // The round queue is empty. Build a new round for all introduced words.
-        let newRound = buildOneRound()
-
-        if newRound.isEmpty {
-            // Every introduced (word, facet) pair has reached reviewThreshold.
-            if batchIntroducedCount < currentBatch.count {
-                // More words remain to introduce in this batch — show the next introduce card.
-                introduceNextWord()
-            } else {
-                // The entire batch is planted and drilled to threshold.
-                advanceBatch()
-            }
+        if batchIntroducedCount < currentBatch.count {
+            introduceNextWord()
             return
         }
-
-        // More drilling needed. Load the new round and present its first question.
-        // (We already decided to start a new round, so currentRoundQueue holds questions 2…N.)
-        currentRoundQueue = Array(newRound.dropFirst())
-        phase = .awaitingTap(buildMultipleChoice(item: newRound[0]))
+        advanceBatch()
     }
 
     /// Called when the student taps "Continue" after drill feedback.
-    /// Records the just-answered word as the last drilled, then advances.
     func continueAfterFeedback() {
         guard case .tapFeedback = phase else { return }
-        advanceAfterDrill()
-    }
-
-    private func advanceAfterDrill() {
-        startDrillRound()
+        drainOrAdvance()
     }
 
     // MARK: - Private: batch management
@@ -356,8 +359,8 @@ final class PlantingSession {
         remainingWords.removeFirst(batchCount)
         batchIntroducedCount = 0
         kanjiEnabled         = [:]
-        currentRoundQueue    = []
-        lastDrilledWordId    = nil
+        pendingQueue         = []
+        sessionCounts        = [:]
 
         if remainingWords.isEmpty {
             phase = .allDone
@@ -383,37 +386,85 @@ final class PlantingSession {
         return ["reading-to-meaning", "meaning-to-reading"]
     }
 
-    /// Build one round of drill questions: one question per introduced word that still has
-    /// at least one facet below reviewThreshold. Returns an empty array when all introduced
-    /// words are fully drilled (caller should then introduce the next word or advance the batch).
-    ///
-    /// The round is shuffled and then adjusted so the first question is not for the same word
-    /// as the last question of the previous round (stored in lastDrilledWordId). This prevents
-    /// the same word from appearing back-to-back across round boundaries.
-    private func buildOneRound() -> [PlantQuizItem] {
-        let introduced = Array(currentBatch.prefix(batchIntroducedCount))
-        var round: [PlantQuizItem] = []
-        for word in introduced {
-            // Pick the first facet for this word that is still below threshold.
-            for facet in activeFacets(for: word) {
-                if (reviewCounts["\(word.id)\0\(facet)"] ?? 0) < Self.reviewThreshold {
-                    round.append(makePlantQuizItem(word: word, facet: facet))
-                    break
+    /// Build the chunk of drill questions triggered by introducing `word` and append it
+    /// to `pendingQueue`. The chunk contains:
+    ///   • all facets of the newly introduced word
+    ///   • one facet per older word in the batch (the facet with the lowest sessionCounts)
+    ///   • on the last intro of the batch, extra entries so every (word, facet) reaches
+    ///     `reviewThreshold` reviews this session
+    private func enqueueAfterIntroduction(word: VocabItem, isLastInBatch: Bool) {
+        let batch = currentBatch
+        let olderWords = Array(batch.prefix(batchIntroducedCount))
+        var chunk: [PlantQuizItem] = []
+
+        // All facets of the newly introduced word.
+        for facet in activeFacets(for: word) {
+            chunk.append(makePlantQuizItem(word: word, facet: facet))
+        }
+
+        // One facet per older word — pick the facet with the lowest session count so
+        // facets round-robin across rounds rather than always re-drilling the same one.
+        for older in olderWords {
+            let facets = activeFacets(for: older)
+            guard let chosen = facets.min(by: {
+                facetSessionCount(older.id, $0) < facetSessionCount(older.id, $1)
+            }) else { continue }
+            chunk.append(makePlantQuizItem(word: older, facet: chosen))
+        }
+
+        // Last intro of the batch: top up so every (word, facet) reaches reviewThreshold.
+        // Counts already in pendingQueue and chunk count toward the target.
+        if isLastInBatch {
+            var scheduled: [String: Int] = [:]
+            for item in pendingQueue {
+                scheduled["\(item.wordId)\0\(item.facet)", default: 0] += 1
+            }
+            for item in chunk {
+                scheduled["\(item.wordId)\0\(item.facet)", default: 0] += 1
+            }
+            for w in batch {
+                for facet in activeFacets(for: w) {
+                    let key = "\(w.id)\0\(facet)"
+                    let have = (sessionCounts[key] ?? 0) + (scheduled[key] ?? 0)
+                    let need = max(0, Self.reviewThreshold - have)
+                    for _ in 0..<need {
+                        chunk.append(makePlantQuizItem(word: w, facet: facet))
+                    }
                 }
             }
         }
 
-        guard !round.isEmpty else { return [] }
+        chunk.shuffle()
+        avoidAdjacentRepeats(&chunk, prevTailWordId: pendingQueue.last?.wordId)
+        pendingQueue.append(contentsOf: chunk)
+    }
 
-        round.shuffle()
+    private func facetSessionCount(_ wordId: String, _ facet: String) -> Int {
+        sessionCounts["\(wordId)\0\(facet)"] ?? 0
+    }
 
-        // If the first item repeats the word that was just drilled, rotate the array by one
-        // position so no word appears back-to-back across round boundaries.
-        if round.count > 1, round[0].wordId == lastDrilledWordId {
-            round.append(round.removeFirst())
+    /// Best-effort fix for back-to-back repeats of the same wordId, both at the chunk's
+    /// boundary with the existing queue tail and within the chunk itself. Not exhaustive —
+    /// if the chunk is dominated by one word, some adjacency is unavoidable.
+    private func avoidAdjacentRepeats(_ chunk: inout [PlantQuizItem],
+                                       prevTailWordId: String?) {
+        guard chunk.count > 1 else { return }
+        if let prev = prevTailWordId, chunk[0].wordId == prev {
+            for i in 1..<chunk.count where chunk[i].wordId != prev {
+                chunk.swapAt(0, i); break
+            }
         }
-
-        return round
+        var i = 1
+        while i < chunk.count {
+            if chunk[i].wordId == chunk[i - 1].wordId {
+                var swapped = false
+                for j in (i + 1)..<chunk.count where chunk[j].wordId != chunk[i - 1].wordId {
+                    chunk.swapAt(i, j); swapped = true; break
+                }
+                if !swapped { break }
+            }
+            i += 1
+        }
     }
 
     private func makePlantQuizItem(word: VocabItem, facet: String) -> PlantQuizItem {
