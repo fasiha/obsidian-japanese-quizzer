@@ -1403,15 +1403,16 @@ nonisolated func fetchAndResolveVocab(
     Japanese text: \(sentence)
     Grammar topic: \(topicId)
 
-    List the nouns, verbs, adjectives, and adverbs in this text that a beginner Japanese learner \
-    might not know or need help reading. If a word uses kanji, include it unless it uses only the most basic\
-    kanji (私, 日, etc.). Use dictionary form for each word (e.g. 編む not 編まれ, \
-    弾く not 弾いて).
-    Exclude only: particles, copulas (だ/です), and pure grammar auxiliaries (e.g. てしまう, ておく, \
-    によって as a grammar marker). Do NOT exclude a verb just because it carries the target grammar \
-    form — 編む in 編まれ and 弾く in 弾いた are still content words and must be listed.
-    When in doubt, include the word — it is better to over-include than to omit a word the \
-    learner does not know.
+    List all content-word vocabulary (nouns, verbs, adjectives, adverbs) that a beginner N4-level \
+    learner would likely need to understand. Exclude: particles, copulas (だ/です), proper nouns \
+    (names of people/places), and pure grammar auxiliaries (e.g. てしまう, ておく, によって as a \
+    grammar marker).
+
+    Always include: all kanji words (unless only basic kanji: 私, 日, 月, etc.), uncommon kana words.
+
+    Use dictionary form: 編む not 編まれ, 弾く not 弾いて, 弾いた becomes 弾く.
+
+    Err toward inclusion — it is better to include a common word than to omit an unfamiliar one.
     If there are no such words, return [].
 
     Reply with ONLY a JSON array, nothing else:
@@ -1422,7 +1423,7 @@ nonisolated func fetchAndResolveVocab(
     do {
         let (response, _, _) = try await client.send(
             messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
-            maxTokens: 128,
+            maxTokens: 256,
             toolHandler: nil,
             chatContext: .grammarQuizGeneration(topicId: topicId),
             templateId: "grammar-vocab-gloss"
