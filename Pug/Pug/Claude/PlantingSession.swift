@@ -131,11 +131,13 @@ final class PlantingSession {
     // MARK: - Dependencies
 
     let db: QuizDB
+    let corpus: VocabCorpus
 
     // MARK: - Init
 
-    init(db: QuizDB) {
+    init(db: QuizDB, corpus: VocabCorpus) {
         self.db = db
+        self.corpus = corpus
     }
 
     // MARK: - Public: start
@@ -158,16 +160,13 @@ final class PlantingSession {
         kanjiEnabled[word.id] = includeKanji
         phase = .loading
         Task {
-            do {
-                try await db.setReadingLearning(wordType: "jmdict", wordId: word.id,
-                                                halflife: Self.initialHalflife)
-                if includeKanji && !word.writtenTexts.isEmpty {
-                    try await db.setKanjiLearning(wordType: "jmdict", wordId: word.id,
-                                                  halflife: Self.initialHalflife)
-                }
-            } catch {
-                // Word may already have Ebisu models (recovery from a prior session).
-                print("[PlantingSession] setFacetLearning: \(error)")
+            let senseIndices = docScopedSenseIndices(for: word)
+            await corpus.setReadingState(.learning, wordId: word.id, db: db,
+                                         senseIndicesToSeed: senseIndices,
+                                         halflife: Self.initialHalflife)
+            if includeKanji && !word.writtenTexts.isEmpty {
+                await corpus.setKanjiState(.learning, wordId: word.id, db: db,
+                                           halflife: Self.initialHalflife)
             }
             let isLast = batchIntroducedCount + 1 == currentBatch.count
             enqueueAfterIntroduction(word: word, isLastInBatch: isLast)
@@ -193,13 +192,9 @@ final class PlantingSession {
         let includeKanji = currentIntroKanjiEnabled
         phase = .loading
         Task {
-            do {
-                try await db.setReadingKnown(wordType: "jmdict", wordId: word.id)
-                if includeKanji && !word.writtenTexts.isEmpty {
-                    try await db.setKanjiKnown(wordType: "jmdict", wordId: word.id)
-                }
-            } catch {
-                print("[PlantingSession] tapKnown: \(error)")
+            await corpus.setReadingState(.known, wordId: word.id, db: db)
+            if includeKanji && !word.writtenTexts.isEmpty {
+                await corpus.setKanjiState(.known, wordId: word.id, db: db)
             }
             dismissCurrentIntroWord()
         }
@@ -483,10 +478,20 @@ final class PlantingSession {
                              kanaText: kana, facet: facet, senseIndices: docSenseIndices)
     }
 
+    /// Resolves annotated forms from this document's first reference for the word,
+    /// falling back to the item-level annotatorResolved (computed from the first source overall).
+    func documentResolvedForms(for word: VocabItem) -> ResolvedAnnotatorForms? {
+        let forms = word.references[documentTitle]?.first?.annotatedForms ?? []
+        return resolveAnnotatedForms(annotatedForms: forms,
+                                     writtenForms: word.writtenForms,
+                                     kanaTexts: word.kanaTexts)
+            ?? word.annotatorResolved
+    }
+
     /// Kana reading respecting the annotator's choice and any user commitment.
     private func preferredKana(for word: VocabItem) -> String {
         word.commitment?.committedReading
-            ?? word.annotatorResolved?.kana
+            ?? documentResolvedForms(for: word)?.kana
             ?? word.kanaTexts.first
             ?? word.wordText
     }
@@ -494,7 +499,7 @@ final class PlantingSession {
     /// Written form respecting the annotator's choice and any user commitment.
     private func preferredWrittenForm(for word: VocabItem) -> String {
         word.commitment?.committedWrittenText
-            ?? word.annotatorResolved?.writtenForm.text
+            ?? documentResolvedForms(for: word)?.writtenForm.text
             ?? word.writtenTexts.first
             ?? word.wordText
     }

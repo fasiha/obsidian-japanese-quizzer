@@ -402,7 +402,7 @@ struct PlantView: View {
                         .textCase(.uppercase)
                         .tracking(0.5)
                     ForEach(session.completedBatchWords) { word in
-                        let kana = word.commitment?.committedReading ?? word.annotatorResolved?.kana ?? word.kanaTexts.first
+                        let kana = word.commitment?.committedReading ?? session.documentResolvedForms(for: word)?.kana ?? word.kanaTexts.first
                         HStack(spacing: 12) {
                             Text(word.wordText)
                                 .font(.title3)

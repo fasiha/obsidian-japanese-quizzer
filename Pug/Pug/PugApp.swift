@@ -133,7 +133,7 @@ struct AppRootView: View {
             jmdict          = toolHandler.jmdict
             session         = QuizSession(client: client, toolHandler: toolHandler, db: quizDB,
                                           preferences: preferences)
-            plantingSession = PlantingSession(db: quizDB)
+            plantingSession = PlantingSession(db: quizDB, corpus: corpus)
             grammarSession  = GrammarAppSession(client: client, db: quizDB, toolHandler: toolHandler,
                                                jmdict: toolHandler.jmdict, preferences: preferences)
 

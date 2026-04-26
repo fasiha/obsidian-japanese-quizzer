@@ -311,7 +311,8 @@ final class VocabCorpus {
     /// which senses the student is committing to from their current navigation origin.
     func setReadingState(_ state: FacetState, wordId: String, db: QuizDB,
                          senseIndicesToSeed: [Int]? = nil,
-                         preferredForm: WrittenForm? = nil) async {
+                         preferredForm: WrittenForm? = nil,
+                         halflife: Double? = nil) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
             // Ensure commitment exists
@@ -324,7 +325,11 @@ final class VocabCorpus {
             }
             switch state {
             case .learning:
-                try await db.setReadingLearning(wordType: "jmdict", wordId: wordId)
+                if let h = halflife {
+                    try await db.setReadingLearning(wordType: "jmdict", wordId: wordId, halflife: h)
+                } else {
+                    try await db.setReadingLearning(wordType: "jmdict", wordId: wordId)
+                }
                 // Seed enrolled senses from origin on first commit (when no senses are set yet).
                 if items[idx].commitment?.senseIndices == nil, let seeds = senseIndicesToSeed {
                     try await db.setCommittedSenseIndices(wordType: "jmdict", wordId: wordId, senseIndices: seeds)
@@ -356,12 +361,17 @@ final class VocabCorpus {
     }
 
     /// Set the kanji state for a word.
-    func setKanjiState(_ state: FacetState, wordId: String, kanjiChars: [String]? = nil, db: QuizDB) async {
+    func setKanjiState(_ state: FacetState, wordId: String, kanjiChars: [String]? = nil, db: QuizDB,
+                       halflife: Double? = nil) async {
         guard let idx = items.firstIndex(where: { $0.id == wordId }) else { return }
         do {
             switch state {
             case .learning:
-                try await db.setKanjiLearning(wordType: "jmdict", wordId: wordId)
+                if let h = halflife {
+                    try await db.setKanjiLearning(wordType: "jmdict", wordId: wordId, halflife: h)
+                } else {
+                    try await db.setKanjiLearning(wordType: "jmdict", wordId: wordId)
+                }
                 // Update kanji_chars in commitment
                 if let chars = kanjiChars {
                     let json = try String(data: JSONEncoder().encode(chars), encoding: .utf8) ?? "[]"
