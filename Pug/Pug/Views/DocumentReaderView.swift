@@ -566,10 +566,16 @@ func stripUnsupportedHtmlTags(_ line: String) -> String {
 
 // MARK: - TTS text extraction
 
+// Strips <rt>…</rt> blocks (readings) from ruby markup, leaving base text intact.
+// Applied before rubyWrapperPattern to handle multi-pair ruby like
+// <ruby>映<rt>えい</rt>画<rt>が</rt></ruby> → <ruby>映画</ruby> → 映画.
+private let rtBlockPattern: NSRegularExpression = {
+    return try! NSRegularExpression(pattern: #"<rt>[^<]*</rt>"#, options: [.caseInsensitive])
+}()
+
+// Strips residual <ruby> and </ruby> wrapper tags after rt blocks are removed.
 private let rubyTagPattern: NSRegularExpression = {
-    // Matches <ruby>base<rt>reading</rt></ruby> — we keep only the base text.
-    let pattern = #"<ruby>([^<]*)<rt>[^<]*</rt></ruby>"#
-    return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+    return try! NSRegularExpression(pattern: #"</?ruby>"#, options: [.caseInsensitive])
 }()
 
 private let markdownSyntaxPattern: NSRegularExpression = {
@@ -580,13 +586,18 @@ private let markdownSyntaxPattern: NSRegularExpression = {
 }()
 
 /// Extracts plain Japanese text from a document line for use with TTS.
-/// Replaces `<ruby>base<rt>reading</rt></ruby>` with just the base text,
-/// then strips remaining Markdown syntax markers.
+/// Strips `<rt>…</rt>` reading blocks first, then removes residual `<ruby>`/`</ruby>`
+/// wrappers. This handles both single-pair and multi-pair ruby markup correctly.
 func plainTextForTTS(_ line: String) -> String {
-    var result = rubyTagPattern.stringByReplacingMatches(
+    var result = rtBlockPattern.stringByReplacingMatches(
         in: line,
         range: NSRange(location: 0, length: (line as NSString).length),
-        withTemplate: "$1"
+        withTemplate: ""
+    )
+    result = rubyTagPattern.stringByReplacingMatches(
+        in: result,
+        range: NSRange(location: 0, length: (result as NSString).length),
+        withTemplate: ""
     )
     // Replace Markdown emphasis/bold/code with the captured inner text.
     result = markdownSyntaxPattern.stringByReplacingMatches(

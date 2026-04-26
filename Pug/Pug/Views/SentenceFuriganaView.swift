@@ -191,18 +191,27 @@ func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
             let rubyContent = remaining[..<rubyEnd.lowerBound]
             remaining = remaining[rubyEnd.upperBound...]
 
-            // Split on <rt>…</rt> inside the ruby block.
-            if let rtStart = rubyContent.range(of: "<rt>", options: .caseInsensitive),
-               let rtEnd   = rubyContent.range(of: "</rt>", options: .caseInsensitive),
-               rtStart.upperBound <= rtEnd.lowerBound {
-                let base    = String(rubyContent[..<rtStart.lowerBound])
-                let reading = String(rubyContent[rtStart.upperBound..<rtEnd.lowerBound])
+            // Iterate through all base<rt>reading</rt> pairs inside the ruby block.
+            // Valid HTML5 allows multiple pairs: <ruby>映<rt>えい</rt>画<rt>が</rt></ruby>
+            var inner = rubyContent
+            var foundAnyRt = false
+            while let rtStart = inner.range(of: "<rt>", options: .caseInsensitive),
+                  let rtEnd   = inner.range(of: "</rt>", options: .caseInsensitive),
+                  rtStart.upperBound <= rtEnd.lowerBound {
+                let base    = String(inner[..<rtStart.lowerBound])
+                let reading = String(inner[rtStart.upperBound..<rtEnd.lowerBound])
                 if !base.isEmpty {
                     segments.append(FuriganaSegment(ruby: base, rt: reading.isEmpty ? nil : reading))
                 }
-            } else {
+                inner = inner[rtEnd.upperBound...]
+                foundAnyRt = true
+            }
+            if !foundAnyRt {
                 // No <rt> found inside — emit the whole block as plain text.
                 segments.append(contentsOf: plainSegments(for: String(rubyContent)))
+            } else if !inner.isEmpty {
+                // Trailing text after the last </rt> (rare) — emit as plain text.
+                segments.append(contentsOf: plainSegments(for: String(inner)))
             }
         } else {
             // No more <ruby> tags — emit the rest as NLTagger word tokens.
