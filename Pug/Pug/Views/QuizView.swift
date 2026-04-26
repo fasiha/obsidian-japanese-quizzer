@@ -326,111 +326,26 @@ struct QuizView: View {
     // MARK: - Chatting (open conversation per quiz item)
 
     private var chattingView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Progress + facet badge
-                if let item = session.currentItem {
-                    HStack {
-                        Text(session.progress)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        facetBadge(item.facet)
-                    }
-                }
-
-                // Chat thread
-                ForEach(Array(session.chatMessages.enumerated()), id: \.offset) { _, msg in
-                    HStack(alignment: .top) {
-                        if msg.isUser { Spacer(minLength: 40) }
-                        SelectableText(msg.text)
-                            .padding(10)
-                            .background(
-                                msg.isUser
-                                    ? Color.accentColor.opacity(0.15)
-                                    : Color(.secondarySystemBackground),
-                                in: RoundedRectangle(cornerRadius: 10)
-                            )
-                        if !msg.isUser { Spacer(minLength: 40) }
-                    }
-                }
-
-                // Score badge + optional "Tutor me" button for wrong multiple-choice answers
-                if let score = session.gradedScore {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 8) {
-                            scoreIndicator(score)
-                            Text(scoreLabel(score))
-                                .font(.headline)
-                        }
-                        if session.canStartTutorSession {
-                            Spacer()
-                            Button("Tutor me") { session.startTutorSession() }
-                                .buttonStyle(.bordered)
-                                .tint(.blue)
-                        } else if session.canStartTransitiveDrillTutorSession {
-                            Spacer()
-                            Button("Tutor me") { session.startTransitiveDrillTutorSession() }
-                                .buttonStyle(.bordered)
-                                .tint(.blue)
-                        } else if session.canStartCounterTutorSession {
-                            Spacer()
-                            Button("Tutor me") { session.startCounterTutorSession() }
-                                .buttonStyle(.bordered)
-                                .tint(.blue)
-                        }
-                    }
-                    .padding(.top, session.chatMessages.isEmpty ? 40 : 4)
-                }
-
-                // Input
-                HStack(alignment: .bottom, spacing: 8) {
-                    TextField(
-                        session.gradedScore == nil ? "Answer or ask anything…" : "Ask a follow-up… (optional)",
-                        text: $session.chatInput,
-                        axis: .vertical
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(1...6)
-                    .disabled(session.isSendingChat)
-                    .focused($isChatFocused)
-
-                    if session.isSendingChat {
-                        ProgressView()
-                            .controlSize(.small)
-                            .padding(.bottom, 6)
-                    } else {
-                        Button {
-                            session.sendChatMessage()
-                            isChatFocused = false
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.title2)
-                        }
-                        .disabled(session.chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
-                        .padding(.bottom, 2)
-                    }
-                }
-
-                // Advance button: Skip (no grade yet) or Rescale + Next Question (graded)
-                let isLast = session.currentIndex + 1 >= session.items.count
-                let isGraded = session.gradedScore != nil
-                if isGraded {
-                    HStack {
-                        Button("Details…") { showDetailsSheet = true }
-                            .buttonStyle(.bordered)
-                        Spacer()
-                        Button(isLast ? "Finish" : "Next Question →") { session.nextQuestion() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                } else {
-                    Button("Skip →") { session.nextQuestion() }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding()
-        }
+        let isLast = session.currentIndex + 1 >= session.items.count
+        let tutorAction: (() -> Void)? = {
+            if session.canStartTutorSession { return session.startTutorSession }
+            if session.canStartTransitiveDrillTutorSession { return session.startTransitiveDrillTutorSession }
+            if session.canStartCounterTutorSession { return session.startCounterTutorSession }
+            return nil
+        }()
+        return PostAnswerChatView(
+            messages: session.chatMessages,
+            chatInput: $session.chatInput,
+            isSending: session.isSendingChat,
+            gradedScore: session.gradedScore,
+            facet: session.currentItem?.facet ?? "",
+            progressLabel: session.progress,
+            advanceLabel: session.gradedScore == nil ? "Skip →" : (isLast ? "Finish" : "Next Question →"),
+            onSend: session.sendChatMessage,
+            onAdvance: session.nextQuestion,
+            onShowDetails: session.gradedScore != nil ? { showDetailsSheet = true } : nil,
+            tutorMeAction: tutorAction
+        )
     }
 
     // MARK: - End states
@@ -486,28 +401,6 @@ struct QuizView: View {
             .foregroundStyle(.tint)
     }
 
-    private func scoreIndicator(_ score: Double) -> some View {
-        Circle()
-            .fill(scoreColor(score))
-            .frame(width: 16, height: 16)
-    }
-
-    private func scoreColor(_ score: Double) -> Color {
-        switch score {
-        case 0.8...: return .green
-        case 0.5...: return .orange
-        default:     return .red
-        }
-    }
-
-    private func scoreLabel(_ score: Double) -> String {
-        switch score {
-        case 0.9...: return "Excellent"
-        case 0.75...: return "Good"
-        case 0.5...: return "Partial"
-        default:     return "Incorrect"
-        }
-    }
 }
 
 // MARK: - Rescale sheet

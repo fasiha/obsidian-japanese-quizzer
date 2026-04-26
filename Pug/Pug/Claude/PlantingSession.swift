@@ -108,6 +108,11 @@ final class PlantingSession {
     /// The word being introduced in the current introduce-card phase (nil otherwise).
     private(set) var currentIntroWord: VocabItem? = nil
 
+    /// The most recently answered drill question and the choice index the student tapped.
+    /// Retained while in .tapFeedback so PlantView can show the full question context.
+    private(set) var lastAnsweredMC: PlantingMultipleChoice? = nil
+    private(set) var lastAnswerChoiceIndex: Int = 0
+
     /// Mirrors the kanji toggle on the current introduce card — bound via @Bindable in the view.
     var currentIntroKanjiEnabled: Bool = false
 
@@ -218,6 +223,8 @@ final class PlantingSession {
         } else {
             explanation = "✗  \(mc.choices[choiceIndex])   →   ✓  \(mc.choices[mc.correctIndex])"
         }
+        lastAnsweredMC = mc
+        lastAnswerChoiceIndex = choiceIndex
         phase = .tapFeedback(correct: correct, explanation)
         let key = "\(mc.item.wordId)\0\(mc.item.facet)"
         sessionCounts[key, default: 0] += 1
@@ -468,14 +475,38 @@ final class PlantingSession {
     }
 
     private func makePlantQuizItem(word: VocabItem, facet: String) -> PlantQuizItem {
-        let kana = word.commitment?.committedReading ?? word.kanaTexts.first ?? word.wordText
-        let docSenseIndices: [Int] = {
-            let refs = word.references[documentTitle] ?? []
-            let indices = Array(Set(refs.compactMap(\.llmSense).flatMap(\.senseIndices))).sorted()
-            return indices.isEmpty ? [0] : indices
-        }()
+        let kana = preferredKana(for: word)
+        let docSenseIndices: [Int] = docScopedSenseIndices(for: word)
         return PlantQuizItem(wordId: word.id, wordText: word.wordText,
                              kanaText: kana, facet: facet, senseIndices: docSenseIndices)
+    }
+
+    /// Kana reading respecting the annotator's choice and any user commitment.
+    private func preferredKana(for word: VocabItem) -> String {
+        word.commitment?.committedReading
+            ?? word.annotatorResolved?.kana
+            ?? word.kanaTexts.first
+            ?? word.wordText
+    }
+
+    /// Written form respecting the annotator's choice and any user commitment.
+    private func preferredWrittenForm(for word: VocabItem) -> String {
+        word.commitment?.committedWrittenText
+            ?? word.annotatorResolved?.writtenForm.text
+            ?? word.writtenTexts.first
+            ?? word.wordText
+    }
+
+    /// Sense indices attested in this document, falling back to [0].
+    private func docScopedSenseIndices(for word: VocabItem) -> [Int] {
+        let refs = word.references[documentTitle] ?? []
+        let indices = Array(Set(refs.compactMap(\.llmSense).flatMap(\.senseIndices))).sorted()
+        return indices.isEmpty ? [0] : indices
+    }
+
+    /// First gloss for the sense(s) attested in this document.
+    private func firstGlossForDocument(word: VocabItem) -> String {
+        firstGloss(for: word, senseIndices: docScopedSenseIndices(for: word))
     }
 
     // MARK: - Private: app-side multiple-choice generation
@@ -506,7 +537,7 @@ final class PlantingSession {
                                          choices: choices, correctIndex: idx, item: item)
 
         case "kanji-to-reading":
-            let kanji   = word.writtenTexts.first ?? word.wordText
+            let kanji   = preferredWrittenForm(for: word)
             let correct = item.kanaText
             let distractors = kanaDistractors(excluding: word.id, correct: correct)
             let (choices, idx) = assembleChoices(correct: correct, distractors: distractors)
@@ -515,7 +546,7 @@ final class PlantingSession {
 
         case "meaning-reading-to-kanji":
             let gloss   = firstGloss(for: word, senseIndices: item.senseIndices)
-            let kanji   = word.writtenTexts.first ?? word.wordText
+            let kanji   = preferredWrittenForm(for: word)
             let correct = kanji
             let distractors = kanjiDistractors(excluding: word.id, correct: correct)
             let (choices, idx) = assembleChoices(correct: correct, distractors: distractors)
@@ -542,7 +573,8 @@ final class PlantingSession {
     private func glossDistractors(excluding wordId: String, correct: String) -> [String] {
         var result: [String] = []
         for word in documentWords where word.id != wordId {
-            if let gloss = word.senseExtras.first?.glosses.first, gloss != correct {
+            let gloss = firstGlossForDocument(word: word)
+            if !gloss.isEmpty && gloss != correct {
                 result.append(gloss)
                 if result.count >= 6 { break }
             }
@@ -553,8 +585,8 @@ final class PlantingSession {
     private func kanaDistractors(excluding wordId: String, correct: String) -> [String] {
         var result: [String] = []
         for word in documentWords where word.id != wordId {
-            let kana = word.commitment?.committedReading ?? word.kanaTexts.first ?? ""
-            if !kana.isEmpty && kana != correct {
+            let kana = preferredKana(for: word)
+            if kana != correct {
                 result.append(kana)
                 if result.count >= 6 { break }
             }
@@ -565,7 +597,8 @@ final class PlantingSession {
     private func kanjiDistractors(excluding wordId: String, correct: String) -> [String] {
         var result: [String] = []
         for word in documentWords where word.id != wordId {
-            if let kanji = word.writtenTexts.first, kanji != correct {
+            let kanji = preferredWrittenForm(for: word)
+            if kanji != correct {
                 result.append(kanji)
                 if result.count >= 6 { break }
             }

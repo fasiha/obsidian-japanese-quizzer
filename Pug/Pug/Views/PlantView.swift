@@ -23,6 +23,12 @@ struct PlantView: View {
 
     @State private var selectedWordForDetail: VocabItemSelection? = nil
 
+    // Chat state for the post-drill feedback view. Reset each time a new tapFeedback phase begins.
+    @State private var postDrillChatMessages: [(isUser: Bool, text: String)] = []
+    @State private var postDrillChatInput: String = ""
+    @State private var postDrillIsSending: Bool = false
+    @State private var postDrillConversation: [AnthropicMessage] = []
+
     // The last path component of the document title, used as the navigation title.
     private var shortTitle: String {
         session.documentTitle.components(separatedBy: "/").last ?? session.documentTitle
@@ -43,7 +49,7 @@ struct PlantView: View {
                 case .awaitingTap(let mc):
                     drillView(mc: mc)
                 case .tapFeedback(let correct, let explanation):
-                    feedbackView(correct: correct, explanation: explanation)
+                    postDrillChattingView(correct: correct, explanation: explanation)
                 case .allDone:
                     allDoneView
                 case .noNewWords:
@@ -54,6 +60,11 @@ struct PlantView: View {
             }
             .navigationTitle("Learn: \(shortTitle)")
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: session.phase) { _, newPhase in
+                if case .tapFeedback(let correct, _) = newPhase, let mc = session.lastAnsweredMC {
+                    seedPostDrillChat(mc: mc, choiceIndex: session.lastAnswerChoiceIndex, correct: correct)
+                }
+            }
             .sheet(item: $selectedWordForDetail) { selection in
                 WordDetailSheet(
                     initialItem: selection.item,
@@ -253,28 +264,110 @@ struct PlantView: View {
         }
     }
 
-    // MARK: - Tap feedback
+    // MARK: - Post-drill chat
 
-    private func feedbackView(correct: Bool, explanation: String) -> some View {
-        VStack(spacing: 28) {
-            Spacer()
+    private func postDrillChattingView(correct: Bool, explanation: String) -> some View {
+        let mc = session.lastAnsweredMC
+        let planted = session.totalToPlant - session.remainingWords.count
+        let introduced = planted + session.batchIntroducedCount
+        let progressLabel = "\(introduced) of \(session.totalToPlant) introduced"
+        let tutorAction: (() -> Void)? = (!correct && postDrillChatMessages.count <= 2 && !postDrillIsSending)
+            ? { sendPostDrillMessage("I got this wrong. Please explain the correct answer and what I may have been confusing it with.") }
+            : nil
+        return PostAnswerChatView(
+            messages: postDrillChatMessages,
+            chatInput: $postDrillChatInput,
+            isSending: postDrillIsSending,
+            gradedScore: correct ? 1.0 : 0.0,
+            facet: mc?.item.facet ?? "",
+            progressLabel: progressLabel,
+            advanceLabel: "Continue  →",
+            onSend: sendPostDrillChat,
+            onAdvance: session.continueAfterFeedback,
+            onShowDetails: {
+                guard let mc = session.lastAnsweredMC,
+                      let word = session.documentWords.first(where: { $0.id == mc.item.wordId })
+                else { return }
+                selectedWordForDetail = VocabItemSelection(item: word,
+                                                           origin: .document(title: session.documentTitle))
+            },
+            tutorMeAction: tutorAction
+        )
+    }
 
-            Image(systemName: correct ? "checkmark.circle.fill" : "xmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(correct ? Color.green : Color.red)
+    private func seedPostDrillChat(mc: PlantingMultipleChoice, choiceIndex: Int, correct: Bool) {
+        let letters = ["A", "B", "C", "D"]
+        let choicesText = mc.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+        let questionBubble = "\(mc.stem)\n\n\(choicesText)"
+        let chosenLetter = letters[choiceIndex]
+        let correctLetter = letters[mc.correctIndex]
+        let answerBubble = correct
+            ? "✓ \(chosenLetter)) \(mc.choices[choiceIndex])"
+            : "✗ Wrong: \(chosenLetter)) \(mc.choices[choiceIndex])\n✓ Correct: \(correctLetter)) \(mc.choices[mc.correctIndex])"
+        postDrillChatMessages = [
+            (isUser: false, text: questionBubble),
+            (isUser: true, text: answerBubble)
+        ]
+        postDrillChatInput = ""
+        postDrillIsSending = false
+        postDrillConversation = []
+    }
 
-            Text(explanation)
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+    private func sendPostDrillChat() {
+        let text = postDrillChatInput.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        sendPostDrillMessage(text)
+        postDrillChatInput = ""
+    }
 
-            Spacer()
-
-            Button("Continue") { session.continueAfterFeedback() }
-                .buttonStyle(.borderedProminent)
-                .padding(.bottom, 32)
+    private func sendPostDrillMessage(_ text: String) {
+        guard !postDrillIsSending, let mc = session.lastAnsweredMC else { return }
+        postDrillIsSending = true
+        postDrillConversation.append(AnthropicMessage(role: "user", content: [.text(text)]))
+        postDrillChatMessages.append((isUser: true, text: text))
+        let systemPromptText = postDrillSystemPrompt(mc: mc)
+        let conversation = postDrillConversation
+        Task {
+            do {
+                let (response, updatedMsgs, _) = try await client.send(
+                    messages: conversation,
+                    system: systemPromptText,
+                    maxTokens: 1024,
+                    chatContext: .vocabQuiz(wordId: mc.item.wordId, facet: mc.item.facet,
+                                            sessionId: "planting-\(mc.item.wordId)"),
+                    templateId: nil
+                )
+                postDrillConversation = updatedMsgs
+                let displayText = response.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !displayText.isEmpty {
+                    postDrillChatMessages.append((isUser: false, text: displayText))
+                }
+            } catch {
+                postDrillChatMessages.append((isUser: false, text: "Error: \(error.localizedDescription)"))
+            }
+            postDrillIsSending = false
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func postDrillSystemPrompt(mc: PlantingMultipleChoice) -> String {
+        let letters = ["A", "B", "C", "D"]
+        let choicesText = mc.choices.enumerated().map { "\(letters[$0])) \($1)" }.joined(separator: "\n")
+        let chosenLetter = letters[session.lastAnswerChoiceIndex]
+        let correctLetter = letters[mc.correctIndex]
+        let wasCorrect = session.lastAnswerChoiceIndex == mc.correctIndex
+        return """
+        You are a Japanese language tutor. The student is learning new vocabulary via a first-time introduction and drill (planting).
+
+        Current drill question:
+        \(mc.stem)
+
+        \(choicesText)
+
+        Student chose: \(chosenLetter)) \(mc.choices[session.lastAnswerChoiceIndex]) — \(wasCorrect ? "Correct ✓" : "Incorrect ✗")
+        Correct answer: \(correctLetter)) \(mc.choices[mc.correctIndex])
+
+        Help the student understand the word, why their answer was \(wasCorrect ? "correct" : "wrong"), and any relevant nuance. Be concise.
+        """
     }
 
     // MARK: - Done screens
