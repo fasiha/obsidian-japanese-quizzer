@@ -15,10 +15,57 @@
 //   vocabMap:   lineNumber → [wordId]      (words annotated on that line in this document)
 //   grammarMap: lineNumber → [prefixedId]  (grammar topics annotated on that line)
 
+import AVFoundation
 import SwiftUI
 import GRDB
 import Markdown
 import Markdownosaur
+
+// MARK: - Line TTS speaker
+
+/// Speaks a single document line using iOS text-to-speech.
+///
+/// Stale delegate callbacks (e.g. from a cancelled utterance) are harmless because
+/// speakingLineNumber is always nil after stop(), so the delegate simply writes nil
+/// over nil. Only one utterance is ever queued at a time.
+@Observable
+final class LineTTSSpeaker: NSObject, AVSpeechSynthesizerDelegate {
+    nonisolated(unsafe) private let synthesizer = AVSpeechSynthesizer()
+    private(set) var speakingLineNumber: Int? = nil
+
+    override init() {
+        super.init()
+        synthesizer.delegate = self
+    }
+
+    func speak(lineNumber: Int, text: String, language: String = "ja-JP") {
+        synthesizer.stopSpeaking(at: .immediate)
+        speakingLineNumber = lineNumber
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = AVSpeechSynthesisVoice(language: language)
+        utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.85
+        synthesizer.speak(utterance)
+    }
+
+    func stop() {
+        synthesizer.stopSpeaking(at: .immediate)
+        speakingLineNumber = nil
+    }
+
+    func toggle(lineNumber: Int, text: String) {
+        if speakingLineNumber == lineNumber { stop() }
+        else { speak(lineNumber: lineNumber, text: text) }
+    }
+
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer,
+                                       didFinish utterance: AVSpeechUtterance) {
+        DispatchQueue.main.async { [weak self] in
+            self?.speakingLineNumber = nil
+        }
+    }
+}
 
 /// Bundles a vocab item with the line number where the student tapped it,
 /// so WordDetailSheet can scope sense highlighting to that specific corpus reference.
@@ -42,6 +89,7 @@ struct DocumentReaderView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(ClipPlayer.self) private var clipPlayer
 
+    @State private var ttsSpeaker = LineTTSSpeaker()
     @State private var selectedWord: VocabWordSelection? = nil
     @State private var selectedTopic: IdentifiableGrammarTopic? = nil
     @State private var expandedLines: Set<Int> = []
@@ -156,6 +204,7 @@ struct DocumentReaderView: View {
                    let clip = audioClipMap[line.lineNumber] {
                     let isPlaying = clipPlayer.currentClip == clip
                     Button {
+                        ttsSpeaker.stop()
                         clipPlayer.play(clip: clip,
                                         externalFolderBookmark: preferences.audioFolderBookmark)
                     } label: {
@@ -165,6 +214,21 @@ struct DocumentReaderView: View {
                     }
                     .buttonStyle(.plain)
                     .padding(.top, 6)
+                } else if hasAnnotations {
+                    let plainText = plainTextForTTS(line.text)
+                    if !plainText.isEmpty {
+                        let isSpeaking = ttsSpeaker.speakingLineNumber == line.lineNumber
+                        Button {
+                            clipPlayer.stop()
+                            ttsSpeaker.toggle(lineNumber: line.lineNumber, text: plainText)
+                        } label: {
+                            Image(systemName: isSpeaking ? "stop.circle" : "speaker.wave.2.circle")
+                                .imageScale(.large)
+                                .foregroundStyle(isSpeaking ? Color.accentColor : Color.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 6)
+                    }
                 }
             }
 
@@ -498,6 +562,39 @@ func stripUnsupportedHtmlTags(_ line: String) -> String {
     let range = NSRange(line.startIndex..., in: line)
     return unsupportedHtmlTagPattern.stringByReplacingMatches(in: line, range: range, withTemplate: "")
         .trimmingCharacters(in: .whitespaces)
+}
+
+// MARK: - TTS text extraction
+
+private let rubyTagPattern: NSRegularExpression = {
+    // Matches <ruby>base<rt>reading</rt></ruby> — we keep only the base text.
+    let pattern = #"<ruby>([^<]*)<rt>[^<]*</rt></ruby>"#
+    return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+}()
+
+private let markdownSyntaxPattern: NSRegularExpression = {
+    // Strips bold (**text**), italic (*text* or _text_), inline code (`text`),
+    // and Markdown heading markers (leading # characters).
+    let pattern = #"\*\*([^*]+)\*\*|\*([^*]+)\*|_([^_]+)_|`([^`]+)`|^#{1,6}\s+"#
+    return try! NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines])
+}()
+
+/// Extracts plain Japanese text from a document line for use with TTS.
+/// Replaces `<ruby>base<rt>reading</rt></ruby>` with just the base text,
+/// then strips remaining Markdown syntax markers.
+func plainTextForTTS(_ line: String) -> String {
+    var result = rubyTagPattern.stringByReplacingMatches(
+        in: line,
+        range: NSRange(location: 0, length: (line as NSString).length),
+        withTemplate: "$1"
+    )
+    // Replace Markdown emphasis/bold/code with the captured inner text.
+    result = markdownSyntaxPattern.stringByReplacingMatches(
+        in: result,
+        range: NSRange(location: 0, length: (result as NSString).length),
+        withTemplate: "$1$2$3$4"
+    )
+    return result.trimmingCharacters(in: .whitespaces)
 }
 
 // MARK: - IdentifiableGrammarTopic
