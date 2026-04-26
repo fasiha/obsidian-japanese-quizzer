@@ -942,9 +942,9 @@ final class QuizSession {
             case "meaning-to-reading":
                 // Show the first entry from the pre-shuffled queue as the initial prompt.
                 if let first = counterExampleQueue.first {
-                    return first
+                    return "What counter word (読み方) counts \(first)?"
                 }
-                return item.wordText
+                return "What is the reading of the counter \(item.wordText)?"
             case "counter-number-to-reading":
                 // Will be handled specially in generateQuestion()
                 return ""
@@ -993,7 +993,7 @@ final class QuizSession {
     private func buildCounterNumberStem(counter: Counter) -> String {
         let numbers = ["1", "3", "6", "8", "10"]
         let number = numbers.randomElement() ?? "3"
-        return "\(number) + \(counter.kanji)(\(counter.reading))"
+        return "How do you read \(number) + \(counter.kanji)(\(counter.reading))?"
     }
 
     // MARK: - Counter grading
