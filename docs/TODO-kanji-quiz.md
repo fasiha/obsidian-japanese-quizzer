@@ -34,13 +34,23 @@ does not affect scheduling.
 ### word_id encoding for kanji quiz entries
 
 Since a kanji quiz is scoped to one parent word, `word_id` must encode both
-the parent JMDict ID and the kanji character. Format:
+the kanji character and the parent JMDict ID. Format:
 
 ```
-{jmdictId}:{kanjiChar}
+{kanjiChar}:{jmdictId}
 ```
 
-Example: `1588120:図` for 図 as learned via 図書館 (JMDict ID 1588120).
+Example: `図:1588120` for 図 as learned via 図書館 (JMDict ID 1588120).
+
+This format enables efficient lookups: `WHERE word_id LIKE '図:%'` returns all
+enrolled words teaching the kanji 図, useful for the "also learning this kanji
+in" disclosure and for detecting when a kanji has multiple readings across
+enrolled words.
+
+The specific reading used in each word is stored in `word_commitment.furigana`,
+not encoded in `word_id`. This keeps the key simple and avoids redundancy —
+the furigana array already records which reading is associated with each kanji
+character in the committed form.
 
 This keeps `word_type = "kanji"` entries distinguishable in all existing tables
 (`reviews`, `ebisu_models`, `word_commitment`, `learned`, `mnemonics`) without
@@ -149,13 +159,13 @@ Each card shows two zones:
 
 **This word** (what this kanji is doing here):
 - The kanji character, large
-- The reading used in this word (from the furigana array)
+- The reading used in this word, highlighted (from the furigana array)
 - The kanjidic2 meanings active in this word (from `kanji_meanings` in
   vocab.json, populated by the new LLM step)
 
-**This kanji in general** (omit if all 3 are identical to "this word" data):
-- Top on-reading from kanjidic2, if different from the reading used here
-- Top kun-reading from kanjidic2, if different from the reading used here
+**This kanji in general** (omit if all data is identical to "this word" data):
+- Top on-reading from kanjidic2 (shown if different from the reading used in this word, or always shown for completeness if the reading used is kun)
+- Top kun-reading from kanjidic2 (shown if different from the reading used in this word, or always shown for completeness if the reading used is on)
 - Top 2 kanjidic2 meanings, if different from the active meanings shown above
 
 **Extra disclosure**:
@@ -170,26 +180,24 @@ Each card shows two zones:
 
 ### Facet: kanji-to-reading
 
-- **Question stem**: the kanji character (large, centered), by itself: NO parent word
-- **Expected answer**: the on-reading used in this word (e.g., "ズ")
-- **Multiple choice distractors**: on-readings of visually or linguistically similar kanji
-  — sourced from kanjidic2 without LLM (perhaps using radicals?); readings of other kanji
-  in this word; DO NOT INCLUDE valid on/kun readings of the kanji under test as
-  distractors.
-- **Graduation to free-answer**: same rule as other facets (≥ 3 reviews and
-  halflife ≥ 48 hours)
+- **Question stem**: the kanji character (large, centered), by itself — NO parent word context
+- **Expected answer**: the reading used in this word (on or kun, depending on `word_commitment.furigana`). For example, 食 in 食べる tests the kun-reading たべ; 食 in 食堂 tests the on-reading しょく. These are independent Ebisu entries.
+- **Multiple choice distractors** (from kanjidic2, no LLM):
+  - On/kun readings of visually or linguistically similar kanji (use kanjidic2 radicals to find candidates)
+  - Readings of other kanji in the same word (realistic confusion)
+  - **CRITICAL: DO NOT include other valid readings of the kanji under test.** For example, if testing 食's kun-reading たべ, do not offer しょく (the on-reading) as a distractor, even though it's a valid reading of 食. The Ebisu entry is for *this specific reading in this specific word*, not the kanji in general.
+- **Format**: always multiple choice (like vocab `reading-to-meaning`). Free-text kanji readings are deferred to future work.
+- **Multi-reading ambiguity handling**: If the learner is enrolled in the same kanji with different readings (e.g., 食 via 食べる and 食 via 食堂), the quiz always tests the reading for the specific `word_id`. If the learner enters a reading that's valid for the kanji but not for this entry, the app can offer smart feedback: "That's a valid reading of 食, but in 食べる we're learning たべ. Try again?" This prevents false positives without penalizing near-misses.
 
 ### Facet: kanji-to-meaning
 
-- **Question stem**: the kanji character, large and centered; no parent word
-- **Expected answer**: one or more of the active kanjidic2 meanings for this
-  word (match any)
-- **Multiple choice distractors**: other meanings from kanjidic2 for different
-  kanji, plus meanings from other kanji in the same word. No LLM. Hopefully
-  the large sample size will make synonyms unlikely.
-- **Format**: always multiple choice (meanings are English words/phrases, not
-  character production; though note that we have prior art of Haiku grading
-  reading-to-meaning vocab quizzes)
+- **Question stem**: the kanji character, large and centered — NO parent word context
+- **Expected answer**: one or more of the active kanjidic2 meanings for this word (match any). For example, 図 in 図書館 accepts "map", "drawing", or "plan" as correct, but not "audacious".
+- **Multiple choice distractors** (from kanjidic2, no LLM):
+  - Meanings from other kanji in the same word (realistic confusion)
+  - Meanings from visually or linguistically similar kanji (found via radicals or manual curation)
+  - **DO NOT use other meanings from the same kanji.** The Ebisu entry is for the active meanings in this specific word, not the full kanjidic2 inventory. Using all kanjidic2 meanings as distractors would make the question answerable even without enrolling.
+- **Format**: always multiple choice (meanings are English words/phrases, not character production). The task is similar to grading vocab `reading-to-meaning` quizzes, which Haiku already handles well in the tutor chat, so app-side grading should be straightforward.
 
 ---
 
