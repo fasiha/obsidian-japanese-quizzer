@@ -27,6 +27,9 @@ struct GrammarDetailSheet: View {
     @State private var isTogglingEnrollment = false
     @State private var isTryingItOut = false
 
+    /// Sub-use IDs that are currently opted OUT (enrolled = false). Loaded on task.
+    @State private var optedOutSubUseIds: Set<String> = []
+
     @State private var mnemonic: String? = nil
     @State private var isEditingMnemonic = false
     @State private var editingMnemonicDraft = ""
@@ -93,6 +96,7 @@ struct GrammarDetailSheet: View {
                 await loadEbisuModels()
                 await loadPastTurns()
                 await loadTopicReviews()
+                await loadSubUseEnrollment()
             }
             .sheet(item: $selectedReview) { wrapper in
                 ReviewDetailSheet(review: wrapper.review, client: client, db: db)
@@ -178,12 +182,24 @@ struct GrammarDetailSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Sub-uses")
                         .font(.headline)
-                    ForEach(subUses, id: \.self) { use in
+                    let enrolledCount = subUses.filter { !optedOutSubUseIds.contains($0.id) }.count
+                    ForEach(subUses, id: \.id) { use in
+                        let isEnrolledUse = !optedOutSubUseIds.contains(use.id)
                         HStack(alignment: .top, spacing: 8) {
-                            Text("•")
-                                .foregroundStyle(.secondary)
-                            SelectableText(use)
+                            SelectableText(use.text)
                                 .font(.body)
+                                .foregroundStyle(isEnrolledUse ? .primary : .secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if enrolled {
+                                Toggle("", isOn: Binding(
+                                    get: { isEnrolledUse },
+                                    set: { newValue in
+                                        Task { await toggleSubUse(use, enrolled: newValue) }
+                                    }
+                                ))
+                                .labelsHidden()
+                                .disabled(!isEnrolledUse && enrolledCount <= 1)
+                            }
                         }
                     }
                 }
@@ -622,6 +638,33 @@ struct GrammarDetailSheet: View {
         isTogglingEnrollment = false
     }
 
+    private var equivalenceGroupKey: String {
+        let allIds = ([topic.prefixedId] + (topic.equivalenceGroup ?? [])).sorted()
+        return allIds.joined(separator: ",")
+    }
+
+    private func loadSubUseEnrollment() async {
+        guard let subUses = topic.subUses, !subUses.isEmpty else { return }
+        let allIds = subUses.map(\.id)
+        if let enrolled = try? await db.enrolledSubUseIds(groupKey: equivalenceGroupKey, allSubUseIds: allIds) {
+            let enrolledSet = Set(enrolled)
+            optedOutSubUseIds = Set(allIds).subtracting(enrolledSet)
+        }
+    }
+
+    private func toggleSubUse(_ subUse: GrammarSubUse, enrolled: Bool) async {
+        do {
+            try await db.setSubUseEnrollment(groupKey: equivalenceGroupKey, subUseId: subUse.id, enrolled: enrolled)
+            if enrolled {
+                optedOutSubUseIds.remove(subUse.id)
+            } else {
+                optedOutSubUseIds.insert(subUse.id)
+            }
+        } catch {
+            print("[GrammarDetailSheet] setSubUseEnrollment error: \(error)")
+        }
+    }
+
     private func tryItOut() async {
         guard !isTryingItOut else { return }
         isTryingItOut = true
@@ -632,7 +675,7 @@ struct GrammarDetailSheet: View {
         """
         if let summary = topic.summary { system += "\nDescription: \(summary)" }
         if let subUses = topic.subUses, !subUses.isEmpty {
-            system += "\nSub-uses:\n" + subUses.map { "- \($0)" }.joined(separator: "\n")
+            system += "\nSub-uses:\n" + subUses.map { "- \($0.text)" }.joined(separator: "\n")
         }
         if let cautions = topic.cautions, !cautions.isEmpty {
             system += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")
@@ -678,7 +721,7 @@ struct GrammarDetailSheet: View {
         """
         if let summary = topic.summary { system += "\nDescription: \(summary)" }
         if let subUses = topic.subUses, !subUses.isEmpty {
-            system += "\nSub-uses:\n" + subUses.map { "- \($0)" }.joined(separator: "\n")
+            system += "\nSub-uses:\n" + subUses.map { "- \($0.text)" }.joined(separator: "\n")
         }
         if let cautions = topic.cautions, !cautions.isEmpty {
             system += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")

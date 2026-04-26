@@ -824,6 +824,129 @@ Reply with ONLY a JSON array of strings — nothing else.
 
 ---
 
+## Sub-use enrollment (opt-in drilling of specific sub-uses)
+
+### Goal
+
+Each equivalence group in `grammar/grammar-equivalences.json` has a `subUses` array. By
+default every sub-use is eligible for quizzing. This feature lets the user opt out of
+specific sub-uses they already know (or opt back in), so the quiz rotates only through
+the sub-uses they want to drill. Mirrors the sense-selector in `WordDetailSheet`.
+
+### Data format change (already done)
+
+`subUses` entries are now objects `{ "id": "...", "text": "..." }` instead of plain strings.
+The `id` is a stable slug derived from the first meaningful English words of the description.
+Migration script: `grammar/add-subuse-ids.mjs` (run once; idempotent). All 178 sub-uses
+across 45 groups now have unique IDs.
+
+Any future addition of a sub-use via `/cluster-grammar-topics` must add the `id` field.
+The enrichment script (`enrich-grammar-descriptions.mjs`) must be updated to emit objects
+rather than strings when writing new sub-uses.
+
+### Data model: new `grammar_subuse_enrollment` table
+
+```sql
+CREATE TABLE grammar_subuse_enrollment (
+  equivalence_group_key TEXT NOT NULL,
+  subuse_id             TEXT NOT NULL,
+  enrolled              INTEGER NOT NULL DEFAULT 1,  -- 1 = enrolled, 0 = opted out
+  PRIMARY KEY (equivalence_group_key, subuse_id)
+);
+```
+
+`equivalence_group_key` matches `GrammarTopic.equivalenceGroupKey` (the sorted join of
+all topic IDs in the group). This table is sparse: a missing row means "enrolled" (the
+default). Only opted-out rows need to be stored — but writing a row on first opt-out
+avoids needing a "has this group been configured?" check.
+
+**No separate Ebisu modeling per sub-use.** Recall is tracked at the topic+facet level
+as today. Sub-use enrollment only filters which sub-uses Haiku is allowed to target.
+
+### iOS changes
+
+#### `QuizDB` additions
+
+- `enrolledSubUses(for groupKey: String, allSubUseIds: [String]) -> [String]` — returns
+  the IDs of sub-uses that are currently enrolled (not opted out). If the table has no
+  rows for this group, returns all IDs (the default). Used by `GrammarAppSession` when
+  building the generation prompt.
+- `setSubUseEnrollment(groupKey: String, subUseId: String, enrolled: Bool)` — upserts
+  a row in `grammar_subuse_enrollment`. Safe to call from the main actor (same pattern
+  as vocab sense enrollment).
+
+#### GRDB migration
+
+New `migrationV_N` (next sequential migration): creates `grammar_subuse_enrollment` table.
+
+#### `GrammarDetailSheet` UI
+
+The sub-uses section already lists all sub-uses as text. Change each row to include a
+toggle on the trailing edge, the same visual pattern as the sense toggles in
+`WordDetailSheet`:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Sub-uses                                            │
+│  ● Casual suggestion or invitation (informal...    ○ │
+│  ● Volitional + か to soften a suggestion...       ○ │
+│  ● Volitional + と思います for a decision...       ✓ │
+│  ● Volitional + と思っています for an intention... ✓ │
+└─────────────────────────────────────────────────────┘
+```
+
+- Toggle state loaded via `QuizDB.enrolledSubUses(for:allSubUseIds:)`.
+- Tapping a toggle calls `QuizDB.setSubUseEnrollment(...)` and refreshes the local state.
+- The last enrolled sub-use cannot be toggled off (guard: if only one remains enrolled,
+  disable its toggle). This prevents the user from accidentally opting out of everything.
+- Only shown when the topic is enrolled (same guard as the mnemonic and "Quiz now" rows).
+
+#### `GrammarAppSession` / generation prompt
+
+In `GrammarQuizSession.generateQuestion(...)`, after loading `recentNotes`, also load
+`enrolledSubUses` for the equivalence group and pass them to the prompt. The generation
+system prompt already instructs Haiku to target a sub-use from the `subUses` list and
+avoid `recentNotes`; extend that instruction to also say:
+
+> "Only choose a sub-use from the following enrolled list: [id1: text1, id2: text2, ...]."
+
+If `enrolledSubUses` returns all sub-uses (the common case), no change in behavior.
+
+### `enrich-grammar-descriptions.mjs` and `/cluster-grammar-topics` updates
+
+When the enrichment script writes new or updated `subUses`, emit objects:
+```json
+{ "id": "<slug>", "text": "<full description text>" }
+```
+Slug derivation: first 3–5 significant English words before the first colon, lowercased,
+hyphenated, extended as needed to be unique within the group. Add a helper function
+`deriveSubUseId(text, existingIds)` to the script (same logic as `add-subuse-ids.mjs`).
+
+### Work breakdown
+
+- [x] **Step 0** — `grammar/grammar-equivalences.json` schema change and one-time migration
+  (`grammar/add-subuse-ids.mjs`). All existing sub-uses now `{ id, text }` objects.
+- [x] **Step 1** — Updated `enrich-grammar-descriptions.mjs`: added `deriveSubUseId` and
+  `normalizeSubUses` helpers; `--write` mode converts incoming plain strings to
+  `{ id, text }` objects (existing objects with valid IDs are preserved unchanged).
+- [x] **Step 2** — GRDB migration v14: `grammar_subuse_enrollment` table (sparse;
+  missing row = enrolled; `enrolled = 0` = opted out).
+- [x] **Step 3** — `QuizDB` additions: `enrolledSubUseIds(groupKey:allSubUseIds:)`,
+  `setSubUseEnrollment(groupKey:subUseId:enrolled:)`, and `allOptedOutSubUseIds()`.
+- [x] **Step 4** — `GrammarDetailSheet`: per-sub-use toggles on trailing edge, only shown
+  when topic is enrolled; last-enrolled guard (toggle disabled when only one remains on).
+- [x] **Step 5** — `GrammarQuizSession.systemPrompt`: sub-use directive uses
+  `item.enrolledSubUses` when non-nil, falling back to all sub-uses.
+  Description block still shows all sub-uses so Claude has full context.
+- [x] **Step 6** — `GrammarSubUse: Codable, Equatable { id, text }`; all sub-use arrays
+  updated throughout; `GrammarQuizItem` gains `enrolledSubUses: [GrammarSubUse]?`;
+  `GrammarQuizContext.build()` loads opted-out IDs in bulk via `allOptedOutSubUseIds()`.
+
+Steps 1 and 6 are independent of each other and can proceed in parallel. Steps 2–5 depend
+on Step 6 (the Swift model must accept the new format before the UI can use it).
+
+---
+
 ## Future
 
 - [ ] Error-correction and sentence-completion quiz variants

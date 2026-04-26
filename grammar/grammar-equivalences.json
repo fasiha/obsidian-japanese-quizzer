@@ -5,9 +5,18 @@
     ],
     "summary": "The conjunctive form connects adjectives and nouns to a following clause the way English 'and' or 'because' does. い-adjectives drop い and add くて (寒い → 寒くて); な-adjectives and nouns add で (静か → 静かで; 学生 → 学生で). The exception is いい, which becomes よくて.",
     "subUses": [
-      "Linking qualities in sequence: 空が青くて海もきれいだった (The sky was blue and the sea was beautiful too)",
-      "Expressing cause or reason: 試験が難しくて困った (I was troubled because the exam was difficult)",
-      "Linking noun predicates: 今日は休みで、明日も休みだ (Today is a day off, and tomorrow is too)"
+      {
+        "id": "linking-qualities-in",
+        "text": "Linking qualities in sequence: 空が青くて海もきれいだった (The sky was blue and the sea was beautiful too)"
+      },
+      {
+        "id": "expressing-cause-or",
+        "text": "Expressing cause or reason: 試験が難しくて困った (I was troubled because the exam was difficult)"
+      },
+      {
+        "id": "linking-noun-predicates",
+        "text": "Linking noun predicates: 今日は休みで、明日も休みだ (Today is a day off, and tomorrow is too)"
+      }
     ],
     "cautions": [
       "The て/で form can be read as neutral 'and' or causal 'because' — context determines which fits; do not force one interpretation",
@@ -22,10 +31,22 @@
     ],
     "summary": "The causative form expresses making or letting someone do something. For godan verbs, change the final vowel to the あ-row and add せる (話す→話させる); for ichidan verbs, drop る and add させる (食べる→食べさせる); irregulars: する→させる, くる→こさせる.",
     "subUses": [
-      "Forcing/compelling: 先生は学生を立たせた (The teacher made the student stand up)",
-      "Permitting/allowing: 母は子供にケーキを食べさせた (The mother let the child eat cake)",
-      "Causative + てあげる/てくれる (strong 'let' reading): 好きな本を読ませてくれた (They let me read the book I wanted)",
-      "Causative of intransitive verbs for indirect causation: 木に実をならせる (to make a tree bear fruit)"
+      {
+        "id": "forcing-compelling-2",
+        "text": "Forcing/compelling: 先生は学生を立たせた (The teacher made the student stand up)"
+      },
+      {
+        "id": "permitting-allowing-2",
+        "text": "Permitting/allowing: 母は子供にケーキを食べさせた (The mother let the child eat cake)"
+      },
+      {
+        "id": "causative-strong-let",
+        "text": "Causative + てあげる/てくれる (strong 'let' reading): 好きな本を読ませてくれた (They let me read the book I wanted)"
+      },
+      {
+        "id": "causative-of-intransitive",
+        "text": "Causative of intransitive verbs for indirect causation: 木に実をならせる (to make a tree bear fruit)"
+      }
     ],
     "cautions": [
       "Particle choice for the causee depends primarily on verb transitivity: intransitive verbs use を for the causee (学生を立たせた); transitive verbs use に to avoid double を (子供にケーキを食べさせた). The に=letting/を=forcing distinction taught in textbooks is a secondary tendency, not the primary rule",
@@ -40,10 +61,22 @@
     ],
     "summary": "い-adjectives become adverbs by replacing the final い with く (早い→早く, 大きい→大きく). な-adjectives become adverbs by adding に (静か→静かに). These adverbs modify verbs to describe how an action is performed, equivalent to English '-ly' adverbs.",
     "subUses": [
-      "Manner adverbs from い-adjectives: 早く走る (run quickly)",
-      "Manner adverbs from な-adjectives: 丁寧に書く (write carefully)",
-      "Adverbial use with なる for change of state: 大きくなる (become big)",
-      "Standalone adverbs that are neither い nor な derived: いっぱい食べる (eat a lot) — these function adverbially without a particle"
+      {
+        "id": "manner-adverbs-from",
+        "text": "Manner adverbs from い-adjectives: 早く走る (run quickly)"
+      },
+      {
+        "id": "manner-adverbs-from-adjectives",
+        "text": "Manner adverbs from な-adjectives: 丁寧に書く (write carefully)"
+      },
+      {
+        "id": "adverbial-use-with",
+        "text": "Adverbial use with なる for change of state: 大きくなる (become big)"
+      },
+      {
+        "id": "standalone-adverbs-that",
+        "text": "Standalone adverbs that are neither い nor な derived: いっぱい食べる (eat a lot) — these function adverbially without a particle"
+      }
     ],
     "cautions": [
       "いい becomes よく (not いく) — this is the only irregular い-adjective adverb",
@@ -59,8 +92,14 @@
     ],
     "summary": "Two contrastive patterns express the speaker's attitude toward a quantity. Number + も (with an affirmative predicate) conveys surprise or emphasis that the number is large: 七台も持っている means 'has as many as seven.' Number + しか (with a negative predicate) conveys that the number is smaller than expected: 一冊しか読まなかった means 'read only one.' The choice reflects the speaker's subjective evaluation, not an objective threshold.",
     "subUses": [
-      "Emphasizing a large quantity with も: メアリーさんはアルバイトが三つもあります (Mary has as many as three part-time jobs — the speaker finds this a lot)",
-      "Emphasizing a small quantity with しか～ない: けんさんは友だちが一人しかいません (Ken has only one friend — the speaker finds this few)"
+      {
+        "id": "emphasizing-a-large",
+        "text": "Emphasizing a large quantity with も: メアリーさんはアルバイトが三つもあります (Mary has as many as three part-time jobs — the speaker finds this a lot)"
+      },
+      {
+        "id": "emphasizing-a-small",
+        "text": "Emphasizing a small quantity with しか～ない: けんさんは友だちが一人しかいません (Ken has only one friend — the speaker finds this few)"
+      }
     ],
     "cautions": [
       "The choice between も and しか is always the speaker's subjective judgment, not an objective rule. The same number can take either particle depending on context: 三本も (as many as three, if three seems like a lot to the speaker) vs 三本しか (only three, if three seems like few).",
@@ -76,10 +115,22 @@
     ],
     "summary": "Japanese has paired verbs where one is transitive (他動詞, takes a direct object with を) and the other is intransitive (自動詞, the subject undergoes the change with が). For example, 開ける (to open something) vs 開く (something opens). The transitive verb implies a deliberate agent acting on an object; the intransitive verb describes a change happening on its own or focuses on the result.",
     "subUses": [
-      "Deliberate action with transitive verb: ドアを閉めた (I closed the door)",
-      "Spontaneous change with intransitive verb: ドアが閉まった (The door closed)",
-      "Describing resulting states with intransitive て-form + いる: 電気がついている (The light is on)",
-      "Expressing accidental or uncontrolled events: コップが割れた (The cup broke — no agent implied)"
+      {
+        "id": "deliberate-action-with",
+        "text": "Deliberate action with transitive verb: ドアを閉めた (I closed the door)"
+      },
+      {
+        "id": "spontaneous-change-with",
+        "text": "Spontaneous change with intransitive verb: ドアが閉まった (The door closed)"
+      },
+      {
+        "id": "describing-resulting-states",
+        "text": "Describing resulting states with intransitive て-form + いる: 電気がついている (The light is on)"
+      },
+      {
+        "id": "expressing-accidental-or",
+        "text": "Expressing accidental or uncontrolled events: コップが割れた (The cup broke — no agent implied)"
+      }
     ],
     "cautions": [
       "Particle choice is the key signal: transitive uses を for the object; intransitive uses が for the subject undergoing change",
@@ -98,14 +149,38 @@
     ],
     "summary": "In Japanese, verbs and adjectives modify nouns by directly preceding them in plain (short) form — no relative pronoun like 'that' or 'which' is needed. The modifying clause can use any plain-form tense: dictionary form for habitual or future actions, た-form for completed or past actions, and ている-form for ongoing or resultant states. Adjectives follow the same pattern: い-adjectives precede the noun unchanged, while な-adjectives drop だ and take な. When the embedded clause has an explicit subject, it is marked with が, not は.",
     "subUses": [
-      "Non-past verb (habitual/future): 毎朝走る人 (a person who runs every morning)",
-      "Past-action (た-form): 昨日読んだ本 (the book I read yesterday)",
-      "Ongoing state (ている-form): 眠っている子供 (a sleeping child / a child who is sleeping)",
-      "Potential verb: 泳げる子供 (a child who can swim)",
-      "い-adjective: 目が青い人 (a person with blue eyes)",
-      "な-adjective: 静かな場所 (a quiet place)",
-      "Gap noun as object of the embedded verb: 妹が作ったケーキ (the cake my sister made — ケーキ is the object of 作った)",
-      "Gap noun as indirect object or recipient: 友達にもらった本 (the book I received from a friend — 本 is the received item)"
+      {
+        "id": "non-past-verb",
+        "text": "Non-past verb (habitual/future): 毎朝走る人 (a person who runs every morning)"
+      },
+      {
+        "id": "past-action-form",
+        "text": "Past-action (た-form): 昨日読んだ本 (the book I read yesterday)"
+      },
+      {
+        "id": "ongoing-state-form",
+        "text": "Ongoing state (ている-form): 眠っている子供 (a sleeping child / a child who is sleeping)"
+      },
+      {
+        "id": "potential-verb-2",
+        "text": "Potential verb: 泳げる子供 (a child who can swim)"
+      },
+      {
+        "id": "adjective-2",
+        "text": "い-adjective: 目が青い人 (a person with blue eyes)"
+      },
+      {
+        "id": "adjective-3",
+        "text": "な-adjective: 静かな場所 (a quiet place)"
+      },
+      {
+        "id": "gap-noun-as",
+        "text": "Gap noun as object of the embedded verb: 妹が作ったケーキ (the cake my sister made — ケーキ is the object of 作った)"
+      },
+      {
+        "id": "gap-noun-as-indirect",
+        "text": "Gap noun as indirect object or recipient: 友達にもらった本 (the book I received from a friend — 本 is the received item)"
+      }
     ],
     "cautions": [
       "Never use ます-form in a relative clause: 住んでいる人 is correct; 住んでいます人 is ungrammatical",
@@ -122,12 +197,30 @@
     ],
     "summary": "The passive form is made by changing godan verbs to the あ-row + れる (書く→書かれる) and ichidan verbs by replacing る with られる (食べる→食べられる); irregulars: する→される, くる→こられる. The agent is marked with に. Japanese passive has both a direct passive (equivalent to English passive) and an indirect or 'suffering' passive where the subject is adversely affected by someone else's action.",
     "subUses": [
-      "Adverse affective (intransitive): 雨に降られた (I got rained on — adversely affected by someone else's action even though I wasn't involved)",
-      "Adverse affective (possessive): 友達に日記を読まれた (My friend read my diary on me — adversely affected through possession of the object)",
-      "Neutral affective: 先輩にパーティーに誘われた (I was invited to a party by my senpai — not adverse, just a thing that happened to me)",
-      "Direct passive (non-human subject, no agent): ここに公園が作られた (A park was built here — written-language style, inanimate subject, no agent mentioned)",
-      "Direct passive (non-human subject, named human agent with によって): この絵はピカソによって描かれた (This picture was painted by Picasso — によって marks the agent in direct passive, never in affective passive)",
-      "Honorific: 先生が話された (The teacher spoke — respectful/polite register)"
+      {
+        "id": "adverse-affective-intransitive",
+        "text": "Adverse affective (intransitive): 雨に降られた (I got rained on — adversely affected by someone else's action even though I wasn't involved)"
+      },
+      {
+        "id": "adverse-affective-possessive",
+        "text": "Adverse affective (possessive): 友達に日記を読まれた (My friend read my diary on me — adversely affected through possession of the object)"
+      },
+      {
+        "id": "neutral-affective-2",
+        "text": "Neutral affective: 先輩にパーティーに誘われた (I was invited to a party by my senpai — not adverse, just a thing that happened to me)"
+      },
+      {
+        "id": "direct-passive-non",
+        "text": "Direct passive (non-human subject, no agent): ここに公園が作られた (A park was built here — written-language style, inanimate subject, no agent mentioned)"
+      },
+      {
+        "id": "direct-passive-non-human",
+        "text": "Direct passive (non-human subject, named human agent with によって): この絵はピカソによって描かれた (This picture was painted by Picasso — によって marks the agent in direct passive, never in affective passive)"
+      },
+      {
+        "id": "honorific-2",
+        "text": "Honorific: 先生が話された (The teacher spoke — respectful/polite register)"
+      }
     ],
     "cautions": [
       "For ichidan verbs, passive られる and potential られる are identical in form — context distinguishes them",
@@ -150,16 +243,46 @@
     ],
     "summary": "あげる, くれる, and もらう are the three basic Japanese giving/receiving verbs. あげる means the giver gives outward (away from the speaker's sphere); くれる means someone gives inward toward the speaker or the speaker's in-group; もらう reverses the perspective so the recipient is the subject (X は Y に/から もらう). The same three verbs attach to the て-form of action verbs (てあげる/てくれる/てもらう) to express doing a favor rather than giving a physical object.",
     "subUses": [
-      "Giving outward (あげる): 私はスーさんに辞書をあげました (I gave Sue a dictionary)",
-      "Third-party giving (あげる): けんさんはスーさんに猫をあげました (Ken gave Sue a cat)",
-      "Giving directly to the speaker (くれる): スーさんは私にTシャツをくれました (Sue gave me a T-shirt)",
-      "Giving from an outsider to someone in the speaker's in-group (くれる): 大統領が妹に手紙をくれました (The president gave my sister a letter — くれる because the speaker identifies with their sister, and the giver is distant)",
-      "Between two in-group members (くれる with speaker aligned to recipient): 祖母が弟におもちゃをくれた (Grandma gave my brother a toy — speaker adopts the brother's perspective for this utterance)",
-      "Receiving with もらう (recipient as subject): 私はけんさんに帽子をもらいました (I received a hat from Ken)",
-      "Asking what was received: 誕生日に何をもらいましたか (What did you get for your birthday?)",
-      "Doing a favor for someone (てあげる): 荷物を持ってあげましょうか (Shall I carry your bags for you? — speaker does action outward toward recipient)",
-      "Someone does a favor for the speaker (てくれる): 先生が漢字を教えてくれた (The teacher taught me kanji — action directed toward speaker)",
-      "Arranging or asking someone to do something (てもらう): 友達に写真を撮ってもらった (I had my friend take a photo — subject arranged for the action to happen)"
+      {
+        "id": "giving-outward-2",
+        "text": "Giving outward (あげる): 私はスーさんに辞書をあげました (I gave Sue a dictionary)"
+      },
+      {
+        "id": "third-party-giving",
+        "text": "Third-party giving (あげる): けんさんはスーさんに猫をあげました (Ken gave Sue a cat)"
+      },
+      {
+        "id": "giving-directly-to",
+        "text": "Giving directly to the speaker (くれる): スーさんは私にTシャツをくれました (Sue gave me a T-shirt)"
+      },
+      {
+        "id": "giving-from-an",
+        "text": "Giving from an outsider to someone in the speaker's in-group (くれる): 大統領が妹に手紙をくれました (The president gave my sister a letter — くれる because the speaker identifies with their sister, and the giver is distant)"
+      },
+      {
+        "id": "between-two-in",
+        "text": "Between two in-group members (くれる with speaker aligned to recipient): 祖母が弟におもちゃをくれた (Grandma gave my brother a toy — speaker adopts the brother's perspective for this utterance)"
+      },
+      {
+        "id": "receiving-with-recipient",
+        "text": "Receiving with もらう (recipient as subject): 私はけんさんに帽子をもらいました (I received a hat from Ken)"
+      },
+      {
+        "id": "asking-what-was",
+        "text": "Asking what was received: 誕生日に何をもらいましたか (What did you get for your birthday?)"
+      },
+      {
+        "id": "doing-a-favor",
+        "text": "Doing a favor for someone (てあげる): 荷物を持ってあげましょうか (Shall I carry your bags for you? — speaker does action outward toward recipient)"
+      },
+      {
+        "id": "someone-does-a",
+        "text": "Someone does a favor for the speaker (てくれる): 先生が漢字を教えてくれた (The teacher taught me kanji — action directed toward speaker)"
+      },
+      {
+        "id": "arranging-or-asking",
+        "text": "Arranging or asking someone to do something (てもらう): 友達に写真を撮ってもらった (I had my friend take a photo — subject arranged for the action to happen)"
+      }
     ],
     "cautions": [
       "くれる requires the speaker to adopt the recipient's perspective in this utterance; the recipient does not need to be objectively closer to the speaker than the giver, only aligned with the speaker's current viewpoint",
@@ -177,9 +300,18 @@
     ],
     "summary": "Verb stem (ます-stem) + かねる expresses that the speaker finds it difficult, emotionally hesitant, or impossible to perform an action. It implies a degree of inner willingness thwarted by circumstances, making it a softer, more polite alternative to できない. Frequently used in formal and business contexts where blunt refusal would be inappropriate.",
     "subUses": [
-      "Polite formal refusal: そのご要望にはお応えしかねます (I'm afraid we cannot accommodate that request)",
-      "Genuine difficulty or reluctant inability: その判断には賛成しかねる (I find myself unable to agree with that judgment)",
-      "Classical/literary usage: 流れる涙止めそかねつる (the flowing tears I could not stop) — classical auxiliary forms may appear in older texts and songs"
+      {
+        "id": "polite-formal-refusal",
+        "text": "Polite formal refusal: そのご要望にはお応えしかねます (I'm afraid we cannot accommodate that request)"
+      },
+      {
+        "id": "genuine-difficulty-or",
+        "text": "Genuine difficulty or reluctant inability: その判断には賛成しかねる (I find myself unable to agree with that judgment)"
+      },
+      {
+        "id": "classical-literary-usage",
+        "text": "Classical/literary usage: 流れる涙止めそかねつる (the flowing tears I could not stop) — classical auxiliary forms may appear in older texts and songs"
+      }
     ],
     "cautions": [
       "Primarily attaches to transitive verbs; わかる and できる are accepted exceptions — avoid attaching かねる to arbitrary intransitive verbs",
@@ -195,11 +327,26 @@
     ],
     "summary": "かもしれない (polite: かもしれません) expresses that something is possible but uncertain — roughly 'might' or 'maybe'. It attaches directly to the plain (short) form of verbs and い-adjectives; な-adjectives and nouns drop the copula だ before it (元気かもしれない, not 元気だかもしれない). The colloquial abbreviation かも appears frequently at the end of casual sentences.",
     "subUses": [
-      "Future uncertainty with verbs: 雨が降るかもしれない (It might rain)",
-      "Speculation about current states with adjectives: さむいかもしれません (It might be cold)",
-      "Conjecture about people or things with nouns: 今日はスーさんの誕生日かもしれません (Today might be Sue's birthday)",
-      "Speculation about past events using past plain form: プロポーズしたかもしれません (He might have proposed)",
-      "Negative speculation: 友だちがいないかもしれません (She might not have any friends)"
+      {
+        "id": "future-uncertainty-with",
+        "text": "Future uncertainty with verbs: 雨が降るかもしれない (It might rain)"
+      },
+      {
+        "id": "speculation-about-current",
+        "text": "Speculation about current states with adjectives: さむいかもしれません (It might be cold)"
+      },
+      {
+        "id": "conjecture-about-people",
+        "text": "Conjecture about people or things with nouns: 今日はスーさんの誕生日かもしれません (Today might be Sue's birthday)"
+      },
+      {
+        "id": "speculation-about-past",
+        "text": "Speculation about past events using past plain form: プロポーズしたかもしれません (He might have proposed)"
+      },
+      {
+        "id": "negative-speculation-2",
+        "text": "Negative speculation: 友だちがいないかもしれません (She might not have any friends)"
+      }
     ],
     "cautions": [
       "な-adjectives and nouns do NOT take だ before かもしれない — 元気かもしれない is correct; 元気だかもしれない is ungrammatical",
@@ -215,10 +362,22 @@
     ],
     "summary": "Verb[dictionary]+ことにする means 'decide to do X' — a volitional choice made by the subject. The negative form Verb[ない]+ことにする means 'decide not to do X.' The ongoing form ことにしている extends this decision into a standing rule or habit: 'make it a point to do X' or 'have a policy of doing X.'",
     "subUses": [
-      "One-time decision (affirmative): 留学することにしました (Decided to study abroad)",
-      "One-time decision (negative): オーストラリアに帰らないことにしました (Decided not to return to Australia)",
-      "Standing self-imposed rule (ことにしている, affirmative): 毎日新聞を読むことにしています (I make it a rule to read the newspaper every day)",
-      "Standing self-imposed rule (ことにしている, negative): テレビを見ながら勉強しないことにしています (I have a rule not to study while watching TV)"
+      {
+        "id": "one-time-decision",
+        "text": "One-time decision (affirmative): 留学することにしました (Decided to study abroad)"
+      },
+      {
+        "id": "one-time-decision-negative",
+        "text": "One-time decision (negative): オーストラリアに帰らないことにしました (Decided not to return to Australia)"
+      },
+      {
+        "id": "standing-self-imposed",
+        "text": "Standing self-imposed rule (ことにしている, affirmative): 毎日新聞を読むことにしています (I make it a rule to read the newspaper every day)"
+      },
+      {
+        "id": "standing-self-imposed-rule",
+        "text": "Standing self-imposed rule (ことにしている, negative): テレビを見ながら勉強しないことにしています (I have a rule not to study while watching TV)"
+      }
     ],
     "cautions": [
       "All sentences for this topic should reflect the subject's own volition — ことにする expresses a deliberate personal choice",
@@ -235,9 +394,18 @@
     ],
     "summary": "The particle し lists multiple reasons or properties of equal weight, attached to short-form predicates (verb/い-adj as-is, な-adj+だ, noun+だ). It functions like 'and besides' or 'and also,' presenting co-existing reasons that together support a conclusion.",
     "subUses": [
-      "Listing multiple reasons: 安いし、おいしいし、あの店が好きだ (It's cheap and tasty — that's why I like that restaurant)",
-      "Single reason with implied others: 時間もないし、帰ろう (We're out of time [among other reasons], so let's head back)",
-      "Listing qualities without an explicit conclusion: あの先生は優しいし、説明も上手だし (That teacher is kind and good at explaining...)"
+      {
+        "id": "listing-multiple-reasons",
+        "text": "Listing multiple reasons: 安いし、おいしいし、あの店が好きだ (It's cheap and tasty — that's why I like that restaurant)"
+      },
+      {
+        "id": "single-reason-with",
+        "text": "Single reason with implied others: 時間もないし、帰ろう (We're out of time [among other reasons], so let's head back)"
+      },
+      {
+        "id": "listing-qualities-without",
+        "text": "Listing qualities without an explicit conclusion: あの先生は優しいし、説明も上手だし (That teacher is kind and good at explaining...)"
+      }
     ],
     "cautions": [
       "し requires short-form predicates — だ appears after な-adjectives and nouns (静かだし) but NOT after い-adjectives (高いし, not 高いだし)",
@@ -254,10 +422,22 @@
     ],
     "summary": "The suffix そう expresses a visual or sensory impression — 'looks like,' 'seems like,' or 'appears to be.' Attach it to the stem of い-adjectives (drop い: 高い→高そう), directly to な-adjective stems (元気→元気そう), and to verb stems (降る→降りそう). そうな/そうに modify nouns and verbs respectively.",
     "subUses": [
-      "Visual impression from い-adjective: この指輪は高そうです (This ring looks expensive)",
-      "Visual impression from な-adjective: 元気そうな子供ですね (That child looks healthy)",
-      "Prediction about an upcoming event from verb stem: 雨が降りそうです (It looks like it's going to rain)",
-      "Attributive modifier with そうな: 面白そうなDVDですね (That DVD looks interesting)"
+      {
+        "id": "visual-impression-from",
+        "text": "Visual impression from い-adjective: この指輪は高そうです (This ring looks expensive)"
+      },
+      {
+        "id": "visual-impression-from-adjective",
+        "text": "Visual impression from な-adjective: 元気そうな子供ですね (That child looks healthy)"
+      },
+      {
+        "id": "prediction-about-an",
+        "text": "Prediction about an upcoming event from verb stem: 雨が降りそうです (It looks like it's going to rain)"
+      },
+      {
+        "id": "attributive-modifier-with",
+        "text": "Attributive modifier with そうな: 面白そうなDVDですね (That DVD looks interesting)"
+      }
     ],
     "cautions": [
       "Exception: いい becomes よさそう (not いそう) — さ is inserted before そう",
@@ -274,9 +454,18 @@
     ],
     "summary": "Verb[た]+ことがある expresses past experience — 'have done X before' or 'have experienced X at least once.' The こと nominalizes the verb phrase, and ある/ない confirms whether the experience exists in one's history.",
     "subUses": [
-      "Past experience (affirmative): 日本に行ったことがあります (I have been to Japan before)",
-      "Past experience (negative / never): 天ぷらを食べたことがありません (I have never eaten tempura)",
-      "Experience with distant past time adverb: 五年前に日本へ行ったことがある (I went to Japan five years ago — simultaneously asserts the experience and when it occurred)"
+      {
+        "id": "past-experience-affirmative",
+        "text": "Past experience (affirmative): 日本に行ったことがあります (I have been to Japan before)"
+      },
+      {
+        "id": "past-experience-negative",
+        "text": "Past experience (negative / never): 天ぷらを食べたことがありません (I have never eaten tempura)"
+      },
+      {
+        "id": "experience-with-distant",
+        "text": "Experience with distant past time adverb: 五年前に日本へ行ったことがある (I went to Japan five years ago — simultaneously asserts the experience and when it occurred)"
+      }
     ],
     "cautions": [
       "The pattern requires Verb[た]+こと+が+ある/ない — こと is fixed here and cannot be replaced by の",
@@ -292,9 +481,18 @@
     ],
     "summary": "たら is formed by adding ら to the short-form past: verb (行った → 行ったら), い-adjective (安い → 安かったら), な-adjective (静かだ → 静かだったら), noun (休みだ → 休みだったら). It expresses 'if/when A, then B,' focusing on the completion or occurrence of A as the trigger for B.",
     "subUses": [
-      "Hypothetical condition: お金があったら、旅行したい (If I had money, I'd want to travel)",
-      "Sequential or temporal 'when': 家に帰ったら、電話して (Call me when you get home)",
-      "Past discovery — something found upon doing A: 窓を開けたら、雨が降っていた (When I opened the window, it was raining)"
+      {
+        "id": "hypothetical-condition-2",
+        "text": "Hypothetical condition: お金があったら、旅行したい (If I had money, I'd want to travel)"
+      },
+      {
+        "id": "sequential-or-temporal",
+        "text": "Sequential or temporal 'when': 家に帰ったら、電話して (Call me when you get home)"
+      },
+      {
+        "id": "past-discovery-something",
+        "text": "Past discovery — something found upon doing A: 窓を開けたら、雨が降っていた (When I opened the window, it was raining)"
+      }
     ],
     "cautions": [
       "たら is natural with commands and requests in the B clause: 時間があったら来てください is correct",
@@ -311,9 +509,18 @@
     ],
     "summary": "たらどうですか (casual: たらどう) offers advice or a suggestion to someone who has expressed a problem — roughly 'Why don't you...?' or 'How about...?'. It is formed from the past tense short form (た-form) of a verb followed by どうですか. The pattern is specifically for advice in response to a stated problem, not for invitations.",
     "subUses": [
-      "Advice responding to a problem: 疲れているんです → 早く寝たらどうですか (You're tired? Why don't you go to bed early?)",
-      "Suggestion to take action: 財布をなくしたんです → 警察に行ったらどうですか (You lost your wallet? Why don't you go to the police?)",
-      "Casual shortening: 薬を飲んだらどう？ (Why don't you take some medicine?)"
+      {
+        "id": "advice-responding-to",
+        "text": "Advice responding to a problem: 疲れているんです → 早く寝たらどうですか (You're tired? Why don't you go to bed early?)"
+      },
+      {
+        "id": "suggestion-to-take",
+        "text": "Suggestion to take action: 財布をなくしたんです → 警察に行ったらどうですか (You lost your wallet? Why don't you go to the police?)"
+      },
+      {
+        "id": "casual-shortening-2",
+        "text": "Casual shortening: 薬を飲んだらどう？ (Why don't you take some medicine?)"
+      }
     ],
     "cautions": [
       "Use たらどうですか for advice in response to someone's expressed problem, not for invitations — for invitations use ませんか instead",
@@ -330,9 +537,18 @@
     ],
     "summary": "たり～たりする lists actions or states as non-exhaustive examples, equivalent to \"do things like A and B.\" Form it by adding り to the plain past (た-form) of each verb, then close the chain with する (conjugated for tense and politeness). Unlike the て-form sequence, たり～たりする carries no implied order among the listed items.",
     "subUses": [
-      "列挙 (listing representative actions): 音楽を聞いたり、本を読んだりした — implies other activities also occurred.",
-      "交互 (alternating or fluctuating states): 雨が降ったり止んだりしている — it keeps going back and forth between raining and stopping.",
-      "単独 (single-verb vagueness): 散歩したりする — one verb + たり + する implies other unspecified activities exist."
+      {
+        "id": "listing-representative-actions",
+        "text": "列挙 (listing representative actions): 音楽を聞いたり、本を読んだりした — implies other activities also occurred."
+      },
+      {
+        "id": "alternating-or-fluctuating",
+        "text": "交互 (alternating or fluctuating states): 雨が降ったり止んだりしている — it keeps going back and forth between raining and stopping."
+      },
+      {
+        "id": "single-verb-vagueness",
+        "text": "単独 (single-verb vagueness): 散歩したりする — one verb + たり + する implies other unspecified activities exist."
+      }
     ],
     "cautions": [
       "て-form vs. たり: て-form (食べて寝た) sequences events in strict order and treats the list as complete; たり～たりする (食べたり寝たりした) presents events as examples with no order and implies the list is open-ended.",
@@ -349,9 +565,18 @@
     ],
     "summary": "ていただけませんか is the most humble way to request a favor. It combines the て-form of a verb with いただけ (the potential stem of the humble verb いただく 'to receive') plus ません + か (polite negative question). The negative-question framing softens the request, and the humble いただく lowers the speaker relative to the listener — making this the default choice when asking superiors, teachers, clients, or strangers for a favor. Genki introduces this form alongside the less-formal ーてくれませんか (polite) and the casual ーてくれない, so learners should recognize all three politeness tiers together.",
     "subUses": [
-      "Humble request to a superior or stranger (ーていただけませんか): 作文を直していただけませんか (Could you please correct my essay?)",
-      "Polite request to an equal (ーてくれませんか): お弁当を作ってくれませんか (Could you make me a bento?)",
-      "Casual request to a friend or family member (ーてくれない): ノートを見せてくれない (Can I see your notes?)"
+      {
+        "id": "humble-request-to",
+        "text": "Humble request to a superior or stranger (ーていただけませんか): 作文を直していただけませんか (Could you please correct my essay?)"
+      },
+      {
+        "id": "polite-request-to",
+        "text": "Polite request to an equal (ーてくれませんか): お弁当を作ってくれませんか (Could you make me a bento?)"
+      },
+      {
+        "id": "casual-request-to",
+        "text": "Casual request to a friend or family member (ーてくれない): ノートを見せてくれない (Can I see your notes?)"
+      }
     ],
     "cautions": [
       "いただける is the potential form of いただく — the shape before ません must be いただけ (not いただき or いただく). Memorize the full ladder: ください (neutral polite) → くれませんか (polite request from an equal) → いただけませんか (humble request from below)",
@@ -368,12 +593,30 @@
     ],
     "summary": "Attaching おく to the て-form of a verb describes doing something ahead of time so it is ready or in place for a future event. Formation: verb て-form + おく (食べておく, 読んでおく). In casual speech, ておく is regularly contracted to とく (読んどく, 買っとく).",
     "subUses": [
-      "Preparatory action — doing something now so it is ready later: 旅行の前にホテルを予約しておいた (reserved a hotel in advance of the trip). This includes preventative actions where the future event is something undesirable: 虫歯にならないように歯を磨いておく (brushing teeth in advance so cavities don't develop).",
-      "Maintaining a state intentionally — leaving something as it is on purpose: 窓を開けておいた (I left the window open [for a reason]); このままにしておいてください (please leave it as it is).",
-      "Causative + ておく — letting someone or something remain in its current state: 疲れているからしばらく寝させておこう (they're tired so let's leave them sleeping for a while).",
-      "Deliberate inaction (ないでおく) — intentionally leaving something undone: フレッドには言わないでおきましょう (Let's leave it unsaid to Fred / Let's not tell Fred). The negative て-form ないで + おく frames the non-action as a conscious, purposeful choice rather than mere omission.",
-      "Tentative or stopgap action — doing something for now even if it is not the ideal solution, often paired with とりあえず: とりあえず、なんか頼んでおく？ (Should we order something to get started [even though not everyone is here yet]?); このトピックはこの辺で終わりにしておきましょう (Let's wrap up this topic here for now).",
-      "Casual contraction とく: 後で読むから、ここに置いといて (I'll read it later, so leave it here)"
+      {
+        "id": "preparatory-action-doing",
+        "text": "Preparatory action — doing something now so it is ready later: 旅行の前にホテルを予約しておいた (reserved a hotel in advance of the trip). This includes preventative actions where the future event is something undesirable: 虫歯にならないように歯を磨いておく (brushing teeth in advance so cavities don't develop)."
+      },
+      {
+        "id": "maintaining-a-state",
+        "text": "Maintaining a state intentionally — leaving something as it is on purpose: 窓を開けておいた (I left the window open [for a reason]); このままにしておいてください (please leave it as it is)."
+      },
+      {
+        "id": "causative-letting-someone",
+        "text": "Causative + ておく — letting someone or something remain in its current state: 疲れているからしばらく寝させておこう (they're tired so let's leave them sleeping for a while)."
+      },
+      {
+        "id": "deliberate-inaction-intentionally",
+        "text": "Deliberate inaction (ないでおく) — intentionally leaving something undone: フレッドには言わないでおきましょう (Let's leave it unsaid to Fred / Let's not tell Fred). The negative て-form ないで + おく frames the non-action as a conscious, purposeful choice rather than mere omission."
+      },
+      {
+        "id": "tentative-or-stopgap",
+        "text": "Tentative or stopgap action — doing something for now even if it is not the ideal solution, often paired with とりあえず: とりあえず、なんか頼んでおく？ (Should we order something to get started [even though not everyone is here yet]?); このトピックはこの辺で終わりにしておきましょう (Let's wrap up this topic here for now)."
+      },
+      {
+        "id": "casual-contraction-2",
+        "text": "Casual contraction とく: 後で読むから、ここに置いといて (I'll read it later, so leave it here)"
+      }
     ],
     "cautions": [
       "ておく vs てある: ておく emphasizes preparatory intent (doing the action on purpose for later); てある describes only the resulting state (the thing is in a done state). They are not interchangeable.",
@@ -389,8 +632,14 @@
     ],
     "summary": "Attach しまう to the て-form of a verb to express that an action was carried out completely or resulted in an unfortunate, irreversible outcome. Both senses share the core idea that the action is fully completed and cannot be undone; the difference is only whether that finality is unwelcome or simply neutral. Colloquial contractions: て + しまう → ちゃう; で + しまう → じゃう (e.g., 飲んでしまう → 飲んじゃう).",
     "subUses": [
-      "Thorough completion: 宿題をやってしまった (I got all the homework done — finished it completely, no going back)",
-      "Regrettable or accidental outcome (also fully completed): 財布を忘れてしまった (I went and forgot my wallet — it's done, can't go back)"
+      {
+        "id": "thorough-completion-2",
+        "text": "Thorough completion: 宿題をやってしまった (I got all the homework done — finished it completely, no going back)"
+      },
+      {
+        "id": "regrettable-or-accidental",
+        "text": "Regrettable or accidental outcome (also fully completed): 財布を忘れてしまった (I went and forgot my wallet — it's done, can't go back)"
+      }
     ],
     "cautions": [
       "Context determines whether the meaning is completion or regret — the same form could carry both simultaneously so do not force exactly one reading",
@@ -406,10 +655,22 @@
     ],
     "summary": "てすみません apologizes for an action the speaker has taken (or failed to take). It attaches to the て-form of a verb, or なくて for negative verbs, and is followed by an apology phrase. The phrase choice marks the register: すみません / すみませんでした for polite contexts (teachers, bosses, strangers) and ごめん / ごめんなさい for casual contexts (friends, family). The past-tense すみませんでした frames the action as a finished, now-regretted deed.",
     "subUses": [
-      "Polite apology for a completed action (ーてすみませんでした): 授業中に話してすみませんでした (I'm sorry for talking during class)",
-      "Polite apology for something not done (なくて + すみませんでした): 教科書を持ってこなくてすみませんでした (I'm sorry for not bringing my textbook)",
-      "Casual apology for an action (ーてごめん): 夜遅く電話してごめん (Sorry for calling so late)",
-      "Casual apology for an omission (なくてごめん): 約束を守らなくてごめん (Sorry for not keeping my promise)"
+      {
+        "id": "polite-apology-for",
+        "text": "Polite apology for a completed action (ーてすみませんでした): 授業中に話してすみませんでした (I'm sorry for talking during class)"
+      },
+      {
+        "id": "polite-apology-for-something",
+        "text": "Polite apology for something not done (なくて + すみませんでした): 教科書を持ってこなくてすみませんでした (I'm sorry for not bringing my textbook)"
+      },
+      {
+        "id": "casual-apology-for",
+        "text": "Casual apology for an action (ーてごめん): 夜遅く電話してごめん (Sorry for calling so late)"
+      },
+      {
+        "id": "casual-apology-for-an",
+        "text": "Casual apology for an omission (なくてごめん): 約束を守らなくてごめん (Sorry for not keeping my promise)"
+      }
     ],
     "cautions": [
       "Negative verbs always use なくて before the apology — 来なくてすみません, 守らなくてごめん. Do not use ないで here",
@@ -424,9 +685,18 @@
     ],
     "summary": "てならない expresses an uncontrollable, persistent feeling or sensation — 'can't help but feel' or 'extremely.' It attaches to the て-form of verbs and い-adjectives, or で for な-adjectives (さびしくてならない, 気になってならない). It is a formal, literary expression more common in writing than speech.",
     "subUses": [
-      "Uncontrollable emotion: 残念でならない (I can't help but feel regret)",
-      "Persistent sensation: 暑くてならない (It's unbearably hot)",
-      "Spontaneous feeling: 気がしてならない (I can't shake the feeling that...)"
+      {
+        "id": "uncontrollable-emotion-2",
+        "text": "Uncontrollable emotion: 残念でならない (I can't help but feel regret)"
+      },
+      {
+        "id": "persistent-sensation-2",
+        "text": "Persistent sensation: 暑くてならない (It's unbearably hot)"
+      },
+      {
+        "id": "spontaneous-feeling-2",
+        "text": "Spontaneous feeling: 気がしてならない (I can't shake the feeling that...)"
+      }
     ],
     "cautions": [
       "The feeling must be ongoing and persistent, not momentary — てならない is wrong for sudden, fleeting reactions",
@@ -441,9 +711,18 @@
     ],
     "summary": "ては〜ては expresses repeated alternation between two actions, often implying a cycle or habitual pattern. The structure is Verb-てはVerb-ては, where the two verbs are typically contrasting or complementary actions. It can also appear with a single ては when context already implies repetition.",
     "subUses": [
-      "Repeated alternation between two actions: 食べては寝、食べては寝の生活だ (A life of eating then sleeping, eating then sleeping)",
-      "Habitual cycle leading to a result: 練習しては失敗し、また練習した (Practiced and failed, practiced and failed again)",
-      "Single ては with implied repetition: たんこぶをつくっては渡した (kept making bumps and handing them out — repeated giving)"
+      {
+        "id": "repeated-alternation-between",
+        "text": "Repeated alternation between two actions: 食べては寝、食べては寝の生活だ (A life of eating then sleeping, eating then sleeping)"
+      },
+      {
+        "id": "habitual-cycle-leading",
+        "text": "Habitual cycle leading to a result: 練習しては失敗し、また練習した (Practiced and failed, practiced and failed again)"
+      },
+      {
+        "id": "single-with-implied",
+        "text": "Single ては with implied repetition: たんこぶをつくっては渡した (kept making bumps and handing them out — repeated giving)"
+      }
     ],
     "cautions": [
       "ては can appear only once when the sentence structure already conveys repetition — the doubled form is not always required",
@@ -459,10 +738,22 @@
     ],
     "summary": "てみる attaches to the て-form of a verb and means 'do something and see how it goes' — trying an action to observe the outcome. It is often translated as 'try doing X' when the speaker has not done it before or is testing a possibility. てみる conjugates like a regular ichidan verb (てみます, てみた, てみたい).",
     "subUses": [
-      "First-time or exploratory attempt: 空手のクラスに行ってみます (I'll try going to a karate class [to see what it's like])",
-      "Acting on a suggestion: じゃあ、食べてみます (Well then, I'll try eating it)",
-      "Expressing desire to experience something new: モンゴルに行ってみたいです (I'd like to try going to Mongolia)",
-      "Checking a result by doing: 図書館で調べてみます (I'll try looking it up at the library [and see what I find])"
+      {
+        "id": "first-time-or",
+        "text": "First-time or exploratory attempt: 空手のクラスに行ってみます (I'll try going to a karate class [to see what it's like])"
+      },
+      {
+        "id": "acting-on-a",
+        "text": "Acting on a suggestion: じゃあ、食べてみます (Well then, I'll try eating it)"
+      },
+      {
+        "id": "expressing-desire-to",
+        "text": "Expressing desire to experience something new: モンゴルに行ってみたいです (I'd like to try going to Mongolia)"
+      },
+      {
+        "id": "checking-a-result",
+        "text": "Checking a result by doing: 図書館で調べてみます (I'll try looking it up at the library [and see what I find])"
+      }
     ],
     "cautions": [
       "てみる focuses on the action and its observed result, not on whether success is expected. Compare with Verb[volitional]+とする, which implies attempting something that may not succeed",
@@ -478,10 +769,22 @@
     ],
     "summary": "といい expresses hope or a wish about a future situation. The clause before と is in plain form: verbs and い-adjectives attach directly (来るといい, 寒くないといい), while な-adjectives and nouns take だ (静かだといい, 日曜日だといい). Add ですね to share the hope with or about someone else, or んですが / なあ to voice a more tentative, inward-looking wish.",
     "subUses": [
-      "Hoping for another person's good fortune (…ですね): 早くよくなるといいですね (I hope you get better soon)",
-      "Outward hope shared with the listener (…ですね), even when self-directed: 大学院に入れるといいですね (I hope I can get into graduate school — said aloud to a friend)",
-      "Hoping something won't happen (negative short form + といい): 寒くないといいですね (I hope it won't be cold)",
-      "Tentative personal hope (…んですが): 奨学金がもらえるといいんですが (I'm hoping I can get a scholarship)"
+      {
+        "id": "hoping-for-another",
+        "text": "Hoping for another person's good fortune (…ですね): 早くよくなるといいですね (I hope you get better soon)"
+      },
+      {
+        "id": "outward-hope-shared",
+        "text": "Outward hope shared with the listener (…ですね), even when self-directed: 大学院に入れるといいですね (I hope I can get into graduate school — said aloud to a friend)"
+      },
+      {
+        "id": "hoping-something-won",
+        "text": "Hoping something won't happen (negative short form + といい): 寒くないといいですね (I hope it won't be cold)"
+      },
+      {
+        "id": "tentative-personal-hope",
+        "text": "Tentative personal hope (…んですが): 奨学金がもらえるといいんですが (I'm hoping I can get a scholarship)"
+      }
     ],
     "cautions": [
       "The clause before と must be plain form — use 来るといい, never 来ますといい, even when the main sentence is polite",
@@ -498,12 +801,30 @@
     ],
     "summary": "とき means 'when' or 'at the time of.' It is a dependent noun that takes a preceding modifier: a plain-form verb (present or past), an い-adjective, a な-adjective + な, or a noun + の. The structure 'A とき, B' means 'when A, B.' The tense inside the A clause is relative to B: use present tense when A is simultaneous with or still upcoming at the moment of B, and past tense when A is already complete by the time B happens — regardless of where B falls on the absolute timeline.",
     "subUses": [
-      "Present verb + とき (A is ongoing or upcoming relative to B): コーヒーを飲むとき、砂糖を入れます (When I drink coffee, I put in sugar — the sugar goes in before the drinking)",
-      "Past verb + とき (A is complete by the time B happens): 朝寝坊したとき、タクシーに乗ります (When I oversleep, I take a taxi — the oversleeping finishes first)",
-      "い-adjective + とき: 眠いとき、コーヒーを飲みます (When I'm sleepy, I drink coffee)",
-      "な-adjective + な + とき: ひまなとき、ゲームをします (When I have free time, I play games)",
-      "Noun + の + とき: ホームシックのとき、両親に電話します (When I'm homesick, I call my parents)",
-      "Differing subjects (とき-clause subject marked with が): 私が大学生だった時、妹はまだ三つだった (When I was a college student, my sister was only three)"
+      {
+        "id": "present-verb-a",
+        "text": "Present verb + とき (A is ongoing or upcoming relative to B): コーヒーを飲むとき、砂糖を入れます (When I drink coffee, I put in sugar — the sugar goes in before the drinking)"
+      },
+      {
+        "id": "past-verb-a",
+        "text": "Past verb + とき (A is complete by the time B happens): 朝寝坊したとき、タクシーに乗ります (When I oversleep, I take a taxi — the oversleeping finishes first)"
+      },
+      {
+        "id": "adjective-4",
+        "text": "い-adjective + とき: 眠いとき、コーヒーを飲みます (When I'm sleepy, I drink coffee)"
+      },
+      {
+        "id": "adjective-5",
+        "text": "な-adjective + な + とき: ひまなとき、ゲームをします (When I have free time, I play games)"
+      },
+      {
+        "id": "noun-2",
+        "text": "Noun + の + とき: ホームシックのとき、両親に電話します (When I'm homesick, I call my parents)"
+      },
+      {
+        "id": "differing-subjects-clause",
+        "text": "Differing subjects (とき-clause subject marked with が): 私が大学生だった時、妹はまだ三つだった (When I was a college student, my sister was only three)"
+      }
     ],
     "cautions": [
       "The clause before とき must be plain form — 来たとき, not 来ましたとき — even when the main clause B uses masu-form politeness",
@@ -522,9 +843,18 @@
     ],
     "summary": "など is a particle placed after a noun (or a list of nouns) to indicate that the mentioned items are examples from a larger, unstated set. It translates as 'such as,' 'things like,' or 'etc.' It can also precede の to modify a following noun: Nounなど+の+Noun.",
     "subUses": [
-      "Listing with open-ended implication: コーヒーや紅茶などを飲んだ (I drank things like coffee and tea)",
-      "Modifying a following noun with などの: 本などの荷物を棚に置いた (I put luggage such as books on the shelf)",
-      "Self-deprecating or humble use (with negated predicate): 私などにはとても無理だ (It's quite impossible for someone like me)"
+      {
+        "id": "listing-with-open",
+        "text": "Listing with open-ended implication: コーヒーや紅茶などを飲んだ (I drank things like coffee and tea)"
+      },
+      {
+        "id": "modifying-a-following",
+        "text": "Modifying a following noun with などの: 本などの荷物を棚に置いた (I put luggage such as books on the shelf)"
+      },
+      {
+        "id": "self-deprecating-or",
+        "text": "Self-deprecating or humble use (with negated predicate): 私などにはとても無理だ (It's quite impossible for someone like me)"
+      }
     ],
     "cautions": [
       "など implies the list is not exhaustive — do not use it when the enumeration is meant to be complete",
@@ -541,10 +871,22 @@
     ],
     "summary": "なら (short for ならば) is a conditional particle meaning 'if it is the case that X' or 'as for X.' Its defining feature is contrast and limitation: it picks out one item or situation and applies the predicate specifically to that, implying different treatment for other items. It attaches directly to nouns, な-adjective stems, plain-form verbs, and い-adjectives, optionally with の before it for nominalization.",
     "subUses": [
-      "Limiting/contrastive topic with noun: 魚なら食べますが、肉は食べません (Fish I'll eat, but not meat)",
-      "Contrastive availability: テニスならできます (Tennis I can do [implying other things I cannot])",
-      "Responding to a condition raised by the other speaker: 宿題が難しいなら、一緒にしよう (If the homework is hard, let's do it together)",
-      "Hypothetical about a specific person or thing: 君ならできる (If it's you, you can do it — implying not everyone could)"
+      {
+        "id": "limiting-contrastive-topic",
+        "text": "Limiting/contrastive topic with noun: 魚なら食べますが、肉は食べません (Fish I'll eat, but not meat)"
+      },
+      {
+        "id": "contrastive-availability-2",
+        "text": "Contrastive availability: テニスならできます (Tennis I can do [implying other things I cannot])"
+      },
+      {
+        "id": "responding-to-a",
+        "text": "Responding to a condition raised by the other speaker: 宿題が難しいなら、一緒にしよう (If the homework is hard, let's do it together)"
+      },
+      {
+        "id": "hypothetical-about-a",
+        "text": "Hypothetical about a specific person or thing: 君ならできる (If it's you, you can do it — implying not everyone could)"
+      }
     ],
     "cautions": [
       "なら's primary meaning is contrastive limitation ('as for X specifically') — this is why it frequently appears with が or は contrasts in the second clause (魚なら食べますが、肉は食べません). This distinguishes it from たら and ば, which are simple conditionals without the contrastive nuance",
@@ -560,9 +902,18 @@
     ],
     "summary": "The particle に marks a recurring time period within which an action happens a set number of times — equivalent to English 'per' or 'every.' The structure is: (time period) に (count/duration) + verb. The period comes before に; the frequency or duration follows it.",
     "subUses": [
-      "Count per time period: 一週間に一回スーパーに行きます (I go to the supermarket once a week)",
-      "Duration per time period: 一日に一時間日本語を勉強します (I study Japanese one hour per day)",
-      "Rate per recurring unit: 一時間に十本の電車があります (There are ten trains per hour)"
+      {
+        "id": "count-per-time",
+        "text": "Count per time period: 一週間に一回スーパーに行きます (I go to the supermarket once a week)"
+      },
+      {
+        "id": "duration-per-time",
+        "text": "Duration per time period: 一日に一時間日本語を勉強します (I study Japanese one hour per day)"
+      },
+      {
+        "id": "rate-per-recurring",
+        "text": "Rate per recurring unit: 一時間に十本の電車があります (There are ten trains per hour)"
+      }
     ],
     "cautions": [
       "Do not confuse に (frequency) with で (total time): 三日でこの本を読んだ means 'read the book in 3 days total (start to finish),' whereas 一日に二時間読む means '2 hours per day (recurring).' に marks a slot within a repeating cycle; で marks the total span consumed",
@@ -578,10 +929,22 @@
     ],
     "summary": "なる expresses a change of state: 'to become (A).' い-adjectives attach くなる to the stem (大きい → 大きくなる); な-adjectives and nouns attach になる (静か → 静かになる; 医者 → 医者になる). The exception is いい, which becomes よくなる.",
     "subUses": [
-      "Change in quality (い-adjective): 外が暗くなった (It got dark outside)",
-      "Change in quality (な-adjective): 部屋が静かになった (The room became quiet)",
-      "Change in role or category (noun): 医者になりたい (I want to become a doctor)",
-      "Gradual ongoing change with てくる: だんだん上手になってきた (I've gradually been getting better)"
+      {
+        "id": "change-in-quality",
+        "text": "Change in quality (い-adjective): 外が暗くなった (It got dark outside)"
+      },
+      {
+        "id": "change-in-quality-adjective",
+        "text": "Change in quality (な-adjective): 部屋が静かになった (The room became quiet)"
+      },
+      {
+        "id": "change-in-role",
+        "text": "Change in role or category (noun): 医者になりたい (I want to become a doctor)"
+      },
+      {
+        "id": "gradual-ongoing-change",
+        "text": "Gradual ongoing change with てくる: だんだん上手になってきた (I've gradually been getting better)"
+      }
     ],
     "cautions": [
       "Exception: いい → よくなる; mark いくなる wrong",
@@ -596,11 +959,26 @@
     ],
     "summary": "によって / による / により are three surface forms of the same grammatical expression, all built on the verb よる (to depend on, to be due to). によって and により introduce an agent, cause, means, or basis before a comma; による appears before a following noun as a modifier (その火事による被害 — damage due to that fire) or at the end of a sentence. により is a more formal or written variant of によって. The construction covers four overlapping meanings: agent in a passive clause, cause or reason, method or means, and variation depending on circumstances.",
     "subUses": [
-      "Agent in a passive clause (named human or institution): この論文は田中先生によって書かれた (This paper was written by Professor Tanaka)",
-      "Cause or reason: 地震によって多くの建物が倒れた (Many buildings collapsed due to the earthquake)",
-      "Method or means: 話し合いによって解決した (Resolved through discussion)",
-      "Variation depending on circumstances: 結果は人によって違う (Results differ depending on the person)",
-      "Noun modifier with による: 事故による遅延 (delay caused by an accident)"
+      {
+        "id": "agent-in-a",
+        "text": "Agent in a passive clause (named human or institution): この論文は田中先生によって書かれた (This paper was written by Professor Tanaka)"
+      },
+      {
+        "id": "cause-or-reason",
+        "text": "Cause or reason: 地震によって多くの建物が倒れた (Many buildings collapsed due to the earthquake)"
+      },
+      {
+        "id": "method-or-means",
+        "text": "Method or means: 話し合いによって解決した (Resolved through discussion)"
+      },
+      {
+        "id": "variation-depending-on",
+        "text": "Variation depending on circumstances: 結果は人によって違う (Results differ depending on the person)"
+      },
+      {
+        "id": "noun-modifier-with",
+        "text": "Noun modifier with による: 事故による遅延 (delay caused by an accident)"
+      }
     ],
     "cautions": [
       "In a passive clause, によって marks a named human or institutional agent; に marks the agent in the affective/suffering passive — do not swap them",
@@ -615,9 +993,18 @@
     ],
     "summary": "ぬ is the attributive form of the classical auxiliary ず, which negates verbs the same way modern ない does. Attach ぬ to the same stem that takes ない (the irrealis / 未然形 stem): 書く → 書かぬ, 食べる → 食べぬ. Irregular forms: する → せぬ, くる → こぬ, いる (via its classical counterpart おる) → おらぬ. The form appears in proverbs, set phrases, songs, literary fiction, and formal or historical writing.",
     "subUses": [
-      "Classical negation modifying a noun: 帰らぬ人 (a person who does not return)",
-      "Negating a compound verbal phrase (classical おる replaces いる): されておらぬ (is not being done)",
-      "Set phrases frozen in classical form: 隅に置けぬ人 (a person not to be taken lightly)"
+      {
+        "id": "classical-negation-modifying",
+        "text": "Classical negation modifying a noun: 帰らぬ人 (a person who does not return)"
+      },
+      {
+        "id": "negating-a-compound",
+        "text": "Negating a compound verbal phrase (classical おる replaces いる): されておらぬ (is not being done)"
+      },
+      {
+        "id": "set-phrases-frozen",
+        "text": "Set phrases frozen in classical form: 隅に置けぬ人 (a person not to be taken lightly)"
+      }
     ],
     "cautions": [
       "する negates to せぬ, not しぬ — mark しぬ wrong (しぬ means 'to die')",
@@ -633,10 +1020,22 @@
     ],
     "summary": "The particle の nominalizes verb phrases, turning them into noun-like units that can fill subject, object, or topic positions in a sentence. Verb+のは makes the verb phrase a topic ('doing X is...'), Verb+のが marks it as a subject (often with adjectives like 好き, 上手), and Verb+のを marks it as a direct object. This is one of the most fundamental Japanese grammar structures.",
     "subUses": [
-      "Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)",
-      "Nominalizing as subject with のが + emotive adjective: 絵を描くのが好きだ (I like drawing pictures)",
-      "Nominalizing as object with のを: 鳥が飛ぶのを見た (I saw a bird fly)",
-      "Cleft sentence / exhaustive listing with のは...だ: 早く咲くのは東京だ (The one that blooms earliest is Tokyo)"
+      {
+        "id": "nominalizing-as-topic",
+        "text": "Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)"
+      },
+      {
+        "id": "nominalizing-as-subject",
+        "text": "Nominalizing as subject with のが + emotive adjective: 絵を描くのが好きだ (I like drawing pictures)"
+      },
+      {
+        "id": "nominalizing-as-object",
+        "text": "Nominalizing as object with のを: 鳥が飛ぶのを見た (I saw a bird fly)"
+      },
+      {
+        "id": "cleft-sentence-exhaustive",
+        "text": "Cleft sentence / exhaustive listing with のは...だ: 早く咲くのは東京だ (The one that blooms earliest is Tokyo)"
+      }
     ],
     "cautions": [
       "の and こと are often interchangeable for nominalization, but こと is required in set phrases: ことができる, ことがある — の cannot substitute here",
@@ -652,10 +1051,22 @@
     ],
     "summary": "のように and のような express similarity or comparison — 'like (noun)' or 'in the manner of (noun).' のように modifies verbs and adjectives (how something is done), while のような modifies nouns (what kind of thing). Both require の after the comparison noun. This is the more formal equivalent of みたいに/みたいな.",
     "subUses": [
-      "Simile modifying a verb: 鳥のように飛びたい (I want to fly like a bird)",
-      "Simile modifying a noun: 夢のような話 (A story like a dream)",
-      "Counterfactual simile ('as if'), often with まるで: まるで別人のように話した (spoke as if they were a completely different person)",
-      "Giving an example: このような場合はどうしますか (What do you do in cases like this?)"
+      {
+        "id": "simile-modifying-a",
+        "text": "Simile modifying a verb: 鳥のように飛びたい (I want to fly like a bird)"
+      },
+      {
+        "id": "simile-modifying-a-noun",
+        "text": "Simile modifying a noun: 夢のような話 (A story like a dream)"
+      },
+      {
+        "id": "counterfactual-simile-as",
+        "text": "Counterfactual simile ('as if'), often with まるで: まるで別人のように話した (spoke as if they were a completely different person)"
+      },
+      {
+        "id": "giving-an-example",
+        "text": "Giving an example: このような場合はどうしますか (What do you do in cases like this?)"
+      }
     ],
     "cautions": [
       "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
@@ -671,10 +1082,22 @@
     ],
     "summary": "The plain volitional form expresses a casual invitation or internal decision. Ichidan verbs drop る and add よう (食べる → 食べよう); godan verbs replace the final vowel with the お-row equivalent and add う (行く → 行こう, 話す → 話そう); irregulars: する → しよう, くる → こよう. When combined with と思う or と思っています, the volitional expresses intention rather than invitation.",
     "subUses": [
-      "Casual suggestion or invitation (informal equivalent of ましょう): カフェでコーヒーを飲もうか (shall we drink coffee at a café?)",
-      "Volitional + か to soften a suggestion or ask for agreement: どこで食べようか (where shall we eat?)",
-      "Volitional + と思います for a decision made just now: 今日から毎日運動しようと思います (I've just decided to exercise daily starting today)",
-      "Volitional + と思っています for an intention formed earlier and still ongoing: 来年日本に留学しようと思っています (I've been planning to study abroad in Japan next year)"
+      {
+        "id": "casual-suggestion-or",
+        "text": "Casual suggestion or invitation (informal equivalent of ましょう): カフェでコーヒーを飲もうか (shall we drink coffee at a café?)"
+      },
+      {
+        "id": "volitional-to-soften",
+        "text": "Volitional + か to soften a suggestion or ask for agreement: どこで食べようか (where shall we eat?)"
+      },
+      {
+        "id": "volitional-for-a",
+        "text": "Volitional + と思います for a decision made just now: 今日から毎日運動しようと思います (I've just decided to exercise daily starting today)"
+      },
+      {
+        "id": "volitional-for-an",
+        "text": "Volitional + と思っています for an intention formed earlier and still ongoing: 来年日本に留学しようと思っています (I've been planning to study abroad in Japan next year)"
+      }
     ],
     "cautions": [
       "Volitional + と思います vs volitional + と思っています: と思います marks a decision made right now in the conversation; と思っています marks an ongoing intention decided earlier. Depending on when the decision was formed, one or the other applies.",
@@ -689,9 +1112,18 @@
     ],
     "summary": "代わりに means 'instead of,' 'in place of,' or 'to make up for.' The pattern is [A] の代わりに [B], where B substitutes for or compensates for A. A can be a noun phrase (Nounの代わりに) or a verb clause (verb dictionary form + 代わりに). Word order rule: the noun immediately before の代わりに is always the original thing being replaced (the unavailable or less desirable item); the substitute appears after 代わりに, typically as the subject or object of the verb.",
     "subUses": [
-      "Noun substitution: バターの代わりにマーガリンを使った (I used margarine instead of butter)",
-      "Role substitution: 私の代わりに発表してもらえますか (Could you present in my place?)",
-      "Compensation for a prior action: 昨日休んだ代わりに今日は遅くまで働いた (I worked late today to make up for resting yesterday)"
+      {
+        "id": "noun-substitution-2",
+        "text": "Noun substitution: バターの代わりにマーガリンを使った (I used margarine instead of butter)"
+      },
+      {
+        "id": "role-substitution-2",
+        "text": "Role substitution: 私の代わりに発表してもらえますか (Could you present in my place?)"
+      },
+      {
+        "id": "compensation-for-a",
+        "text": "Compensation for a prior action: 昨日休んだ代わりに今日は遅くまで働いた (I worked late today to make up for resting yesterday)"
+      }
     ],
     "cautions": [
       "代わりに expresses direct substitution or compensation; for a preferred alternative without a one-for-one replacement, むしろ ('rather') is more appropriate",
@@ -706,13 +1138,34 @@
     ],
     "summary": "The て-form is one of the most versatile verb conjugations in Japanese. For godan verbs, the ending changes based on the final consonant (く→いて, ぐ→いで, す→して, む/ぶ/ぬ→んで, う/つ/る→って); ichidan verbs drop る and add て; irregulars: する→して, くる→きて. The て-form connects clauses and is the basis for many grammatical constructions.",
     "subUses": [
-      "Sequential actions: 起きて、顔を洗って、朝ごはんを食べた (Got up, washed my face, and ate breakfast)",
-      "Requests with ください: 窓を開けてください (Please open the window)",
-      "Means/method: バスに乗って学校に行く (Go to school by taking the bus)",
-      "Cause/reason linking: 風邪をひいて学校を休んだ (Caught a cold and missed school)",
-      "Ongoing state with いる: 本を読んでいる (Is reading a book)",
-      "Permission with もいい: 帰ってもいいですか (May I go home?)",
-      "Prohibition with はいけない: ここで走ってはいけない (You must not run here)"
+      {
+        "id": "sequential-actions-2",
+        "text": "Sequential actions: 起きて、顔を洗って、朝ごはんを食べた (Got up, washed my face, and ate breakfast)"
+      },
+      {
+        "id": "requests-with-2",
+        "text": "Requests with ください: 窓を開けてください (Please open the window)"
+      },
+      {
+        "id": "means-method-2",
+        "text": "Means/method: バスに乗って学校に行く (Go to school by taking the bus)"
+      },
+      {
+        "id": "cause-reason-linking",
+        "text": "Cause/reason linking: 風邪をひいて学校を休んだ (Caught a cold and missed school)"
+      },
+      {
+        "id": "ongoing-state-with",
+        "text": "Ongoing state with いる: 本を読んでいる (Is reading a book)"
+      },
+      {
+        "id": "permission-with-2",
+        "text": "Permission with もいい: 帰ってもいいですか (May I go home?)"
+      },
+      {
+        "id": "prohibition-with-2",
+        "text": "Prohibition with はいけない: ここで走ってはいけない (You must not run here)"
+      }
     ],
     "cautions": [
       "Exception: 行く becomes 行って (not 行いて) — the only godan く-verb with this irregular て-form",
@@ -727,9 +1180,18 @@
     ],
     "summary": "いく marks movement away from the speaker's location or away from the speaker's empathy point. Like くる, this perspectival meaning applies whether いく stands alone or follows a conjunctive て-form verb. In narrative, いく marks departure away from the story's focus point.",
     "subUses": [
-      "Motion away from speaker: 友達が行った (My friend left)",
-      "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])",
-      "Carrying something away: かれくさをもっていく (take dried grass away)"
+      {
+        "id": "motion-away-from",
+        "text": "Motion away from speaker: 友達が行った (My friend left)"
+      },
+      {
+        "id": "narrative-departure-from",
+        "text": "Narrative departure from focus: やっとあんしんしてかえっていきました (finally, relieved, they went home [away from the stump scene])"
+      },
+      {
+        "id": "carrying-something-away",
+        "text": "Carrying something away: かれくさをもっていく (take dried grass away)"
+      }
     ],
     "cautions": [
       "うちにいく is ungrammatical for going to one's own home — use うちにかえる",
@@ -742,10 +1204,22 @@
     ],
     "summary": "くる marks movement toward the speaker's location or toward wherever the speaker has placed their empathy or viewpoint — which need not be the speaker's physical position. This perspectival meaning applies whether くる stands alone or follows a conjunctive て-form verb (the preceding verb describes manner; くる carries the directionality). In narrative, くる marks movement toward the story's empathy center (often a key place or protagonist).",
     "subUses": [
-      "Motion toward speaker's location: 友達が来た (My friend came [here])",
-      "Visitor adopts host's location as reference: 明日来てもいいですか (May I come tomorrow? — said by the visitor)",
-      "Narrative empathy center: のねずみがかれくさをもってきて、きりかぶにかぶせました (the field mouse brought dried grass and covered the stump [stump is the story's focus point])",
-      "Speaker's \"territory\" includes workplace: 明日、会社に来てください (Please come to my office tomorrow)"
+      {
+        "id": "motion-toward-speaker",
+        "text": "Motion toward speaker's location: 友達が来た (My friend came [here])"
+      },
+      {
+        "id": "visitor-adopts-host",
+        "text": "Visitor adopts host's location as reference: 明日来てもいいですか (May I come tomorrow? — said by the visitor)"
+      },
+      {
+        "id": "narrative-empathy-center",
+        "text": "Narrative empathy center: のねずみがかれくさをもってきて、きりかぶにかぶせました (the field mouse brought dried grass and covered the stump [stump is the story's focus point])"
+      },
+      {
+        "id": "speaker-s-territory",
+        "text": "Speaker's \"territory\" includes workplace: 明日、会社に来てください (Please come to my office tomorrow)"
+      }
     ],
     "cautions": [
       "The くる/いく choice depends on whose viewpoint the speaker adopts, not physical proximity: use くる when the speaker's empathy is at the destination (movement is toward the speaker's viewpoint); use いく when the speaker's empathy stays at the origin (movement is away from the speaker's viewpoint)"
@@ -757,9 +1231,18 @@
     ],
     "summary": "Potential verbs express ability — 'can do' or 'be able to do.' For godan verbs, change the final う-row to the え-row + る (書く→書ける, 話す→話せる); for ichidan verbs, drop る and add られる (食べる→食べられる); irregulars: する→できる, くる→こられる. Potential verbs themselves conjugate as ichidan verbs.",
     "subUses": [
-      "Expressing ability: 日本語が読める (I can read Japanese)",
-      "Expressing possibility due to circumstances: 今日は早く帰れる (I can go home early today)",
-      "Negative inability: 辛いものが食べられない (I can't eat spicy food)"
+      {
+        "id": "expressing-ability-2",
+        "text": "Expressing ability: 日本語が読める (I can read Japanese)"
+      },
+      {
+        "id": "expressing-possibility-due",
+        "text": "Expressing possibility due to circumstances: 今日は早く帰れる (I can go home early today)"
+      },
+      {
+        "id": "negative-inability-2",
+        "text": "Negative inability: 辛いものが食べられない (I can't eat spicy food)"
+      }
     ],
     "cautions": [
       "ら抜き言葉: 食べれる/見れる (dropping ら from ichidan potential) are widely used in casual speech — do not mark wrong, but note it is colloquial",
@@ -775,10 +1258,22 @@
     ],
     "summary": "ぬ and つ are Classical Japanese completion auxiliaries that mark an action as finished or perfected (完了), roughly corresponding to modern た or てしまう. They attach to the 連用形 (continuative stem) of verbs. The two differ by verb type: ぬ marks natural completion or the completion of intransitive/non-volitional events, while つ marks volitional, deliberate completion, typically with transitive verbs.",
     "subUses": [
-      "Natural/non-volitional completion (ぬ): 春立ちぬ (spring has arrived — natural occurrence)",
-      "Deliberate/volitional completion (つ): 文書きつ (I have finished writing the letter — intentional act)",
-      "Terminal ぬ as plain completion: 散りぬ (has scattered — ぬ in its 終止形 (しゅうしけい, plain sentence-final form), marking completed natural action)",
-      "Attributive form (ぬる / つる) modifying a noun: 散りぬる花 (flowers that have fallen) / かねつる涙 (tears that could not be stopped)"
+      {
+        "id": "natural-non-volitional",
+        "text": "Natural/non-volitional completion (ぬ): 春立ちぬ (spring has arrived — natural occurrence)"
+      },
+      {
+        "id": "deliberate-volitional-completion",
+        "text": "Deliberate/volitional completion (つ): 文書きつ (I have finished writing the letter — intentional act)"
+      },
+      {
+        "id": "terminal-as-plain",
+        "text": "Terminal ぬ as plain completion: 散りぬ (has scattered — ぬ in its 終止形 (しゅうしけい, plain sentence-final form), marking completed natural action)"
+      },
+      {
+        "id": "attributive-form-modifying",
+        "text": "Attributive form (ぬる / つる) modifying a noun: 散りぬる花 (flowers that have fallen) / かねつる涙 (tears that could not be stopped)"
+      }
     ],
     "cautions": [
       "Completion ぬ (連体形 ぬる) is a distinct auxiliary from negation ぬ (the 連体形 of ず, meaning 'does not'): both look like ぬ in the 終止形 but conjugate differently and mean opposite things",
@@ -794,10 +1289,22 @@
     ],
     "summary": "Bound particles (係助詞) are Classical Japanese particles that impose a grammatical constraint on the predicate at the end of their clause: the final verb must appear in a specific inflected form rather than the plain 終止形 (しゅうしけい, plain sentence-final form). Most bound particles (ぞ、なむ、や、か) require the 連体形 (attributive form); こそ alone requires the 已然形 (realis form). The binding relationship is called 係り結び (かかりむすび, kakari-musubi — the binding relationship between the bound particle and the sentence-final verb form). The particles themselves carry emphatic, interrogative, or emotional nuances.",
     "subUses": [
-      "ぞ — strong emphasis or assertive focus, requires 連体形: 止めそかねつる (could not stop; ぞ forces the final verb into 連体形 つる)",
-      "こそ — strong emphasis with 已然形 binding, often concessive: 命こそ惜しけれ (it is life that is dear to me)",
-      "や / か — rhetorical question or doubt, require 連体形: これや都鳥 (is this the bird of the capital?)",
-      "なむ — softer emphasis (modern なん), requires 連体形: 男もすなる日記 (a diary that men also write, so they say)"
+      {
+        "id": "strong-emphasis-or",
+        "text": "ぞ — strong emphasis or assertive focus, requires 連体形: 止めそかねつる (could not stop; ぞ forces the final verb into 連体形 つる)"
+      },
+      {
+        "id": "strong-emphasis-with",
+        "text": "こそ — strong emphasis with 已然形 binding, often concessive: 命こそ惜しけれ (it is life that is dear to me)"
+      },
+      {
+        "id": "rhetorical-question-or",
+        "text": "や / か — rhetorical question or doubt, require 連体形: これや都鳥 (is this the bird of the capital?)"
+      },
+      {
+        "id": "softer-emphasis-modern",
+        "text": "なむ — softer emphasis (modern なん), requires 連体形: 男もすなる日記 (a diary that men also write, so they say)"
+      }
     ],
     "cautions": [
       "In modern Japanese は and も survive from the bound-particle system but have lost their binding requirement; do not expect modern は to force 連体形",
@@ -812,10 +1319,22 @@
     ],
     "summary": "ず is the classical negation auxiliary, equivalent to modern ない. It attaches to the 未然形 (irrealis stem) of verbs: 恐れず (without fearing), 見ず (not seeing), せず (not doing). The IMABI entry focuses on its classical conjugation and literary uses. In modern Japanese, ず survives primarily as an adverbial/conjunctive form meaning 'without doing X' (何も恐れず進む = advance without fearing anything) and in set phrases.",
     "subUses": [
-      "Adverbial/conjunctive negation (ず used mid-sentence): 何も恐れず進むの (advancing without fearing anything)",
-      "Literary attributive negation (ぬ, the 連体形 of ず): 帰らぬ人 (a person who does not return)",
-      "Set phrase ざるを得ない (cannot avoid doing): 認めざるを得ない (have no choice but to admit)",
-      "Set phrase ずにはいられない (cannot help doing): 笑わずにはいられない (can't help laughing)"
+      {
+        "id": "adverbial-conjunctive-negation",
+        "text": "Adverbial/conjunctive negation (ず used mid-sentence): 何も恐れず進むの (advancing without fearing anything)"
+      },
+      {
+        "id": "literary-attributive-negation",
+        "text": "Literary attributive negation (ぬ, the 連体形 of ず): 帰らぬ人 (a person who does not return)"
+      },
+      {
+        "id": "set-phrase-cannot",
+        "text": "Set phrase ざるを得ない (cannot avoid doing): 認めざるを得ない (have no choice but to admit)"
+      },
+      {
+        "id": "set-phrase-cannot-help",
+        "text": "Set phrase ずにはいられない (cannot help doing): 笑わずにはいられない (can't help laughing)"
+      }
     ],
     "cautions": [
       "This topic covers the classical auxiliary ず and its direct survivals in modern literary/set-phrase usage. The closely related modern grammar points ずに (without doing, N3), ずにはいられない, and ざるを得ない are each separate grammar topics — do not conflate them here",
@@ -830,8 +1349,14 @@
     ],
     "summary": "む is a classical Japanese auxiliary (推量助動詞, すいりょうじょどうし, conjectural auxiliary) that attaches to the irrealis / 未然形 stem of a verb. It expresses either conjecture about an outcome — parallel to modern だろう — or a volitional invitation encouraging action — parallel to the modern volitional ending (〜よう). Because む covers both meanings, context determines which reading applies.",
     "subUses": [
-      "Conjecture (like modern だろう): またいつか会わむ (I suppose we shall meet again someday)",
-      "Volitional or hortative (like modern 〜よう): 帰りみむ (let us look back [on the road home])"
+      {
+        "id": "conjecture-like-modern",
+        "text": "Conjecture (like modern だろう): またいつか会わむ (I suppose we shall meet again someday)"
+      },
+      {
+        "id": "volitional-or-hortative",
+        "text": "Volitional or hortative (like modern 〜よう): 帰りみむ (let us look back [on the road home])"
+      }
     ],
     "cautions": [
       "む attaches to the 未然形 (irrealis stem), the same stem used with ない — not the dictionary form",
@@ -846,9 +1371,18 @@
     ],
     "summary": "き is the archaic attributive (連体形) form of い-adjectives. In modern Japanese the attributive form ends in い and is identical to the dictionary form, but in classical and literary Japanese the final い was き (e.g. 遠い → 遠き). The transition from き to い is a historical sound change called イ音便 (いおんびん, i-sound euphony — the shift of き → い in adjective endings). Today き survives in literary, poetic, or highly formal writing and in a few fixed expressions.",
     "subUses": [
-      "Modifying a following noun in literary or poetic style: 遠き昔の話 (a tale of the distant past)",
-      "Fixed or set expressions that have not shifted to modern い: 愛しき人 (beloved person)",
-      "Archaic speech style in traditional song or poetry: 夢は遠きまぼろしに (dreams fade into far-off phantoms)"
+      {
+        "id": "modifying-a-following-noun",
+        "text": "Modifying a following noun in literary or poetic style: 遠き昔の話 (a tale of the distant past)"
+      },
+      {
+        "id": "fixed-or-set",
+        "text": "Fixed or set expressions that have not shifted to modern い: 愛しき人 (beloved person)"
+      },
+      {
+        "id": "archaic-speech-style",
+        "text": "Archaic speech style in traditional song or poetry: 夢は遠きまぼろしに (dreams fade into far-off phantoms)"
+      }
     ],
     "cautions": [
       "き is an archaic replacement for modern い in the adjective's noun-modifying position only — it does not appear in predicate position (do not accept 空は青き as a complete modern sentence)",

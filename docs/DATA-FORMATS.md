@@ -158,13 +158,30 @@ LLM-authored but human-reviewed.
   {
     "topics": ["bunpro:causative", "genki:causative-sentences"],
     "summary": "…one-paragraph plain-English description…",
-    "subUses": ["…example use 1…", "…example use 2…", …],
+    "subUses": [
+      {
+        "id": "…stable-slug-id…",      // derived from first meaningful English words before ":"
+        "text": "…example use with Japanese…"
+      },
+      …
+    ],
     "cautions": ["…pitfall 1…", "…pitfall 2…", …],
     "stub": true     // present and true only when no annotated content sentences exist yet
   },
   …
 ]
 ```
+
+**Sub-uses:** Each sub-use is an object with:
+- `id` — a stable slug derived from the first meaningful English words (e.g.
+  `"casual-suggestion-or"`). Once assigned, the ID never changes, allowing the
+  iOS app to track opt-in/opt-out preferences per sub-use.
+- `text` — the full description including a Japanese example.
+
+When `enrich-grammar-descriptions.mjs` writes a group, it converts plain-string
+sub-uses to objects by deriving stable IDs. The `GrammarSubUse` decoder in Swift
+handles both legacy (plain string) and current (object) formats for backwards
+compatibility with cached `grammar-equivalences.json` files.
 
 Topic IDs are always source-prefixed: `genki:…`, `bunpro:…`, `dbjg:…`.
 `prepare-publish.mjs` validates that every topic in `grammar.json` appears in

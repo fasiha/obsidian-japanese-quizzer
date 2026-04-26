@@ -475,7 +475,7 @@ final class GrammarQuizSession {
         if let summary = item.summary {
             var lines = "Description: \(summary)"
             if let subUses = item.subUses, !subUses.isEmpty {
-                lines += "\nSub-uses:\n" + subUses.map { "- \($0)" }.joined(separator: "\n")
+                lines += "\nSub-uses:\n" + subUses.map { "- \($0.text)" }.joined(separator: "\n")
             }
             if let cautions = item.cautions, !cautions.isEmpty {
                 lines += "\nCautions:\n" + cautions.map { "- \($0)" }.joined(separator: "\n")
@@ -484,9 +484,13 @@ final class GrammarQuizSession {
         }
 
         // Sub-use directive: injected only in generation calls to enforce round-robin diversity.
+        // Uses enrolledSubUses (the user's opted-in subset) when available; falls back to all sub-uses.
         var subUseDirective = ""
-        if isGenerating, let idx = item.nextSubUseIndex, let subUses = item.subUses, idx < subUses.count {
-            subUseDirective = "\nTarget this specific sub-use: \(subUses[idx])"
+        if isGenerating, let idx = item.nextSubUseIndex {
+            let targetSubUses = item.enrolledSubUses ?? item.subUses ?? []
+            if idx < targetSubUses.count {
+                subUseDirective = "\nTarget this specific sub-use: \(targetSubUses[idx].text)"
+            }
         }
 
         // Verb-variety nudge is only relevant for generation calls, not grading.

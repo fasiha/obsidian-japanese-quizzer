@@ -43,16 +43,20 @@
  * @property {string} file        - Relative path of the Markdown file
  * @property {string} topicId     - Which topic ID this annotation referenced
  *
+ * @typedef {Object} SubUse
+ * @property {string} id    - Stable slug derived from the first meaningful English words
+ * @property {string} text  - Full description including Japanese example
+ *
  * @typedef {Object} ExistingDescription
  * @property {string} [summary]
- * @property {string[]} [subUses]
+ * @property {SubUse[]} [subUses]
  * @property {string[]} [cautions]
  * @property {boolean} [stub]
  *
  * @typedef {Object} WriteInput
  * @property {string[]} topics     - Must match a group in grammar/grammar-equivalences.json exactly
  * @property {string} summary
- * @property {string[]} subUses
+ * @property {string[]} subUses    - Plain strings; this script assigns stable IDs before writing
  * @property {string[]} cautions
  * @property {boolean} [stub]      - Omit or false if content sentences were used
  */
@@ -301,6 +305,63 @@ function gather(requestedTopics, { onlyNeeded = false } = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// Sub-use ID helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Derive a stable slug from the first meaningful English words before the colon.
+ * Uses 3-5 words, extended as needed to be unique within `existingIds`.
+ * @param {string} text - Full sub-use description text
+ * @param {Set<string>} existingIds - IDs already assigned in this group
+ * @returns {string}
+ */
+function deriveSubUseId(text, existingIds) {
+  const english = text.split(":")[0];
+  const words = english
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0);
+
+  for (let len = 3; len <= words.length; len++) {
+    const candidate = words.slice(0, len).join("-");
+    if (!existingIds.has(candidate)) {
+      existingIds.add(candidate);
+      return candidate;
+    }
+  }
+  // Fallback: append a counter
+  const base = words.slice(0, 5).join("-");
+  let i = 2;
+  while (existingIds.has(`${base}-${i}`)) i++;
+  const id = `${base}-${i}`;
+  existingIds.add(id);
+  return id;
+}
+
+/**
+ * Convert an array of sub-uses (strings or already-converted objects) to
+ * `{ id, text }` objects. Existing objects with a valid `id` are preserved.
+ * New strings get a freshly derived ID, guaranteed unique within this group.
+ * @param {Array<string|{id:string,text:string}>} subUses
+ * @returns {{id:string,text:string}[]}
+ */
+function normalizeSubUses(subUses) {
+  if (!subUses || subUses.length === 0) return [];
+  const usedIds = new Set(
+    subUses
+      .filter((s) => typeof s === "object" && s.id)
+      .map((s) => s.id)
+  );
+  return subUses.map((s) => {
+    if (typeof s === "object" && s.id && s.text) return s;
+    const text = typeof s === "string" ? s : String(s);
+    return { id: deriveSubUseId(text, usedIds), text };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // --write mode
 // ---------------------------------------------------------------------------
 
@@ -339,7 +400,7 @@ function write() {
     groups[idx] = {
       ...preserved,
       summary: desc.summary,
-      subUses: desc.subUses,
+      subUses: normalizeSubUses(desc.subUses),
       cautions: desc.cautions,
       ...(desc.stub ? { stub: true } : {}),
       ...(classicalJapanese ? { classicalJapanese: true } : {}),

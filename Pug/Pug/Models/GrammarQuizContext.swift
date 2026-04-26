@@ -51,13 +51,14 @@ struct GrammarQuizItem: Identifiable {
 
     // Description fields from grammar-equivalences.json (nil when not yet synced or unavailable).
     let summary: String?
-    let subUses: [String]?
+    let subUses: [GrammarSubUse]?         // all sub-uses for the group (shown in description)
+    let enrolledSubUses: [GrammarSubUse]? // subset the user hasn't opted out of (nil = same as subUses = all)
     let cautions: [String]?
     let isStub: Bool?
     let classicalJapanese: Bool?
-    /// The sub-use index to target in the next quiz generation for this topic+facet.
-    /// Derived from the most recent review's quiz_data sub_use_index, incremented mod subUses.count.
-    /// Nil when subUses is empty/nil or no prior review has recorded a sub_use_index.
+    /// The sub-use index to target in the next quiz generation, indexing into `enrolledSubUses`.
+    /// Derived from the most recent review's quiz_data sub_use_index, incremented mod enrolledSubUses.count.
+    /// Nil when enrolledSubUses is empty/nil or no prior review has recorded a sub_use_index.
     let nextSubUseIndex: Int?
 
     var recall: Double {
@@ -99,10 +100,11 @@ struct GrammarQuizContext {
     /// Only topics with active ebisu_models rows (word_type='grammar') are included.
     /// Items are sorted by ascending recall probability (most urgent first).
     static func build(db: QuizDB, manifest: GrammarManifest) async throws -> [GrammarQuizItem] {
-        let records          = try await db.enrolledGrammarRecords()
-        let counts           = try await db.grammarReviewCounts()
+        let records           = try await db.enrolledGrammarRecords()
+        let counts            = try await db.grammarReviewCounts()
         let lastSubUseIndices = try await db.grammarLastSubUseIndices()
-        let now              = Date()
+        let optedOutByGroup   = try await db.allOptedOutSubUseIds()
+        let now               = Date()
 
         // Group records by topic ID, tracking facets.
         var byTopic: [String: [EbisuRecord]] = [:]
@@ -149,13 +151,30 @@ struct GrammarQuizContext {
                 let isFree = tier >= 2  // used only to satisfy QuizStatus shape; isFreeAnswer is tier-based
                 let equivalenceGroupIds = topic.equivalenceGroup ?? []
 
-                // Compute next sub-use index: advance from the last recorded index by one,
-                // wrapping around when all sub-uses have been cycled through.
+                // Compute the equivalence group key (sorted join of all topic IDs in the group).
+                let groupKey = ([topicId] + equivalenceGroupIds).sorted().joined(separator: ",")
+
+                // Filter sub-uses to enrolled ones (null = all, which is the default).
+                let enrolledSubUses: [GrammarSubUse]?
+                if let allSubUses = topic.subUses, !allSubUses.isEmpty {
+                    let optedOut = optedOutByGroup[groupKey] ?? []
+                    if optedOut.isEmpty {
+                        enrolledSubUses = nil  // all enrolled — no filtering needed
+                    } else {
+                        let filtered = allSubUses.filter { !optedOut.contains($0.id) }
+                        enrolledSubUses = filtered.isEmpty ? nil : filtered
+                    }
+                } else {
+                    enrolledSubUses = nil
+                }
+
+                // Compute next sub-use index cycling over the enrolled sub-uses only.
                 let nextSubUseIndex: Int?
-                if let subUses = topic.subUses, !subUses.isEmpty {
+                let targetSubUses = enrolledSubUses ?? topic.subUses ?? []
+                if !targetSubUses.isEmpty {
                     let key = "\(topicId):\(r.quizType)"
                     if let last = lastSubUseIndices[key] {
-                        nextSubUseIndex = (last + 1) % subUses.count
+                        nextSubUseIndex = (last + 1) % targetSubUses.count
                     } else {
                         nextSubUseIndex = 0
                     }
@@ -177,6 +196,7 @@ struct GrammarQuizContext {
                     tier:                tier,
                     summary:             topic.summary,
                     subUses:             topic.subUses,
+                    enrolledSubUses:     enrolledSubUses,
                     cautions:            topic.cautions,
                     isStub:              topic.isStub,
                     classicalJapanese:   topic.classicalJapanese,

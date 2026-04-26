@@ -284,7 +284,8 @@ vocab) is one additional call.
 ## Equivalence-group updates and Ebisu propagation
 
 When a student reviews a grammar topic from an equivalence group, the app:
-1. Records one `reviews` row for the quizzed topic with the student's score
+1. Records one `reviews` row for the quizzed topic with the student's score, including
+   the `sub_use_index` that was targeted in generation.
 2. Updates the topic's `ebisu_models` row with the new recall model
 3. **Write-time copy**: updates all sibling rows in the same equivalence group (pure copy of
    the score, no discount). Siblings may have phantom Ebisu models (existing but never
@@ -293,6 +294,35 @@ When a student reviews a grammar topic from an equivalence group, the app:
 At quiz scheduling time (`GrammarQuizContext.build()`), equivalence groups are collapsed:
 only one representative topic per group is selected to avoid back-to-back quizzing of the
 same grammar point. Production and recognition facets remain separate (different skills).
+
+The next sub-use index for that topic+facet is derived from the most recent review's
+recorded `sub_use_index`, incremented mod the count of enrolled sub-uses. This ensures
+each quiz targets a different sub-use from the group, cycling through the student's
+enrolled list.
+
+## Sub-use targeting and enrollment
+
+Each equivalence group specifies a list of **sub-uses** — concrete usage patterns or
+contexts for the grammar point, each with a stable ID and a Japanese example. Quiz
+generation uses round-robin: for each topic+facet, an internal counter cycles through
+the group's sub-uses, ensuring the student sees varied sentence contexts rather than the
+same scenario repeatedly.
+
+**User control:** Students can opt out of specific sub-uses within a group via
+`grammar_subuse_enrollment` in the quiz database. When a quiz is generated, the system:
+1. Looks up which sub-uses the user has opted out of for this equivalence group.
+2. Filters the list to only enrolled (opted-in) sub-uses.
+3. Cycles through the enrolled subset for round-robin targeting.
+
+If a user opts out of all sub-uses, the system falls back to the full list (treating
+opt-out as advisory). New sub-uses added to `grammar-equivalences.json` are
+automatically enrolled — the user must explicitly opt out if they wish to exclude them.
+
+**In the prompt:** For generation calls (not grading), the system appends:
+`\nTarget this specific sub-use: [Japanese example from the sub-use text]`
+
+This guides Haiku to produce a sentence exemplifying that particular sub-use, improving
+variety and semantic coverage.
 
 ## Multiple-choice generation format
 

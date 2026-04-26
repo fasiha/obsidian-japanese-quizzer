@@ -543,6 +543,18 @@ final class QuizDB: Sendable {
                 WHERE word_type = 'transitive-pair' AND quiz_type = 'pair-discrimination'
                 """, arguments: [now])
         }
+        migrator.registerMigration("v14") { db in
+            // grammar_subuse_enrollment: tracks which sub-uses within a grammar equivalence group
+            // the user has opted out of drilling. Sparse — a missing row means the sub-use is
+            // enrolled (null / all enrolled is the default). New sub-uses added to
+            // grammar-equivalences.json are automatically eligible until explicitly opted out.
+            try db.create(table: "grammar_subuse_enrollment", ifNotExists: true) { t in
+                t.column("equivalence_group_key", .text).notNull()
+                t.column("subuse_id", .text).notNull()
+                t.column("enrolled", .integer).notNull().defaults(to: 1)
+                t.primaryKey(["equivalence_group_key", "subuse_id"])
+            }
+        }
         try migrator.migrate(pool)
     }
 
@@ -1183,6 +1195,56 @@ final class QuizDB: Sendable {
             grammarEnrolledLastWeek:         grammarEnrolledLast,
             grammarEnrolledAllTimeWeeklyMax: grammarEnrolledMax
         )
+    }
+}
+
+// MARK: - Sub-use enrollment
+
+extension QuizDB {
+    /// Returns the sub-use IDs that are currently enrolled (not opted out) for the given
+    /// equivalence group. A missing row means enrolled (null = all). If the table has no
+    /// opt-out rows for this group, returns `allSubUseIds` unchanged.
+    func enrolledSubUseIds(groupKey: String, allSubUseIds: [String]) async throws -> [String] {
+        let optedOut: Set<String> = try await pool.read { db in
+            let ids = try String.fetchAll(db, sql: """
+                SELECT subuse_id FROM grammar_subuse_enrollment
+                WHERE equivalence_group_key = ? AND enrolled = 0
+                """, arguments: [groupKey])
+            return Set(ids)
+        }
+        guard !optedOut.isEmpty else { return allSubUseIds }
+        let enrolled = allSubUseIds.filter { !optedOut.contains($0) }
+        // Always return at least one sub-use; if all are opted out somehow, fall back to all.
+        return enrolled.isEmpty ? allSubUseIds : enrolled
+    }
+
+    /// Opt a specific sub-use in or out for the given equivalence group.
+    func setSubUseEnrollment(groupKey: String, subUseId: String, enrolled: Bool) async throws {
+        try await pool.write { db in
+            try db.execute(sql: """
+                INSERT INTO grammar_subuse_enrollment (equivalence_group_key, subuse_id, enrolled)
+                VALUES (?, ?, ?)
+                ON CONFLICT(equivalence_group_key, subuse_id) DO UPDATE SET enrolled = excluded.enrolled
+                """, arguments: [groupKey, subUseId, enrolled ? 1 : 0])
+        }
+    }
+
+    /// All opted-out sub-use IDs across all groups, as a dictionary keyed by group key.
+    /// Used by GrammarQuizContext.build() to compute enrolled sub-uses in bulk.
+    func allOptedOutSubUseIds() async throws -> [String: Set<String>] {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT equivalence_group_key, subuse_id FROM grammar_subuse_enrollment
+                WHERE enrolled = 0
+                """)
+            var result: [String: Set<String>] = [:]
+            for row in rows {
+                guard let key = row["equivalence_group_key"] as? String,
+                      let sid = row["subuse_id"] as? String else { continue }
+                result[key, default: []].insert(sid)
+            }
+            return result
+        }
     }
 }
 
