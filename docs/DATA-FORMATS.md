@@ -245,6 +245,168 @@ the compiled `counters.json` is a more focused pedagogical subset (top 66 counte
 
 ---
 
+## `quiz.sqlite` — User-specific quiz state
+
+Stores user progress, mnemonics, and LLM interaction data. All timestamps are ISO 8601 UTC.
+
+### `reviews` table
+
+Quiz response history: one row per graded quiz item.
+
+```sql
+CREATE TABLE reviews (
+  id          INTEGER PRIMARY KEY,
+  reviewer    TEXT NOT NULL,           -- usually "haiku" (LLM) or "human" (user)
+  timestamp   TEXT NOT NULL,           -- ISO 8601 UTC
+  word_type   TEXT NOT NULL,           -- "jmdict", "kanji", "transitive-pair", "grammar"
+  word_id     TEXT NOT NULL,           -- JMDict ID, kanji char, pair ID, or grammar topic ID
+  word_text   TEXT NOT NULL,           -- display form (e.g. "田中", "potential-verbs")
+  score       DOUBLE NOT NULL,         -- 0.0–1.0, 1.0 = perfect
+  quiz_type   TEXT NOT NULL,           -- e.g. "reading-to-meaning", "kanji-to-reading"
+  notes       TEXT,                    -- optional user/LLM feedback
+  session_id  TEXT                     -- UUID linking to chat history; NULL for pre-migration rows
+);
+```
+
+### `ebisu_models` table
+
+Spaced repetition scheduling state (Ebisu parameters) per quiz facet.
+
+```sql
+CREATE TABLE ebisu_models (
+  word_type   TEXT NOT NULL,           -- "jmdict", "kanji", "transitive-pair", "grammar"
+  word_id     TEXT NOT NULL,
+  quiz_type   TEXT NOT NULL,           -- quiz facet (e.g. "reading-to-meaning")
+  alpha       DOUBLE NOT NULL,         -- Ebisu parameter
+  beta        DOUBLE NOT NULL,         -- Ebisu parameter
+  t           DOUBLE NOT NULL,         -- Ebisu parameter
+  last_review TEXT NOT NULL,           -- ISO 8601 UTC of last review
+  PRIMARY KEY (word_type, word_id, quiz_type)
+);
+```
+
+Each quiz facet (e.g., a word may have 2–4 facets depending on kanji vs. kana-only and your preference) has its own independent scheduling model.
+
+### `mnemonics` table
+
+User-created or LLM-generated mnemonics to aid recall.
+
+```sql
+CREATE TABLE mnemonics (
+  word_type   TEXT NOT NULL,           -- "jmdict", "kanji", "transitive-pair", "grammar"
+  word_id     TEXT NOT NULL,           -- JMDict ID, kanji char, pair ID, or grammar topic ID
+  mnemonic    TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,           -- ISO 8601 UTC
+  PRIMARY KEY (word_type, word_id)
+);
+```
+
+One mnemonic per word across all quiz facets (not per-facet).
+
+### `word_commitment` table
+
+User's chosen furigana form and committed senses for a vocabulary entry.
+
+```sql
+CREATE TABLE word_commitment (
+  word_type    TEXT NOT NULL,          -- "jmdict" or "kanji"
+  word_id      TEXT NOT NULL,
+  furigana     TEXT NOT NULL,          -- JSON array of FuriganaSegment (from jmdict.sqlite)
+  kanji_chars  TEXT,                   -- JSON array of kanji characters, or NULL
+  sense_indices TEXT,                  -- JSON array of committed sense indices, or NULL (legacy = all senses)
+  PRIMARY KEY (word_type, word_id)
+);
+```
+
+### `learned` table
+
+Words/kanji marked as "already known" for a specific quiz facet. Blocks scheduling but preserves Ebisu state.
+
+```sql
+CREATE TABLE learned (
+  word_type    TEXT NOT NULL,
+  word_id      TEXT NOT NULL,
+  quiz_type    TEXT NOT NULL,
+  learned_at   TEXT NOT NULL,          -- ISO 8601 UTC
+  ebisu_backup TEXT,                   -- JSON snapshot of prior ebisu_models row
+  PRIMARY KEY (word_type, word_id, quiz_type)
+);
+```
+
+### `quiz_session` table
+
+Transient queue of word IDs in the current quiz sitting. Removed as items are graded.
+
+```sql
+CREATE TABLE quiz_session (
+  position     INTEGER PRIMARY KEY,    -- quiz order (0, 1, 2, …)
+  word_id      TEXT NOT NULL UNIQUE    -- word ID for this position
+);
+```
+
+### `grammar_enrollment` table
+
+Tracks which grammar topics the user has enrolled for study.
+
+```sql
+CREATE TABLE grammar_enrollment (
+  topic_id    TEXT NOT NULL PRIMARY KEY,  -- e.g. "genki:potential-verbs"
+  status      TEXT NOT NULL,              -- "learning" or "known"
+  enrolled_at TEXT NOT NULL               -- ISO 8601 UTC
+);
+```
+
+Grammar topics reuse the `ebisu_models` and `reviews` tables with `word_type='grammar'`.
+
+### `api_events` table
+
+Telemetry for LLM API calls: tokens, tool usage, validation, quiz scoring.
+
+```sql
+CREATE TABLE api_events (
+  id                         INTEGER PRIMARY KEY,
+  timestamp                  TEXT NOT NULL,
+  event_type                 TEXT NOT NULL,     -- e.g. "sense_detection", "hint_generation"
+  word_id                    TEXT,
+  quiz_type                  TEXT,
+  input_tokens               INTEGER,
+  output_tokens              INTEGER,
+  chat_turn                  INTEGER,
+  model                      TEXT,
+  selected_ids               TEXT,              -- JSON array of sense/option indices
+  selected_ranks             TEXT,              -- JSON array of LLM-assigned scores
+  validation_result          TEXT,
+  generation_attempt         INTEGER,
+  tools_called               TEXT,              -- JSON array of tool names
+  api_turns                  INTEGER,
+  first_turn_input_tokens    INTEGER,
+  question_chars             INTEGER,
+  question_format            TEXT,
+  prefetch                   INTEGER,
+  candidate_count            INTEGER,
+  has_mnemonic               INTEGER,           -- 0/1 whether mnemonic was displayed
+  score                      DOUBLE,            -- final quiz score 0.0–1.0
+  pre_recall                 DOUBLE             -- pre-prompt recall estimate
+);
+```
+
+### `model_events` table
+
+Event log for Ebisu model state changes (e.g., archived models, migration snapshots).
+
+```sql
+CREATE TABLE model_events (
+  id          INTEGER PRIMARY KEY,
+  timestamp   TEXT NOT NULL,
+  word_type   TEXT NOT NULL,
+  word_id     TEXT NOT NULL,
+  quiz_type   TEXT NOT NULL,
+  event       TEXT NOT NULL           -- e.g. "archived,α=1.5,β=2.0,t=30" (CSV-like format)
+);
+```
+
+---
+
 ## `jmdict.sqlite` — `entries` table
 
 ```sql
