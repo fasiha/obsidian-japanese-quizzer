@@ -95,7 +95,7 @@ struct DocumentReaderView: View {
     @State private var expandedLines: Set<Int> = []
     @State private var enrolledTopicIds: Set<String> = []
     // All of the following are computed once in .task to avoid re-work on every render.
-    @State private var renderedLines: [(lineNumber: Int, text: String)] = []
+    @State private var renderedLines: [(lineNumber: Int, text: String, translation: String?)] = []
     @State private var vocabMap: [Int: [String]] = [:]
     @State private var grammarMap: [Int: [String]] = [:]
     @State private var chipFurigana: [String: [FuriganaSegment]] = [:]  // wordId → segments
@@ -184,10 +184,11 @@ struct DocumentReaderView: View {
     // MARK: - Line view
 
     @ViewBuilder
-    private func lineView(_ line: (lineNumber: Int, text: String)) -> some View {
+    private func lineView(_ line: (lineNumber: Int, text: String, translation: String?)) -> some View {
         let vocabIds = vocabMap[line.lineNumber] ?? []
         let grammarIds = grammarMap[line.lineNumber] ?? []
-        let hasAnnotations = !vocabIds.isEmpty || !grammarIds.isEmpty
+        let translation = line.translation
+        let hasAnnotations = !vocabIds.isEmpty || !grammarIds.isEmpty || translation != nil
 
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top, spacing: 6) {
@@ -241,7 +242,8 @@ struct DocumentReaderView: View {
                     }
                 )
                 DisclosureGroup(isExpanded: isExpanded) {
-                    annotationPanel(vocabIds: vocabIds, grammarIds: grammarIds, lineNumber: line.lineNumber)
+                    annotationPanel(vocabIds: vocabIds, grammarIds: grammarIds,
+                                    lineNumber: line.lineNumber, translation: translation)
                         .padding(.top, 4)
                 } label: {
                     let learningVocabCount = vocabIds.filter { id in
@@ -251,7 +253,8 @@ struct DocumentReaderView: View {
                     let enrolledGrammarCount = grammarIds.filter { enrolledTopicIds.contains($0) }.count
                     annotationSummaryLabel(
                         vocabCount: vocabIds.count, learningVocabCount: learningVocabCount,
-                        grammarCount: grammarIds.count, enrolledGrammarCount: enrolledGrammarCount
+                        grammarCount: grammarIds.count, enrolledGrammarCount: enrolledGrammarCount,
+                        hasTranslation: translation != nil
                     )
                 }
                 .padding(.bottom, 6)
@@ -264,8 +267,14 @@ struct DocumentReaderView: View {
     // MARK: - Annotation panel
 
     @ViewBuilder
-    private func annotationPanel(vocabIds: [String], grammarIds: [String], lineNumber: Int) -> some View {
+    private func annotationPanel(vocabIds: [String], grammarIds: [String], lineNumber: Int, translation: String?) -> some View {
         VStack(alignment: .leading, spacing: 6) {
+            if let translation {
+                Text(translation)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             ForEach(vocabIds, id: \.self) { wordId in
                 if let item = corpus.items.first(where: { $0.id == wordId }) {
                     vocabChip(item, lineNumber: lineNumber)
@@ -373,7 +382,8 @@ struct DocumentReaderView: View {
     /// Small label shown in the DisclosureGroup header before it is expanded.
     private func annotationSummaryLabel(
         vocabCount: Int, learningVocabCount: Int,
-        grammarCount: Int, enrolledGrammarCount: Int
+        grammarCount: Int, enrolledGrammarCount: Int,
+        hasTranslation: Bool
     ) -> some View {
         HStack(spacing: 6) {
             if vocabCount > 0 {
@@ -385,6 +395,11 @@ struct DocumentReaderView: View {
                 Label("\(enrolledGrammarCount) of \(grammarCount) grammar", systemImage: "text.book.closed")
                     .font(.caption2)
                     .foregroundStyle(.green)
+            }
+            if hasTranslation {
+                Label("Translation", systemImage: "character.bubble")
+                    .font(.caption2)
+                    .foregroundStyle(.gray)
             }
         }
     }
@@ -475,43 +490,90 @@ struct DocumentReaderView: View {
 // MARK: - Line parser
 
 /// Parses document markdown into renderable lines with their original 1-based line numbers.
-/// Skips YAML frontmatter and all <details> blocks (single-line and multi-line).
-func parseLines(_ markdown: String) -> [(lineNumber: Int, text: String)] {
+///
+/// Skips YAML frontmatter and non-translation `<details>` blocks (Vocab, Grammar, etc.).
+/// `<details>` blocks whose `<summary>` is "English" or "Translation" are captured and
+/// attached to the preceding Japanese line as `translation`. These blocks may appear in
+/// any order relative to other `<details>` blocks following the same Japanese line.
+func parseLines(_ markdown: String) -> [(lineNumber: Int, text: String, translation: String?)] {
     let lines = markdown.components(separatedBy: "\n")
-    var result: [(lineNumber: Int, text: String)] = []
+    var result: [(lineNumber: Int, text: String, translation: String?)] = []
     var inFrontmatter = false
     var inDetails = false
+    var inTranslationDetails = false
+    var translationLines: [String] = []
+
+    /// Returns true when a `<details>` opening line contains a translation summary.
+    func isTranslationSummary(_ s: String) -> Bool {
+        let low = s.lowercased()
+        return low.contains("<summary>english</summary>") || low.contains("<summary>translation</summary>")
+    }
+
+    /// Attaches collected translation lines to the last result entry.
+    func flushTranslation() {
+        let text = translationLines.joined(separator: " ").trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !result.isEmpty else { return }
+        let last = result.removeLast()
+        result.append((lineNumber: last.lineNumber, text: last.text, translation: text))
+        translationLines = []
+    }
 
     for (index, line) in lines.enumerated() {
         let lineNumber = index + 1
         let trimmed = line.trimmingCharacters(in: .whitespaces)
 
         // YAML frontmatter: skip from opening --- through closing ---
-        if lineNumber == 1 && trimmed == "---" {
-            inFrontmatter = true
-            continue
-        }
+        if lineNumber == 1 && trimmed == "---" { inFrontmatter = true; continue }
         if inFrontmatter {
             if trimmed == "---" { inFrontmatter = false }
             continue
         }
 
-        // Single-line <details>…</details>
+        // Single-line <details>…</details> — extract translation body if applicable.
         if trimmed.hasPrefix("<details>") && trimmed.hasSuffix("</details>") {
+            if isTranslationSummary(trimmed),
+               let summaryEnd = trimmed.range(of: "</summary>", options: .caseInsensitive),
+               let detailsEnd = trimmed.range(of: "</details>", options: .caseInsensitive),
+               summaryEnd.upperBound <= detailsEnd.lowerBound {
+                let body = String(trimmed[summaryEnd.upperBound..<detailsEnd.lowerBound])
+                    .trimmingCharacters(in: .whitespaces)
+                if !body.isEmpty, !result.isEmpty {
+                    translationLines = [body]
+                    flushTranslation()
+                }
+            }
             continue
         }
 
-        // Multi-line <details> block: discard through closing </details>
+        // Multi-line <details> opening — decide whether to capture or discard.
         if trimmed.hasPrefix("<details>") {
-            inDetails = true
+            if isTranslationSummary(trimmed) {
+                inTranslationDetails = true
+                translationLines = []
+            } else {
+                inDetails = true
+            }
             continue
         }
+
+        // Inside a non-translation details block: discard.
         if inDetails {
             if trimmed.hasSuffix("</details>") { inDetails = false }
             continue
         }
 
-        result.append((lineNumber: lineNumber, text: stripUnsupportedHtmlTags(line)))
+        // Inside a translation details block: collect body lines.
+        if inTranslationDetails {
+            if trimmed.hasSuffix("</details>") {
+                flushTranslation()
+                inTranslationDetails = false
+            } else if !trimmed.isEmpty {
+                translationLines.append(trimmed)
+            }
+            continue
+        }
+
+        result.append((lineNumber: lineNumber, text: stripUnsupportedHtmlTags(line), translation: nil))
     }
     return result
 }
