@@ -920,7 +920,7 @@ final class QuizSession {
         case .short:
             let weakest = pool[0]
             let rest = Array(pool.dropFirst()).shuffled()
-            let extras = rest.isEmpty ? 0 : Int.random(in: 2...min(4, rest.count))
+            let extras = rest.isEmpty ? 0 : Int.random(in: min(2, rest.count)...min(4, rest.count))
             selected = (rest.prefix(extras) + [weakest]).shuffled()
         case .long:
             selected = Array(pool.prefix(10))
