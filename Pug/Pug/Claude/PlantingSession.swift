@@ -57,6 +57,7 @@ final class PlantingSession {
         case introducing                              // show introduce card for currentIntroWord
         case awaitingTap(PlantingMultipleChoice)      // app-side MC drill
         case tapFeedback(correct: Bool, String)       // brief result before "Continue"
+        case batchDone                                // one batch finished; more words remain
         case allDone                                  // every word in the document is planted
         case noNewWords                               // all words already above threshold
         case error(String)
@@ -112,6 +113,9 @@ final class PlantingSession {
     /// Retained while in .tapFeedback so PlantView can show the full question context.
     private(set) var lastAnsweredMC: PlantingMultipleChoice? = nil
     private(set) var lastAnswerChoiceIndex: Int = 0
+
+    /// The words from the batch that just completed. Set when entering .batchDone.
+    private(set) var completedBatchWords: [VocabItem] = []
 
     /// Mirrors the kanji toggle on the current introduce card — bound via @Bindable in the view.
     var currentIntroKanjiEnabled: Bool = false
@@ -361,7 +365,9 @@ final class PlantingSession {
     // MARK: - Private: batch management
 
     private func advanceBatch() {
-        // Drop the completed batch from the front of the queue.
+        // Capture the completed batch for the summary screen before removing it.
+        completedBatchWords = currentBatch
+
         let batchCount = currentBatch.count
         remainingWords.removeFirst(batchCount)
         batchIntroducedCount = 0
@@ -369,11 +375,7 @@ final class PlantingSession {
         pendingQueue         = []
         sessionCounts        = [:]
 
-        if remainingWords.isEmpty {
-            phase = .allDone
-            return
-        }
-        introduceNextWord()
+        phase = remainingWords.isEmpty ? .allDone : .batchDone
     }
 
     // MARK: - Private: computed helpers

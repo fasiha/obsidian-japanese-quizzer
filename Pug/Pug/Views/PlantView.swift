@@ -50,6 +50,8 @@ struct PlantView: View {
                     drillView(mc: mc)
                 case .tapFeedback(let correct, let explanation):
                     postDrillChattingView(correct: correct, explanation: explanation)
+                case .batchDone:
+                    batchDoneView
                 case .allDone:
                     allDoneView
                 case .noNewWords:
@@ -371,6 +373,71 @@ struct PlantView: View {
     }
 
     // MARK: - Done screens
+
+    @Environment(\.dismiss) private var dismiss
+
+    private var batchDoneView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(spacing: 8) {
+                    Image(systemName: "leaf.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(.green)
+                    Text("Batch planted!")
+                        .font(.title2.bold())
+                    Text("\(session.completedBatchWords.count) word\(session.completedBatchWords.count == 1 ? "" : "s") added to your review queue.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Words planted")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    ForEach(session.completedBatchWords) { word in
+                        let kana = word.commitment?.committedReading ?? word.annotatorResolved?.kana ?? word.kanaTexts.first
+                        HStack(spacing: 12) {
+                            Text(word.wordText)
+                                .font(.title3)
+                                .bold()
+                            if let kana, kana != word.wordText {
+                                Text(kana)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if let gloss = word.senseExtras.first?.glosses.first {
+                                Text(gloss)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                }
+
+                Divider()
+
+                let remaining = session.remainingWords.count
+                Text("\(remaining) word\(remaining == 1 ? "" : "s") still to plant in this document. Tap Learn again when you're ready.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+
+                Button("Done") { dismiss() }
+                    .buttonStyle(.borderedProminent)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
 
     private var allDoneView: some View {
         ContentUnavailableView {
