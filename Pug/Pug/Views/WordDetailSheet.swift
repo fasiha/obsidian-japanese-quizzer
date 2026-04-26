@@ -94,6 +94,8 @@ struct WordDetailSheet: View {
     @State private var isWorking = false
     @State private var explore: WordExploreSession? = nil
     @State private var vocabMnemonic: String? = nil
+    @State private var isEditingVocabMnemonic = false
+    @State private var editingMnemonicDraft = ""
     @State private var kanjiMnemonics: [(kanji: String, text: String)] = []
     @State private var ebisuModels: [EbisuRecord] = []
     @State private var ebisuReviewCounts: [String: Int] = [:]
@@ -266,17 +268,7 @@ struct WordDetailSheet: View {
                 }
             }
 
-            if vocabMnemonic != nil || !kanjiMnemonics.isEmpty {
-                infoGroup(heading: "Mnemonics") {
-                    if let vm = vocabMnemonic {
-                        Text(vm)
-                    }
-                    ForEach(kanjiMnemonics, id: \.kanji) { km in
-                        Text("\(km.kanji): \(km.text)")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+            mnemonicsSectionView
         }
         .textSelection(.enabled)
     }
@@ -1105,6 +1097,57 @@ struct WordDetailSheet: View {
         } catch {
             print("[WordDetailSheet] doRescale error: \(error)")
         }
+    }
+
+    @ViewBuilder
+    private var mnemonicsSectionView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Mnemonics")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Spacer()
+                if isEditingVocabMnemonic {
+                    Button("Cancel") { isEditingVocabMnemonic = false }
+                        .font(.caption)
+                    Button("Save") { Task { await saveVocabMnemonic() } }
+                        .font(.caption).fontWeight(.semibold)
+                } else {
+                    Button { editingMnemonicDraft = vocabMnemonic ?? ""; isEditingVocabMnemonic = true } label: {
+                        Image(systemName: "pencil")
+                            .padding(8)
+                            .contentShape(Rectangle())
+                    }
+                }
+            }
+            if isEditingVocabMnemonic {
+                TextEditor(text: $editingMnemonicDraft)
+                    .frame(minHeight: 80)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+            } else if let vm = vocabMnemonic {
+                Text(vm)
+            } else {
+                Text("None")
+                    .foregroundStyle(.tertiary)
+            }
+            ForEach(kanjiMnemonics, id: \.kanji) { km in
+                Text("\(km.kanji): \(km.text)")
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .textSelection(.enabled)
+    }
+
+    private func saveVocabMnemonic() async {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let text = editingMnemonicDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        try? await quizDB.setMnemonic(wordType: "jmdict", wordId: item.id, text: text)
+        vocabMnemonic = text
+        isEditingVocabMnemonic = false
     }
 
     private func loadMnemonics() async {

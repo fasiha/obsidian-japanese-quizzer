@@ -28,6 +28,8 @@ struct TransitivePairDetailSheet: View {
     @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleTarget: RescaleTarget? = nil
     @State private var mnemonics: [(label: String, text: String)] = []
+    @State private var isEditingPairMnemonic = false
+    @State private var editingPairMnemonicDraft = ""
 
     // Claude chat state
     @State private var chatMessages: [(isUser: Bool, text: String)] = []
@@ -101,10 +103,8 @@ struct TransitivePairDetailSheet: View {
                         }
                     }
 
-                    if !mnemonics.isEmpty {
-                        Divider()
-                        mnemonicsSection
-                    }
+                    Divider()
+                    mnemonicsSection
                     Divider()
                     actionsSection
                     if shouldShowQuickHalflifeChips {
@@ -278,13 +278,41 @@ struct TransitivePairDetailSheet: View {
 
     private var mnemonicsSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Mnemonics")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            ForEach(mnemonics, id: \.label) { m in
+            HStack(alignment: .firstTextBaseline) {
+                Text("Mnemonics")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Spacer()
+                if isEditingPairMnemonic {
+                    Button("Cancel") { isEditingPairMnemonic = false }
+                        .font(.caption)
+                    Button("Save") { Task { await savePairMnemonic() } }
+                        .font(.caption).fontWeight(.semibold)
+                } else {
+                    Button { editingPairMnemonicDraft = mnemonics.first(where: { $0.label == "Pair" })?.text ?? ""; isEditingPairMnemonic = true } label: {
+                        Image(systemName: "pencil")
+                            .padding(8)
+                            .contentShape(Rectangle())
+                    }
+                }
+            }
+            if isEditingPairMnemonic {
+                TextEditor(text: $editingPairMnemonicDraft)
+                    .frame(minHeight: 80)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+            } else {
+                let pairMnemonic = mnemonics.first(where: { $0.label == "Pair" })
+                if let pm = pairMnemonic {
+                    Text(pm.text)
+                } else {
+                    Text("None")
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            ForEach(mnemonics.filter { $0.label != "Pair" }, id: \.label) { m in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(m.label)
                         .font(.caption)
@@ -294,6 +322,19 @@ struct TransitivePairDetailSheet: View {
             }
         }
         .textSelection(.enabled)
+    }
+
+    private func savePairMnemonic() async {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let text = editingPairMnemonicDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        try? await quizDB.setMnemonic(wordType: "transitive-pair", wordId: item.id, text: text)
+        if let idx = mnemonics.firstIndex(where: { $0.label == "Pair" }) {
+            mnemonics[idx] = (label: "Pair", text: text)
+        } else {
+            mnemonics.insert((label: "Pair", text: text), at: 0)
+        }
+        isEditingPairMnemonic = false
     }
 
     private func loadMnemonics() async {

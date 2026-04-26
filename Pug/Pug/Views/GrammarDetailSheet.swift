@@ -28,6 +28,8 @@ struct GrammarDetailSheet: View {
     @State private var isTryingItOut = false
 
     @State private var mnemonic: String? = nil
+    @State private var isEditingMnemonic = false
+    @State private var editingMnemonicDraft = ""
     @State private var ebisuModels: [EbisuRecord] = []
     @State private var ebisuReviewCounts: [String: Int] = [:]
     @State private var rescaleTarget: RescaleTarget? = nil
@@ -67,9 +69,7 @@ struct GrammarDetailSheet: View {
                     }
                     sourcesFooter
                     corpusContextsSection
-                    if let m = mnemonic {
-                        mnemonicSection(m)
-                    }
+                    editableMnemonicSection
                     VStack(alignment: .leading, spacing: 8) {
                         enrollmentSection
                         if shouldShowQuickHalflifeChips {
@@ -301,17 +301,50 @@ struct GrammarDetailSheet: View {
     // MARK: - Mnemonic
 
     @ViewBuilder
-    private func mnemonicSection(_ text: String) -> some View {
+    private var editableMnemonicSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Mnemonic")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            Text(text)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Mnemonic")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Spacer()
+                if isEditingMnemonic {
+                    Button("Cancel") { isEditingMnemonic = false }
+                        .font(.caption)
+                    Button("Save") { Task { await saveGrammarMnemonic() } }
+                        .font(.caption).fontWeight(.semibold)
+                } else {
+                    Button { editingMnemonicDraft = mnemonic ?? ""; isEditingMnemonic = true } label: {
+                        Image(systemName: "pencil")
+                            .padding(8)
+                            .contentShape(Rectangle())
+                    }
+                }
+            }
+            if isEditingMnemonic {
+                TextEditor(text: $editingMnemonicDraft)
+                    .frame(minHeight: 80)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+            } else if let m = mnemonic {
+                Text(m)
+            } else {
+                Text("None")
+                    .foregroundStyle(.tertiary)
+            }
         }
         .textSelection(.enabled)
+    }
+
+    private func saveGrammarMnemonic() async {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let text = editingMnemonicDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        try? await quizDB.setMnemonic(wordType: "grammar", wordId: topic.prefixedId, text: text)
+        mnemonic = text
+        isEditingMnemonic = false
     }
 
     private func loadPastTurns() async {
