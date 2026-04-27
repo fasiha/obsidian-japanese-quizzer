@@ -400,14 +400,9 @@ struct WordDetailSheet: View {
                 readingStateControl
             }
 
-            // Kanji state control (only if word has kanji and reading is not unknown)
+            // Kanji info cards (only if word has kanji and reading is not unknown)
             if item.hasKanjiOptions && item.readingState != .unknown {
-                kanjiStateControl
-            }
-
-            // Kanji character picker (only when kanji = learning)
-            if item.kanjiState == .learning {
-                kanjiCharPicker
+                kanjiInfoCards
             }
 
             ForEach(counterItemsToShow) { counterItem in
@@ -634,65 +629,54 @@ struct WordDetailSheet: View {
         }
     }
 
-    // MARK: - Kanji state control
+    // MARK: - Kanji info cards
 
-    private var kanjiStateControl: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private var kanjiInfoCards: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Kanji")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
-            Picker("Kanji", selection: Binding(
-                get: { item.kanjiState },
-                set: { newState in setKanjiState(newState) }
-            )) {
-                Text("Don't know").tag(FacetState.unknown)
-                Text("Learning").tag(FacetState.learning)
-                // Known only available if reading is known
-                if item.readingState == .known {
-                    Text("Known").tag(FacetState.known)
-                }
+            let segments = committedFuriganaSegments
+            let allKanji = segments.extractKanji()
+            ForEach(allKanji, id: \.self) { kanji in
+                let enrolled = selectedKanjiChars.contains(kanji)
+                let isLastEnrolled = enrolled && selectedKanjiChars.count == 1
+                KanjiInfoCard(
+                    kanji: kanji,
+                    wordReading: readingForKanji(kanji, in: segments),
+                    activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
+                    kanjidicDB: toolHandler?.kanjidic,
+                    isEnrolled: enrolled,
+                    isLastEnrolled: isLastEnrolled,
+                    otherWords: otherEnrolledWords(for: kanji),
+                    onToggle: { toggleKanjiChar(kanji) }
+                )
             }
-            .pickerStyle(.segmented)
         }
     }
 
-    // MARK: - Kanji character picker
+    private var committedFuriganaSegments: [FuriganaSegment] {
+        guard let json = item.commitment?.furigana,
+              let data = json.data(using: .utf8),
+              let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+        else { return [] }
+        return segs
+    }
 
-    private var kanjiCharPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Kanji to learn")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            let allKanji = extractKanjiFromCommitment()
-            FlowLayout(spacing: 8) {
-                ForEach(allKanji, id: \.self) { kanji in
-                    let selected = selectedKanjiChars.contains(kanji)
-                    let isLastSelected = selected && selectedKanjiChars.count == 1
-                    Button {
-                        toggleKanjiChar(kanji)
-                    } label: {
-                        Text(kanji)
-                            .font(.title2)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selected ? Color.green.opacity(0.2) : Color(.secondarySystemBackground))
-                            .foregroundStyle(selected ? .green : .primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selected ? Color.green : Color.clear, lineWidth: 1.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLastSelected)
-                }
-            }
+    /// Returns display texts of other enrolled words that share the given kanji character.
+    private func otherEnrolledWords(for kanji: String) -> [String] {
+        corpus.items.compactMap { other in
+            guard other.id != item.id,
+                  other.kanjiState == .learning else { return nil }
+            guard let json = other.commitment?.kanjiChars,
+                  let data = json.data(using: .utf8),
+                  let chars = try? JSONDecoder().decode([String].self, from: data),
+                  chars.contains(kanji)
+            else { return nil }
+            return other.wordText
         }
     }
 

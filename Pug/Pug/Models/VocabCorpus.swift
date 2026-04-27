@@ -36,6 +36,9 @@ struct VocabItem: Identifiable {
     let corpusSenseIndices: [Int]
     /// Frequency in the BCCWJ corpus expressed as occurrences per million words. Nil when not matched.
     let bccwjPerMillionWords: Double?
+    /// LLM-identified kanjidic2 meanings active in this word, keyed by kanji character.
+    /// Populated by the kanjiMeanings step in prepare-publish.mjs. Nil when not yet analyzed.
+    let kanjiMeanings: [String: [String]]?
 
     // Derived from DB state (ebisu_models + learned + word_commitment)
     var commitment: WordCommitment?
@@ -221,6 +224,7 @@ final class VocabCorpus {
                 references: entry.references ?? [:],
                 corpusSenseIndices: corpusSenseIndices,
                 bccwjPerMillionWords: entry.bccwjPerMillionWords,
+                kanjiMeanings: entry.kanjiMeanings,
                 commitment: commitment,
                 readingState: readingState,
                 kanjiState: kanjiState

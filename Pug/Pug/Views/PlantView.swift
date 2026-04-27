@@ -482,42 +482,36 @@ struct PlantView: View {
         return firstForm.furigana.extractKanji()
     }
 
-    /// Tappable kanji character picker, mirroring the kanji char picker in WordDetailSheet.
+    /// Tappable kanji info cards for the intro (planting) flow.
     @ViewBuilder
     private func kanjiCharPicker(for word: VocabItem) -> some View {
+        let firstFormSegments = word.writtenForms.flatMap(\.forms).first?.furigana ?? []
         let allKanji = introKanjiChars(for: word)
         if !allKanji.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Kanji to learn")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.5)
-                FlowLayout(spacing: 8) {
-                    ForEach(allKanji, id: \.self) { kanji in
-                        let selected = session.currentIntroSelectedKanji.contains(kanji)
-                        let isLastSelected = selected && session.currentIntroSelectedKanji.count == 1
-                        Button {
+                ForEach(allKanji, id: \.self) { kanji in
+                    let enrolled = session.currentIntroSelectedKanji.contains(kanji)
+                    let isLastEnrolled = enrolled && session.currentIntroSelectedKanji.count == 1
+                    KanjiInfoCard(
+                        kanji: kanji,
+                        wordReading: readingForKanji(kanji, in: firstFormSegments),
+                        activeWordMeanings: word.kanjiMeanings?[kanji] ?? [],
+                        kanjidicDB: toolHandler.kanjidic,
+                        isEnrolled: enrolled,
+                        isLastEnrolled: isLastEnrolled,
+                        otherWords: [],
+                        onToggle: {
                             var chars = session.currentIntroSelectedKanji
                             if chars.contains(kanji) { chars.remove(kanji) } else { chars.insert(kanji) }
                             session.currentIntroSelectedKanji = chars
-                        } label: {
-                            Text(kanji)
-                                .font(.title2)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(selected ? Color.green.opacity(0.2) : Color(.secondarySystemBackground))
-                                .foregroundStyle(selected ? .green : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(selected ? Color.green : Color.clear, lineWidth: 1.5)
-                                )
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isLastSelected)
-                    }
+                    )
                 }
             }
         }

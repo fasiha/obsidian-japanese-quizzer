@@ -221,24 +221,24 @@ Each card shows two zones:
 - [x] Code tested and compiles without errors
 - [x] Run analysis on full corpus and verify Haiku output quality
 
-### ⏳ Step 3 — Implement KanjiInfoCard UI
+### ✅ Step 3 — Implement KanjiInfoCard UI
 
-- [ ] Create `KanjiInfoCard` SwiftUI view component
+- [x] Create `KanjiInfoCard` SwiftUI view component
   - Display: kanji character (large), reading used in this word, active meanings
   - Display: top on/kun readings if different, top 2 meanings if different
   - Display: "Also learning in: [other words]" disclosure (tappable)
-- [ ] Wire to kanjidic2 database for reading/meaning lookups
-- [ ] Implement tap gesture for enrollment toggle
-- [ ] Connect to existing `toggleKanjiChar` / `setKanjiState` logic
+- [x] Wire to kanjidic2 database for reading/meaning lookups
+- [x] Implement tap gesture for enrollment toggle
+- [x] Connect to existing `toggleKanjiChar` / `setKanjiState` logic
 
-### ⏳ Step 4 — Update WordDetailSheet & PlantView
+### ✅ Step 4 — Update WordDetailSheet & PlantView
 
-- [ ] Replace `kanjiStateControl` Picker + `kanjiCharPicker` in WordDetailSheet
+- [x] Replace `kanjiStateControl` Picker + `kanjiCharPicker` in WordDetailSheet
   - Remove the two-step flow
   - Render `KanjiInfoCard` per kanji character in committed form
   - Make cards directly tappable to enroll/unenroll
-- [ ] Replicate same UI in PlantView for planting phase
-- [ ] Verify no regression in other word detail features
+- [x] Replicate same UI in PlantView for planting phase
+- [x] Verify no regression in other word detail features (build succeeds)
 
 ### ⏳ Step 5 — Implement kanji quiz facets
 
