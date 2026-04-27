@@ -117,12 +117,12 @@ kanjidic2 meanings for each kanji in the word are evinced by the word's JMDict
 definition.
 
 The result is stored per-word in `vocab.json` alongside the existing `llm_sense`
-data. Suggested field name: `kanji_meanings`, a map from kanji character to
+data. Suggested field name: `kanjiMeanings`, a map from kanji character to
 an array of active meaning strings from kanjidic2.
 
 ```jsonc
 // in a vocab.json word entry
-"kanji_meanings": {
+"kanjiMeanings": {
   "図": ["map", "drawing", "plan"],
   "書": ["write"],
   "館": ["building", "large building"]
@@ -160,7 +160,7 @@ Each card shows two zones:
 **This word** (what this kanji is doing here):
 - The kanji character, large
 - The reading used in this word, highlighted (from the furigana array)
-- The kanjidic2 meanings active in this word (from `kanji_meanings` in
+- The kanjidic2 meanings active in this word (from `kanjiMeanings` in
   vocab.json, populated by the new LLM step)
 
 **This kanji in general** (omit if all data is identical to "this word" data):
@@ -203,49 +203,63 @@ Each card shows two zones:
 
 ## Work plan
 
-### Step 1 — kanjidic2 data available in app (prerequisite for everything)
+### ✅ Step 1 — kanjidic2 data available in app
 
-- [x] Decide: bundle `kanjidic2.sqlite` separately, or import its `kanji` table
-  into `jmdict.sqlite` as a new table. Separate file keeps concerns separated;
-  merged file reduces bundle count. Either works; pick one. — DONE. Kanjidic2 is already bundled with the app.
-- [ ] Add the chosen data source to the Xcode target and document it in
-  `docs/DATA-FORMATS.md`.
+- [x] Confirm kanjidic2.sqlite is bundled in the app and accessible
+- [x] Verify `lookup_kanjidic` tool is already implemented in ToolHandler.swift
 
-### Step 2 — kanji_meanings LLM step in prepare-publish.mjs
+### ✅ Step 2 — kanjiMeanings LLM step in prepare-publish.mjs
 
-- [ ] Design the Haiku prompt: given a JMDict word (with definition and example
-  sentence from corpus), and for each kanji in the word a list of kanjidic2
-  meanings, ask Haiku to return the subset of meanings active in this word.
-- [ ] Add the step to the prepare-publish.mjs pipeline, respecting `--no-llm`
-  and `--dry-run`.
-- [ ] Store results as `kanji_meanings` in `vocab.json`.
-- [ ] Manually verify results on 5–10 words before wiring to UI.
+- [x] Design Haiku prompt to identify active kanjidic2 meanings per word
+- [x] Implement `buildKanjiMeaningsPrompt` function
+- [x] Implement `analyzeKanjiMeanings` function with Haiku API call
+- [x] Add kanjiMeanings analysis section to prepare-publish.mjs pipeline
+- [x] Load/cache existing kanjiMeanings from vocab.json
+- [x] Add `--dry-run` flag support (skips all LLM calls and file writes)
+- [x] Respect `--no-llm` flag for cached results only
+- [x] Store results as `kanjiMeanings` in vocab.json
+- [x] Code tested and compiles without errors
+- [x] Run analysis on full corpus and verify Haiku output quality
 
-### Step 3 — kanji info card UI
+### ⏳ Step 3 — Implement KanjiInfoCard UI
 
-- [ ] Implement `KanjiInfoCard` view in SwiftUI, accepting a kanji character,
-  its kanjidic2 row, the reading used in this word, and the active meanings.
-- [ ] Replace `kanjiStateControl` + `kanjiCharPicker` in `WordDetailSheet` with
-  a `ForEach` over the word's kanji producing `KanjiInfoCard` views.
-- [ ] Wire the tap gesture to the existing `toggleKanjiChar` / `setKanjiState`
-  logic.
-- [ ] Replicate the same card layout in `PlantView` for the planting phase.
+- [ ] Create `KanjiInfoCard` SwiftUI view component
+  - Display: kanji character (large), reading used in this word, active meanings
+  - Display: top on/kun readings if different, top 2 meanings if different
+  - Display: "Also learning in: [other words]" disclosure (tappable)
+- [ ] Wire to kanjidic2 database for reading/meaning lookups
+- [ ] Implement tap gesture for enrollment toggle
+- [ ] Connect to existing `toggleKanjiChar` / `setKanjiState` logic
 
-### Step 4 — kanji quiz facets
+### ⏳ Step 4 — Update WordDetailSheet & PlantView
 
-- [ ] Add `kanji-to-reading` and `kanji-to-meaning` to the quiz facet
-  enumeration and to `docs/quiz-architecture.md`.
-- [ ] Implement question-stem builders (no LLM needed; all data from kanjidic2
-  and the furigana array).
-- [ ] Implement distractor generation (sourced from kanjidic2, no LLM).
-- [ ] Wire into the Ebisu scheduling loop using the `{jmdictId}:{kanjiChar}`
-  word_id scheme.
-- [ ] Add to `docs/DATA-FORMATS.md`: the new word_id format and the
-  `kanji_meanings` vocab.json field.
+- [ ] Replace `kanjiStateControl` Picker + `kanjiCharPicker` in WordDetailSheet
+  - Remove the two-step flow
+  - Render `KanjiInfoCard` per kanji character in committed form
+  - Make cards directly tappable to enroll/unenroll
+- [ ] Replicate same UI in PlantView for planting phase
+- [ ] Verify no regression in other word detail features
 
-### Step 5 — feature parity and docs
+### ⏳ Step 5 — Implement kanji quiz facets
 
-- [ ] Update `docs/feature-parity.md` with required behaviors for kanji quiz
-  views and the kanji info card.
-- [ ] Add kanji quiz facets to the TestHarness `--dump-prompts` sweep (or note
-  that they have no LLM prompts and are excluded).
+- [ ] Add `kanji-to-reading` and `kanji-to-meaning` to quiz facet enum
+  - word_type: `"kanji"`, word_id: `{kanjiChar}:{jmdictId}`
+  - Both facets: always multiple choice
+- [ ] Implement question stems (no LLM needed)
+  - `kanji-to-reading`: kanji character alone, no parent word
+  - `kanji-to-meaning`: kanji character alone, no parent word
+- [ ] Implement distractor generation (from kanjidic2, no LLM)
+  - `kanji-to-reading`: on/kun of similar kanji + other kanji in word; exclude other readings of test kanji
+  - `kanji-to-meaning`: meanings from other kanji in word + visually similar kanji
+- [ ] Wire into Ebisu scheduling with `{kanjiChar}:{jmdictId}` word_id
+- [ ] Add multi-reading ambiguity detection and smart grading
+
+### ⏳ Step 6 — Documentation & refinement
+
+- [ ] Update docs/DATA-FORMATS.md
+  - Document `kanjiMeanings` field in vocab.json entry
+  - Document `word_id` format for kanji quiz entries (`{kanjiChar}:{jmdictId}`)
+  - Document kanji quiz facets in reviews/ebisu_models schema
+- [ ] Update docs/quiz-architecture.md with kanji facet specs
+- [ ] Update docs/feature-parity.md with kanji quiz requirements
+- [ ] Add kanji quiz to TestHarness (or note they have no LLM prompts)
