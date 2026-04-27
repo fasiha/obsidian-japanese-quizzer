@@ -13,6 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(__dirname, "../..");
 export const JMDICT_DB = path.join(projectRoot, "jmdict.sqlite");
 export const QUIZ_DB = path.join(projectRoot, "quiz.sqlite");
+export const KANJIDIC2_DB = path.join(projectRoot, "kanjidic2.sqlite");
 export const QUIZ_SESSION = path.join(
   projectRoot,
   ".claude",
