@@ -36,6 +36,7 @@ import {
   parseFrontmatter,
   projectRoot,
   JMDICT_DB,
+  KANJIDIC2_DB,
   loadGrammarDatabases,
   extractGrammarBullets,
   extractDetailsBlocks,
@@ -318,10 +319,12 @@ function extractCounterBullets(content) {
 
 // --- Command-line flags ---
 // --no-llm              : skip all LLM sense-analysis calls and compound verb detection
+// --dry-run             : skip all LLM calls entirely (no token burn); don't write output files
 // --max-senses N        : only run LLM analysis for at most N words (useful for spot-checking)
 // --max-compound-verbs N: only run compound verb LLM analysis for at most N suffixes
 const args = process.argv.slice(2);
 const noLlm = args.includes("--no-llm");
+const dryRun = args.includes("--dry-run");
 const maxSensesIdx = args.indexOf("--max-senses");
 const maxSenses =
   maxSensesIdx !== -1 ? parseInt(args[maxSensesIdx + 1], 10) : Infinity;
@@ -355,6 +358,9 @@ if (existsSync(outPath)) {
       }
       if (w.notCompound === true) {
         existingWordFlags.set(w.id, { notCompound: true });
+      }
+      if (w.kanji_meanings) {
+        existingWordFlags.set(w.id, { ...existingWordFlags.get(w.id), kanji_meanings: w.kanji_meanings });
       }
     }
   } catch {
@@ -619,6 +625,7 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   }
   const flags = existingWordFlags.get(id);
   if (flags?.notCompound) entry.notCompound = true;
+  if (flags?.kanji_meanings) entry.kanji_meanings = flags.kanji_meanings;
   return entry;
 });
 
@@ -914,6 +921,82 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs, counterInfoP
   }));
 }
 
+/**
+ * Build a prompt for Haiku to identify which kanjidic2 meanings are active in a word.
+ * Given a JMDict word definition and each kanji's kanjidic2 meanings,
+ * ask which meanings apply to this word.
+ */
+function buildKanjiMeaningsPrompt(jmWord, kanjiMeaningsData) {
+  const { displayForm } = buildSensePromptHeader(jmWord);
+  const definition = jmWord.sense[0]?.gloss?.join("; ") || "(no definition)";
+
+  const kanjiBlocks = kanjiMeaningsData.map(({ kanji, meanings }) =>
+    `${kanji}: ${meanings.join(", ")}`
+  ).join("\n");
+
+  const exampleJson = kanjiMeaningsData
+    .map(({ kanji }) => `"${kanji}": ["${kanjiMeaningsData.find(d => d.kanji === kanji).meanings[0]}"]`)
+    .join(", ");
+
+  const prompt =
+    `You are helping identify which meanings of individual kanji are used in a Japanese word.\n\n` +
+    `Word: ${displayForm}\n` +
+    `Definition: ${definition}\n\n` +
+    `For each kanji below, identify which kanjidic2 meanings apply to this word's sense:\n\n` +
+    `${kanjiBlocks}\n\n` +
+    `For each kanji, list the meanings (from the list above) that are evinced by the word's definition or usage. ` +
+    `If a meaning doesn't apply, omit it. ` +
+    `Think step by step, then end with a JSON code block:\n` +
+    `\`\`\`json\n{${exampleJson}}\n\`\`\``;
+
+  return prompt;
+}
+
+/**
+ * Call Haiku to determine which kanjidic2 meanings are active in a word.
+ * Returns a map from kanji character to array of active meanings.
+ * Throws on API error or malformed response.
+ */
+async function analyzeKanjiMeanings(anthropic, jmWord, kanjiMeaningsData) {
+  const displayForm = jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? "(unknown)";
+  const prompt = buildKanjiMeaningsPrompt(jmWord, kanjiMeaningsData);
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const fullText = response.content[0].text;
+  const fenceMatches = [...fullText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  if (fenceMatches.length === 0) {
+    throw new Error(`Haiku returned no JSON code block for kanji meanings of ${displayForm}:\n${fullText}`);
+  }
+
+  const jsonText = fenceMatches[fenceMatches.length - 1][1].trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(`Haiku returned non-JSON for kanji meanings of ${displayForm}: ${jsonText}`);
+  }
+
+  // Validate and normalize the response
+  const result = {};
+  for (const { kanji, meanings } of kanjiMeaningsData) {
+    const selected = parsed[kanji];
+    if (Array.isArray(selected)) {
+      // Filter to only include meanings that were in the original list
+      const validMeanings = selected.filter((m) => meanings.includes(m));
+      if (validMeanings.length > 0) {
+        result[kanji] = validMeanings;
+      }
+    }
+  }
+
+  return result;
+}
+
 // Run per-reference sense analysis.
 // --no-llm: carry forward cached llm_sense values but skip all Haiku calls.
 let counterPotentialCount = 0;      // counter-capable words with unevaluated senses
@@ -1147,6 +1230,84 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
   }
 }
 
+// Analyze kanji meanings.
+// --no-llm: carry forward cached kanji_meanings values but skip all Haiku calls.
+// --dry-run: skip all LLM calls entirely (no token burn).
+if (!dryRun) {
+  const kanjidicDB = await setup(KANJIDIC2_DB);
+  const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  console.log("\nAnalyzing kanji meanings…");
+  let kanjiAnalyzed = 0;
+
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    if (!jmWord || !jmWord.kanji || jmWord.kanji.length === 0) continue;
+
+    // Check if we already have kanji_meanings for this word (from cache)
+    const flags = existingWordFlags.get(word.id);
+    if (flags?.kanji_meanings) {
+      word.kanji_meanings = flags.kanji_meanings;
+      continue;
+    }
+
+    const displayForm = jmWord.kanji[0].text;
+
+    // Extract unique kanji from the word's kanji forms
+    const uniqueKanji = [...new Set(jmWord.kanji.flatMap((k) => k.text.split("")))];
+
+    // Query kanjidic2 for each kanji's meanings
+    let kanjiMeaningsData = [];
+    try {
+      kanjiMeaningsData = await kanjidicDB.read((db) => {
+        const results = [];
+        for (const kanji of uniqueKanji) {
+          const row = db.selectOne("SELECT meanings FROM kanji WHERE literal = ?", [kanji]);
+          if (row && row.meanings) {
+            try {
+              const meanings = JSON.parse(row.meanings);
+              if (Array.isArray(meanings) && meanings.length > 0) {
+                results.push({ kanji, meanings });
+              }
+            } catch {
+              // Skip if meanings JSON is invalid
+            }
+          }
+        }
+        return results;
+      });
+    } catch (e) {
+      console.warn(`  Skipping kanji meanings for ${displayForm} (kanjidic2 query failed): ${e.message}`);
+      continue;
+    }
+
+    if (kanjiMeaningsData.length === 0) continue;
+
+    if (noLlm) {
+      console.log(`  Would analyze kanji for ${displayForm} (skipped by --no-llm)`);
+      continue;
+    }
+
+    // Call Haiku to determine active meanings
+    try {
+      process.stdout.write(`  Analyzing kanji meanings for ${displayForm}… `);
+      const kanjiMeanings = await analyzeKanjiMeanings(anthropic, jmWord, kanjiMeaningsData);
+      if (Object.keys(kanjiMeanings).length > 0) {
+        word.kanji_meanings = kanjiMeanings;
+        existingWordFlags.set(word.id, { ...existingWordFlags.get(word.id), kanji_meanings: kanjiMeanings });
+        kanjiAnalyzed++;
+      }
+      process.stdout.write(`✓\n`);
+    } catch (e) {
+      console.log(`✗ (${e.message})`);
+    }
+  }
+
+  if (kanjiAnalyzed > 0) {
+    console.log(`Analyzed kanji meanings for ${kanjiAnalyzed} word(s).`);
+  }
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
   stories: stories.map(({ title }) => ({ title })),
@@ -1154,12 +1315,16 @@ const output = {
   sourceOrders,
 };
 
-writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
-console.log(
-  `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
-);
-if (counterPotentialCount > 0 || counterSkippedCount > 0) {
-  console.log(`- ${counterPotentialCount} potential counter senses found, ${counterSkippedCount} skipped`);
+if (!dryRun) {
+  writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
+  console.log(
+    `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
+  );
+  if (counterPotentialCount > 0 || counterSkippedCount > 0) {
+    console.log(`- ${counterPotentialCount} potential counter senses found, ${counterSkippedCount} skipped`);
+  }
+} else {
+  console.log(`\n[DRY RUN] Would have written ${words.length} words to ${outPath}`);
 }
 
 // --- Grammar JSON ---
@@ -1198,7 +1363,9 @@ const grammarOutput = {
 // read the latest topics even if this script exits with an error below.
 // (Description fields from equivalences are injected after the check below.)
 const grammarOutPath = path.join(projectRoot, "grammar.json");
-writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+if (!dryRun) {
+  writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+}
 
 // Validate grammar/grammar-equivalences.json covers all grammar topics
 const equivPath = path.join(
@@ -1257,10 +1424,12 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
   }
 }
 
-writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
-console.log(
-  `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
-);
+if (!dryRun) {
+  writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+  console.log(
+    `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
+  );
+}
 
 // --- Corpus JSON ---
 // Build per-title vocab and grammar counts from the already-compiled maps.
@@ -1335,13 +1504,15 @@ for (const { title, content } of stories) {
 }
 
 const corpusOutPath = path.join(projectRoot, "corpus.json");
-writeFileSync(
-  corpusOutPath,
-  JSON.stringify({ images: corpusImages, entries: corpusEntries }, null, 2) + "\n",
-);
-console.log(
-  `Wrote ${corpusEntries.length} corpus entries, ${corpusImages.length} image(s) → ${corpusOutPath}`,
-);
+if (!dryRun) {
+  writeFileSync(
+    corpusOutPath,
+    JSON.stringify({ images: corpusImages, entries: corpusEntries }, null, 2) + "\n",
+  );
+  console.log(
+    `Wrote ${corpusEntries.length} corpus entries, ${corpusImages.length} image(s) → ${corpusOutPath}`,
+  );
+}
 
 // --- Compound verb detection ---
-await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs });
+await checkAndUpdateCompoundVerbs({ dryRun: dryRun || noLlm, maxLlm: maxCompoundVerbs });
