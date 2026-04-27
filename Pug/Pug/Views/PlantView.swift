@@ -156,23 +156,10 @@ struct PlantView: View {
 
                 Divider()
 
-                // Kanji toggle (only when the word has real kanji forms)
+                // Kanji info cards (only when the word has real kanji forms).
+                // Tap a card to enroll that kanji; deselect all to skip kanji learning.
                 if !word.writtenTexts.isEmpty && !word.isKanaOnly {
-                    Toggle(isOn: $session.currentIntroKanjiEnabled) {
-                        Label("Learn the kanji spelling too", systemImage: "character.book.closed")
-                    }
-                    .toggleStyle(.switch)
-                    .onChange(of: session.currentIntroKanjiEnabled) { _, enabled in
-                        if enabled && session.currentIntroSelectedKanji.isEmpty {
-                            // Default: select all kanji in the first written form.
-                            let allKanji = introKanjiChars(for: word)
-                            session.currentIntroSelectedKanji = Set(allKanji)
-                        }
-                    }
-
-                    if session.currentIntroKanjiEnabled {
-                        kanjiCharPicker(for: word)
-                    }
+                    kanjiCharPicker(for: word)
                 }
 
                 Divider()
@@ -185,7 +172,7 @@ struct PlantView: View {
                             origin: .document(title: session.documentTitle)
                         )
                     } label: {
-                        Label("Explore word", systemImage: "sparkles")
+                        Text("Details")
                             .font(.subheadline)
                     }
                     .buttonStyle(.bordered)
@@ -375,6 +362,7 @@ struct PlantView: View {
     // MARK: - Done screens
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(VocabCorpus.self) private var corpus
 
     private var batchDoneView: some View {
         ScrollView {
@@ -497,19 +485,20 @@ struct PlantView: View {
                     .tracking(0.5)
                 ForEach(allKanji, id: \.self) { kanji in
                     let enrolled = session.currentIntroSelectedKanji.contains(kanji)
-                    let isLastEnrolled = enrolled && session.currentIntroSelectedKanji.count == 1
                     KanjiInfoCard(
                         kanji: kanji,
                         wordReading: readingForKanji(kanji, in: firstFormSegments),
                         activeWordMeanings: word.kanjiMeanings?[kanji] ?? [],
                         kanjidicDB: toolHandler.kanjidic,
                         isEnrolled: enrolled,
-                        isLastEnrolled: isLastEnrolled,
-                        otherWords: [],
+                        otherWords: corpus.otherEnrolledWords(for: kanji, excluding: word.id),
                         onToggle: {
                             var chars = session.currentIntroSelectedKanji
                             if chars.contains(kanji) { chars.remove(kanji) } else { chars.insert(kanji) }
                             session.currentIntroSelectedKanji = chars
+                        },
+                        onTapOtherWord: { other in
+                            selectedWordForDetail = VocabItemSelection(item: other, origin: nil)
                         }
                     )
                 }

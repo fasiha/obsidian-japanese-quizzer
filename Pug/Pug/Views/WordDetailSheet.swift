@@ -103,6 +103,7 @@ struct WordDetailSheet: View {
     @State private var pastTurns: [ChatTurn] = []
     @State private var wordReviews: [Review] = []
     @State private var selectedReview: IdentifiableReview? = nil
+    @State private var kanjiOtherWordDetail: VocabItem? = nil
 
     var body: some View {
         NavigationStack {
@@ -164,6 +165,10 @@ struct WordDetailSheet: View {
                 TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus,
                                           db: db, jmdict: jmdict,
                                           client: client, toolHandler: toolHandler)
+            }
+            .sheet(item: $kanjiOtherWordDetail) { otherItem in
+                WordDetailSheet(initialItem: otherItem, db: db, client: client,
+                                toolHandler: toolHandler, jmdict: jmdict, origin: nil)
             }
         }
     }
@@ -643,16 +648,15 @@ struct WordDetailSheet: View {
             let allKanji = segments.extractKanji()
             ForEach(allKanji, id: \.self) { kanji in
                 let enrolled = selectedKanjiChars.contains(kanji)
-                let isLastEnrolled = enrolled && selectedKanjiChars.count == 1
                 KanjiInfoCard(
                     kanji: kanji,
                     wordReading: readingForKanji(kanji, in: segments),
                     activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
                     kanjidicDB: toolHandler?.kanjidic,
                     isEnrolled: enrolled,
-                    isLastEnrolled: isLastEnrolled,
                     otherWords: otherEnrolledWords(for: kanji),
-                    onToggle: { toggleKanjiChar(kanji) }
+                    onToggle: { toggleKanjiChar(kanji) },
+                    onTapOtherWord: { kanjiOtherWordDetail = $0 }
                 )
             }
         }
@@ -666,18 +670,8 @@ struct WordDetailSheet: View {
         return segs
     }
 
-    /// Returns display texts of other enrolled words that share the given kanji character.
-    private func otherEnrolledWords(for kanji: String) -> [String] {
-        corpus.items.compactMap { other in
-            guard other.id != item.id,
-                  other.kanjiState == .learning else { return nil }
-            guard let json = other.commitment?.kanjiChars,
-                  let data = json.data(using: .utf8),
-                  let chars = try? JSONDecoder().decode([String].self, from: data),
-                  chars.contains(kanji)
-            else { return nil }
-            return other.wordText
-        }
+    private func otherEnrolledWords(for kanji: String) -> [VocabItem] {
+        corpus.otherEnrolledWords(for: kanji, excluding: item.id)
     }
 
     // MARK: - Ebisu halflives table
@@ -909,6 +903,7 @@ struct WordDetailSheet: View {
     // MARK: - Action implementations
 
     private var selectedKanjiChars: Set<String> {
+        guard item.kanjiState == .learning else { return [] }
         guard let json = item.commitment?.kanjiChars,
               let data = json.data(using: .utf8),
               let arr = try? JSONDecoder().decode([String].self, from: data)
@@ -993,8 +988,13 @@ struct WordDetailSheet: View {
         if current.contains(kanji) { current.remove(kanji) } else { current.insert(kanji) }
         isWorking = true
         Task {
-            await corpus.setKanjiState(.learning, wordId: item.id,
-                                        kanjiChars: Array(current), db: db)
+            if current.isEmpty {
+                // Deselecting the last kanji is equivalent to "don't know kanji".
+                await corpus.setKanjiState(.unknown, wordId: item.id, kanjiChars: nil, db: db)
+            } else {
+                await corpus.setKanjiState(.learning, wordId: item.id,
+                                            kanjiChars: Array(current), db: db)
+            }
             await loadEbisuModels()
             isWorking = false
         }

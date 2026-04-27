@@ -156,7 +156,8 @@ final class PlantingSession {
     /// Creates Ebisu models for the word's facets and starts the first drill round.
     func tapGotIt() {
         guard case .introducing = phase, let word = currentIntroWord else { return }
-        let includeKanji = currentIntroKanjiEnabled
+        let selectedKanji = Array(currentIntroSelectedKanji)
+        let includeKanji = !selectedKanji.isEmpty
         kanjiEnabled[word.id] = includeKanji
         phase = .loading
         Task {
@@ -165,7 +166,8 @@ final class PlantingSession {
                                          senseIndicesToSeed: senseIndices,
                                          halflife: Self.initialHalflife)
             if includeKanji && !word.writtenTexts.isEmpty {
-                await corpus.setKanjiState(.learning, wordId: word.id, db: db,
+                await corpus.setKanjiState(.learning, wordId: word.id,
+                                           kanjiChars: selectedKanji, db: db,
                                            halflife: Self.initialHalflife)
             }
             let isLast = batchIntroducedCount + 1 == currentBatch.count
@@ -189,7 +191,7 @@ final class PlantingSession {
     /// No drill questions are shown for the word — it is removed from the queue immediately.
     func tapKnown() {
         guard case .introducing = phase, let word = currentIntroWord else { return }
-        let includeKanji = currentIntroKanjiEnabled
+        let includeKanji = !currentIntroSelectedKanji.isEmpty
         phase = .loading
         Task {
             await corpus.setReadingState(.known, wordId: word.id, db: db)

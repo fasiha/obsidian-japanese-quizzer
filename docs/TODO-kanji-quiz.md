@@ -164,9 +164,9 @@ Each card shows two zones:
   vocab.json, populated by the new LLM step)
 
 **This kanji in general** (omit if all data is identical to "this word" data):
-- Top on-reading from kanjidic2 (shown if different from the reading used in this word, or always shown for completeness if the reading used is kun)
-- Top kun-reading from kanjidic2 (shown if different from the reading used in this word, or always shown for completeness if the reading used is on)
-- Top 2 kanjidic2 meanings, if different from the active meanings shown above
+- Top 2 on-reading from kanjidic2 in katakana (highlight one if it's equivalent to this word's on reading)
+- Top 2 kun-reading from kanjidic2 (highlight one if equal to this word's kun reading)
+- Top 2 kanjidic2 meanings (highlight those that are also in this word's meaning)
 
 **Extra disclosure**:
 - "Also learning this kanji in: 図形, 地図" — a list of other enrolled words
@@ -225,20 +225,38 @@ Each card shows two zones:
 
 - [x] Create `KanjiInfoCard` SwiftUI view component
   - Display: kanji character (large), reading used in this word, active meanings
-  - Display: top on/kun readings if different, top 2 meanings if different
-  - Display: "Also learning in: [other words]" disclosure (tappable)
+  - Display: top 2 on-readings (katakana) + top 2 kun-readings (hiragana); the one used
+    in this word shown at full brightness, others at secondary color
+  - "Also learning in" rows rendered below the card as individual tappable rows;
+    each opens a WordDetailSheet for that word (no origin, so all corpus senses highlighted)
 - [x] Wire to kanjidic2 database for reading/meaning lookups
 - [x] Implement tap gesture for enrollment toggle
+  - Deselecting the last enrolled kanji in WordDetailSheet calls `setKanjiState(.unknown)`,
+    equivalent to "don't know kanji"
 - [x] Connect to existing `toggleKanjiChar` / `setKanjiState` logic
 
 ### ✅ Step 4 — Update WordDetailSheet & PlantView
 
 - [x] Replace `kanjiStateControl` Picker + `kanjiCharPicker` in WordDetailSheet
-  - Remove the two-step flow
+  - Remove the two-step flow; deselect-all is now the "don't know" path
   - Render `KanjiInfoCard` per kanji character in committed form
   - Make cards directly tappable to enroll/unenroll
-- [x] Replicate same UI in PlantView for planting phase
+- [x] PlantView: remove "Learn the kanji spelling too" toggle
+  - Cards shown with all deselected by default; tap to enroll, deselect-all = no kanji
+  - Commit path uses `!currentIntroSelectedKanji.isEmpty` (not the removed toggle flag)
+  - `currentIntroSelectedKanji` is passed as `kanjiChars` to `setKanjiState` so only
+    the tapped subset is enrolled, not automatically all kanji in the form
 - [x] Verify no regression in other word detail features (build succeeds)
+
+### Decisions: KanjiInfoCard readings display
+
+- On-readings shown as katakana, kun-readings shown as hiragana (kanjidic2 native format).
+- Always show top 2 on-readings and top 2 kun-readings in the general section.
+- The reading that matches the word's committed form is highlighted at full brightness;
+  others shown at secondary color. This lets the learner see at a glance whether the
+  word uses the common on/kun reading or an uncommon one.
+- Future: a dedicated KanjiDetailSheet will be reachable via a ">" affordance on the
+  right edge of the card (not yet implemented).
 
 ### ⏳ Step 5 — Implement kanji quiz facets
 
