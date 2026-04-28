@@ -100,6 +100,7 @@ final class QuizSession {
     var lastCounterQuestion: (stem: String, facet: String, counterId: String)? = nil  // saved for tutoring
     var lastCounterAnswer: (text: String, isCorrect: Bool)? = nil  // student's answer and correctness
     var currentCounterSystemPrompt: String? = nil  // set when counter tutor session starts
+    var currentCounterNumber: String? = nil        // set when counter-number-to-reading stem is built
 
     var currentItem: QuizItem? { items.indices.contains(currentIndex) ? items[currentIndex] : nil }
     var progress: String { "\(currentIndex + 1) / \(items.count)" }
@@ -134,7 +135,8 @@ final class QuizSession {
     private var prefetched: (index: Int, question: String, multipleChoice: MultipleChoiceQuestion?,
                               pairQuestion: PairQuestion?,
                               conversation: [AnthropicMessage],
-                              preRecall: Double?, preHalflife: Double?)? = nil
+                              preRecall: Double?, preHalflife: Double?,
+                              counterExampleQueue: [String])? = nil
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
     private var prefetchTask: Task<Void, Never>? = nil
 
@@ -993,7 +995,8 @@ final class QuizSession {
     private func buildCounterNumberStem(counter: Counter) -> String {
         let numbers = ["1", "3", "6", "8", "10"]
         let number = numbers.randomElement() ?? "3"
-        return "How do you read \(number) + \(counter.kanji)(\(counter.reading))?"
+        currentCounterNumber = number
+        return "How do you say \(number) + \(counter.kanji)(\(counter.reading))?\n(\(counter.whatItCounts))"
     }
 
     // MARK: - Counter grading
@@ -1021,16 +1024,23 @@ final class QuizSession {
             resultBubble = resultText
 
         case "counter-number-to-reading":
-            // Extract number from stem: "6 + 匹(ひき)" → "6"
-            let numberPart = stem.split(separator: " ").first.flatMap { String($0) } ?? ""
-            // Look up correct pronunciation from counter data
-            if let pronunciations = counter.pronunciations[numberPart] {
+            if let pronunciations = counter.pronunciations[currentCounterNumber ?? ""] {
                 let primaryAnswers = pronunciations.primary
-                isCorrect = primaryAnswers.contains(text)
-                let correctAnswer = primaryAnswers.first ?? ""
+                let rareAnswers = pronunciations.rare
+                isCorrect = primaryAnswers.contains(text) || rareAnswers.contains(text)
+                let otherPrimary = primaryAnswers.filter { $0 != text }
+                let otherRare = rareAnswers.filter { $0 != text }
+                let primaryList = primaryAnswers.joined(separator: " / ")
+                let allAccepted = rareAnswers.isEmpty
+                    ? primaryList
+                    : "\(primaryList) (rare: \(rareAnswers.joined(separator: " / ")))"
+                let alsoAccepted = otherRare.isEmpty
+                    ? otherPrimary.joined(separator: " / ")
+                    : "\(otherPrimary.joined(separator: " / ")) (rare: \(otherRare.joined(separator: " / ")))"
+                let hasAlternates = !otherPrimary.isEmpty || !otherRare.isEmpty
                 let resultText = isCorrect
-                    ? "✓ \(text)"
-                    : "✗ Wrong: \(text)\n✓ Correct: \(correctAnswer)"
+                    ? (hasAlternates ? "✓ \(text)\nAlso accepted: \(alsoAccepted)" : "✓ \(text)")
+                    : "✗ Wrong: \(text)\n✓ Correct: \(allAccepted)"
                 resultBubble = resultText
             } else {
                 resultBubble = "Error: could not find pronunciation data"
@@ -1048,13 +1058,17 @@ final class QuizSession {
         lastCounterAnswer = (text: text, isCorrect: isCorrect)
 
         let counterNotes: String
+        let questionBubble: String
         if item.facet == "meaning-to-reading" {
-            let shownExamples = ([stem] + counterAdditionalExamples).joined(separator: "; ")
+            let allExampleWords = ([counterExampleQueue.first ?? ""] + counterAdditionalExamples).filter { !$0.isEmpty }
+            let shownExamples = allExampleWords.joined(separator: "; ")
             counterNotes = "autograder: counter; examples shown: \(shownExamples); answer: \(text)"
+            questionBubble = "What counter word (読み方) counts \(allExampleWords.joined(separator: ", "))?"
         } else {
             counterNotes = "autograder: counter; answer: \(text)"
+            questionBubble = stem
         }
-        applyLocalGrade(score: score, questionBubble: stem, answerBubble: resultBubble,
+        applyLocalGrade(score: score, questionBubble: questionBubble, answerBubble: resultBubble,
                         resultSummary: resultSummary, notes: counterNotes, item: item)
     }
 
@@ -1078,6 +1092,8 @@ final class QuizSession {
             isSendingChat  = false
             gradedScore       = nil
             gradedHalflife    = nil
+            counterExampleQueue = pf.counterExampleQueue
+            counterAdditionalExamples = []
 
             meaningBonusApplied = false
             uncertaintyUnlocked = false
@@ -1115,6 +1131,7 @@ final class QuizSession {
         lastCounterQuestion = nil
         lastCounterAnswer = nil
         currentCounterSystemPrompt = nil
+        currentCounterNumber = nil
         gradedScore       = nil
         gradedHalflife    = nil
         multipleChoiceResult = nil
@@ -1573,7 +1590,8 @@ final class QuizSession {
             prefetched = (index: index, question: "", multipleChoice: nil,
                           pairQuestion: q,
                           conversation: [],
-                          preRecall: preRecall, preHalflife: preHalflife)
+                          preRecall: preRecall, preHalflife: preHalflife,
+                          counterExampleQueue: [])
             print("[QuizSession] prefetch (transitive-pair, app-side) stored for index \(index): \(item.wordText)")
             return
         }
@@ -1587,9 +1605,18 @@ final class QuizSession {
                 return
             }
             let stem: String
+            var prefetchedExampleQueue: [String] = []
             switch item.facet {
             case "meaning-to-reading":
-                stem = freeAnswerStem(for: item)
+                // Build the example queue directly from the next item's data — do NOT read
+                // counterExampleQueue here, as that belongs to the currently-displayed item.
+                let examples = Array(counterItem.counter.countExamples.shuffled().prefix(3))
+                prefetchedExampleQueue = examples
+                if let first = examples.first {
+                    stem = "What counter word (読み方) counts \(first)?"
+                } else {
+                    stem = "What is the reading of the counter \(counterItem.counter.kanji)(\(counterItem.counter.reading))?"
+                }
             case "counter-number-to-reading":
                 stem = buildCounterNumberStem(counter: counterItem.counter)
             default:
@@ -1599,7 +1626,8 @@ final class QuizSession {
             prefetched = (index: index, question: stem, multipleChoice: nil,
                           pairQuestion: nil,
                           conversation: [],
-                          preRecall: preRecall, preHalflife: preHalflife)
+                          preRecall: preRecall, preHalflife: preHalflife,
+                          counterExampleQueue: prefetchedExampleQueue)
             print("[QuizSession] prefetch (counter, app-side) stored for index \(index): \(item.wordText)")
             return
         }
@@ -1611,7 +1639,8 @@ final class QuizSession {
             prefetched = (index: index, question: stem, multipleChoice: nil,
                           pairQuestion: nil,
                           conversation: [],
-                          preRecall: preRecall, preHalflife: preHalflife)
+                          preRecall: preRecall, preHalflife: preHalflife,
+                          counterExampleQueue: [])
             print("[QuizSession] prefetch (free-answer, app-side) stored for index \(index): \(item.wordText)")
             return
         }
@@ -1622,7 +1651,8 @@ final class QuizSession {
             prefetched = (index: index, question: appSideQuestion.stem, multipleChoice: appSideQuestion,
                           pairQuestion: nil,
                           conversation: [],
-                          preRecall: preRecall, preHalflife: preHalflife)
+                          preRecall: preRecall, preHalflife: preHalflife,
+                          counterExampleQueue: [])
             print("[QuizSession] prefetch (app-side multiple choice, documents) stored for index \(index): \(item.wordText)")
             return
         }
@@ -1643,7 +1673,8 @@ final class QuizSession {
             prefetched = (index: index, question: finalQuestion, multipleChoice: finalMultipleChoice,
                           pairQuestion: nil,
                           conversation: finalMsgs,
-                          preRecall: preRecall, preHalflife: preHalflife)
+                          preRecall: preRecall, preHalflife: preHalflife,
+                          counterExampleQueue: [])
             print("[QuizSession] prefetch stored for index \(index): \(item.wordText)")
         } catch {
             print("[QuizSession] prefetchQuestion error for index \(index): \(error)")

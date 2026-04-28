@@ -41,6 +41,8 @@ Every new facet or quiz type must satisfy all of the following. Verify each one 
 ### Prefetch parity
 
 - [ ] `prefetchQuestion()` handles the new facet in the same dispatch order as `generateQuestion()`. See the type-dispatch order note in the counter section below.
+- [ ] `prefetchQuestion()` does **not** read any session-level mutable state that `generateQuestion()` sets before building the stem (e.g. `counterExampleQueue`, `currentCounterNumber`). Those fields belong to the item currently on-screen. The prefetch runs while that item is still displayed, so reading them gives the wrong item's data. Any state needed to build the next item's stem must be derived directly from the next `QuizItem` and its corpus data, then stored in the `prefetched` tuple and restored when the prefetch is consumed.
+- [ ] If the new facet's stem depends on state that `generateQuestion()` normally sets (a shuffled queue, a randomly drawn value, etc.), add that state as a field on the `prefetched` tuple and restore it in the consume block inside `generateQuestion()`. Failing to do this causes the same question to appear twice (prefetch uses current item's state to build next item's stem) and/or wrong grading (grading reads stale state from the previous item).
 
 # Vocab quiz architecture
 
