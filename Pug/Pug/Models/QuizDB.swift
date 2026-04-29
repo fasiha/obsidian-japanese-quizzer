@@ -674,6 +674,29 @@ final class QuizDB: Sendable {
         }
     }
 
+    /// All enrolled kanji quiz Ebisu models (word_type = "kanji", word_id = "{char}:{jmdictId}").
+    func enrolledKanjiQuizRecords() async throws -> [EbisuRecord] {
+        try await pool.read { db in
+            try EbisuRecord.filter(Column("word_type") == "kanji").fetchAll(db)
+        }
+    }
+
+    /// Plant Ebisu rows for kanji-to-reading and kanji-to-meaning for one kanji in a parent word.
+    func setKanjiQuizLearning(kanjiChar: String, jmdictId: String, halflife: Double = 24) async throws {
+        let wordId = "\(kanjiChar):\(jmdictId)"
+        try await setFacetLearning(wordType: "kanji", wordId: wordId, quizType: "kanji-to-reading", halflife: halflife)
+        try await setFacetLearning(wordType: "kanji", wordId: wordId, quizType: "kanji-to-meaning", halflife: halflife)
+        print("[QuizDB] setKanjiQuizLearning \(wordId)")
+    }
+
+    /// Remove both kanji quiz Ebisu rows for one kanji in a parent word.
+    func setKanjiQuizUnknown(kanjiChar: String, jmdictId: String) async throws {
+        let wordId = "\(kanjiChar):\(jmdictId)"
+        try await setFacetUnknown(wordType: "kanji", wordId: wordId, quizType: "kanji-to-reading")
+        try await setFacetUnknown(wordType: "kanji", wordId: wordId, quizType: "kanji-to-meaning")
+        print("[QuizDB] setKanjiQuizUnknown \(wordId)")
+    }
+
     // MARK: - Word commitment
 
     func commitment(wordType: String, wordId: String) async throws -> WordCommitment? {

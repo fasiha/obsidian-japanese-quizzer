@@ -146,6 +146,7 @@ struct VocabBrowserView: View {
                             Button("Quiz vocab only") { startQuiz(filter: .vocabOnly) }
                             Button("Quiz transitive pairs only") { startQuiz(filter: .pairsOnly) }
                             Button("Quiz counters only") { startQuiz(filter: .countersOnly) }
+                            Button("Quiz kanji only") { startQuiz(filter: .kanjiOnly) }
                         }
                         BrowserToolbarMenu(
                             showSettings: $showSettings,

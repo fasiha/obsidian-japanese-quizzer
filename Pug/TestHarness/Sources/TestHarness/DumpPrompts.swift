@@ -235,7 +235,8 @@ func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptP
         partialKanjiTemplate: path.partialKanjiTemplate,
         committedReading: nil,
         committedWrittenText: path.committedWrittenText,
-        corpusSenseIndices: [0]
+        corpusSenseIndices: [0],
+        kanjiQuizData: nil
     )
 }
 

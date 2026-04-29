@@ -222,13 +222,14 @@ Post-quiz coaching chat is available for all three facets (via "Tutor me" on wro
 
 ## Implementation order in generateQuestion() and prefetchQuestion()
 
-Counter items must be detected and routed **before** the `isFreeAnswer` check. This is critical: the free-answer dispatcher assumes it can call `freeAnswerStem()`, which returns `""` for counter facets because their stems are deterministic. If `isFreeAnswer` runs first, it will create a question with an empty stem.
+Counter and kanji items must be detected and routed **before** the `isFreeAnswer` check. Counter facets such as `meaning-to-reading` have `isFreeAnswer == true` but require their own stem-building logic. Kanji facets (`kanji-to-reading`, `kanji-to-meaning`) are always multiple choice and require `buildKanjiMultipleChoice`. If `isFreeAnswer` runs first for either type, it calls `freeAnswerStem()`, which returns `""` for those facets, producing an empty question and a grading failure.
 
 **Type dispatch order** (same in both `generateQuestion()` and `prefetchQuestion()`):
-1. Counter items (both facets)
-2. Transitive-intransitive pair drills (all three facets: pair-discrimination, transitive, intransitive)
-3. Vocabulary items (split by `isFreeAnswer`)
-4. Grammar items
+1. Transitive-intransitive pair drills (all three facets: pair-discrimination, transitive, intransitive)
+2. Kanji quiz items (`word_type="kanji"`, both facets: kanji-to-reading, kanji-to-meaning) — always multiple choice, built app-side
+3. Counter items (both facets: meaning-to-reading, counter-number-to-reading)
+4. Vocabulary items (split by `isFreeAnswer`)
+5. Grammar items
 
 ## Pronunciation table encoding
 
