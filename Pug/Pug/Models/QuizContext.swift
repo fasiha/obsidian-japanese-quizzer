@@ -173,9 +173,13 @@ func resolveAnnotatedForms(
         }
 
     } else if let kana = kanaCandidate {
-        // Kana only: find the WrittenFormGroup whose reading matches, take its first form.
-        if let group = writtenForms.first(where: { $0.reading == kana }),
-           let form = group.forms.first {
+        // Kana only: find the WrittenFormGroup whose reading matches.
+        // For pure-kana entries (no kanji forms), synthesize a plain WrittenForm from the kana itself.
+        if let group = writtenForms.first(where: { $0.reading == kana }) {
+            let form = group.forms.first ?? WrittenForm(
+                furigana: [FuriganaSegment(ruby: kana, rt: nil)],
+                text: kana
+            )
             return ResolvedAnnotatorForms(writtenForm: form, kana: kana)
         }
 
