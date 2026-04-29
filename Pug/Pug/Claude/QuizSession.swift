@@ -993,7 +993,7 @@ final class QuizSession {
 
     /// Build stem for counter-number-to-reading: "6 + 匹(ひき)"
     private func buildCounterNumberStem(counter: Counter) -> String {
-        let numbers = ["1", "3", "6", "8", "10"]
+        let numbers = counter.quizNumbers
         let number = numbers.randomElement() ?? "3"
         currentCounterNumber = number
         return "How do you say \(number) + \(counter.kanji)(\(counter.reading))?\n(\(counter.whatItCounts))"

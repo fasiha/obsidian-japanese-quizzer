@@ -40,6 +40,7 @@ guard args.count >= 2 else {
     fputs("       TestHarness <word_id> meaning-reading-to-kanji --committed-kanji 前\n", stderr)
     fputs("       TestHarness <word_id> meaning-reading-to-kanji --committed-kanji 閉,籠 --committed-written-form 閉じ籠もる\n", stderr)
     fputs("       TestHarness <word_id> --dump-prompts\n", stderr)
+    fputs("       TestHarness --counter-hints > /tmp/counter-hints.html\n", stderr)
     fputs("       TestHarness <word_id> --live [--repeat N] [--gen-only] [--facet <facet>]\n", stderr)
     fputs("       TestHarness --grammar <topic_id> --dump-prompts [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
     fputs("       TestHarness --grammar <topic_id> --live [--repeat N] [--gen-only] [--facet <facet>] [--tier 2,3] [--extra-grammar id1,id2] [--last-sub-use-index N]\n", stderr)
@@ -63,6 +64,7 @@ let isDumpMode = args.contains("--dump-prompts")
 let isLiveMode = args.contains("--live")
 let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --live mode
 let isTestDisambiguation = args.contains("--test-disambiguation")
+let isCounterHints = args.contains("--counter-hints")
 
 // --facet <name>: restrict --live mode to a single facet (omit to run all facets)
 let liveOnlyFacet: String?
@@ -235,6 +237,75 @@ if isTestDisambiguation {
     let model  = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
     let client = AnthropicClient(apiKey: apiKey, model: model)
     await testDisambiguation(client: client)
+    exit(0)
+}
+
+// MARK: - Counter hints HTML dump (--counter-hints, no API calls)
+
+if isCounterHints {
+    guard let countersPath = findFile("Counters/counters.json"),
+          let data = try? Data(contentsOf: URL(fileURLWithPath: countersPath)),
+          let counters = try? JSONDecoder().decode([Counter].self, from: data) else {
+        fputs("Error: could not load Counters/counters.json\n", stderr)
+        exit(1)
+    }
+
+    var html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <title>Counter hints preview</title>
+    <style>
+      body { font-family: sans-serif; font-size: 14px; padding: 1em; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ccc; padding: 6px 10px; vertical-align: top; }
+      th { background: #f0f0f0; }
+      .teal { color: teal; }
+      .category { color: #888; font-size: 12px; }
+    </style>
+    </head>
+    <body>
+    <h1>Counter hints preview</h1>
+    <table>
+    <thead>
+      <tr>
+        <th>Counter</th>
+        <th>What it counts</th>
+        <th>Rendaku hint</th>
+        <th>4 / 7 / 9 hint</th>
+        <th>Quiz numbers</th>
+      </tr>
+    </thead>
+    <tbody>
+    """
+
+    for c in counters {
+        let kanji = c.kanji.replacingOccurrences(of: "&", with: "&amp;")
+        let reading = c.reading
+        let whatItCounts = c.whatItCounts.replacingOccurrences(of: "&", with: "&amp;")
+        let rendaku = c.rendakuHint.replacingOccurrences(of: "&", with: "&amp;")
+        let classical = c.classicalNumberHint.replacingOccurrences(of: "&", with: "&amp;")
+        let quizNums = c.quizNumbers.joined(separator: ", ")
+        html += """
+          <tr>
+            <td><strong>\(kanji)</strong> (\(reading))<br><span class="category">\(c.category)</span></td>
+            <td>\(whatItCounts)</td>
+            <td class="teal">\(rendaku)</td>
+            <td class="teal">\(classical)</td>
+            <td>\(quizNums)</td>
+          </tr>
+        """
+    }
+
+    html += """
+    </tbody>
+    </table>
+    </body>
+    </html>
+    """
+
+    print(html)
     exit(0)
 }
 

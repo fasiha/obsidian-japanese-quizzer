@@ -40,7 +40,15 @@ The target skill is production during conversation: given what you want to count
 
 **Why `counter-number-to-reading` shows both kanji and kana:** in real conversation, you know the number and the counter shape—the challenge is producing the correct phonetic modification. The prompt displays `{number} + {kanji}({kana})` to reflect this real-world skill: given the number and the counter, produce the right pronunciation.
 
-**Number sampling for `counter-number-to-reading`:** draw from {1, 3, 6, 8, 10} (and ignore {2, 4, 5, 7, 9}, since phonetically interesting modifications only occur on the former set). The Ebisu model tracks overall mastery of the counter's phonetic pattern, not per-number mastery.
+**Number sampling for `counter-number-to-reading`:** draw from `counter.quizNumbers`, a computed property on `Counter` in `CounterSync.swift`. The base set is {1, 3, 4, 6, 7, 8, 10}:
+
+- {1, 3, 6, 8, 10} trigger consonant mutations (rendaku/gemination) — the h→p, k-doubling, and s/t-doubling patterns.
+- 4 is included because it has counter-specific complexity beyond just よん: some counters use よ (dropped ん, e.g. よじ, よねん), others use both よん and よ as co-primary forms (e.g. よんだん/よだん), and ふ-initial counters take both よんふ and よんぷ.
+- 7 is included because the なな/しち split is counter-specific: most counters use なな as primary, but 時 (じ) and 月がつ take しち as primary.
+- 9 is excluded from the base set **unless** `pronunciations["9"].primary` starts with く (classical go'on), in which case it is appended. This covers 時 (くじ), 月がつ (くがつ), 人 (くにん), etc. where く is the primary form, not a variant.
+- {2, 5} are phonetically straightforward. 9 for most counters is just きゅう with no alternation.
+
+**Why not 9 universally:** unlike 4 and 7 where counter-specific alternations appear broadly across many counter types, く vs きゅう is restricted to a handful of irregular/high-frequency counters (時, 月がつ, 人). For the majority of the 66 counters, 9 is just きゅう — adding it to every counter's quiz set would waste quiz time with trivially predictable answers.
 
 **Out of scope for version 1** (enumerate as future work if desired): `reading-to-meaning` (recognition, not production), `kanji-to-reading` (same answer as `meaning-to-reading`, different prompt), `meaning-reading-to-kanji` (kanji writing).
 
@@ -138,7 +146,7 @@ Provides a pedagogically useful type classification (Type A through F plus irreg
 
 5. **Markdown reading files** — need to author: (a) a wago file (10 words, trivial), (b) a must-know counters file (19 counters), (c) a common counters file (47 counters). These are the enrollment vehicle — counters only enter the quiz queue when a user reads and commits to the word.
 
-6. **WordDetailSheet counter section** — when a word has `word_type="counter"`, the detail sheet should display the 1–10 pronunciation table (analogous to how transitive pairs show both verb forms). If `jmdict.senseIndex` points to a sense without an explicit `ctr` part-of-speech tag (noun or noun-suffix), include a note that the sense has been hand-verified as counter-relevant. Design TBD.
+6. ✅ **WordDetailSheet counter section** — displays a collapsed 1–10 pronunciation table plus two teal hint lines (`rendakuHint` and `classicalNumberHint`). See Phase 5 Remaining item 2 for the full design rationale.
 
 7. **Quiz prompt wording for `counter-number-to-reading`** — multiple-choice distractors can be generated without LLM: pick three other readings from the same counter's 1–10 table (e.g. for 六匹→ろっぴき, offer いっぴき, さんびき, はっぴき). Free-answer phase: app builds stem locally, LLM grades. Needs a system prompt.
 
@@ -341,10 +349,29 @@ Implement a coaching prompt like transitive pair quiz tutor. Explains phonetic p
    - `counters-common.md` — 47 "Common" counters
    - `wago-numbers.md` — the 11 native Japanese numbers (ひとつ–とお)
 
-2. Enrich `WordDetailSheet` with counter-specific affordances (deferred, not blocking for v1):
-   - Pronunciation table display (1–10 grid + "how many")
-   - DBJG phonetic type label and pattern explanation (e.g., "Type B: h→p with 1, 6, 8, 10")
-   - Hand-verification note for senses without explicit `ctr` part-of-speech tag
+2. ✅ Enrich `WordDetailSheet` with counter-specific affordances:
+   - ✅ Pronunciation table display (1–10 grid + "how many") — in a collapsed DisclosureGroup
+   - ✅ Two teal `.callout` hint lines above the DisclosureGroup: `rendakuHint` and `classicalNumberHint`, both computed properties on `Counter` in `CounterSync.swift`
+   - Hand-verification note for senses without explicit `ctr` part-of-speech tag — still deferred
+
+   **`rendakuHint` design** — always shown; describes consonant mutation behavior for 1, 6, 8, 10:
+   - h/f/p-initial counters: "Consonant mutation →p with 1, 6, 8, 10 — 1:X / 6:X / 8:X or Y / 10:X or Y"
+   - k-initial counters: "Consonant doubling with 1, 6, 8, 10 — 1:X / 6:X / 8:X or Y / 10:X or Y"
+   - s/sh and t/ch-initial counters: "Consonant doubling with 1 only — 1:X"
+   - w-initial counters (わ): detected from data, not initial consonant, because 羽 has わ→ば mutation with 3/4/10 but 話 does not. Shows "Partial わ→ば mutation — 3:X or Y / 4:X or Y / 10:X or Y" when mutations exist.
+   - All other initials (vowel, nasal, liquid): "No consonant mutation (1, 6, 8, 10 use standard readings)"
+   - **8 and 10 dual-form nuance:** for most consonant classes, 8 accepts both the fully-mutated form (はっ+X) and the unmutated form (はち+X). The exception is p-initial counters, which only produce はっ+p. 10 similarly accepts both じっ+X and じゅっ+X for all consonant classes including p-initial. The hint reflects this by showing all primaries joined with " or " rather than just the first — the data already encodes this distinction. If `pronunciations["4"]` has multiple primaries (e.g. 分: よんぷん/よんふん), a note is appended: "also 4:X or Y".
+   - Rare forms are omitted from this hint intentionally — they appear in the pronunciation table.
+
+   **`classicalNumberHint` design** — always shown; describes 4/7/9 behavior with a bucket prefix:
+   - **"Modern (4:X · 7:X · 9:X)"** — all three primaries are よん/なな/きゅう, no rare forms on any
+   - **"Mostly modern (4:X · 7:X · 9:X)"** — primaries are all modern but at least one number has rare forms (e.g. しちこ rare for 7)
+   - **"Classical+Modern (4:X · 7:X · 9:X)"** — at least one primary is classical: し (4), よ non-よん (4), しち (7), or く (9)
+   - Rare forms are omitted from the detail string; the bucket label signals that the table has more detail.
+
+   **Why よ (non-よん) counts as classical for 4:** よ is the wago (native Japanese) reading of 四. Modern colloquial Japanese uses よん (よ + disambiguating ん). Counters that use よ as primary (e.g. よじ, よねん, よにん, よつき) are those where the expression calcified early — the same phonological conservatism that kept し/しち/く in time-telling and calendar contexts. よん/なな/きゅう are the "safe modern defaults"; any deviation is pedagogically notable.
+
+   **Why し/しち/く are preserved in time-telling but not elsewhere:** し (4), しち (7), and く (9) are on'yomi (Sino-Japanese). よ/なな are wago (native Japanese). く and きゅう are *both* Sino-Japanese — く is the older go'on stratum (Wu Chinese, ~5th–6th century), きゅう is the later kan'on stratum (Tang Chinese, ~8th century). Modern preference shifted toward よん and なな partly due to superstition (し≈死, く≈苦) and clarity (しち sounds like し and いち in fast speech). Time-telling, calendar months, and counting people calcified with the Sino-Japanese forms before this shift, and are now fixed expressions learned as chunks rather than as productive number+counter combinations.
 
 3. Run TestHarness validation (if needed):
    - Spot-check `counter-number-to-reading` prompts for representative samples

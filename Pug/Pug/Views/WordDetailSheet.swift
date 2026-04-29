@@ -491,6 +491,8 @@ struct WordDetailSheet: View {
                 Text(c.countExamples.joined(separator: ", "))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Text(c.rendakuHint).font(.callout).foregroundStyle(.teal)
+            Text(c.classicalNumberHint).font(.callout).foregroundStyle(.teal)
             DisclosureGroup("Pronunciations") {
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
                     ForEach(counterNumberKeys, id: \.self) { key in
