@@ -309,7 +309,10 @@ final class PlantingSession {
         var chunk: [PlantQuizItem] = []
         for word in batch {
             for facet in activeFacets(for: word) {
-                for _ in 0..<Self.reviewThreshold {
+                let key = "\(word.id)\0\(facet)"
+                let alreadyDone = reviewCounts[key] ?? 0
+                let needed = max(0, Self.reviewThreshold - alreadyDone)
+                for _ in 0..<needed {
                     chunk.append(makePlantQuizItem(word: word, facet: facet))
                 }
             }
@@ -429,7 +432,7 @@ final class PlantingSession {
             for w in batch {
                 for facet in activeFacets(for: w) {
                     let key = "\(w.id)\0\(facet)"
-                    let have = (sessionCounts[key] ?? 0) + (scheduled[key] ?? 0)
+                    let have = (reviewCounts[key] ?? 0) + (sessionCounts[key] ?? 0) + (scheduled[key] ?? 0)
                     let need = max(0, Self.reviewThreshold - have)
                     for _ in 0..<need {
                         chunk.append(makePlantQuizItem(word: w, facet: facet))
