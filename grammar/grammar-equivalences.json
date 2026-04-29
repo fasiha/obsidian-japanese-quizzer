@@ -1076,33 +1076,43 @@
   {
     "topics": [
       "bunpro:よう-おう",
-      "bunpro:ようと思う-おうと思う",
       "genki:volitional-form",
       "kanshudo:volitional"
     ],
-    "summary": "The plain volitional form expresses a casual invitation or internal decision. Ichidan verbs drop る and add よう (食べる → 食べよう); godan verbs replace the final vowel with the お-row equivalent and add う (行く → 行こう, 話す → 話そう); irregulars: する → しよう, くる → こよう. When combined with と思う or と思っています, the volitional expresses intention rather than invitation.",
+    "summary": "The plain volitional form is the casual equivalent of ましょう, used to suggest a plan or invite someone to do something together. Ichidan verbs drop る and add よう (食べる → 食べよう); godan verbs replace the final vowel with the お-row equivalent and add う (行く → 行こう, 話す → 話そう); irregulars: する → しよう, くる → こよう.",
     "subUses": [
       {
-        "id": "casual-suggestion-or",
-        "text": "Casual suggestion or invitation (informal equivalent of ましょう): カフェでコーヒーを飲もうか (shall we drink coffee at a café?)"
+        "id": "casual-suggestion-or-invitation",
+        "text": "Casual suggestion or invitation (informal equivalent of ましょう): カフェでコーヒーを飲もう (let's drink coffee at a café)"
       },
       {
-        "id": "volitional-to-soften",
-        "text": "Volitional + か to soften a suggestion or ask for agreement: どこで食べようか (where shall we eat?)"
-      },
+        "id": "volitional-ka-to-soften",
+        "text": "Volitional + か to soften a suggestion or ask for an opinion: どこで食べようか (where shall we eat?)"
+      }
+    ],
+    "cautions": [
+      "The volitional is the plain/casual register for suggestions; ましょう is the polite register. Context determines register choice, not grammatical function.",
+      "Adding か turns the volitional into a question seeking agreement or opinion, rather than a direct invitation."
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:ようと思う-おうと思う"
+    ],
+    "summary": "The volitional form combined with と思う or と思っています expresses intention or a decision. Volitional + と思います marks a decision made at the moment of speaking; volitional + と思っています marks an intention that was formed earlier and is still ongoing.",
+    "subUses": [
       {
-        "id": "volitional-for-a",
+        "id": "volitional-to-omoimasu-decision-now",
         "text": "Volitional + と思います for a decision made just now: 今日から毎日運動しようと思います (I've just decided to exercise daily starting today)"
       },
       {
-        "id": "volitional-for-an",
+        "id": "volitional-to-omotteimasu-ongoing-intention",
         "text": "Volitional + と思っています for an intention formed earlier and still ongoing: 来年日本に留学しようと思っています (I've been planning to study abroad in Japan next year)"
       }
     ],
     "cautions": [
-      "Volitional + と思います vs volitional + と思っています: と思います marks a decision made right now in the conversation; と思っています marks an ongoing intention decided earlier. Depending on when the decision was formed, one or the other applies.",
-      "The volitional form + と思います specifically marks *intention* or *decision*. Distinguish this from predictions, which use non-volitional forms (e.g., 雨が降ると思います).",
-      "The volitional is the plain/casual register for suggestions and intentions; ましょう is the polite register. Context determines register choice, not grammatical function."
+      "と思います marks a decision made right now in the conversation; と思っています marks an ongoing intention decided earlier. Depending on when the decision was formed, one or the other applies.",
+      "Volitional + と思います specifically marks intention or decision. Distinguish this from predictions about external events, which use non-volitional forms (e.g., 雨が降ると思います)."
     ]
   },
   {
