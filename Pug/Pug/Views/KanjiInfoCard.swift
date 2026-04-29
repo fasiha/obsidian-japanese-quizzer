@@ -109,26 +109,28 @@ struct KanjiInfoCard: View {
     /// Inline row: top 2 on-readings (katakana) and top 2 kun-readings (hiragana, deduplicated).
     /// The reading matching the word's committed form is shown at primary brightness;
     /// others at secondary. Rendaku is accounted for in the match (e.g. くち matches ぐち).
+    /// Font is .subheadline — these are secondary content (what the learner is committing to),
+    /// not tertiary footnotes.
     private var readingsRow: some View {
         HStack(spacing: 8) {
             if !onReadings.isEmpty {
                 Text("音:")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                 ForEach(onReadings.prefix(2), id: \.self) { on in
                     Text(on)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(isWordReading(on) ? Color.primary : Color.secondary)
                 }
             }
             Spacer()
             if !displayKunReadings.isEmpty {
                 Text("訓:")
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                 ForEach(displayKunReadings, id: \.self) { kun in
                     Text(kun)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(isWordReading(kun) ? Color.primary : Color.secondary)
                 }
             }
@@ -137,6 +139,7 @@ struct KanjiInfoCard: View {
 
     /// Top 2 kanjidic2 meanings. Meanings that are active in this word are shown at
     /// primary brightness; others at secondary.
+    /// Font is .subheadline — secondary content, not footnotes.
     private var meaningsRow: some View {
         let active = Set(activeWordMeanings)
         let top2 = Array(allKanjidicMeanings.prefix(2))
@@ -144,11 +147,11 @@ struct KanjiInfoCard: View {
             ForEach(Array(top2.enumerated()), id: \.offset) { idx, meaning in
                 if idx > 0 {
                     Text(", ")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
                 Text(meaning)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundStyle(active.contains(meaning) ? Color.primary : Color.secondary)
             }
         }

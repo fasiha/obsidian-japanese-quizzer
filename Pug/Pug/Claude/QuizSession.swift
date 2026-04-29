@@ -874,7 +874,7 @@ final class QuizSession {
         print("[QuizSession] loadItems: building quiz context")
         do {
             statusMessage = "Loading items…"
-            let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, pairCorpus: pairCorpus, counterCorpus: counterCorpus)
+            let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, kanjidic: toolHandler.kanjidic, pairCorpus: pairCorpus, counterCorpus: counterCorpus)
             var candidates: [QuizItem]
             switch quizFilter {
             case .all:
@@ -890,15 +890,12 @@ final class QuizSession {
             }
 
             // Restrict to a specific document when documentScope is set.
-            // Kanji quiz items have word_id="{kanjiChar}:{jmdictId}"; scope them by the parent jmdictId.
+            // Kanji quiz items (word_type="kanji") appear regardless of document scope —
+            // their identity is the character itself, not tied to any one parent word.
             if let scope = documentScope, let manifest = VocabSync.cached() {
                 let scopedIds = Set(manifest.words.filter { $0.sources.contains(scope) }.map(\.id))
                 candidates = candidates.filter { item in
-                    if item.wordType == "kanji",
-                       let colonIdx = item.wordId.firstIndex(of: ":") {
-                        let jmdictId = String(item.wordId[item.wordId.index(after: colonIdx)...])
-                        return scopedIds.contains(jmdictId)
-                    }
+                    if item.wordType == "kanji" { return true }
                     return scopedIds.contains(item.wordId)
                 }
             }
@@ -971,6 +968,20 @@ final class QuizSession {
                 return ""
             default:
                 return item.wordText
+            }
+        }
+
+        // Kanji quiz facets (word_type="kanji").
+        if item.wordType == "kanji", let kd = item.kanjiQuizData {
+            switch item.facet {
+            case "kanji-to-on-reading":
+                return "Type an on-reading of \(kd.kanjiChar):"
+            case "kanji-to-kun-reading":
+                return "Type a kun-reading of \(kd.kanjiChar):"
+            case "kanji-to-meaning":
+                return "What does \(kd.kanjiChar) mean?"
+            default:
+                return "What is \(kd.kanjiChar)?"
             }
         }
 
@@ -1297,6 +1308,57 @@ final class QuizSession {
         // Counter quizzes are graded locally (deterministic).
         if item.wordType == "counter" {
             return await gradeCounterAnswer(text: text, stem: stem, item: item)
+        }
+
+        // Kanji quiz free-answer grading.
+        if item.wordType == "kanji", let kd = item.kanjiQuizData {
+            switch item.facet {
+            case "kanji-to-on-reading":
+                // Accept any of the top-2 on-readings (already hiragana). No LLM fallback.
+                let valid = Set(kd.top2OnReadings)
+                let correct = valid.contains(text)
+                let others = kd.top2OnReadings.filter { $0 != text }.joined(separator: ", ")
+                let otherNote = others.isEmpty ? "" : " (other valid: \(others))"
+                let resultSummary = "Question: \(stem)\nStudent answered: \(text) — \(correct ? "Correct ✓" : "Wrong ✗ (valid: \(kd.top2OnReadings.joined(separator: ", ")))")"
+                applyLocalGrade(score: correct ? 1.0 : 0.0, questionBubble: stem,
+                                answerBubble: text + otherNote,
+                                resultSummary: resultSummary,
+                                notes: "autograder: on-reading \(correct ? "match" : "no-match"); gave=\(text); valid=\(kd.top2OnReadings.joined(separator: ","))",
+                                item: item)
+                return
+            case "kanji-to-kun-reading":
+                // Accept any of the top-2 kun-reading stems or their full okurigana forms.
+                let validStems = Set(kd.top2KunReadings)
+                let validFull  = Set(kd.top2KunFullForms)
+                let correct = validStems.contains(text) || validFull.contains(text)
+                let includedOkurigana = !validStems.contains(text) && validFull.contains(text)
+                let others = kd.top2KunReadings.filter { $0 != text && $0 != text }.joined(separator: ", ")
+                let otherNote = others.isEmpty ? "" : " (other valid: \(others))"
+                let okNote = includedOkurigana ? " (included okurigana — also accepted)" : ""
+                let resultSummary = "Question: \(stem)\nStudent answered: \(text)\(okNote) — \(correct ? "Correct ✓" : "Wrong ✗ (valid: \(kd.top2KunReadings.joined(separator: ", ")))")"
+                applyLocalGrade(score: correct ? 1.0 : 0.0, questionBubble: stem,
+                                answerBubble: text + otherNote,
+                                resultSummary: resultSummary,
+                                notes: "autograder: kun-reading \(correct ? "match" : "no-match")\(includedOkurigana ? "+okurigana" : ""); gave=\(text); valid=\(kd.top2KunReadings.joined(separator: ","))",
+                                item: item)
+                return
+            case "kanji-to-meaning":
+                // Fast path: exact case-insensitive match against top-2 meanings.
+                let lower = text.lowercased()
+                if kd.top2Meanings.contains(where: { $0.lowercased() == lower }) {
+                    let others = kd.top2Meanings.filter { $0.lowercased() != lower }.joined(separator: ", ")
+                    let otherNote = others.isEmpty ? "" : " (other valid: \(others))"
+                    applyLocalGrade(score: 1.0, questionBubble: stem,
+                                    answerBubble: text + otherNote,
+                                    resultSummary: "Question: \(stem)\nStudent answered: \(text) — Correct ✓",
+                                    notes: "autograder: meaning exact-match; gave=\(text); valid=\(kd.top2Meanings.joined(separator: ","))",
+                                    item: item)
+                    return
+                }
+                // Slow path: fall through to Claude grading below.
+            default:
+                break
+            }
         }
 
         // For reading facets, check for an exact kana match locally before calling Claude.
@@ -2278,58 +2340,59 @@ final class QuizSession {
     // MARK: - Private: kanji quiz question builder
 
     /// Build a multiple-choice question for a kanji quiz item entirely in Swift using kanjidic2.
-    /// No LLM call. Both kanji-to-reading and kanji-to-meaning are always multiple choice.
+    /// No LLM call. Three facets: kanji-to-on-reading, kanji-to-kun-reading, kanji-to-meaning.
+    /// All are always multiple choice until the standard graduation thresholds are met.
     private func buildKanjiMultipleChoice(item: QuizItem, kanjiData: KanjiQuizData) async throws -> MultipleChoiceQuestion {
         let kanji = kanjiData.kanjiChar
-        let otherKanji = Self.extractKanji(from: kanjiData.parentWordText).filter { $0 != kanji }
-        let allKanjiToLoad = [kanji] + otherKanji
-
-        // Load kanjidic2 rows for the test kanji and all other kanji in the parent word.
-        // If the resulting pool of distractors is too small, also fetch kanji with similar
-        // stroke counts so we can always produce exactly 4 choices.
-        let kanjidicRows = try await loadKanjidicRows(allKanjiToLoad, extraFallback: true)
+        // Load the test kanji plus stroke-count-similar fallback kanji for distractor padding.
+        let kanjidicRows = try await loadKanjidicRows([kanji], extraFallback: true)
 
         switch item.facet {
-        case "kanji-to-reading":
-            let correct = kanjiData.wordReading
-            guard !correct.isEmpty else {
-                throw QuizSessionError.missingData("no committed reading for \(kanji) in \(kanjiData.parentWordText)")
+        case "kanji-to-on-reading":
+            guard !kanjiData.top2OnReadings.isEmpty else {
+                throw QuizSessionError.missingData("no on-readings for \(kanji)")
             }
-            // All valid readings of the test kanji (on + kun base, katakana normalized to hiragana).
-            // Distractors must NOT include any of these.
-            let ownReadings = validReadings(for: kanji, rows: kanjidicRows)
-            // Gather readings of other kanji in the word, excluding valid readings of the test kanji.
-            var pool: [String] = []
-            for k in otherKanji {
-                pool += validReadings(for: k, rows: kanjidicRows)
-            }
-            // Also include fallback kanji readings not related to the test kanji.
-            for (k, row) in kanjidicRows where k != kanji && !otherKanji.contains(k) {
-                pool += validReadings(for: k, rows: [k: row])
-            }
-            let distractors = Array(Set(pool).subtracting(ownReadings).subtracting([correct]).subtracting([""]))
+            let correct = kanjiData.top2OnReadings.randomElement()!
+            // All on-readings of the test kanji are forbidden as distractors.
+            let ownOn = Set(kanjiData.top2OnReadings)
+            let pool = kanjidicRows.values
+                .filter { _ in true }   // all fallback kanji
+                .flatMap { row in row.onReadings.map { Self.katakanaToHiragana($0) } }
+            let distractors = Array(Set(pool).subtracting(ownOn).subtracting([correct]).subtracting([""]))
                 .shuffled().prefix(3)
-            let stem = "What is the reading of \(kanji) in \(kanjiData.parentWordText)?"
-            return padToFour(stem: stem, correct: correct, distractors: Array(distractors), placeholder: "—")
+            return padToFour(stem: "What is an on-reading of \(kanji)?",
+                             correct: correct, distractors: Array(distractors), placeholder: "—")
+
+        case "kanji-to-kun-reading":
+            guard !kanjiData.top2KunReadings.isEmpty else {
+                throw QuizSessionError.missingData("no kun-readings for \(kanji)")
+            }
+            let correct = kanjiData.top2KunReadings.randomElement()!
+            // All kun-reading stems of the test kanji are forbidden as distractors.
+            let ownKun = Set(kanjiData.top2KunReadings)
+            let pool = kanjidicRows.values
+                .flatMap { row in row.kunReadings.map { r -> String in
+                    let s = r.hasPrefix("-") ? String(r.dropFirst()) : r
+                    return String(s.split(separator: ".", maxSplits: 1).first ?? Substring(s))
+                }}
+            let distractors = Array(Set(pool).subtracting(ownKun).subtracting([correct]).subtracting([""]))
+                .shuffled().prefix(3)
+            return padToFour(stem: "What is a kun-reading of \(kanji)?",
+                             correct: correct, distractors: Array(distractors), placeholder: "—")
 
         case "kanji-to-meaning":
-            guard !kanjiData.activeMeanings.isEmpty else {
-                throw QuizSessionError.missingData("no active meanings for \(kanji) in \(kanjiData.parentWordText)")
+            guard !kanjiData.top2Meanings.isEmpty else {
+                throw QuizSessionError.missingData("no meanings for \(kanji)")
             }
-            let correct = kanjiData.activeMeanings.randomElement()!
-            // All kanjidic2 meanings of the test kanji. Distractors must not include any of these.
+            let correct = kanjiData.top2Meanings.randomElement()!
+            // All kanjidic2 meanings of the test kanji are forbidden as distractors.
             let ownMeanings = Set(kanjidicRows[kanji]?.meanings ?? [])
-            var pool: [String] = []
-            for k in otherKanji {
-                pool += Array((kanjidicRows[k]?.meanings ?? []).prefix(3))
-            }
-            for (k, row) in kanjidicRows where k != kanji && !otherKanji.contains(k) {
-                pool += Array(row.meanings.prefix(2))
-            }
+            let pool = kanjidicRows.values
+                .flatMap { row in Array(row.meanings.prefix(2)) }
             let distractors = Array(Set(pool).subtracting(ownMeanings).subtracting([correct]).subtracting([""]))
                 .shuffled().prefix(3)
-            let stem = "What does \(kanji) mean in \(kanjiData.parentWordText)?"
-            return padToFour(stem: stem, correct: correct, distractors: Array(distractors), placeholder: "—")
+            return padToFour(stem: "What does \(kanji) mean?",
+                             correct: correct, distractors: Array(distractors), placeholder: "—")
 
         default:
             throw QuizSessionError.unknownFacet(item.facet)
@@ -2432,8 +2495,8 @@ final class QuizSession {
     func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
                               postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
-        // Kanji quiz items (word_type="kanji") use a compact coaching prompt.
-        // Question generation is done app-side; this prompt is only used for post-answer discussion.
+        // Kanji quiz items (word_type="kanji") use a coaching prompt focused on the character.
+        // Question generation is fully app-side; this prompt is only used for post-answer discussion.
         if item.wordType == "kanji", let kd = item.kanjiQuizData {
             let ebisuLine: String = {
                 if let r = preRecall, let h = preHalflife {
@@ -2444,25 +2507,53 @@ final class QuizSession {
                 }
                 return "new"
             }()
+            let onList   = kd.top2OnReadings.isEmpty  ? "none" : kd.top2OnReadings.joined(separator: ", ")
+            let kunList  = kd.top2KunReadings.isEmpty ? "none" : kd.top2KunReadings.joined(separator: ", ")
+            let meanList = kd.top2Meanings.isEmpty    ? "unknown" : kd.top2Meanings.joined(separator: ", ")
             let facetDesc: String
+            let coachingGuidance: String
             switch item.facet {
-            case "kanji-to-reading":
-                facetDesc = "kanji-to-reading (student sees the kanji alone and identifies its reading in this word)"
+            case "kanji-to-on-reading":
+                facetDesc = "kanji-to-on-reading (student identifies an on-reading of the kanji)"
+                coachingGuidance = """
+                On success: confirm the reading, mention the other top-2 on-reading if one exists, \
+                give 1–2 example words that use this on-reading.
+                On failure: name the correct on-reading(s), explain the on-yomi Chinese-loan origin, \
+                give 1–2 example words to anchor the reading.
+                """
+            case "kanji-to-kun-reading":
+                facetDesc = "kanji-to-kun-reading (student identifies a kun-reading of the kanji)"
+                coachingGuidance = """
+                On success: confirm the reading, mention the other top-2 kun-reading if one exists, \
+                give 1–2 example words. Note if the student included okurigana correctly.
+                On failure: name the correct kun-reading(s) with full okurigana form, explain \
+                kun-yomi as native Japanese reading, give 1–2 example words.
+                """
             case "kanji-to-meaning":
-                facetDesc = "kanji-to-meaning (student sees the kanji alone and identifies its meaning in this word)"
+                facetDesc = "kanji-to-meaning (student identifies a meaning of the kanji)"
+                coachingGuidance = """
+                On success: confirm the meaning, mention the other top-2 meaning if one exists, \
+                briefly note nuance between them if they differ. Give 1–2 example words.
+                On failure or partial: name the correct top-2 meanings, explain why the student's \
+                answer was wrong or close, give 1–2 example words. Do not dump all kanjidic2 meanings.
+                """
             default:
                 facetDesc = item.facet
+                coachingGuidance = ""
             }
-            let meaningsList = kd.activeMeanings.isEmpty ? "unknown" : kd.activeMeanings.joined(separator: ", ")
             let resultLine = multipleChoiceResult.map { "Multiple choice result: \($0)\n" } ?? ""
             return """
             You are coaching a Japanese learner on a kanji quiz.
-            Kanji: \(kd.kanjiChar) — as used in \(kd.parentWordText) (reading in this word: \(kd.wordReading.isEmpty ? "unknown" : kd.wordReading))
-            Active meanings in this word: \(meaningsList)
+            Kanji: \(kd.kanjiChar)
+            Top-2 on-readings: \(onList)
+            Top-2 kun-readings: \(kunList)
+            Top-2 meanings: \(meanList)
             Facet: \(facetDesc)
             Memory: \(ebisuLine)
-            \(resultLine)The student has already answered — scoring is handled by the app. Do NOT emit SCORE.
-            The student may ask follow-up questions or move on. If they ask, engage naturally.
+            \(resultLine)\(coachingGuidance)
+            The student has already answered — scoring is handled by the app. Do NOT emit SCORE.
+            Use lookup_kanjidic and lookup_jmdict to ground example words in the actual database \
+            rather than relying on training-data recall.
             set_mnemonic overwrites — always merge with existing mnemonic before saving.
             \(mnemonicBlock)
             """
