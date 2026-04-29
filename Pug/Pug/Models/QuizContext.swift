@@ -195,6 +195,21 @@ func resolveAnnotatedForms(
     return nil
 }
 
+// MARK: - Kanji quiz data
+
+/// Per-kanji data carried by QuizItems whose word_type is "kanji".
+/// The word_id encodes both the kanji character and the parent JMDict ID as "{kanjiChar}:{jmdictId}".
+struct KanjiQuizData {
+    /// The single kanji character being tested (e.g. "図").
+    let kanjiChar: String
+    /// The hiragana reading this kanji has in the committed parent word (from word_commitment.furigana).
+    let wordReading: String
+    /// The parent word's written text (e.g. "図書館"), used for context in the system prompt.
+    let parentWordText: String
+    /// LLM-identified kanjidic2 meanings active in this word (from vocab.json kanjiMeanings).
+    let activeMeanings: [String]
+}
+
 // MARK: - Quiz item
 
 /// The urgency of one word+facet pair for a quiz session.
@@ -205,7 +220,7 @@ enum QuizStatus: Equatable {
 
 struct QuizItem: Identifiable {
     let id = UUID()
-    let wordType: String        // always "jmdict" for now
+    let wordType: String        // "jmdict", "transitive-pair", "counter", or "kanji"
     let wordId: String
     let wordText: String        // single primary form (first written, or first kana if no written)
     let writtenTexts: [String]  // non-irregular orthographic (kanji/mixed) forms
@@ -246,6 +261,10 @@ struct QuizItem: Identifiable {
     /// Empty for non-jmdict word types (transitive pairs, etc.).
     let corpusSenseIndices: [Int]
 
+    /// Present only when wordType == "kanji". Carries the kanji character, its reading in this word,
+    /// the parent word text, and LLM-identified meanings. Nil for all other word types.
+    let kanjiQuizData: KanjiQuizData?
+
     /// The subset of senseExtras attested in the corpus (used as the quiz meaning pool).
     var corpusSenses: [SenseExtra] {
         corpusSenseIndices.compactMap { $0 < senseExtras.count ? senseExtras[$0] : nil }
@@ -257,7 +276,9 @@ struct QuizItem: Identifiable {
 
     /// True when this item should be presented as a free-answer question.
     /// meaning-reading-to-kanji is always multiple choice (kanji form must never appear in the stem).
+    /// Kanji quiz items (word_type="kanji") are always multiple choice.
     var isFreeAnswer: Bool {
+        if wordType == "kanji" { return false }
         if case .reviewed(_, let free, _) = status {
             return free && facet != "meaning-reading-to-kanji"
         }
@@ -474,7 +495,8 @@ struct QuizContext {
                 committedWrittenText: committedWrittenText,
                 committedFurigana: commitments[wordId]?.furiganaSegmentsForTemplate,
                 siblingKanaReadings: siblingKana,
-                corpusSenseIndices: corpusSensesMap[wordId] ?? [0]))
+                corpusSenseIndices: corpusSensesMap[wordId] ?? [0],
+                kanjiQuizData: nil))
         }
 
         // Include enrolled transitive-pair items.
@@ -526,7 +548,7 @@ struct QuizContext {
                     facet: chosenFacet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
                     committedWrittenText: nil, committedFurigana: nil,
-                    siblingKanaReadings: [], corpusSenseIndices: []
+                    siblingKanaReadings: [], corpusSenseIndices: [], kanjiQuizData: nil
                 ))
             }
         }
@@ -578,13 +600,80 @@ struct QuizContext {
                     hasKanji: false, facet: facet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
                     committedWrittenText: nil, committedFurigana: nil,
-                    siblingKanaReadings: [], corpusSenseIndices: []
+                    siblingKanaReadings: [], corpusSenseIndices: [], kanjiQuizData: nil
                 ))
             }
         }
 
+        // Include enrolled kanji quiz items (word_type="kanji", word_id="{kanjiChar}:{jmdictId}").
+        // Reading: derived from the parent word's committed furigana.
+        // Meanings: from kanjiMeanings in vocab.json (populated by the kanjiMeanings LLM step).
+        let kanjiQuizRecords = try await db.enrolledKanjiQuizRecords()
+        var kanjiQuizRecallByFacet: [String: [String: (recall: Double, halflife: Double)]] = [:]
+        for record in kanjiQuizRecords {
+            let elapsed = max(now.timeIntervalSince(iso8601Date(record.lastReview)), 1e-6) / 3600.0
+            kanjiQuizRecallByFacet[record.wordId, default: [:]][record.quizType] =
+                (predictRecall(record.model, tnow: elapsed, exact: true), record.t)
+        }
+        let manifest = VocabSync.cached()
+        for wordId in Set(kanjiQuizRecords.map(\.wordId)) {
+            guard let facetRecalls = kanjiQuizRecallByFacet[wordId],
+                  let colonIdx = wordId.firstIndex(of: ":") else { continue }
+            let kanjiChar = String(wordId[wordId.startIndex..<colonIdx])
+            let jmdictId  = String(wordId[wordId.index(after: colonIdx)...])
+
+            let readingData  = facetRecalls["kanji-to-reading"]
+            let meaningData  = facetRecalls["kanji-to-meaning"]
+            let (facet, recall, halflife): (String, Double, Double)
+            if let rd = readingData, let md = meaningData {
+                if rd.recall < md.recall {
+                    (facet, recall, halflife) = ("kanji-to-reading",  rd.recall, rd.halflife)
+                } else {
+                    (facet, recall, halflife) = ("kanji-to-meaning", md.recall, md.halflife)
+                }
+            } else if let rd = readingData {
+                (facet, recall, halflife) = ("kanji-to-reading",  rd.recall, rd.halflife)
+            } else if let md = meaningData {
+                (facet, recall, halflife) = ("kanji-to-meaning", md.recall, md.halflife)
+            } else { continue }
+
+            let wordReading = commitments[jmdictId]
+                .flatMap { kanjiReadingFromFurigana($0, kanjiChar: kanjiChar) } ?? ""
+            let activeMeanings = manifest?.words.first(where: { $0.id == jmdictId })
+                .flatMap { $0.kanjiMeanings?[kanjiChar] } ?? []
+            let parentWordText = wordTexts[jmdictId]
+                ?? commitments[jmdictId]?.committedWrittenText
+                ?? jmdictId
+
+            let status = QuizStatus.reviewed(recall: recall, isFree: false, halflife: halflife)
+            let kanjiData = KanjiQuizData(
+                kanjiChar: kanjiChar, wordReading: wordReading,
+                parentWordText: parentWordText, activeMeanings: activeMeanings
+            )
+            items.append(QuizItem(
+                wordType: "kanji", wordId: wordId, wordText: kanjiChar,
+                writtenTexts: [], kanaTexts: [], hasKanji: false,
+                facet: facet, status: status,
+                senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil,
+                committedReading: nil, committedWrittenText: nil,
+                corpusSenseIndices: [], kanjiQuizData: kanjiData
+            ))
+        }
+        print("[QuizContext] built \(kanjiQuizRecords.count > 0 ? "\(Set(kanjiQuizRecords.map(\.wordId)).count)" : "0") kanji quiz item(s)")
+
         items.sort { $0.recall < $1.recall }
         return items   // caller (QuizSession.selectItems) decides how many to use
+    }
+
+    /// Extract the hiragana reading a specific kanji character has in a committed furigana.
+    /// For example, in 図書館 (としょかん) with segments [図→と, 書→しょ, 館→かん], this
+    /// returns "と" for kanjiChar="図".
+    static func kanjiReadingFromFurigana(_ commitment: WordCommitment, kanjiChar: String) -> String? {
+        guard let segments = commitment.furiganaSegmentsForTemplate else { return nil }
+        for seg in segments {
+            if seg["ruby"] == kanjiChar, let rt = seg["rt"] { return rt }
+        }
+        return nil
     }
 
     struct JmdictEntry {

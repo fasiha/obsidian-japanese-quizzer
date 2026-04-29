@@ -258,19 +258,135 @@ Each card shows two zones:
 - Future: a dedicated KanjiDetailSheet will be reachable via a ">" affordance on the
   right edge of the card (not yet implemented).
 
-### ⏳ Step 5 — Implement kanji quiz facets
+### ✅ Step 5 — Implement kanji quiz facets
 
-- [ ] Add `kanji-to-reading` and `kanji-to-meaning` to quiz facet enum
+- [x] Add `kanji-to-reading` and `kanji-to-meaning` to quiz facet enum
   - word_type: `"kanji"`, word_id: `{kanjiChar}:{jmdictId}`
   - Both facets: always multiple choice
-- [ ] Implement question stems (no LLM needed)
-  - `kanji-to-reading`: kanji character alone, no parent word
-  - `kanji-to-meaning`: kanji character alone, no parent word
-- [ ] Implement distractor generation (from kanjidic2, no LLM)
-  - `kanji-to-reading`: on/kun of similar kanji + other kanji in word; exclude other readings of test kanji
-  - `kanji-to-meaning`: meanings from other kanji in word + visually similar kanji
-- [ ] Wire into Ebisu scheduling with `{kanjiChar}:{jmdictId}` word_id
-- [ ] Add multi-reading ambiguity detection and smart grading
+- [x] Implement question stems (no LLM needed)
+  - Stems name the parent word: "What is the reading of 図 in 図書館?"
+  - **Decision:** stems include the parent word for context, contrary to the original design
+    doc which said "no parent word context". Rationale: without the word, the correct reading
+    is ambiguous to the student (e.g., 食 alone could be tested for たべ or しょく depending
+    on which word is enrolled). Including the parent word removes that ambiguity without
+    revealing the answer.
+- [x] Implement distractor generation (from kanjidic2, no LLM)
+  - `kanji-to-reading`: readings of other kanji in the parent word (from kanjidic2);
+    falls back to kanji with similar stroke counts when the word has only one kanji.
+    All valid readings of the test kanji (on + kun) are excluded from the distractor pool.
+    Katakana on-readings are converted to hiragana via Unicode scalar arithmetic
+    (U+30A1–U+30F6 → U+3041–U+3096). Kun-readings are stripped at the okurigana marker
+    ("はか.る" → "はか").
+  - `kanji-to-meaning`: meanings from other kanji in the parent word; falls back to
+    stroke-count-similar kanji. All kanjidic2 meanings of the test kanji are excluded.
+  - Distractor fallback: `loadKanjidicRows` issues one extra SQL query fetching up to 20
+    kanji with stroke count ±2 of the test kanji (`ORDER BY RANDOM() LIMIT 20`).
+    This ensures 4 choices even for single-kanji words (e.g., 食べる).
+- [x] Wire into Ebisu scheduling with `{kanjiChar}:{jmdictId}` word_id
+  - `QuizDB.setKanjiQuizLearning/Unknown` plant and remove both facet rows.
+  - `QuizContext.build()` loads word_type="kanji" records and constructs `QuizItem`s.
+  - `KanjiQuizData` struct (in QuizContext.swift) carries the reading, parent word text,
+    and active meanings so `QuizSession` can build questions without additional DB calls.
+  - `QuizItem.isFreeAnswer` always returns false for word_type="kanji".
+- [x] Kanji quiz items flow through the vocab quiz session alongside counters and
+  transitive pairs — no new quiz section or UI needed.
+  - `QuizFilter.vocabOnly` naturally includes word_type="kanji" (only excludes
+    "transitive-pair" and "counter").
+  - `documentScope` filter correctly scopes kanji quiz items via the parent jmdictId.
+- [x] `WordDetailSheet.toggleKanjiChar` plants/removes kanji quiz Ebisu rows in sync with
+  kanji_chars commitment. `loadEbisuModels` loads word_type="kanji" records so they appear
+  in the halflives section. `facetDisplayName` shows human-readable labels.
+- [x] `systemPrompt` returns a compact coaching prompt for kanji quiz items (post-answer
+  discussion only; question generation is fully app-side).
+- [x] TestHarness builds cleanly (`kanjiQuizData: nil` added to its two `QuizItem` call sites).
+- [ ] Multi-reading ambiguity detection and smart grading — **deferred**. The design doc
+  described showing feedback like "that's a valid reading of 食, but in 食べる we're learning
+  たべ." Since questions now include the parent word in the stem, ambiguity is already
+  substantially reduced. Smart feedback can be added in a follow-up once real confusion
+  cases are observed in practice.
+
+#### Decisions and surprises from Step 5
+
+**Kanji quiz is in the vocab quiz session, not a separate section.** The user confirmed
+this is the right call — same architecture as counters and transitive pairs.
+
+**Enrollment is wired in `WordDetailSheet.toggleKanjiChar`, not `VocabCorpus.setKanjiState`.**
+The kanji quiz Ebisu rows (word_type="kanji") are planted/removed alongside the
+word_commitment kanji_chars update. This keeps the two concerns collocated in one function
+rather than buried inside the corpus model.
+
+**The passiveMap has no entry for "kanji-to-meaning".** The `?? []` fallback already
+handles it — no passive cross-updates between the two kanji facets. This is deliberate:
+knowing the meaning doesn't tell you the reading and vice versa in a way that justifies
+a passive 0.5 update.
+
+**`applyMeaningBonus` is a harmless no-op for kanji quiz.** That function looks for
+word_type="kanji" Ebisu records with facets "reading-to-meaning", "meaning-to-reading",
+"meaning-reading-to-kanji" — none of which exist for kanji quiz — so it silently skips.
+The meaning bonus does not propagate to "kanji-to-meaning". This is acceptable for now;
+revisit if students seem frustrated that demonstrating meaning knowledge during a
+kanji-to-reading review doesn't move the meaning facet.
+
+**GRDB imported in QuizSession.swift.** The `loadKanjidicRows` method issues SQL directly
+via the kanjidic2 `DatabaseReader`, which requires GRDB types (`Row`, `StatementArguments`).
+Adding `import GRDB` to QuizSession was the simplest fix; the alternative (a helper on
+`ToolHandler`) would have added an unnecessary layer.
+
+**`StringTransform.katakanaToHiragana` does not exist** in the Foundation version
+available here. Implemented as a Unicode scalar arithmetic function instead
+(shifting U+30A1–U+30F6 by 0x60). This correctly converts full-width katakana only;
+half-width katakana and special characters are passed through unchanged.
+
+#### Smoke test plan for Step 5
+
+1. **Enrollment — WordDetailSheet:**
+   - Open a word detail sheet for a word with committed kanji (e.g., 図書館).
+   - Tap a KanjiInfoCard to enroll 図. Verify the halflives section gains two new rows:
+     "Kanji Quiz: Character → Reading" and "Kanji Quiz: Character → Meaning" with ~24 h.
+   - Tap again to unenroll. Verify both rows disappear from the halflives section.
+
+2. **Enrollment persistence — quiz.sqlite:**
+   - After enrolling 図 in 図書館, inspect `ebisu_models` in quiz.sqlite. Expect two rows:
+     `word_type="kanji", word_id="図:1588120", quiz_type="kanji-to-reading"` and
+     `quiz_type="kanji-to-meaning"` (1588120 is 図書館's JMDict ID — verify the actual ID).
+
+3. **Quiz session — kanji-to-reading:**
+   - Start a vocab quiz. A kanji quiz item should appear in the session (urgency depends on
+     Ebisu recall; new items start at 24 h and surface when recall drops enough).
+   - To force it: rescale the kanji quiz Ebisu rows to a very short halflife via the halflives
+     section in WordDetailSheet.
+   - The question should read "What is the reading of 図 in 図書館?" with four hiragana choices.
+   - The correct answer (と) must be one of the four choices.
+   - Verify that neither ず nor any other valid reading of 図 appears as a distractor.
+
+4. **Quiz session — kanji-to-meaning:**
+   - Same setup. The question should read "What does 図 mean in 図書館?" with four English choices.
+   - Correct answer must be one of the active meanings from kanjiMeanings (e.g., "map", "drawing",
+     "plan").
+   - Verify that "audacious" (a valid kanjidic2 meaning of 図 but not active in 図書館) does
+     not appear as the correct answer.
+   - Verify that meanings from 書 and 館 ("write", "building", etc.) appear as distractors.
+
+5. **Single-kanji word (fallback distractor pool):**
+   - Enroll a kanji from a single-kanji word (e.g., 食 in 食べる). Start a quiz.
+   - Verify that 4 choices appear (fallback stroke-count kanji filled the pool).
+   - Verify that the correct reading (たべ from the furigana) is one of the choices.
+
+6. **Post-answer coaching:**
+   - Answer a kanji quiz question and tap "Tutor me" (or let the post-answer chat appear).
+   - Verify the system prompt names the kanji, the parent word, the reading, and the active meanings.
+   - Verify Claude can discuss the answer without tool calls (no jmdict/kanjidic lookup needed).
+
+7. **vocabOnly filter and documentScope:**
+   - Set quiz filter to "vocab only". Verify kanji quiz items still appear in the session.
+   - Open a document-scoped quiz. Verify kanji quiz items are included only if their parent
+     word appears in that document.
+
+8. **Regression — vocab kanji quiz unchanged:**
+   - Verify that the existing "Kanji → Reading" (word_type="jmdict") and
+     "Meaning+Reading → Kanji" facets still work correctly for enrolled vocabulary words.
+   - The two quiz types share the facet name "kanji-to-reading" but use different word_types,
+     so Ebisu records, reviews, and system prompts remain independent.
 
 ### ⏳ Step 6 — Documentation & refinement
 
@@ -281,3 +397,8 @@ Each card shows two zones:
 - [ ] Update docs/quiz-architecture.md with kanji facet specs
 - [ ] Update docs/feature-parity.md with kanji quiz requirements
 - [ ] Add kanji quiz to TestHarness (or note they have no LLM prompts)
+  - No LLM prompts to test — both facets are fully app-side. The TestHarness
+    `--dump-prompts` path does not need a new prompt path; the coaching prompt is
+    exercised only post-answer and has no generation variants to enumerate.
+  - Consider adding a `--kanji` smoke-test mode that enrolls a test word, calls
+    `buildKanjiMultipleChoice`, and prints the question + choices for visual inspection.

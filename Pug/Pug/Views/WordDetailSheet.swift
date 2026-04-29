@@ -754,6 +754,13 @@ struct WordDetailSheet: View {
             default: return quizType
             }
         }
+        if wordType == "kanji" {
+            switch quizType {
+            case "kanji-to-reading": return "Kanji Quiz: Character → Reading"
+            case "kanji-to-meaning": return "Kanji Quiz: Character → Meaning"
+            default: return quizType
+            }
+        }
         switch quizType {
         case "reading-to-meaning":      return "Reading → Meaning"
         case "meaning-to-reading":      return "Meaning → Reading"
@@ -985,7 +992,8 @@ struct WordDetailSheet: View {
 
     private func toggleKanjiChar(_ kanji: String) {
         var current = selectedKanjiChars
-        if current.contains(kanji) { current.remove(kanji) } else { current.insert(kanji) }
+        let wasEnrolled = current.contains(kanji)
+        if wasEnrolled { current.remove(kanji) } else { current.insert(kanji) }
         isWorking = true
         Task {
             if current.isEmpty {
@@ -994,6 +1002,14 @@ struct WordDetailSheet: View {
             } else {
                 await corpus.setKanjiState(.learning, wordId: item.id,
                                             kanjiChars: Array(current), db: db)
+            }
+            // Plant or remove the standalone kanji quiz Ebisu rows for this kanji.
+            if let quizDB = toolHandler?.quizDB {
+                if wasEnrolled {
+                    try? await quizDB.setKanjiQuizUnknown(kanjiChar: kanji, jmdictId: item.id)
+                } else {
+                    try? await quizDB.setKanjiQuizLearning(kanjiChar: kanji, jmdictId: item.id)
+                }
             }
             await loadEbisuModels()
             isWorking = false
@@ -1048,10 +1064,22 @@ struct WordDetailSheet: View {
             }
         }
 
-        let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji", "counter-number-to-reading"]
-        ebisuModels = allRecords.sorted {
-            (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
+        // Load kanji quiz halflives (word_type="kanji", word_id="{char}:{jmdictId}") for each
+        // kanji character the user is currently learning in this vocab word.
+        let segments = committedFuriganaSegments
+        let allKanji = segments.extractKanji()
+        for kanjiChar in allKanji {
+            let kanjiWordId = "\(kanjiChar):\(item.id)"
+            if let kanjiRecords = try? await quizDB.ebisuRecords(wordType: "kanji", wordId: kanjiWordId) {
+                allRecords.append(contentsOf: kanjiRecords)
+            }
         }
+
+        let quizTypeOrder = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading",
+                             "meaning-reading-to-kanji", "counter-number-to-reading", "kanji-to-meaning"]
+        let quizTypeIndex = Dictionary(uniqueKeysWithValues: quizTypeOrder.enumerated().map { ($1, $0) })
+        let rank = { (r: EbisuRecord) in (r.wordType == "jmdict" ? 0 : 100) + (quizTypeIndex[r.quizType] ?? 99) }
+        ebisuModels = allRecords.sorted { rank($0) < rank($1) }
 
         var counts: [String: Int] = [:]
         for record in allRecords {
