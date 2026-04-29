@@ -104,6 +104,9 @@ struct WordDetailSheet: View {
     @State private var wordReviews: [Review] = []
     @State private var selectedReview: IdentifiableReview? = nil
     @State private var kanjiOtherWordDetail: VocabItem? = nil
+    /// Maps kanji character → other VocabItems that have enrolled this kanji (via source_jmdicts),
+    /// excluding the current word. Loaded async in loadEbisuModels.
+    @State private var kanjiSponsorWords: [String: [VocabItem]] = [:]
 
     var body: some View {
         NavigationStack {
@@ -671,7 +674,7 @@ struct WordDetailSheet: View {
     }
 
     private func otherEnrolledWords(for kanji: String) -> [VocabItem] {
-        corpus.otherEnrolledWords(for: kanji, excluding: item.id)
+        kanjiSponsorWords[kanji] ?? []
     }
 
     // MARK: - Ebisu halflives table
@@ -756,8 +759,9 @@ struct WordDetailSheet: View {
         }
         if wordType == "kanji" {
             switch quizType {
-            case "kanji-to-reading": return "Kanji Quiz: Character → Reading"
-            case "kanji-to-meaning": return "Kanji Quiz: Character → Meaning"
+            case "kanji-to-on-reading":  return "Kanji Quiz: Character → On-reading"
+            case "kanji-to-kun-reading": return "Kanji Quiz: Character → Kun-reading"
+            case "kanji-to-meaning":     return "Kanji Quiz: Character → Meaning"
             default: return quizType
             }
         }
@@ -1064,19 +1068,42 @@ struct WordDetailSheet: View {
             }
         }
 
-        // Load kanji quiz halflives (word_type="kanji", word_id="{char}:{jmdictId}") for each
-        // kanji character the user is currently learning in this vocab word.
+        // Load kanji quiz halflives (word_type="kanji", word_id=kanjiChar) only for kanji
+        // where this word is a sponsor (i.e. the user tapped the toggle in this WordDetailSheet).
+        // Kanji enrolled from other words are not shown here — they appear in those words' sheets.
         let segments = committedFuriganaSegments
         let allKanji = segments.extractKanji()
         for kanjiChar in allKanji {
-            let kanjiWordId = "\(kanjiChar):\(item.id)"
-            if let kanjiRecords = try? await quizDB.ebisuRecords(wordType: "kanji", wordId: kanjiWordId) {
-                allRecords.append(contentsOf: kanjiRecords)
+            _ = (try? await quizDB.kanjiSponsors(kanjiChar: kanjiChar, excluding: item.id)) ?? []
+            // source_jmdicts contains item.id when enrolled from this word; we infer enrollment
+            // by checking whether item.id is NOT in "others" but IS in the full sponsor list.
+            // Simpler: just try to load the row and check source_jmdicts directly.
+            if let commitment = try? await quizDB.commitment(wordType: "kanji", wordId: kanjiChar),
+               let json = commitment.sourceJmdicts,
+               let data = json.data(using: .utf8),
+               let sponsors = try? JSONDecoder().decode([String].self, from: data),
+               sponsors.contains(item.id) {
+                if let kanjiRecords = try? await quizDB.ebisuRecords(wordType: "kanji", wordId: kanjiChar) {
+                    allRecords.append(contentsOf: kanjiRecords)
+                }
             }
         }
 
+        // Populate kanjiSponsorWords: for each kanji in this word, find other VocabItems
+        // whose jmdict ID appears in source_jmdicts for that kanji character.
+        var sponsorMap: [String: [VocabItem]] = [:]
+        for kanjiChar in allKanji {
+            let otherIds = (try? await quizDB.kanjiSponsors(kanjiChar: kanjiChar, excluding: item.id)) ?? []
+            if !otherIds.isEmpty {
+                let otherItems = corpus.items.filter { otherIds.contains($0.id) }
+                if !otherItems.isEmpty { sponsorMap[kanjiChar] = otherItems }
+            }
+        }
+        kanjiSponsorWords = sponsorMap
+
         let quizTypeOrder = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading",
-                             "meaning-reading-to-kanji", "counter-number-to-reading", "kanji-to-meaning"]
+                             "meaning-reading-to-kanji", "counter-number-to-reading",
+                             "kanji-to-on-reading", "kanji-to-kun-reading", "kanji-to-meaning"]
         let quizTypeIndex = Dictionary(uniqueKeysWithValues: quizTypeOrder.enumerated().map { ($1, $0) })
         let rank = { (r: EbisuRecord) in (r.wordType == "jmdict" ? 0 : 100) + (quizTypeIndex[r.quizType] ?? 99) }
         ebisuModels = allRecords.sorted { rank($0) < rank($1) }

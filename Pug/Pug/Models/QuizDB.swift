@@ -163,6 +163,9 @@ struct ApiEvent: Codable, FetchableRecord, MutablePersistableRecord {
 /// senseIndices is a JSON array of Int (e.g. "[0,2]") recording which JMDict senses
 /// the student has enrolled. NULL means "all senses" (legacy state for words committed
 /// before the v10 migration). Newly committed words always get an explicit array.
+/// sourceJmdicts is only used for word_type="kanji" rows: it is a JSON array of
+/// jmdict IDs (e.g. ["1588120","1234567"]) that currently sponsor this kanji's
+/// global quiz entry. When the array becomes empty the kanji Ebisu rows are deleted.
 struct WordCommitment: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "word_commitment"
     var wordType: String
@@ -170,6 +173,7 @@ struct WordCommitment: Codable, FetchableRecord, PersistableRecord {
     var furigana: String            // JmdictFurigana JSON array for the chosen form
     var kanjiChars: String?         // JSON array of kanji chars, e.g. ["入","込"]
     var senseIndices: String?       // JSON array of Int, e.g. "[0,2]", or nil = all senses (legacy)
+    var sourceJmdicts: String?      // word_type="kanji" only: JSON array of sponsoring jmdict IDs
 
     enum CodingKeys: String, CodingKey {
         case wordType = "word_type"
@@ -177,6 +181,7 @@ struct WordCommitment: Codable, FetchableRecord, PersistableRecord {
         case furigana
         case kanjiChars = "kanji_chars"
         case senseIndices = "sense_indices"
+        case sourceJmdicts = "source_jmdicts"
     }
 }
 
@@ -543,6 +548,23 @@ final class QuizDB: Sendable {
                 WHERE word_type = 'transitive-pair' AND quiz_type = 'pair-discrimination'
                 """, arguments: [now])
         }
+        migrator.registerMigration("v15") { db in
+            // source_jmdicts: added to word_commitment to track which jmdict words are
+            // sponsoring each global kanji quiz entry (word_type="kanji").
+            // Only populated for word_type="kanji" rows; NULL for all jmdict/counter/etc. rows.
+            try db.alter(table: "word_commitment") { t in
+                t.add(column: "source_jmdicts", .text)
+            }
+            // Remove old-format kanji quiz rows whose word_id encoded the parent word
+            // ("{kanjiChar}:{jmdictId}"). The new format uses just the kanji character.
+            // No users have this data so deletion is safe.
+            try db.execute(sql: """
+                DELETE FROM ebisu_models WHERE word_type = 'kanji' AND word_id LIKE '%:%'
+                """)
+            try db.execute(sql: """
+                DELETE FROM word_commitment WHERE word_type = 'kanji' AND word_id LIKE '%:%'
+                """)
+        }
         migrator.registerMigration("v14") { db in
             // grammar_subuse_enrollment: tracks which sub-uses within a grammar equivalence group
             // the user has opted out of drilling. Sparse — a missing row means the sub-use is
@@ -674,27 +696,131 @@ final class QuizDB: Sendable {
         }
     }
 
-    /// All enrolled kanji quiz Ebisu models (word_type = "kanji", word_id = "{char}:{jmdictId}").
+    /// All enrolled kanji quiz Ebisu models (word_type = "kanji", word_id = single kanji character).
     func enrolledKanjiQuizRecords() async throws -> [EbisuRecord] {
         try await pool.read { db in
             try EbisuRecord.filter(Column("word_type") == "kanji").fetchAll(db)
         }
     }
 
-    /// Plant Ebisu rows for kanji-to-reading and kanji-to-meaning for one kanji in a parent word.
-    func setKanjiQuizLearning(kanjiChar: String, jmdictId: String, halflife: Double = 24) async throws {
-        let wordId = "\(kanjiChar):\(jmdictId)"
-        try await setFacetLearning(wordType: "kanji", wordId: wordId, quizType: "kanji-to-reading", halflife: halflife)
-        try await setFacetLearning(wordType: "kanji", wordId: wordId, quizType: "kanji-to-meaning", halflife: halflife)
-        print("[QuizDB] setKanjiQuizLearning \(wordId)")
+    /// Review counts for kanji quiz items, keyed by "wordId\0quizType".
+    func kanjiQuizReviewCounts() async throws -> [String: Int] {
+        try await pool.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT word_id, quiz_type, COUNT(*) as count
+                FROM reviews
+                WHERE word_type = 'kanji'
+                GROUP BY word_id, quiz_type
+                """)
+            var result: [String: Int] = [:]
+            for row in rows {
+                guard let id = row["word_id"] as? String,
+                      let qt = row["quiz_type"] as? String,
+                      let count = (row["count"] as? Int64).map(Int.init) else { continue }
+                result["\(id)\0\(qt)"] = count
+            }
+            return result
+        }
     }
 
-    /// Remove both kanji quiz Ebisu rows for one kanji in a parent word.
+    /// Add jmdictId to this kanji's source_jmdicts sponsor list and plant Ebisu rows if needed.
+    /// The three facets planted are kanji-to-on-reading, kanji-to-kun-reading, kanji-to-meaning.
+    /// If source_jmdicts was already non-empty the Ebisu rows already exist — do not overwrite them.
+    func setKanjiQuizLearning(kanjiChar: String, jmdictId: String, halflife: Double = 24) async throws {
+        let wordId = kanjiChar
+        try await pool.write { db in
+            // Load or create the kanji word_commitment row.
+            let existing = try WordCommitment
+                .filter(Column("word_type") == "kanji" && Column("word_id") == wordId)
+                .fetchOne(db)
+            var sponsors: [String] = []
+            if let existing, let json = existing.sourceJmdicts,
+               let data = json.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode([String].self, from: data) {
+                sponsors = decoded
+            }
+            let wasEmpty = sponsors.isEmpty
+            if !sponsors.contains(jmdictId) { sponsors.append(jmdictId) }
+            let sponsorsJson = (try? String(data: JSONEncoder().encode(sponsors), encoding: .utf8)) ?? "[]"
+            if existing != nil {
+                try db.execute(sql: """
+                    UPDATE word_commitment SET source_jmdicts=? WHERE word_type='kanji' AND word_id=?
+                    """, arguments: [sponsorsJson, wordId])
+            } else {
+                try db.execute(sql: """
+                    INSERT INTO word_commitment (word_type, word_id, furigana, source_jmdicts)
+                    VALUES ('kanji', ?, '[]', ?)
+                    """, arguments: [wordId, sponsorsJson])
+            }
+            // Only plant Ebisu rows when this is the first sponsor — preserve existing progress.
+            guard wasEmpty else { return }
+            let now = ISO8601DateFormatter().string(from: Date())
+            let model = defaultModel(halflife: halflife)
+            for facet in ["kanji-to-on-reading", "kanji-to-kun-reading", "kanji-to-meaning"] {
+                try db.execute(sql: """
+                    INSERT OR IGNORE INTO ebisu_models
+                        (word_type, word_id, quiz_type, alpha, beta, t, last_review)
+                    VALUES ('kanji', ?, ?, ?, ?, ?, ?)
+                    """, arguments: [wordId, facet, model.alpha, model.beta, model.t, now])
+                var event = ModelEvent(timestamp: now, wordType: "kanji", wordId: wordId,
+                                       quizType: facet, event: "learned,\(halflife)")
+                try event.insert(db)
+            }
+        }
+        print("[QuizDB] setKanjiQuizLearning \(wordId) sponsor=\(jmdictId)")
+    }
+
+    /// Remove jmdictId from this kanji's sponsor list. Deletes Ebisu rows only when last sponsor.
     func setKanjiQuizUnknown(kanjiChar: String, jmdictId: String) async throws {
-        let wordId = "\(kanjiChar):\(jmdictId)"
-        try await setFacetUnknown(wordType: "kanji", wordId: wordId, quizType: "kanji-to-reading")
-        try await setFacetUnknown(wordType: "kanji", wordId: wordId, quizType: "kanji-to-meaning")
-        print("[QuizDB] setKanjiQuizUnknown \(wordId)")
+        let wordId = kanjiChar
+        try await pool.write { db in
+            guard let existing = try WordCommitment
+                .filter(Column("word_type") == "kanji" && Column("word_id") == wordId)
+                .fetchOne(db) else { return }
+            var sponsors: [String] = []
+            if let json = existing.sourceJmdicts,
+               let data = json.data(using: .utf8),
+               let decoded = try? JSONDecoder().decode([String].self, from: data) {
+                sponsors = decoded
+            }
+            sponsors.removeAll { $0 == jmdictId }
+            let sponsorsJson = (try? String(data: JSONEncoder().encode(sponsors), encoding: .utf8)) ?? "[]"
+            try db.execute(sql: """
+                UPDATE word_commitment SET source_jmdicts=? WHERE word_type='kanji' AND word_id=?
+                """, arguments: [sponsorsJson, wordId])
+            guard sponsors.isEmpty else { return }
+            // Last sponsor removed — archive and delete Ebisu rows.
+            let now = ISO8601DateFormatter().string(from: Date())
+            for facet in ["kanji-to-on-reading", "kanji-to-kun-reading", "kanji-to-meaning"] {
+                if let ebisuRow = try EbisuRecord
+                    .filter(Column("word_type") == "kanji" && Column("word_id") == wordId &&
+                            Column("quiz_type") == facet)
+                    .fetchOne(db) {
+                    var event = ModelEvent(
+                        timestamp: now, wordType: "kanji", wordId: wordId, quizType: facet,
+                        event: "archived,\(ebisuRow.alpha),\(ebisuRow.beta),\(ebisuRow.t),unlearned")
+                    try event.insert(db)
+                }
+                try db.execute(sql: "DELETE FROM ebisu_models WHERE word_type='kanji' AND word_id=? AND quiz_type=?",
+                               arguments: [wordId, facet])
+            }
+        }
+        print("[QuizDB] setKanjiQuizUnknown \(wordId) sponsor=\(jmdictId)")
+    }
+
+    /// Fetch the source_jmdicts sponsor list for a kanji character, excluding one ID.
+    /// Returns VocabItem-resolvable IDs; the caller maps them to display words.
+    func kanjiSponsors(kanjiChar: String, excluding: String) async throws -> [String] {
+        try await pool.read { db in
+            guard let row = try WordCommitment
+                .filter(Column("word_type") == "kanji" && Column("word_id") == kanjiChar)
+                .fetchOne(db),
+                  let json = row.sourceJmdicts,
+                  let data = json.data(using: .utf8),
+                  let ids = try? JSONDecoder().decode([String].self, from: data)
+            else { return [] }
+            return ids.filter { $0 != excluding }
+        }
     }
 
     // MARK: - Word commitment
