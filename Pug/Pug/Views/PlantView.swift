@@ -490,13 +490,15 @@ struct PlantView: View {
                         wordReading: readingForKanji(kanji, in: firstFormSegments),
                         activeWordMeanings: word.kanjiMeanings?[kanji] ?? [],
                         kanjidicDB: toolHandler.kanjidic,
-                        isEnrolled: enrolled,
+                        isWordEnrolled: enrolled,
+                        isKanjiEnrolled: false,
                         otherWords: corpus.otherEnrolledWords(for: kanji, excluding: word.id),
-                        onToggle: {
+                        onToggleWord: {
                             var chars = session.currentIntroSelectedKanji
                             if chars.contains(kanji) { chars.remove(kanji) } else { chars.insert(kanji) }
                             session.currentIntroSelectedKanji = chars
                         },
+                        onToggleKanji: {},
                         onTapOtherWord: { other in
                             selectedWordForDetail = VocabItemSelection(item: other, origin: nil)
                         }

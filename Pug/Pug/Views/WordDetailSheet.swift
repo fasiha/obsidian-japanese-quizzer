@@ -107,6 +107,9 @@ struct WordDetailSheet: View {
     /// Maps kanji character → other VocabItems that have enrolled this kanji (via source_jmdicts),
     /// excluding the current word. Loaded async in loadEbisuModels.
     @State private var kanjiSponsorWords: [String: [VocabItem]] = [:]
+    /// Tracks which kanji characters have global kanji quiz rows sponsored by this word
+    /// (word_type="kanji" with this word's jmdict ID in source_jmdicts). Loaded async.
+    @State private var kanjiQuizEnrolled: [String: Bool] = [:]
 
     var body: some View {
         NavigationStack {
@@ -650,15 +653,16 @@ struct WordDetailSheet: View {
             let segments = committedFuriganaSegments
             let allKanji = segments.extractKanji()
             ForEach(allKanji, id: \.self) { kanji in
-                let enrolled = selectedKanjiChars.contains(kanji)
                 KanjiInfoCard(
                     kanji: kanji,
                     wordReading: readingForKanji(kanji, in: segments),
                     activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
                     kanjidicDB: toolHandler?.kanjidic,
-                    isEnrolled: enrolled,
+                    isWordEnrolled: selectedKanjiChars.contains(kanji),
+                    isKanjiEnrolled: kanjiQuizEnrolled[kanji] == true,
                     otherWords: otherEnrolledWords(for: kanji),
-                    onToggle: { toggleKanjiChar(kanji) },
+                    onToggleWord: { toggleKanjiChar(kanji) },
+                    onToggleKanji: { toggleKanjiQuiz(kanji) },
                     onTapOtherWord: { kanjiOtherWordDetail = $0 }
                 )
             }
@@ -994,6 +998,7 @@ struct WordDetailSheet: View {
         }
     }
 
+    /// Toggles word-context kanji facets (kanji-to-reading, meaning-reading-to-kanji) for this word.
     private func toggleKanjiChar(_ kanji: String) {
         var current = selectedKanjiChars
         let wasEnrolled = current.contains(kanji)
@@ -1007,13 +1012,22 @@ struct WordDetailSheet: View {
                 await corpus.setKanjiState(.learning, wordId: item.id,
                                             kanjiChars: Array(current), db: db)
             }
-            // Plant or remove the standalone kanji quiz Ebisu rows for this kanji.
-            if let quizDB = toolHandler?.quizDB {
-                if wasEnrolled {
-                    try? await quizDB.setKanjiQuizUnknown(kanjiChar: kanji, jmdictId: item.id)
-                } else {
-                    try? await quizDB.setKanjiQuizLearning(kanjiChar: kanji, jmdictId: item.id)
-                }
+            await loadEbisuModels()
+            isWorking = false
+        }
+    }
+
+    /// Toggles the global kanji quiz facets (kanji-to-on-reading, kanji-to-kun-reading,
+    /// kanji-to-meaning) for the given kanji character, sponsored by this word.
+    private func toggleKanjiQuiz(_ kanji: String) {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let wasEnrolled = kanjiQuizEnrolled[kanji] == true
+        isWorking = true
+        Task {
+            if wasEnrolled {
+                try? await quizDB.setKanjiQuizUnknown(kanjiChar: kanji, jmdictId: item.id)
+            } else {
+                try? await quizDB.setKanjiQuizLearning(kanjiChar: kanji, jmdictId: item.id)
             }
             await loadEbisuModels()
             isWorking = false
@@ -1073,21 +1087,20 @@ struct WordDetailSheet: View {
         // Kanji enrolled from other words are not shown here — they appear in those words' sheets.
         let segments = committedFuriganaSegments
         let allKanji = segments.extractKanji()
+        var newKanjiQuizEnrolled: [String: Bool] = [:]
         for kanjiChar in allKanji {
-            _ = (try? await quizDB.kanjiSponsors(kanjiChar: kanjiChar, excluding: item.id)) ?? []
-            // source_jmdicts contains item.id when enrolled from this word; we infer enrollment
-            // by checking whether item.id is NOT in "others" but IS in the full sponsor list.
-            // Simpler: just try to load the row and check source_jmdicts directly.
             if let commitment = try? await quizDB.commitment(wordType: "kanji", wordId: kanjiChar),
                let json = commitment.sourceJmdicts,
                let data = json.data(using: .utf8),
                let sponsors = try? JSONDecoder().decode([String].self, from: data),
                sponsors.contains(item.id) {
+                newKanjiQuizEnrolled[kanjiChar] = true
                 if let kanjiRecords = try? await quizDB.ebisuRecords(wordType: "kanji", wordId: kanjiChar) {
                     allRecords.append(contentsOf: kanjiRecords)
                 }
             }
         }
+        kanjiQuizEnrolled = newKanjiQuizEnrolled
 
         // Populate kanjiSponsorWords: for each kanji in this word, find other VocabItems
         // whose jmdict ID appears in source_jmdicts for that kanji character.
