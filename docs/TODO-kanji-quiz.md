@@ -75,33 +75,52 @@ Enrollment for `word_type="kanji"` is sponsored by individual jmdict words. The
 a `source_jmdicts` column storing a JSON array of jmdict IDs that currently
 sponsor this kanji, e.g. `["1588120", "1234567"]`.
 
-**Tapping ON in WordDetailSheet for word W (jmdict ID J):**
-1. Check if J is in this kanji's `source_jmdicts` array and add if not (create the row if absent).
-2. If `source_jmdicts` was empty before this tap (row was absent or array was
-   empty), plant the `word_type="kanji"` Ebisu rows (up to 3 facets).
+KanjiInfoCard shows **two independent checkboxes** — one per zone — so the two
+enrollment types are controlled separately without either interfering with the
+other:
+
+- **Top zone checkbox** ("This word"): enrolls or unenrolls the word-context
+  kanji facets (`kanji-to-reading`, `meaning-reading-to-kanji`) for this jmdict
+  word. This is the existing behavior, unchanged.
+- **Bottom zone checkbox** ("This kanji in general"): enrolls or unenrolls the
+  global kanji quiz facets (`kanji-to-on-reading`, `kanji-to-kun-reading`,
+  `kanji-to-meaning`) for the kanji character, sponsored by this word.
+
+The two zones are separated by a horizontal divider. Tapping a zone only affects
+that zone's enrollment. The whole card gets a green border when either checkbox
+is checked; the green background tint appears only in the checked zone(s).
+
+**Top zone checkbox — tapping ON for word W (jmdict ID J):**
+- Update jmdict word's `kanji_chars` and plant the jmdict kanji facets
+  (`kanji-to-reading`, `meaning-reading-to-kanji`) for that word (existing behavior).
+
+**Top zone checkbox — tapping OFF for word W (jmdict ID J):**
+- Update jmdict word's `kanji_chars` and remove the jmdict kanji facets for
+  that word (existing behavior).
+
+**Bottom zone checkbox — tapping ON for word W (jmdict ID J):**
+1. Check if J is in this kanji's `source_jmdicts` array and add if not (create
+   the `word_type="kanji"` commitment row if absent).
+2. If `source_jmdicts` was empty before this tap, plant the `word_type="kanji"`
+   Ebisu rows (up to 3 facets).
 3. If `source_jmdicts` was already non-empty, verify the Ebisu rows exist and
    leave them untouched — do not overwrite progress.
-4. Also update the jmdict word's `kanji_chars` and plant the jmdict kanji facets
-   (`kanji-to-reading`, `meaning-reading-to-kanji`) for that word (existing behavior,
-   unchanged).
 
-**Tapping OFF in WordDetailSheet for word W (jmdict ID J):**
+**Bottom zone checkbox — tapping OFF for word W (jmdict ID J):**
 1. Remove J from this kanji's `source_jmdicts` array.
 2. If `source_jmdicts` is now empty, delete the `word_type="kanji"` Ebisu rows.
 3. If `source_jmdicts` still has other IDs, leave the Ebisu rows untouched.
-4. Also update the jmdict word's `kanji_chars` and remove the jmdict kanji facets
-   for that word (existing behavior, unchanged).
 
-### KanjiInfoCard toggle state on open
+### KanjiInfoCard checkbox state on open
 
-The toggle always opens **off** for any word whose jmdict ID is not already in
-`source_jmdicts`, even if the kanji has active Ebisu rows from other words. The
-learner is invited to commit to kanji for this word specifically — enrollment is
-per-word commitment, even though the quiz rows are global.
+- **Top zone checkbox**: checked when this word's `kanji_chars` includes this
+  kanji character (same as before).
+- **Bottom zone checkbox**: checked when this word's jmdict ID appears in this
+  kanji's `source_jmdicts`. Opens unchecked for any word whose ID is not already
+  in `source_jmdicts`, even if the kanji has active Ebisu rows from other words.
 
-The "also learning in: 地図, 図形" list below the card is the only indication
-that this kanji already has active Ebisu rows. No badge or tint is added to the
-card itself for the pre-enrolled state.
+The "also learning in: 地図, 図形" rows below the card remain the only indicator
+that the kanji already has active Ebisu rows from other words.
 
 ### Facets to NOT change
 
@@ -167,30 +186,32 @@ prepare-publish.mjs and is used for display only — not for quiz grading.
 
 ### KanjiInfoCard contents
 
-Each card shows two zones:
+Each card has two tappable zones separated by a horizontal divider. Each zone
+has its own independent checkbox on the right.
 
-**This word** (what this kanji is doing here):
-- The kanji character, large
-- The reading used in this word, highlighted (from the furigana array)
+**Top zone — "This word"** (tapping controls word-context kanji facets):
+- Large kanji character
+- The reading used in this word, highlighted green when enrolled (from furigana)
 - The kanjidic2 meanings active in this word (from `kanjiMeanings` in vocab.json)
+- Checkbox top-right: filled green when enrolled, empty ring when not
 
-**This kanji in general** (the top-2 data the learner is committing to):
-- Top 2 on-readings from kanjidic2 in katakana — **secondary size, not tiny**;
-  highlight any that match the word's reading
-- Top 2 kun-readings from kanjidic2 — same sizing; highlight match
-- Top 2 kanjidic2 meanings — same sizing; highlight those also in this word's
-  active meanings
+**Bottom zone — "This kanji in general"** (tapping controls global kanji quiz):
+- Three left-aligned rows: 音 on-readings, 訓 kun-readings, meanings
+- Readings matching the word's reading are shown at primary brightness; others
+  at secondary. Meaning words active in this word are shown at primary brightness.
+- Checkbox right-aligned (vertically centered with the three rows): filled green
+  when enrolled, empty ring when not
+- Font is `.subheadline` — these are secondary content, not footnotes
 
-The on/kun/meaning items in the "This kanji in general" zone must be large enough
-that the learner understands these are what they are committing to learning, not
-footnotes.
+The entire card gets a green border when either checkbox is checked. The green
+background tint appears only inside the zone(s) whose checkbox is checked.
 
 **Also learning in** (below the card, not inside it):
-- "Also learning in: 地図, 図形" — tappable rows for other enrolled words that
-  share this kanji (words where this jmdict ID appears in `source_jmdicts`).
-  Tapping opens a WordDetailSheet for that word.
-- This list is the only indicator that the kanji already has active Ebisu rows
-  from other words.
+- "Also in: 地図" — tappable rows for other words that sponsor this kanji
+  (words whose jmdict ID appears in `source_jmdicts`). Tapping opens
+  WordDetailSheet for that word.
+- This list is the only indicator that the kanji has active Ebisu rows from
+  other words.
 
 ---
 
@@ -301,15 +322,25 @@ footnotes.
 
 - [x] Create `KanjiInfoCard` SwiftUI view component
 - [x] Wire to kanjidic2 database for reading/meaning lookups
-- [x] Implement tap gesture for enrollment toggle
-- [ ] Increase text size of top-2 on/kun/meanings in "This kanji in general" zone
-      so they read as secondary content, not tertiary footnotes
+- [x] Split into two independent zones, each with its own checkbox:
+  - Top zone controls word-context kanji facets (`isWordEnrolled` / `onToggleWord`)
+  - Bottom zone controls global kanji quiz (`isKanjiEnrolled` / `onToggleKanji`)
+- [x] Green border on whole card when either zone is enrolled; green tint only
+      in the enrolled zone(s)
+- [x] Bottom zone uses 3-row left-aligned layout (音, 訓, meanings) with checkbox
+      right-aligned
 - [ ] "Also learning in" list reflects `source_jmdicts` (new column) instead of
       `WHERE word_id LIKE '{char}:%'` query against old word_id format
 
-### ✅ Step 4 — Update WordDetailSheet & PlantView (done; no changes needed)
+### ✅ Step 4 — Update WordDetailSheet & PlantView
 
-The UI flow is unchanged — toggle opens off, tapping enrolls.
+- [x] Add `@State private var kanjiQuizEnrolled: [String: Bool]` to WordDetailSheet
+- [x] Populate `kanjiQuizEnrolled` in `loadEbisuModels` from `source_jmdicts` check
+- [x] Split `toggleKanjiChar` (word-context only) from new `toggleKanjiQuiz`
+      (global kanji quiz only) — the old single toggle did both
+- [x] PlantView passes `isKanjiEnrolled: false` and `onToggleKanji: {}` — global
+      kanji quiz enrollment is not available during initial planting; use
+      WordDetailSheet afterward
 
 ### 🔄 Step 5 — Rework kanji quiz facets and enrollment (replaces old Step 5)
 
@@ -414,47 +445,63 @@ The UI flow is unchanged — toggle opens off, tapping enrolls.
 
 ### Smoke test plan (Step 5)
 
-1. **Enrollment — first word:**
-   - Open WordDetailSheet for 図書館. Tap 図. Verify:
+1. **Top zone only — word-context kanji enrollment:**
+   - Open WordDetailSheet for 図書館. Tap the **top zone** of the 図 card. Verify:
+     - `kanji_chars` updated for 図書館's jmdict commitment
+     - `word_type="jmdict"` facets planted (`kanji-to-reading`,
+       `meaning-reading-to-kanji`) for 図書館
+     - No `word_type="kanji"` rows created — bottom zone was not tapped
+     - Bottom zone checkbox remains unchecked
+
+2. **Bottom zone only — global kanji quiz enrollment, first word:**
+   - Tap the **bottom zone** of the 図 card in 図書館. Verify:
      - `source_jmdicts` = `["1588120"]` in `word_commitment` for `word_id="図"`
      - Three Ebisu rows planted: `kanji-to-on-reading`, `kanji-to-kun-reading`,
        `kanji-to-meaning` with `word_id="図"`
-     - jmdict kanji facets also planted for 図書館 (existing behavior)
+     - Top zone enrollment state is unaffected
 
-2. **Enrollment — second word sharing same kanji:**
-   - Open WordDetailSheet for 地図. Tap 図. Verify:
+3. **Bottom zone enrollment — second word sharing same kanji:**
+   - Open WordDetailSheet for 地図. Tap its **bottom zone** for 図. Verify:
      - `source_jmdicts` = `["1588120", "jmdictIdOf地図"]`
      - Existing Ebisu rows for `word_id="図"` are unchanged (not overwritten)
 
-3. **Unenrollment — one sponsor remains:**
-   - Tap 図 off in 地図. Verify:
+4. **Bottom zone unenrollment — one sponsor remains:**
+   - Tap the **bottom zone** of 図 off in 地図. Verify:
      - `source_jmdicts` = `["1588120"]` (地図's ID removed)
      - Ebisu rows for `word_id="図"` still present
 
-4. **Unenrollment — last sponsor:**
-   - Tap 図 off in 図書館. Verify:
+5. **Bottom zone unenrollment — last sponsor:**
+   - Tap the **bottom zone** of 図 off in 図書館. Verify:
      - `source_jmdicts` = `[]` or row deleted
      - Ebisu rows for `word_id="図"` deleted
 
-5. **Quiz session — kanji-to-on-reading:**
-   - Enroll 図. Force urgency (rescale halflife). Start vocab quiz.
+6. **Independent zones — mixed state:**
+   - Enroll top zone only for one kanji. Verify card has green border, green
+     tint only in top zone, bottom zone checkbox empty.
+   - Then enroll bottom zone too. Verify both zones show green tint.
+   - Unenroll top zone. Verify green border remains (bottom still enrolled),
+     only bottom zone shows green tint.
+
+7. **Quiz session — kanji-to-on-reading:**
+   - Enroll bottom zone for 図. Force urgency (rescale halflife). Start vocab quiz.
    - Question: "What is an on-reading of 図?" with four hiragana choices.
    - Correct answer is ず or と (top-2 on-readings, converted from ズ/ト).
    - Post-quiz bubble shows the other valid on-reading.
 
-6. **Quiz session — kanji-to-kun-reading:**
+8. **Quiz session — kanji-to-kun-reading:**
    - Question: "What is a kun-reading of 図?" with four hiragana choices.
    - Correct answer is え or はか (top-2 kun-readings, okurigana stripped).
 
-7. **Quiz session — kanji-to-meaning:**
+9. **Quiz session — kanji-to-meaning:**
    - Question: "What does 図 mean?" with four English choices.
    - Correct answer is "map" or "drawing" (top-2 meanings).
    - Post-quiz bubble shows the other valid meaning.
 
-8. **No on-readings kanji:**
-   - Enroll a kanji with no on-readings. Verify only two Ebisu rows are planted
-     (kun-reading and meaning; no on-reading row).
+10. **No on-readings kanji:**
+    - Enroll bottom zone for a kanji with no on-readings. Verify only two Ebisu
+      rows are planted (kun-reading and meaning; no on-reading row).
 
-9. **Regression — jmdict kanji facets unchanged:**
-   - Verify that `word_type="jmdict"` `kanji-to-reading` and
-     `meaning-reading-to-kanji` facets still work correctly.
+11. **Regression — jmdict kanji facets unchanged:**
+    - Verify that `word_type="jmdict"` `kanji-to-reading` and
+      `meaning-reading-to-kanji` facets still work correctly after top zone
+      toggle, independent of bottom zone state.

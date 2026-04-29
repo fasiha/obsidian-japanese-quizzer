@@ -69,11 +69,10 @@ struct QuizView: View {
                               let vocabItem = corpus.items.first(where: { $0.id == jmdictId }) {
                         WordDetailSheet(initialItem: vocabItem, db: session.db,
                                         client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
-                    } else if item.wordType == "kanji",
-                              let colonIdx = item.wordId.firstIndex(of: ":"),
-                              let vocabItem = corpus.items.first(where: { $0.id == String(item.wordId[item.wordId.index(after: colonIdx)...]) }) {
-                        WordDetailSheet(initialItem: vocabItem, db: session.db,
-                                        client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)
+                    } else if item.wordType == "kanji" {
+                        KanjiDetailSheet(kanji: item.wordId, db: session.db,
+                                         client: session.client, toolHandler: session.toolHandler,
+                                         jmdict: jmdict)
                     } else if let vocabItem = corpus.items.first(where: { $0.id == item.wordId }) {
                         WordDetailSheet(initialItem: vocabItem, db: session.db,
                                         client: session.client, toolHandler: session.toolHandler, jmdict: jmdict)

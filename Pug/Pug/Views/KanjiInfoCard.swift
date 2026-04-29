@@ -17,10 +17,16 @@ struct KanjiInfoCard: View {
     let activeWordMeanings: [String]
     /// Open DatabaseReader on kanjidic2.sqlite. Nil when not available.
     let kanjidicDB: (any DatabaseReader)?
-    let isEnrolled: Bool
+    /// Whether the word-context kanji facets (kanji-to-reading, meaning-reading-to-kanji) are enrolled.
+    let isWordEnrolled: Bool
+    /// Whether the global kanji quiz facets (kanji-to-on-reading, kanji-to-kun-reading, kanji-to-meaning) are enrolled.
+    let isKanjiEnrolled: Bool
     /// Other words where this kanji is also enrolled, with a callback to navigate to them.
     let otherWords: [VocabItem]
-    let onToggle: () -> Void
+    /// Toggles the word-context kanji facets for this word.
+    let onToggleWord: () -> Void
+    /// Toggles the global kanji quiz facets for this kanji character.
+    let onToggleKanji: () -> Void
     /// Called when the user taps one of the "Also learning in" word rows.
     let onTapOtherWord: (VocabItem) -> Void
 
@@ -40,24 +46,33 @@ struct KanjiInfoCard: View {
     // MARK: - Card bubble
 
     private var cardBubble: some View {
-        Button(action: onToggle) {
-            VStack(alignment: .leading, spacing: 10) {
+        let hasGeneralSection = !onReadings.isEmpty || !kunReadings.isEmpty || !allKanjidicMeanings.isEmpty
+        let eitherEnrolled = isWordEnrolled || isKanjiEnrolled
+        return VStack(alignment: .leading, spacing: 0) {
+            Button(action: onToggleWord) {
                 thisWordSection
-                if !onReadings.isEmpty || !kunReadings.isEmpty || !allKanjidicMeanings.isEmpty {
-                    Divider()
-                    generalSection
-                }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(isWordEnrolled ? Color.green.opacity(0.1) : Color.clear)
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isEnrolled ? Color.green.opacity(0.1) : Color(.secondarySystemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(isEnrolled ? Color.green : Color.clear, lineWidth: 1.5)
-            )
+            .buttonStyle(.plain)
+            if hasGeneralSection {
+                Divider()
+                Button(action: onToggleKanji) {
+                    generalSection
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(isKanjiEnrolled ? Color.green.opacity(0.1) : Color.clear)
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .buttonStyle(.plain)
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(eitherEnrolled ? Color.green : Color.clear, lineWidth: 1.5)
+        )
         .task(id: kanji) { await loadKanjidicData() }
     }
 
@@ -72,7 +87,7 @@ struct KanjiInfoCard: View {
                 if let reading = wordReading {
                     Text(reading)
                         .font(.title3)
-                        .foregroundStyle(isEnrolled ? Color.green : .primary)
+                        .foregroundStyle(isWordEnrolled ? Color.green : .primary)
                 }
                 if !activeWordMeanings.isEmpty {
                     Text(activeWordMeanings.joined(separator: ", "))
@@ -87,59 +102,66 @@ struct KanjiInfoCard: View {
 
             Spacer()
 
-            Image(systemName: isEnrolled ? "checkmark.circle.fill" : "circle")
+            Image(systemName: isWordEnrolled ? "checkmark.circle.fill" : "circle")
                 .font(.title2)
-                .foregroundStyle(isEnrolled ? Color.green : Color.secondary)
+                .foregroundStyle(isWordEnrolled ? Color.green : Color.secondary)
         }
     }
 
     // MARK: - General kanjidic2 readings + meanings section
 
+    /// Three left-aligned rows (on-readings, kun-readings, meanings) with a shared enrollment
+    /// checkbox on the right. Each row only appears when data is available.
     private var generalSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if !onReadings.isEmpty || !displayKunReadings.isEmpty {
-                readingsRow
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                if !onReadings.isEmpty {
+                    onReadingsRow
+                }
+                if !displayKunReadings.isEmpty {
+                    kunReadingsRow
+                }
+                if !allKanjidicMeanings.isEmpty {
+                    meaningsRow
+                }
             }
-            if !allKanjidicMeanings.isEmpty {
-                meaningsRow
+            Spacer()
+            Image(systemName: isKanjiEnrolled ? "checkmark.circle.fill" : "circle")
+                .font(.title2)
+                .foregroundStyle(isKanjiEnrolled ? Color.green : Color.secondary)
+        }
+    }
+
+    /// On-readings row: label + top 2 katakana readings, word-match highlighted.
+    private var onReadingsRow: some View {
+        HStack(spacing: 6) {
+            Text("音:")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            ForEach(onReadings.prefix(2), id: \.self) { on in
+                Text(on)
+                    .font(.subheadline)
+                    .foregroundStyle(isWordReading(on) ? Color.primary : Color.secondary)
             }
         }
     }
 
-    /// Inline row: top 2 on-readings (katakana) and top 2 kun-readings (hiragana, deduplicated).
-    /// The reading matching the word's committed form is shown at primary brightness;
-    /// others at secondary. Rendaku is accounted for in the match (e.g. くち matches ぐち).
-    /// Font is .subheadline — these are secondary content (what the learner is committing to),
-    /// not tertiary footnotes.
-    private var readingsRow: some View {
-        HStack(spacing: 8) {
-            if !onReadings.isEmpty {
-                Text("音:")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                ForEach(onReadings.prefix(2), id: \.self) { on in
-                    Text(on)
-                        .font(.subheadline)
-                        .foregroundStyle(isWordReading(on) ? Color.primary : Color.secondary)
-                }
-            }
-            Spacer()
-            if !displayKunReadings.isEmpty {
-                Text("訓:")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                ForEach(displayKunReadings, id: \.self) { kun in
-                    Text(kun)
-                        .font(.subheadline)
-                        .foregroundStyle(isWordReading(kun) ? Color.primary : Color.secondary)
-                }
+    /// Kun-readings row: label + top 2 hiragana readings (deduplicated), word-match highlighted.
+    private var kunReadingsRow: some View {
+        HStack(spacing: 6) {
+            Text("訓:")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            ForEach(displayKunReadings, id: \.self) { kun in
+                Text(kun)
+                    .font(.subheadline)
+                    .foregroundStyle(isWordReading(kun) ? Color.primary : Color.secondary)
             }
         }
     }
 
     /// Top 2 kanjidic2 meanings. Meanings that are active in this word are shown at
     /// primary brightness; others at secondary.
-    /// Font is .subheadline — secondary content, not footnotes.
     private var meaningsRow: some View {
         let active = Set(activeWordMeanings)
         let top2 = Array(allKanjidicMeanings.prefix(2))
