@@ -57,22 +57,28 @@ Every new facet or quiz type must satisfy all of the following. Verify each one 
 
 The last two facets **only exist** for words where the user has committed to learning kanji (via `word_commitment.kanji_chars`).
 
-## Meaning-reading-to-kanji distractor generation
+## Substitution-based distractor generation (meaning-reading-to-kanji and kanji-to-reading)
 
-This facet uses a **substitution-based strategy** distinct from the other three facets:
+Both facets use a **substitution-based strategy** rather than asking the LLM to produce full distractor strings:
 
-1. **App builds the stem locally**: `meaningReadingToKanjiStem()` picks a random corpus-attested sense, joins all its glosses with "; ", then appends the kana reading. No LLM call for the stem.
+1. **App builds the stem locally** — no LLM call for the stem.
+   - *Meaning-reading-to-kanji*: `meaningReadingToKanjiStem()` picks a random corpus-attested sense, joins all glosses with "; ", then appends the kana reading.
+   - *Kanji-to-reading*: stem is built inline as "What is the reading for: \(displayForm)?".
 
-2. **LLM provides replacement kanji only**: The system prompt specifies which kanji position(s) are substitutable (the committed kanji for partial commitment, or all kanji for full commitment). The prompt asks Haiku to fill a pre-populated array of kanji slots with visually-similar or same-reading replacements. The LLM returns **only** the replacement kanji, not full distractor strings.
+2. **LLM fills substitution slots only**: The prompt pre-populates an array of slots, one per kanji position to vary. The LLM returns **only** the replacements, not full distractor strings.
+   - *Meaning-reading-to-kanji*: slots are `[kanji, "?"]` — the LLM provides a visually-similar or same-reading replacement kanji.
+   - *Kanji-to-reading*: slots are `[correct-segment-reading, "?"]` — the LLM provides a wrong kana reading for that segment. Showing the correct segment reading (e.g. "おこ" rather than the kanji 怒) is essential: without it the LLM cannot tell where the kanji reading ends and the okurigana begins, and produces full-word replacements that double up the okurigana when spliced in.
 
-3. **Swift parser reconstructs distractors**: `parseMeaningReadingToKanjiSubstitutions()` applies the LLM's substitutions to the correct form to build the three distractor strings. All generated distractors are validated against the word's known written forms (`word_commitment.writtenTexts`) — any valid written form is rejected, ensuring the student sees only **incorrect** forms.
+3. **Swift parser reconstructs distractors**: applies each substitution to build a full distractor string, then validates against a `seen` set seeded with all forbidden forms.
+   - *Meaning-reading-to-kanji* (`parseMeaningReadingToKanjiSubstitutions`): `seen` is seeded with all of the word's known written forms so no valid orthography appears as a distractor.
+   - *Kanji-to-reading* (`parseKanjiToReadingMoraSubstitutions`): `seen` is seeded with `kanaTexts` (all readings of this JMDict entry) **plus** `siblingKanaReadings` (readings of every other enrolled word that shares the exact same written form, e.g. 怒る/いかる when the student is being tested on 怒る/おこる). Matching on the full written form including okurigana prevents false positives: a word 怒らる with different okurigana would not pollute the sibling set.
 
 **Rationale:**
 
-- **Stem consistency**: Fixing the stem to a single sense with full glosses prevents students from pattern-matching on a fixed English phrase.
-- **Controlled distractors**: Substitution-based generation ensures distractors are always one-kanji-difference away from the correct form (pedagogically gradual). Limiting to visually-similar or same-reading kanji results in nonsense words, but again, ok for learners.
-- **Enforcement**: The Swift parser's `seen` set (seeded with all written forms) is the ground truth. The system prompt's "forbidden replacements" is a hint to Haiku; the real correctness guarantee lives in the parser.
-- **Fallback**: If Haiku violates constraints (e.g., uses a forbidden kanji), the parser simply rejects that pair and moves to the next one. The prompt asks for 4 pairs to provide slack. After a few weeks, check `chat.sqlite` for whether that 4th backup was ever used. If not, consider removing it and saving some tokens.
+- **Stem consistency**: Fixing the stem prevents students from pattern-matching on a fixed English phrase (meaning-reading-to-kanji) or an inconsistently worded question (kanji-to-reading).
+- **Controlled distractors**: Substitution-based generation ensures distractors are always one-segment-difference away from the correct form (pedagogically gradual).
+- **Enforcement**: The Swift parser's `seen` set is the ground truth. The system prompt's instructions are a hint to Haiku; the real correctness guarantee lives in the parser.
+- **Fallback**: If Haiku violates constraints, the parser rejects that pair and moves to the next. The prompt asks for 4 pairs to provide slack. After a few weeks, check `chat.sqlite` for whether the 4th backup is ever used. If not, consider removing it to save tokens.
 
 ## Word commitment & partial kanji
 
@@ -88,9 +94,11 @@ All facets start as multiple choice and graduate to free-answer once the facet h
 
 ## Who generates and grades
 
-- **Multiple choice**: LLM generates the question (stem + 4 choices + correct index as JSON), or the app builds it locally if conditions allow (see below). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.
+- **Multiple choice**: LLM generates the question, or the app builds it locally if conditions allow (see below). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.
+  - *reading-to-meaning / meaning-to-reading*: LLM returns a full JSON object `{stem, choices}`.
+  - *kanji-to-reading / meaning-reading-to-kanji*: substitution-based — LLM fills replacement slots only; the app reconstructs the full question and distractors locally (see **Substitution-based distractor generation** above).
 - **Free-answer**: App builds the question stem locally (no LLM call). Student types answer. LLM grades and emits `SCORE: X.X` (Bayesian confidence 0.0–1.0, not percentage-correct).
-- **Tool usage**: reading-to-meaning and meaning-to-reading need **no tools** (distractors come from the corpus of enrolled words, or from the LLM's own knowledge as fallback). kanji-to-reading uses `lookup_kanjidic`; meaning-reading-to-kanji uses `lookup_jmdict`.
+- **Tool usage**: No facet uses tools. reading-to-meaning and meaning-to-reading draw distractors from the corpus of enrolled words (or LLM knowledge as fallback). kanji-to-reading and meaning-reading-to-kanji use substitution prompts with no tool calls.
 
 ## Distractor source: documents vs. AI
 

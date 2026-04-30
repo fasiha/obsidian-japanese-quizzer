@@ -230,6 +230,16 @@ struct QuizItem: Identifiable {
     /// Built from furigana ruby fields joined (not from JMDict wordWritten), so alternate orthographies
     /// like 閉じ籠もる are correctly preserved even if JMDict lists a different canonical form.
     let committedWrittenText: String?
+    /// Raw furigana segments from the committed word_commitment entry.
+    /// Each segment is {"ruby": surface, "rt": reading} where "rt" is present only on kanji segments.
+    /// nil when there is no word commitment. Used by kanji-to-reading generation to build mora-level
+    /// distractor slots: kanji segments contribute substitutable morae; kana segments are fixed.
+    let committedFurigana: [[String: String]]?
+    /// All kana readings of every enrolled word that shares the same written form as this item.
+    /// Used by kanji-to-reading distractor generation to prevent a sibling entry's reading from
+    /// appearing as a "wrong" answer (e.g. if both 怒る/おこる and 怒る/いかる are enrolled,
+    /// いかる must be excluded when testing 怒る = おこる).
+    let siblingKanaReadings: [String]
 
     /// Zero-based indices into senseExtras for senses attested in the corpus (from llm_sense.sense_indices).
     /// Defaults to [0] (first sense) when absent or empty, so quiz prompts always have at least one meaning.
@@ -338,6 +348,19 @@ struct QuizContext {
             // (This comment block is intentionally left as documentation; no code action needed.)
         }
 
+        // Build reverse map: written form → all enrolled kana readings across all enrolled words.
+        // Used by kanji-to-reading to block sibling-entry readings (e.g. both 怒る entries enrolled:
+        // student shouldn't see いかる as a distractor when tested on 怒る = おこる).
+        var writtenFormToAllKana: [String: Set<String>] = [:]
+        for (id, forms) in wordWritten {
+            guard let kanas = wordKana[id] else { continue }
+            for form in forms {
+                for kana in kanas {
+                    writtenFormToAllKana[form, default: []].insert(kana)
+                }
+            }
+        }
+
         // Group by (wordType, wordId).
         var modelsByWord: [String: [EbisuRecord]] = [:]
         for r in records {
@@ -436,6 +459,9 @@ struct QuizContext {
                 committedKanji = nil
             }
 
+            let committedWrittenText = commitments[wordId]?.committedWrittenText
+            let lookupForm = committedWrittenText ?? wordTexts[wordId] ?? ""
+            let siblingKana = Array(writtenFormToAllKana[lookupForm] ?? [])
             items.append(QuizItem(
                 wordType: wordType, wordId: wordId, wordText: wordText,
                 writtenTexts: wordWritten[wordId] ?? [],
@@ -445,7 +471,9 @@ struct QuizContext {
                 committedKanji: committedKanji,
                 partialKanjiTemplate: partialKanjiTemplate,
                 committedReading: committedReading,
-                committedWrittenText: commitments[wordId]?.committedWrittenText,
+                committedWrittenText: committedWrittenText,
+                committedFurigana: commitments[wordId]?.furiganaSegmentsForTemplate,
+                siblingKanaReadings: siblingKana,
                 corpusSenseIndices: corpusSensesMap[wordId] ?? [0]))
         }
 
@@ -497,7 +525,8 @@ struct QuizContext {
                     writtenTexts: [], kanaTexts: [], hasKanji: false,
                     facet: chosenFacet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
-                    committedWrittenText: nil, corpusSenseIndices: []
+                    committedWrittenText: nil, committedFurigana: nil,
+                    siblingKanaReadings: [], corpusSenseIndices: []
                 ))
             }
         }
@@ -548,7 +577,8 @@ struct QuizContext {
                     writtenTexts: [counterItem.counter.kanji], kanaTexts: [counterItem.counter.reading],
                     hasKanji: false, facet: facet, status: status,
                     senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil, committedReading: nil,
-                    committedWrittenText: nil, corpusSenseIndices: []
+                    committedWrittenText: nil, committedFurigana: nil,
+                    siblingKanaReadings: [], corpusSenseIndices: []
                 ))
             }
         }

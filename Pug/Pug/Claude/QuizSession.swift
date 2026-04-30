@@ -1874,6 +1874,17 @@ final class QuizSession {
                 let correctForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
                 let stem = meaningReadingToKanjiStem(for: item)
                 parsedMC = parseMeaningReadingToKanjiSubstitutions(raw, correctForm: correctForm, stem: stem, forbiddenForms: Set(item.writtenTexts))
+            } else if item.facet == "kanji-to-reading" {
+                let displayForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+                let stem = "What is the reading for: \(displayForm)?"
+                let correctAnswer = item.committedReading ?? item.kanaTexts.first ?? ""
+                if let furigana = item.committedFurigana {
+                    parsedMC = parseKanjiToReadingMoraSubstitutions(raw, furigana: furigana,
+                        committedKanji: item.committedKanji, stem: stem, correctAnswer: correctAnswer,
+                        forbiddenForms: Set(item.kanaTexts).union(item.siblingKanaReadings))
+                } else {
+                    parsedMC = nil
+                }
             } else {
                 parsedMC = parseMultipleChoiceJSON(raw)
             }
@@ -1920,6 +1931,26 @@ final class QuizSession {
     static func substitutionSlotsString(kanji: [String], count: Int = 3) -> String {
         guard !kanji.isEmpty else { return "[]" }
         let slots = (0..<count).map { i in "[\"\(kanji[i % kanji.count])\", \"?\"]" }
+        return "[\(slots.joined(separator: ", "))]"
+    }
+
+    /// Builds a pre-populated mora-substitution-slots string for the kanji-to-reading distractor prompt.
+    /// Only kanji segments (those with an "rt" reading) contribute slots; kana-only segments are fixed.
+    /// When `committedKanji` is non-nil and non-empty, only those specific kanji contribute slots.
+    /// Cycles through the eligible kanji segments to fill `count` slots.
+    /// Each slot is [correct-segment-reading, "?"] so the LLM knows exactly which mora to replace,
+    /// without having to infer where the kanji reading ends and the okurigana begins.
+    /// Example: 切る → segments [{ruby:"切",rt:"き"},{ruby:"る"}], committedKanji=["切"] →
+    ///   `[["き","?"], ["き","?"], ["き","?"], ["き","?"]]`
+    static func kanaSubstitutionSlotsString(furigana: [[String: String]], committedKanji: [String]?, count: Int = 4) -> String {
+        let committedSet = Set(committedKanji ?? [])
+        let kanjiSegments: [(ruby: String, rt: String)] = furigana.compactMap { seg in
+            guard let ruby = seg["ruby"], let rt = seg["rt"] else { return nil }
+            if !committedSet.isEmpty && !committedSet.contains(ruby) { return nil }
+            return (ruby: ruby, rt: rt)
+        }
+        guard !kanjiSegments.isEmpty else { return "[]" }
+        let slots = (0..<count).map { i in "[\"\(kanjiSegments[i % kanjiSegments.count].rt)\", \"?\"]" }
         return "[\(slots.joined(separator: ", "))]"
     }
 
@@ -2011,6 +2042,77 @@ final class QuizSession {
             return decodeMultipleChoice(from: String(raw[open...close]))
         }
         return nil
+    }
+
+    /// Parses the kanji-to-reading mora-substitution response.
+    /// Expects a JSON array of [correct-segment-reading, replacement-reading] pairs.
+    /// Pairs are matched positionally to the eligible committed-kanji segments (same cycling order
+    /// as `kanaSubstitutionSlotsString`), so the parser never needs to identify a segment by its
+    /// kanji character — it just replaces slot i's segment with pairs[i][1].
+    /// All other segments (okurigana, unstudied kanji) are kept as-is.
+    /// `forbiddenForms` seeds deduplication so no valid reading of the word appears as a distractor.
+    private func parseKanjiToReadingMoraSubstitutions(_ raw: String, furigana: [[String: String]],
+                                                      committedKanji: [String]?, stem: String,
+                                                      correctAnswer: String,
+                                                      forbiddenForms: Set<String> = []) -> MultipleChoiceQuestion? {
+        func extractArray() -> String? {
+            var search = raw[...]
+            while let fenceStart = search.range(of: "```") {
+                let afterFence = search[fenceStart.upperBound...]
+                let body = afterFence.drop(while: { $0 != "\n" }).dropFirst()
+                if let closeRange = body.range(of: "```") {
+                    let candidate = String(body[..<closeRange.lowerBound])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if candidate.hasPrefix("[") { return candidate }
+                    search = body[closeRange.upperBound...]
+                } else { break }
+            }
+            if let open = raw.firstIndex(of: "["), let close = raw.lastIndex(of: "]") {
+                return String(raw[open...close])
+            }
+            return nil
+        }
+        guard let jsonText = extractArray(),
+              let data = jsonText.data(using: .utf8),
+              let pairs = try? JSONSerialization.jsonObject(with: data) as? [[String]]
+        else { return nil }
+
+        let committedSet = Set(committedKanji ?? [])
+        // Build eligible segments in the same order as kanaSubstitutionSlotsString so that
+        // pairs[i] corresponds to eligibleSegments[i % eligibleSegments.count].
+        let eligibleSegments: [(furiganaIndex: Int, rt: String)] = furigana.enumerated().compactMap { (idx, seg) in
+            guard let ruby = seg["ruby"], let rt = seg["rt"] else { return nil }
+            if !committedSet.isEmpty && !committedSet.contains(ruby) { return nil }
+            return (furiganaIndex: idx, rt: rt)
+        }
+        guard !eligibleSegments.isEmpty else { return nil }
+
+        var seen = forbiddenForms.union([correctAnswer])
+        var distractors: [String] = []
+
+        for (pairIndex, pair) in pairs.enumerated() {
+            guard pair.count == 2, !pair[1].isEmpty else { continue }
+            let targetSegment = eligibleSegments[pairIndex % eligibleSegments.count]
+            let replacementMora = pair[1]
+            // Build distractor by substituting into the target segment; all other segments kept as-is.
+            var distractor = ""
+            for (segIndex, seg) in furigana.enumerated() {
+                if segIndex == targetSegment.furiganaIndex {
+                    distractor += replacementMora
+                } else {
+                    distractor += seg["rt"] ?? seg["ruby"] ?? ""
+                }
+            }
+            guard seen.insert(distractor).inserted else { continue }
+            distractors.append(distractor)
+            if distractors.count == 3 { break }
+        }
+
+        guard distractors.count == 3 else { return nil }
+        let correctIndex = Int.random(in: 0..<4)
+        var choices = [correctAnswer] + distractors
+        choices.swapAt(0, correctIndex)
+        return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
     }
 
     private func decodeMultipleChoice(from text: String) -> MultipleChoiceQuestion? {
@@ -2153,6 +2255,20 @@ final class QuizSession {
             }
         }
 
+        // kanji-to-reading generation only needs the display form, correct reading, and substitution rules.
+        // Only applies when furigana is available; without it both this and the user message fall through
+        // to the generic multiple-choice prompt so they stay in sync.
+        if item.facet == "kanji-to-reading" && isGenerating, item.committedFurigana != nil {
+            let displayForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+            let correctReading = item.committedReading ?? item.kanaTexts.first ?? ""
+            let committedKanji = item.committedKanji ?? Self.extractKanji(from: displayForm)
+            let committedList = committedKanji.joined(separator: "、")
+            return """
+            Word: \(displayForm) (reading: \(correctReading))
+            The student is tested on reading \(committedList). For each pre-filled pair [correct-segment-reading, ?], replace the ? with a plausible wrong reading — use an alternate on/kun reading or swap one mora. The okurigana and any kana outside the brackets are fixed and must not change.
+            """
+        }
+
         let facetRule: String
         let wordLine: String
         // Full entry data injected into every facet so Claude never needs to look up the target word.
@@ -2214,36 +2330,12 @@ final class QuizSession {
             // specific kanji+kana pairing stored in the word_commitment table. That pairing has
             // exactly one reading, so kanaTexts.first is always the single correct answer here —
             // unlike kana-only words, which may carry several equally valid readings.
-            let ktrKana = item.kanaTexts.first ?? "unknown"
-            if let template = item.partialKanjiTemplate,
-               let committed = item.committedKanji {
-                let committedList = committed.joined(separator: "、")
-                if isGenerating {
-                    facetRule = """
-                    Show \(template), ask for full reading. Studying: \(committedList).
-                    CORRECT ANSWER IS EXACTLY: \(ktrKana).
-                    The 3 distractors substitute ONLY the reading of the committed kanji \
-                    (\(committedList)); all other kana stay identical. \
-                    Use alternate on/kun readings of that kanji or swap one mora — no lookup needed. \
-                    Question stem must be in English.
-                    """
-                    wordLine = "Word: display \(template) \(entryRef). Never show full kana reading in the stem."
-                } else {
-                    facetRule = "Facet tested: kanji-to-reading partial (\(template), studying \(committedList), correct reading: \(ktrKana)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
-                    wordLine = "Word: \(entryRef)"
-                }
-            } else {
-                if isGenerating {
-                    facetRule = """
-                    Show kanji ONLY (never kana). Ask for kana reading. Question stem must be in English.
-                    CORRECT ANSWER IS EXACTLY: \(ktrKana).
-                    """
-                    wordLine = "Word: \(item.wordText) \(entryRef)."
-                } else {
-                    facetRule = "Facet tested: kanji-to-reading (student sees kanji, answers with kana reading)."
-                    wordLine = "Word: \(entryRef)"
-                }
-            }
+            // Generation is handled by the early return above; this branch is coaching-only.
+            let ktrKana = item.committedReading ?? item.kanaTexts.first ?? "unknown"
+            let displayForm = item.partialKanjiTemplate ?? item.committedWrittenText ?? item.wordText
+            let committedList = (item.committedKanji ?? Self.extractKanji(from: displayForm)).joined(separator: "、")
+            facetRule = "Facet tested: kanji-to-reading (\(displayForm), studying \(committedList), correct reading: \(ktrKana)). Weight errors on the studied kanji (\(committedList)) more heavily than errors on unstudied portions."
+            wordLine = "Word: \(entryRef)"
         case "meaning-reading-to-kanji":
             // Generation is handled by the early return above; this branch is coaching-only.
             if let template = item.partialKanjiTemplate,
@@ -2364,6 +2456,21 @@ final class QuizSession {
                 No other keys or wrapper — just the array.
                 """
             }
+        }
+        if item.facet == "kanji-to-reading" {
+            if let furigana = item.committedFurigana {
+                let slots = Self.kanaSubstitutionSlotsString(furigana: furigana, committedKanji: item.committedKanji, count: 4)
+                return """
+                For each pre-filled pair [correct-segment-reading, ?], replace the ? with a plausible wrong reading. Think first if helpful, then end with a ```json code block containing exactly a 4-element array:
+                \(slots)
+                No other keys or wrapper — just the array.
+                """
+            }
+            return """
+            Generate 3 wrong kana reading distractors for this kanji-to-reading question. Think first if helpful, then end with a ```json code block containing exactly a 3-element array:
+            ["distractor 1", "distractor 2", "distractor 3"]
+            No other keys or wrapper — just the array.
+            """
         }
         return """
         Generate ONE multiple-choice question for the \(item.facet) facet.
