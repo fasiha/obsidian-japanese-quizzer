@@ -713,6 +713,7 @@ struct QuizContext {
                 facet: facet, status: status,
                 senseExtras: [], committedKanji: nil, partialKanjiTemplate: nil,
                 committedReading: nil, committedWrittenText: nil,
+                committedFurigana: nil, siblingKanaReadings: [],
                 corpusSenseIndices: [], kanjiQuizData: kanjiData
             ))
         }
