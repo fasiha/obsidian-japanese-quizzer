@@ -2183,8 +2183,8 @@ final class QuizSession {
         if item.facet == "reading-to-meaning" {
             let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
             let stem = "What does \(kana) mean?"
-            // Two-stage: random corpus sense, then random gloss within it.
-            let correctGloss = item.corpusSenses.randomElement()?.glosses.randomElement() ?? ""
+            // Two-stage: random enrolled sense, then first gloss within it.
+            let correctGloss = item.corpusSenses.randomElement()?.glosses.first ?? ""
             guard !correctGloss.isEmpty else { return nil }
 
             let distractorGlosses = candidates
