@@ -181,6 +181,60 @@ In `WordDetailSheet`, make `KanjiInfoCard` 90% width and add a `>` chevron
 button to the right. Tapping it presents `KanjiDetailSheet` for that kanji,
 the same way the post-kanji-quiz "Details" button does.
 
+## Mismatch finder script
+
+`.claude/scripts/find-bccwj-mismatches.mjs` is a periodic review tool that
+surfaces JMDict-common words whose frequency is likely hidden under a different
+BCCWJ spelling (the same UniDic canonicalization problem as 帰る → 返る).
+
+**Inputs:**
+- `vocab.json` — corpus word IDs; used to extract the set of kanji characters
+  to check, and to flag candidates that are also corpus words (higher priority)
+- `jmdict.sqlite` — full JMDict; provides kanji forms, readings, and
+  part-of-speech tags for filtering
+- `bccwj.sqlite` — LUW frequency table; used for two queries per candidate:
+  exact `(kanji, reading)` match check, and `reading`-only lookup to find what
+  BCCWJ has under the same pronunciation
+- `bccwj-overrides.json` — already-resolved entries are skipped so output only
+  shows new candidates
+
+**Noise filters applied** (candidates that pass all of these are shown):
+- Part of speech is not particle, expression, conjunction, or interjection
+- No `id` (idiomatic) misc tag
+- Not a proper noun (`n-pr`)
+- Reading does not end with a grammatical particle (に, で, と, へ, を, …) —
+  catches adverbial set phrases that BCCWJ tokenizes differently
+- Kanji text does not contain 〇 (circled-zero numeral spelling artifact)
+- Shortest normal kanji form is ≤ 8 characters (longer = likely a phrase)
+
+**Output:** candidates sorted by the highest pmw found in BCCWJ under the same
+reading, so the most impactful mismatches appear first. For each candidate,
+shows all BCCWJ rows for that reading so the reviewer can immediately see which
+spelling BCCWJ uses.
+
+**Running it with Claude:** paste the top N candidates from the output and ask
+Claude to classify each as real mismatch (→ add to `bccwj-overrides.json`) or
+false positive (→ explain why). Full output saved to `/tmp/bccwj-mismatches.txt`
+on each run (4270 lines, 887 candidates as of 2026-04-30).
+
+**Known false positives in current output:**
+- 子【ね】, 代【よ】 — JMDict POS is `n` so the noise filter passes them, but
+  the high-pmw BCCWJ hit is the sentence-final particle ね/よ (kana form), not
+  a matching lexeme. Need a smarter filter: if the top BCCWJ hit is kana-only
+  and the JMDict word is a noun, it's likely a homophones-not-a-match situation.
+
+**Improvements to make:**
+- Add a `"dismissed"` key to `bccwj-overrides.json` (alongside `"overrides"`)
+  to permanently record JMDict IDs that have been reviewed and confirmed as
+  false positives. The script already skips `overrides` keys; it should also
+  skip `dismissed` keys. This prevents Claude from being asked about the same
+  entry on every run.
+- Tighten the ね/よ false positive: if every BCCWJ hit for the reading is
+  kana-only (kanji === reading), and the JMDict entry has a kanji form, skip it.
+- Consider emitting a JSON file (e.g. `bccwj-mismatches-review.json`) alongside
+  the human-readable stdout, so a future Claude session can process it
+  programmatically rather than parsing text.
+
 ## Open questions
 
 - **Duplicate BCCWJ rows** (same written form, different part of speech): display

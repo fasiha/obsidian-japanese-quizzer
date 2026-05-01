@@ -65,6 +65,7 @@ const filesToPublish = [
   { src: path.join(projectRoot, "transitive-intransitive", "transitive-pairs.json"), dest: "transitive-pairs.json" },
   { src: path.join(projectRoot, "Counters", "counters.json"), dest: "counters.json" },
   { src: path.join(projectRoot, "corpus.json"),      dest: "corpus.json" },
+  { src: path.join(projectRoot, "kanji-top-usage.json"),      dest: "kanji-top-usage.json" },
 ];
 
 for (const { src, dest } of filesToPublish) {

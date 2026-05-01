@@ -30,7 +30,7 @@
  * Usage: node prepare-publish.mjs [--no-llm] [--max-senses N] [--max-compound-verbs N] [--max-kanji-senses N]
  */
 
-import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
+import { setup, findExactIds, idsToWords, kanjiAnywhere } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
@@ -571,6 +571,156 @@ const bccwjOverridesPath = path.join(projectRoot, "bccwj-overrides.json");
 const bccwjOverrides = existsSync(bccwjOverridesPath)
   ? JSON.parse(readFileSync(bccwjOverridesPath, "utf8")).overrides
   : {};
+
+// Kanji form tags that indicate a non-standard written spelling.
+// Kept in sync with the same constant in kanji-frequency-top10.mjs.
+const EXCLUDED_KANJI_TAGS = new Set(["rK", "iK", "sK", "oK", "ateji"]);
+
+function isKanjiChar(ch) {
+  const cp = ch.codePointAt(0);
+  return (
+    (cp >= 0x4e00 && cp <= 0x9fff) ||
+    (cp >= 0x3400 && cp <= 0x4dbf) ||
+    (cp >= 0x20000 && cp <= 0x2a6df)
+  );
+}
+
+/**
+ * Build the kanji-top-usage data structure.
+ *
+ * For each kanji character that appears in a normal (non-excluded) kanji form
+ * of a corpus word, queries BCCWJ for the top 50 long-unit-word entries by
+ * pmw descending, matches each row to a JMDict ID, and checks for JMDict-common
+ * words that have no BCCWJ match (possible UniDic canonicalization mismatches).
+ *
+ * @param {object[]} words - final corpus word array (each has .id)
+ * @param {Map<string, object>} jmdictById - JMDict entry map keyed by entry ID
+ * @param {Set<string>} corpusWordIds - set of JMDict IDs in the corpus
+ * @param {import('better-sqlite3').Database|null} bccwjDatabase - open bccwj.sqlite handle, or null
+ * @param {import('better-sqlite3').Database} jmdictDb - open jmdict.sqlite handle
+ * @returns {{ [kanjiChar: string]: { totalMatches: number, words: object[] } }}
+ */
+function buildKanjiTopUsage(words, jmdictById, corpusWordIds, bccwjDatabase, jmdictDb) {
+  if (!bccwjDatabase) return {};
+
+  // --- Extract unique kanji characters from non-excluded kanji forms ---
+  const kanjiChars = new Set();
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    if (!jmWord) continue;
+    const normalForms = (jmWord.kanji ?? []).filter(
+      (k) => !k.tags.some((t) => EXCLUDED_KANJI_TAGS.has(t))
+    );
+    for (const form of normalForms) {
+      for (const ch of form.text) {
+        if (isKanjiChar(ch)) kanjiChars.add(ch);
+      }
+    }
+  }
+
+  // --- Build (kanjiText, hiraganaReading) → JMDict ID lookup per kanji char ---
+  // For each kanji character, fetch all JMDict entries that contain it via
+  // kanjiAnywhere, then index their non-excluded kanji forms × kana readings.
+  const kanjiCharToJmWords = new Map(); // ch → [{id, kanjiText, reading, isCommon}]
+  for (const ch of kanjiChars) {
+    const entries = kanjiAnywhere(jmdictDb, ch);
+    const result = [];
+    for (const entry of entries) {
+      for (const kf of entry.kanji ?? []) {
+        if (kf.tags.some((t) => EXCLUDED_KANJI_TAGS.has(t))) continue;
+        if (!kf.text.includes(ch)) continue;
+        const isCommon = kf.common || (entry.kana ?? []).some((k) => k.common);
+        for (const kana of entry.kana ?? []) {
+          result.push({
+            id: entry.id,
+            kanjiText: kf.text,
+            reading: toHiragana(kana.text),
+            isCommon,
+          });
+        }
+      }
+    }
+    kanjiCharToJmWords.set(ch, result);
+  }
+
+  // --- Prepare BCCWJ queries ---
+  const topQuery = bccwjDatabase.prepare(
+    "SELECT kanji, reading, pmw FROM bccwj WHERE kanji LIKE ? ORDER BY pmw DESC LIMIT 50"
+  );
+  const countQuery = bccwjDatabase.prepare(
+    "SELECT count(*) as n FROM bccwj WHERE kanji LIKE ?"
+  );
+  const exactQuery = bccwjDatabase.prepare(
+    "SELECT 1 FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1"
+  );
+
+  const result = {};
+
+  for (const ch of [...kanjiChars].sort()) {
+    const pattern = `%${ch}%`;
+    const rows = topQuery.all(pattern);
+    const { n: totalMatches } = countQuery.get(pattern);
+
+    if (rows.length === 0) continue; // omit kanji with no BCCWJ data
+
+    // Build a set of (kanjiText\treading) pairs in the top-50 for mismatch check
+    const bccwjPairs = new Set(
+      rows.map((r) => `${r.kanji}\t${toHiragana(r.reading)}`)
+    );
+
+    const jmWords = kanjiCharToJmWords.get(ch) ?? [];
+
+    // Build a lookup map from (kanjiText, hiraganaReading) → JMDict ID.
+    // When there are multiple matches prefer corpus words.
+    const pairToId = new Map(); // "kanjiText\treading" → id
+    for (const { id, kanjiText, reading } of jmWords) {
+      const key = `${kanjiText}\t${reading}`;
+      const existing = pairToId.get(key);
+      if (!existing) {
+        pairToId.set(key, id);
+      } else if (!corpusWordIds.has(existing) && corpusWordIds.has(id)) {
+        // Prefer corpus word when there are multiple matches
+        pairToId.set(key, id);
+      }
+    }
+
+    // Match each BCCWJ row to a JMDict ID
+    const wordEntries = rows.map((row) => {
+      const key = `${row.kanji}\t${toHiragana(row.reading)}`;
+      const id = pairToId.get(key) ?? null;
+      if (id !== null) {
+        return { id, pmw: row.pmw };
+      }
+      // No JMDict match — include kanji/reading strings so the iOS UI can still display it
+      return { id: null, kanji: row.kanji, reading: row.reading, pmw: row.pmw };
+    });
+
+    result[ch] = { totalMatches, words: wordEntries };
+
+    // --- Warn about JMDict-common words absent from the top-50 ---
+    const seenIds = new Set();
+    for (const { id, kanjiText, reading, isCommon } of jmWords) {
+      if (!isCommon) continue;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      // Check all (kanjiText, reading) pairs for this entry
+      const matched = jmWords
+        .filter((e) => e.id === id)
+        .some(
+          (e) =>
+            bccwjPairs.has(`${e.kanjiText}\t${e.reading}`) ||
+            exactQuery.get(e.kanjiText, e.reading)
+        );
+      if (!matched) {
+        console.warn(
+          `[kanji-top-usage] ${ch}: common JMDict word ${kanjiText} (${id}) has no BCCWJ match — possible UniDic mismatch?`
+        );
+      }
+    }
+  }
+
+  return result;
+}
 
 /**
  * Look up the highest BCCWJ frequency for a JMDict word by trying every
@@ -1339,6 +1489,25 @@ if (!dryRun) {
   if (kanjiAnalyzed > 0) {
     console.log(`Analyzed kanji meanings for ${kanjiAnalyzed} word(s).${maxKanjiSenses !== Infinity ? ` (--max-kanji-senses ${maxKanjiSenses})` : ""}`);
   }
+}
+
+// --- Kanji top-usage frequency data ---
+const kanjiTopUsage = buildKanjiTopUsage(
+  words,
+  jmdictById,
+  new Set(words.map((w) => w.id)),
+  bccwjDb,
+  db
+);
+const kanjiTopUsagePath = path.join(projectRoot, "kanji-top-usage.json");
+if (!dryRun) {
+  writeFileSync(
+    kanjiTopUsagePath,
+    JSON.stringify({ generatedAt: new Date().toISOString(), kanji: kanjiTopUsage }, null, 2) + "\n"
+  );
+  console.log(`Wrote ${Object.keys(kanjiTopUsage).length} kanji entries → ${kanjiTopUsagePath}`);
+} else {
+  console.log(`[DRY RUN] Would write ${Object.keys(kanjiTopUsage).length} kanji entries to ${kanjiTopUsagePath}`);
 }
 
 const output = {

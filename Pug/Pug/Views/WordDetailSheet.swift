@@ -14,6 +14,10 @@
 import SwiftUI
 import GRDB
 
+private struct IdentifiableString: Identifiable {
+    let id: String
+}
+
 /// Where the user navigated from when opening WordDetailSheet.
 /// Used to scope sense highlighting to the specific document or line the student was reading,
 /// rather than showing the corpus-wide union of all senses.
@@ -104,6 +108,7 @@ struct WordDetailSheet: View {
     @State private var wordReviews: [Review] = []
     @State private var selectedReview: IdentifiableReview? = nil
     @State private var kanjiOtherWordDetail: VocabItem? = nil
+    @State private var selectedKanjiForDetail: IdentifiableString? = nil
     /// Maps kanji character → other VocabItems that have enrolled this kanji (via source_jmdicts),
     /// excluding the current word. Loaded async in loadEbisuModels.
     @State private var kanjiSponsorWords: [String: [VocabItem]] = [:]
@@ -175,6 +180,10 @@ struct WordDetailSheet: View {
             .sheet(item: $kanjiOtherWordDetail) { otherItem in
                 WordDetailSheet(initialItem: otherItem, db: db, client: client,
                                 toolHandler: toolHandler, jmdict: jmdict, origin: nil)
+            }
+            .sheet(item: $selectedKanjiForDetail) { item in
+                KanjiDetailSheet(kanji: item.id, db: db, client: client,
+                                 toolHandler: toolHandler, jmdict: jmdict)
             }
         }
     }
@@ -653,18 +662,28 @@ struct WordDetailSheet: View {
             let segments = committedFuriganaSegments
             let allKanji = segments.extractKanji()
             ForEach(allKanji, id: \.self) { kanji in
-                KanjiInfoCard(
-                    kanji: kanji,
-                    wordReading: readingForKanji(kanji, in: segments),
-                    activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
-                    kanjidicDB: toolHandler?.kanjidic,
-                    isWordEnrolled: selectedKanjiChars.contains(kanji),
-                    isKanjiEnrolled: kanjiQuizEnrolled[kanji] == true,
-                    otherWords: otherEnrolledWords(for: kanji),
-                    onToggleWord: { toggleKanjiChar(kanji) },
-                    onToggleKanji: { toggleKanjiQuiz(kanji) },
-                    onTapOtherWord: { kanjiOtherWordDetail = $0 }
-                )
+                HStack(alignment: .center, spacing: 12) {
+                    KanjiInfoCard(
+                        kanji: kanji,
+                        wordReading: readingForKanji(kanji, in: segments),
+                        activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
+                        kanjidicDB: toolHandler?.kanjidic,
+                        isWordEnrolled: selectedKanjiChars.contains(kanji),
+                        isKanjiEnrolled: kanjiQuizEnrolled[kanji] == true,
+                        otherWords: otherEnrolledWords(for: kanji),
+                        onToggleWord: { toggleKanjiChar(kanji) },
+                        onToggleKanji: { toggleKanjiQuiz(kanji) },
+                        onTapOtherWord: { kanjiOtherWordDetail = $0 }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        selectedKanjiForDetail = IdentifiableString(id: kanji)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
     }
