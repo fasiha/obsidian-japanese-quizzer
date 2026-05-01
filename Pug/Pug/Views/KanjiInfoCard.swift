@@ -188,7 +188,7 @@ struct KanjiInfoCard: View {
                     onTapOtherWord(word)
                 } label: {
                     HStack {
-                        Text("Also in: \(word.wordText)")
+                        Text("Learning via: \(word.wordText)")
                             .font(.caption)
                         Spacer()
                         Image(systemName: "chevron.right")

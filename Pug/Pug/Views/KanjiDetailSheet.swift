@@ -80,7 +80,7 @@ struct KanjiDetailSheet: View {
     // MARK: - Sponsor words
 
     private var sponsorWordsSection: some View {
-        Section("Enrolled words using this kanji") {
+        Section("Words using this kanji") {
             ForEach(sponsorWords) { word in
                 Button {
                     wordForDetail = word

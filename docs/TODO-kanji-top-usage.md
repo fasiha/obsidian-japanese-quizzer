@@ -252,3 +252,48 @@ on each run (4270 lines, 887 candidates as of 2026-04-30).
   relative to the overall top-10 sum? Re-normalizing each page is simpler and
   keeps bars visually meaningful; using a fixed reference (top-10 sum) would show
   the tail shrinking as you page, which is also informative. Decide in Step 3.
+
+## Which written forms count as "containing" a kanji character
+
+This affects both the top-usage list and `KanjiDetailSheet`'s "corpus words using
+this kanji" fallback (shown when the kanji has no enrolled sponsor words).
+
+### Layer 1 — already fixed: exclude search-only kanji (sK)
+
+JMDict's `sK` tag marks a kanji form as a search-only alias — it exists so
+dictionary apps can match user searches, but it must never appear in display or
+matching logic. Example: 時計 (とけい) has three kanji forms:
+
+- `時計` — `ateji`, common
+- `土圭` — `rK` (rare kanji)
+- `自鳴鐘` — `sK` (search-only)
+
+Before the fix, `自鳴鐘` caused 時計 to appear under KanjiDetailSheet for 鳴,
+because `writtenTexts` included the `sK` form.
+
+The fix (applied 2026-04-30, `QuizContext.swift` line ~772): add `sK` to the
+filter alongside `iK` and `rK` when building `writtenTexts` from the raw JMDict
+JSON. Since `writtenTexts` is the single source used everywhere (vocab browser,
+kanji-matching fallback, top-usage list), the fix propagates to all consumers.
+
+### Layer 2 — future work: respect annotated_forms
+
+`annotated_forms` in vocab.json records which written or kana form the corpus
+annotator actually used in the reading passage. It is used today to resolve the
+preferred display form (`annotatorResolved` on `VocabItem`), but it is not yet
+used to narrow which kanji characters "belong" to a corpus word.
+
+Motivation: if a JMDict entry has two non-excluded kanji forms — say `焚き木` and
+`薪` — and `annotated_forms` names only `焚き木`, then 薪 should arguably not
+appear in KanjiDetailSheet for the kanji 薪, because the annotator (and learner)
+is working with the `焚き木` spelling.
+
+Note: `annotated_forms` can contain a kana-only form (e.g. `["とけい"]` for 時計).
+In that case the annotator identified the word by reading alone, and the JMDict
+entry's kanji forms might still all be relevant for kanji learning — for instance,
+the learner may well want to learn 時計 even if the corpus sentence uses the kana
+form. So kana-only `annotated_forms` should probably not suppress any kanji forms.
+
+The decision of whether layer 2 is worth the added complexity should be made when
+implementing Step 3 (iOS frequency list). For now, layer 1 (sK exclusion) is
+sufficient to eliminate the main false positives observed in practice.
