@@ -682,6 +682,12 @@ struct WordDetailSheet: View {
                         Image(systemName: "chevron.right")
                             .font(.body)
                             .foregroundStyle(.secondary)
+                            .foregroundStyle(
+                                (selectedKanjiChars
+                                    .contains(kanji)
+                                    || kanjiQuizEnrolled[kanji] == true)
+                                    ? .green : .accentColor
+                            )
                     }
                 }
             }

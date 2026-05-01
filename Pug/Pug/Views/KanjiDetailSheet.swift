@@ -260,7 +260,7 @@ private struct TopUsageRow: View {
             }
             GeometryReader { geo in
                 RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.accentColor.opacity(0.35))
+                    .fill(Color.green.opacity(0.85))
                     .frame(width: geo.size.width * fraction, height: 3)
             }
             .frame(height: 3)
