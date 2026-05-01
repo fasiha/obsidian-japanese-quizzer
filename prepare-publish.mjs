@@ -9,6 +9,12 @@
  *
  * Output: vocab.json, grammar.json, corpus.json at project root
  *
+ * Ctrl-C safety: vocab.json is written incrementally after every LLM call
+ * (both sense analysis and kanji meanings). Interrupting the script mid-run
+ * preserves all work completed so far; the next run reloads from vocab.json
+ * and skips already-analyzed entries. Any new LLM step added to this script
+ * must honor this guarantee by writing vocab.json after each successful call.
+ *
  * Workflow:
  *   1. Validate and extract vocab/grammar from all Markdown files
  *   2. Run sense analysis on vocab via LLM (unless --no-llm)
@@ -19,11 +25,12 @@
  *   --no-llm              : skip LLM calls for both sense analysis and compound verb detection
  *   --max-senses N        : only run sense analysis for at most N words
  *   --max-compound-verbs N: only run compound verb detection for at most N suffix categories
+ *   --max-kanji-senses N  : only run kanji meanings analysis for at most N words
  *
- * Usage: node prepare-publish.mjs [--no-llm] [--max-senses N] [--max-compound-verbs N]
+ * Usage: node prepare-publish.mjs [--no-llm] [--max-senses N] [--max-compound-verbs N] [--max-kanji-senses N]
  */
 
-import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
+import { setup, findExactIds, idsToWords, kanjiAnywhere } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
@@ -36,6 +43,7 @@ import {
   parseFrontmatter,
   projectRoot,
   JMDICT_DB,
+  KANJIDIC2_DB,
   loadGrammarDatabases,
   extractGrammarBullets,
   extractDetailsBlocks,
@@ -318,16 +326,21 @@ function extractCounterBullets(content) {
 
 // --- Command-line flags ---
 // --no-llm              : skip all LLM sense-analysis calls and compound verb detection
+// --dry-run             : skip all LLM calls entirely (no token burn); don't write output files
 // --max-senses N        : only run LLM analysis for at most N words (useful for spot-checking)
 // --max-compound-verbs N: only run compound verb LLM analysis for at most N suffixes
 const args = process.argv.slice(2);
 const noLlm = args.includes("--no-llm");
+const dryRun = args.includes("--dry-run");
 const maxSensesIdx = args.indexOf("--max-senses");
 const maxSenses =
   maxSensesIdx !== -1 ? parseInt(args[maxSensesIdx + 1], 10) : Infinity;
 const maxCompoundVerbsIdx = args.indexOf("--max-compound-verbs");
 const maxCompoundVerbs =
   maxCompoundVerbsIdx !== -1 ? parseInt(args[maxCompoundVerbsIdx + 1], 10) : Infinity;
+const maxKanjiSensesIdx = args.indexOf("--max-kanji-senses");
+const maxKanjiSenses =
+  maxKanjiSensesIdx !== -1 ? parseInt(args[maxKanjiSensesIdx + 1], 10) : Infinity;
 
 // Define output paths
 const outPath = path.join(projectRoot, "vocab.json");
@@ -355,6 +368,9 @@ if (existsSync(outPath)) {
       }
       if (w.notCompound === true) {
         existingWordFlags.set(w.id, { notCompound: true });
+      }
+      if (w.kanjiMeanings) {
+        existingWordFlags.set(w.id, { ...existingWordFlags.get(w.id), kanjiMeanings: w.kanjiMeanings });
       }
     }
   } catch {
@@ -556,6 +572,156 @@ const bccwjOverrides = existsSync(bccwjOverridesPath)
   ? JSON.parse(readFileSync(bccwjOverridesPath, "utf8")).overrides
   : {};
 
+// Kanji form tags that indicate a non-standard written spelling.
+// Kept in sync with the same constant in kanji-frequency-top10.mjs.
+const EXCLUDED_KANJI_TAGS = new Set(["rK", "iK", "sK", "oK", "ateji"]);
+
+function isKanjiChar(ch) {
+  const cp = ch.codePointAt(0);
+  return (
+    (cp >= 0x4e00 && cp <= 0x9fff) ||
+    (cp >= 0x3400 && cp <= 0x4dbf) ||
+    (cp >= 0x20000 && cp <= 0x2a6df)
+  );
+}
+
+/**
+ * Build the kanji-top-usage data structure.
+ *
+ * For each kanji character that appears in a normal (non-excluded) kanji form
+ * of a corpus word, queries BCCWJ for the top 50 long-unit-word entries by
+ * pmw descending, matches each row to a JMDict ID, and checks for JMDict-common
+ * words that have no BCCWJ match (possible UniDic canonicalization mismatches).
+ *
+ * @param {object[]} words - final corpus word array (each has .id)
+ * @param {Map<string, object>} jmdictById - JMDict entry map keyed by entry ID
+ * @param {Set<string>} corpusWordIds - set of JMDict IDs in the corpus
+ * @param {import('better-sqlite3').Database|null} bccwjDatabase - open bccwj.sqlite handle, or null
+ * @param {import('better-sqlite3').Database} jmdictDb - open jmdict.sqlite handle
+ * @returns {{ [kanjiChar: string]: { totalMatches: number, words: object[] } }}
+ */
+function buildKanjiTopUsage(words, jmdictById, corpusWordIds, bccwjDatabase, jmdictDb) {
+  if (!bccwjDatabase) return {};
+
+  // --- Extract unique kanji characters from non-excluded kanji forms ---
+  const kanjiChars = new Set();
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    if (!jmWord) continue;
+    const normalForms = (jmWord.kanji ?? []).filter(
+      (k) => !k.tags.some((t) => EXCLUDED_KANJI_TAGS.has(t))
+    );
+    for (const form of normalForms) {
+      for (const ch of form.text) {
+        if (isKanjiChar(ch)) kanjiChars.add(ch);
+      }
+    }
+  }
+
+  // --- Build (kanjiText, hiraganaReading) → JMDict ID lookup per kanji char ---
+  // For each kanji character, fetch all JMDict entries that contain it via
+  // kanjiAnywhere, then index their non-excluded kanji forms × kana readings.
+  const kanjiCharToJmWords = new Map(); // ch → [{id, kanjiText, reading, isCommon}]
+  for (const ch of kanjiChars) {
+    const entries = kanjiAnywhere(jmdictDb, ch);
+    const result = [];
+    for (const entry of entries) {
+      for (const kf of entry.kanji ?? []) {
+        if (kf.tags.some((t) => EXCLUDED_KANJI_TAGS.has(t))) continue;
+        if (!kf.text.includes(ch)) continue;
+        const isCommon = kf.common || (entry.kana ?? []).some((k) => k.common);
+        for (const kana of entry.kana ?? []) {
+          result.push({
+            id: entry.id,
+            kanjiText: kf.text,
+            reading: toHiragana(kana.text),
+            isCommon,
+          });
+        }
+      }
+    }
+    kanjiCharToJmWords.set(ch, result);
+  }
+
+  // --- Prepare BCCWJ queries ---
+  const topQuery = bccwjDatabase.prepare(
+    "SELECT kanji, reading, pmw FROM bccwj WHERE kanji LIKE ? ORDER BY pmw DESC LIMIT 50"
+  );
+  const countQuery = bccwjDatabase.prepare(
+    "SELECT count(*) as n FROM bccwj WHERE kanji LIKE ?"
+  );
+  const exactQuery = bccwjDatabase.prepare(
+    "SELECT 1 FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1"
+  );
+
+  const result = {};
+
+  for (const ch of [...kanjiChars].sort()) {
+    const pattern = `%${ch}%`;
+    const rows = topQuery.all(pattern);
+    const { n: totalMatches } = countQuery.get(pattern);
+
+    if (rows.length === 0) continue; // omit kanji with no BCCWJ data
+
+    // Build a set of (kanjiText\treading) pairs in the top-50 for mismatch check
+    const bccwjPairs = new Set(
+      rows.map((r) => `${r.kanji}\t${toHiragana(r.reading)}`)
+    );
+
+    const jmWords = kanjiCharToJmWords.get(ch) ?? [];
+
+    // Build a lookup map from (kanjiText, hiraganaReading) → JMDict ID.
+    // When there are multiple matches prefer corpus words.
+    const pairToId = new Map(); // "kanjiText\treading" → id
+    for (const { id, kanjiText, reading } of jmWords) {
+      const key = `${kanjiText}\t${reading}`;
+      const existing = pairToId.get(key);
+      if (!existing) {
+        pairToId.set(key, id);
+      } else if (!corpusWordIds.has(existing) && corpusWordIds.has(id)) {
+        // Prefer corpus word when there are multiple matches
+        pairToId.set(key, id);
+      }
+    }
+
+    // Match each BCCWJ row to a JMDict ID
+    const wordEntries = rows.map((row) => {
+      const key = `${row.kanji}\t${toHiragana(row.reading)}`;
+      const id = pairToId.get(key) ?? null;
+      if (id !== null) {
+        return { id, pmw: row.pmw };
+      }
+      // No JMDict match — include kanji/reading strings so the iOS UI can still display it
+      return { id: null, kanji: row.kanji, reading: row.reading, pmw: row.pmw };
+    });
+
+    result[ch] = { totalMatches, words: wordEntries };
+
+    // --- Warn about JMDict-common words absent from the top-50 ---
+    const seenIds = new Set();
+    for (const { id, kanjiText, reading, isCommon } of jmWords) {
+      if (!isCommon) continue;
+      if (seenIds.has(id)) continue;
+      seenIds.add(id);
+      // Check all (kanjiText, reading) pairs for this entry
+      const matched = jmWords
+        .filter((e) => e.id === id)
+        .some(
+          (e) =>
+            bccwjPairs.has(`${e.kanjiText}\t${e.reading}`) ||
+            exactQuery.get(e.kanjiText, e.reading)
+        );
+      if (!matched) {
+        console.warn(
+          `[kanji-top-usage] ${ch}: common JMDict word ${kanjiText} (${id}) has no BCCWJ match — possible UniDic mismatch?`
+        );
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * Look up the highest BCCWJ frequency for a JMDict word by trying every
  * combination of written form and hiragana-normalized reading.
@@ -619,6 +785,7 @@ const words = [...wordMap.values()].map(({ id, sources, refs }) => {
   }
   const flags = existingWordFlags.get(id);
   if (flags?.notCompound) entry.notCompound = true;
+  if (flags?.kanjiMeanings) entry.kanjiMeanings = flags.kanjiMeanings;
   return entry;
 });
 
@@ -826,7 +993,7 @@ async function analyzeReferenceSense(anthropic, jmWord, ref, counterInfo = null)
 
   const response = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 600,
+    max_tokens: 800,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -914,6 +1081,98 @@ async function analyzeReferencesSenseBatch(anthropic, jmWord, refs, counterInfoP
   }));
 }
 
+/**
+ * Build a prompt for Haiku to identify which kanjidic2 meanings are active in a word.
+ * allForms: all written forms from writtenForms (e.g. ["入り口", "入口", "這入口"]),
+ * used so Haiku understands which form each kanji comes from.
+ */
+function buildKanjiMeaningsPrompt(jmWord, kanjiMeaningsData, allForms) {
+  const definition = jmWord.sense
+    .slice(0, 3)
+    .map((s) => s.gloss.map((g) => g.text).join("; "))
+    .join(" / ");
+
+  const wordLine = allForms.length > 1
+    ? `Word: ${allForms[0]} (also written: ${allForms.slice(1).join(", ")})`
+    : `Word: ${allForms[0] ?? jmWord.kanji?.[0]?.text ?? jmWord.kana?.[0]?.text}`;
+
+  // Numbered list so Haiku sees each meaning as a discrete item and returns
+  // the exact string (important for multi-part meanings like "counter for birds, rabbits").
+  const kanjiBlocks = kanjiMeaningsData.map(({ kanji, meanings }) => {
+    const numbered = meanings.map((m, i) => `  ${i + 1}. "${m}"`).join("\n");
+    return `${kanji}:\n${numbered}`;
+  }).join("\n");
+
+  const exampleJson = kanjiMeaningsData
+    .map(({ kanji, meanings }) => `"${kanji}": ["${meanings[0]}"]`)
+    .join(", ");
+
+  const prompt =
+    `You are helping identify which meanings of individual kanji are used in a Japanese word.\n\n` +
+    `${wordLine}\n` +
+    `Definition: ${definition}\n\n` +
+    `For each kanji below, identify which numbered meanings apply to this word's sense.\n` +
+    `Copy the meaning strings exactly as written — do not paraphrase or split them.\n\n` +
+    `${kanjiBlocks}\n\n` +
+    `For each kanji, give a one-sentence rationale, then end with a JSON code block ` +
+    `whose values are arrays of the exact meaning strings chosen:\n` +
+    `\`\`\`json\n{${exampleJson}}\n\`\`\``;
+
+  return prompt;
+}
+
+/**
+ * Call Haiku to determine which kanjidic2 meanings are active in a word.
+ * Returns a map from kanji character to array of active meanings.
+ * Throws on API error or malformed response.
+ */
+async function analyzeKanjiMeanings(anthropic, jmWord, kanjiMeaningsData, allForms) {
+  const displayForm = allForms[0] ?? jmWord?.kanji?.[0]?.text ?? jmWord?.kana?.[0]?.text ?? "(unknown)";
+  const prompt = buildKanjiMeaningsPrompt(jmWord, kanjiMeaningsData, allForms);
+
+  const response = await anthropic.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 300,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const fullText = response.content[0].text;
+  const fenceMatches = [...fullText.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+  if (fenceMatches.length === 0) {
+    throw new Error(`Haiku returned no JSON code block for kanji meanings of ${displayForm}:\n${fullText}`);
+  }
+
+  const jsonText = fenceMatches[fenceMatches.length - 1][1].trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    throw new Error(`Haiku returned non-JSON for kanji meanings of ${displayForm}: ${jsonText}`);
+  }
+
+  // Validate and normalize the response. Always include every kanji (even with
+  // an empty array) so the stored object is a complete sentinel — future runs
+  // will not re-analyze words that Haiku already evaluated.
+  const result = {};
+  for (const { kanji, meanings } of kanjiMeaningsData) {
+    const selected = parsed[kanji];
+    // Default to empty array if Haiku omitted the key or returned non-array.
+    const validMeanings = Array.isArray(selected)
+      ? selected.filter((m) => meanings.includes(m))
+      : [];
+    result[kanji] = validMeanings;
+  }
+
+  return { result, reasoning: fullText };
+}
+
+// All Haiku calls (sense analysis and kanji meanings) are logged here so every
+// LLM response can be reviewed after the run. Written incrementally so Ctrl-C
+// does not lose entries already collected.
+const reasoningLogPath = `/tmp/sense-reasoning-${Date.now()}.log`;
+const reasoningLines = [];
+console.log(`  Sense reasoning log → ${reasoningLogPath}`);
+
 // Run per-reference sense analysis.
 // --no-llm: carry forward cached llm_sense values but skip all Haiku calls.
 let counterPotentialCount = 0;      // counter-capable words with unevaluated senses
@@ -922,11 +1181,6 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
   const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   let refsAnalyzed = 0;
   let noLlmSkippedCount = 0; // refs that need LLM but were skipped by --no-llm
-
-  // Open a reasoning log file so we can review Haiku's chain-of-thought later
-  const reasoningLogPath = `/tmp/sense-reasoning-${Date.now()}.log`;
-  const reasoningLines = [];
-  console.log(`  Sense reasoning log → ${reasoningLogPath}`);
 
   // Pre-populate every ref that can be resolved without an LLM call so that
   // the incremental vocab.json writes below never clobber previously-computed
@@ -1147,6 +1401,115 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
   }
 }
 
+// Analyze kanji meanings.
+// --no-llm: carry forward cached kanjiMeanings values but skip all Haiku calls.
+// --dry-run: skip all LLM calls entirely (no token burn).
+if (!dryRun) {
+  const kanjidicDB = new Database(KANJIDIC2_DB, { readonly: true });
+  const anthropic = noLlm ? null : new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  console.log("\nAnalyzing kanji meanings…");
+  let kanjiAnalyzed = 0;
+
+  const kanjidicStmt = kanjidicDB.prepare("SELECT meanings FROM kanji WHERE literal = ?");
+
+  for (const word of words) {
+    const jmWord = jmdictById.get(word.id);
+    if (!word.writtenForms?.some((f) => f.forms?.length > 0)) continue;
+
+    // If kanjiMeanings already exists (from cache), it covers all writtenForms
+    // kanji — no need to re-analyze.
+    const flags = existingWordFlags.get(word.id);
+    if (flags?.kanjiMeanings) {
+      word.kanjiMeanings = flags.kanjiMeanings;
+      continue;
+    }
+
+    // Collect all written forms and unique kanji from writtenForms
+    // (maximum-kanji collapsed forms). Showing all forms in the prompt lets
+    // Haiku understand which form each kanji comes from (e.g. 這 comes from
+    // 這入口, not 入り口).
+    const allForms = [...new Set(
+      (word.writtenForms ?? []).flatMap((rf) => rf.forms ?? []).map((f) => f.text),
+    )];
+    const uniqueKanji = [...new Set(
+      (word.writtenForms ?? []).flatMap((rf) => rf.forms ?? []).flatMap((f) => f.text.split("")),
+    )];
+
+    const kanjiMeaningsData = [];
+    for (const kanji of uniqueKanji) {
+      const row = kanjidicStmt.get(kanji);
+      if (row?.meanings) {
+        try {
+          const meanings = JSON.parse(row.meanings);
+          if (Array.isArray(meanings) && meanings.length > 0) kanjiMeaningsData.push({ kanji, meanings });
+        } catch { /* skip */ }
+      }
+    }
+
+    if (kanjiMeaningsData.length === 0) continue;
+
+    const displayForm = allForms[0] ?? jmWord?.kanji?.[0]?.text ?? word.id;
+
+    if (kanjiAnalyzed >= maxKanjiSenses) {
+      console.log(`  Would analyze kanji meanings for ${displayForm} (skipped, --max-kanji-senses limit reached)`);
+      continue;
+    }
+
+    if (noLlm) {
+      console.log(`  Would analyze kanji for ${displayForm} (skipped by --no-llm)`);
+      continue;
+    }
+
+    // Call Haiku to determine active meanings
+    kanjiAnalyzed++;
+    try {
+      process.stdout.write(`  Analyzing kanji meanings for ${displayForm} (${kanjiAnalyzed}/${maxKanjiSenses === Infinity ? "all" : maxKanjiSenses})… `);
+      const { result: kanjiMeanings, reasoning } = await analyzeKanjiMeanings(anthropic, jmWord, kanjiMeaningsData, allForms);
+      // Always store the result (even if all meaning arrays are empty) so the
+      // cache sentinel is set and future runs skip this word.
+      word.kanjiMeanings = kanjiMeanings;
+      existingWordFlags.set(word.id, { ...existingWordFlags.get(word.id), kanjiMeanings: kanjiMeanings });
+      reasoningLines.push(
+        `${"=".repeat(60)}\nkanjiMeanings  ${displayForm}  →  ${JSON.stringify(kanjiMeanings)}\n${"=".repeat(60)}\n${reasoning}\n`,
+      );
+      writeFileSync(reasoningLogPath, reasoningLines.join("\n"));
+      process.stdout.write(`✓\n`);
+      writeFileSync(outPath, JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        stories: stories.map(({ title }) => ({ title })),
+        words,
+        sourceOrders,
+      }, null, 2) + "\n");
+    } catch (e) {
+      console.log(`✗ (${e.message})`);
+    }
+  }
+
+  if (kanjiAnalyzed > 0) {
+    console.log(`Analyzed kanji meanings for ${kanjiAnalyzed} word(s).${maxKanjiSenses !== Infinity ? ` (--max-kanji-senses ${maxKanjiSenses})` : ""}`);
+  }
+}
+
+// --- Kanji top-usage frequency data ---
+const kanjiTopUsage = buildKanjiTopUsage(
+  words,
+  jmdictById,
+  new Set(words.map((w) => w.id)),
+  bccwjDb,
+  db
+);
+const kanjiTopUsagePath = path.join(projectRoot, "kanji-top-usage.json");
+if (!dryRun) {
+  writeFileSync(
+    kanjiTopUsagePath,
+    JSON.stringify({ generatedAt: new Date().toISOString(), kanji: kanjiTopUsage }, null, 2) + "\n"
+  );
+  console.log(`Wrote ${Object.keys(kanjiTopUsage).length} kanji entries → ${kanjiTopUsagePath}`);
+} else {
+  console.log(`[DRY RUN] Would write ${Object.keys(kanjiTopUsage).length} kanji entries to ${kanjiTopUsagePath}`);
+}
+
 const output = {
   generatedAt: new Date().toISOString(),
   stories: stories.map(({ title }) => ({ title })),
@@ -1154,12 +1517,16 @@ const output = {
   sourceOrders,
 };
 
-writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
-console.log(
-  `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
-);
-if (counterPotentialCount > 0 || counterSkippedCount > 0) {
-  console.log(`- ${counterPotentialCount} potential counter senses found, ${counterSkippedCount} skipped`);
+if (!dryRun) {
+  writeFileSync(outPath, JSON.stringify(output, null, 2) + "\n");
+  console.log(
+    `\nWrote ${words.length} words from ${stories.length} story/stories → ${outPath}`,
+  );
+  if (counterPotentialCount > 0 || counterSkippedCount > 0) {
+    console.log(`- ${counterPotentialCount} potential counter senses found, ${counterSkippedCount} skipped`);
+  }
+} else {
+  console.log(`\n[DRY RUN] Would have written ${words.length} words to ${outPath}`);
 }
 
 // --- Grammar JSON ---
@@ -1198,7 +1565,9 @@ const grammarOutput = {
 // read the latest topics even if this script exits with an error below.
 // (Description fields from equivalences are injected after the check below.)
 const grammarOutPath = path.join(projectRoot, "grammar.json");
-writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+if (!dryRun) {
+  writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+}
 
 // Validate grammar/grammar-equivalences.json covers all grammar topics
 const equivPath = path.join(
@@ -1257,10 +1626,12 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
   }
 }
 
-writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
-console.log(
-  `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
-);
+if (!dryRun) {
+  writeFileSync(grammarOutPath, JSON.stringify(grammarOutput, null, 2) + "\n");
+  console.log(
+    `Wrote ${Object.keys(grammarTopics).length} grammar topics → ${grammarOutPath}`,
+  );
+}
 
 // --- Corpus JSON ---
 // Build per-title vocab and grammar counts from the already-compiled maps.
@@ -1335,13 +1706,15 @@ for (const { title, content } of stories) {
 }
 
 const corpusOutPath = path.join(projectRoot, "corpus.json");
-writeFileSync(
-  corpusOutPath,
-  JSON.stringify({ images: corpusImages, entries: corpusEntries }, null, 2) + "\n",
-);
-console.log(
-  `Wrote ${corpusEntries.length} corpus entries, ${corpusImages.length} image(s) → ${corpusOutPath}`,
-);
+if (!dryRun) {
+  writeFileSync(
+    corpusOutPath,
+    JSON.stringify({ images: corpusImages, entries: corpusEntries }, null, 2) + "\n",
+  );
+  console.log(
+    `Wrote ${corpusEntries.length} corpus entries, ${corpusImages.length} image(s) → ${corpusOutPath}`,
+  );
+}
 
 // --- Compound verb detection ---
-await checkAndUpdateCompoundVerbs({ dryRun: noLlm, maxLlm: maxCompoundVerbs });
+await checkAndUpdateCompoundVerbs({ dryRun: dryRun || noLlm, maxLlm: maxCompoundVerbs });

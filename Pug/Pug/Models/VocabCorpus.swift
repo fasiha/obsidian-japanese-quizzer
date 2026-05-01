@@ -36,6 +36,9 @@ struct VocabItem: Identifiable {
     let corpusSenseIndices: [Int]
     /// Frequency in the BCCWJ corpus expressed as occurrences per million words. Nil when not matched.
     let bccwjPerMillionWords: Double?
+    /// LLM-identified kanjidic2 meanings active in this word, keyed by kanji character.
+    /// Populated by the kanjiMeanings step in prepare-publish.mjs. Nil when not yet analyzed.
+    let kanjiMeanings: [String: [String]]?
 
     // Derived from DB state (ebisu_models + learned + word_commitment)
     var commitment: WordCommitment?
@@ -221,6 +224,7 @@ final class VocabCorpus {
                 references: entry.references ?? [:],
                 corpusSenseIndices: corpusSenseIndices,
                 bccwjPerMillionWords: entry.bccwjPerMillionWords,
+                kanjiMeanings: entry.kanjiMeanings,
                 commitment: commitment,
                 readingState: readingState,
                 kanjiState: kanjiState
@@ -488,5 +492,20 @@ final class VocabCorpus {
     /// Force a fresh download from the remote URL, then reload.
     func redownload(db: QuizDB, jmdict: any DatabaseReader) async {
         await load(db: db, jmdict: jmdict, download: true)
+    }
+
+    // MARK: - Kanji helpers
+
+    /// Returns enrolled VocabItems (other than `excludingId`) that have the given kanji
+    /// character in their committed kanji selection.
+    func otherEnrolledWords(for kanji: String, excluding excludingId: String) -> [VocabItem] {
+        items.filter { other in
+            guard other.id != excludingId, other.kanjiState == .learning else { return false }
+            guard let json = other.commitment?.kanjiChars,
+                  let data = json.data(using: .utf8),
+                  let chars = try? JSONDecoder().decode([String].self, from: data)
+            else { return false }
+            return chars.contains(kanji)
+        }
     }
 }

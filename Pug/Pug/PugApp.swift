@@ -27,6 +27,7 @@ struct AppRootView: View {
     @State private var pairCorpus = TransitivePairCorpus()
     @State private var counterCorpus = CounterCorpus()
     @State private var corpusStore = CorpusStore()
+    @State private var kanjiTopUsageStore = KanjiTopUsageStore()
     @State private var db: QuizDB? = nil
     @State private var jmdict: (any DatabaseReader)? = nil
     @State private var errorMessage: String? = nil
@@ -49,6 +50,7 @@ struct AppRootView: View {
                         .environment(counterCorpus)
                         .environment(grammarStore)
                         .environment(corpusStore)
+                        .environment(kanjiTopUsageStore)
                         .environment(clipPlayer)
                 } else {
                     ContentUnavailableView(
@@ -142,9 +144,11 @@ struct AppRootView: View {
             async let corpusLoad = loadCorpusEntries()
             async let pairLoad: () = pairCorpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             async let counterLoad: () = counterCorpus.load(db: quizDB)
+            async let kanjiTopUsageLoad: () = kanjiTopUsageStore.load()
             await corpus.load(db: quizDB, jmdict: toolHandler.jmdict)
             await pairLoad
             await counterLoad
+            await kanjiTopUsageLoad
             session!.pairCorpus = pairCorpus
             session!.counterCorpus = counterCorpus
             grammarStore.manifest = await grammarLoad
@@ -200,11 +204,13 @@ struct AppRootView: View {
         async let vocabReload: () = corpus.load(db: db, jmdict: jmdict, download: true)
         async let pairsReload: () = pairCorpus.load(db: db, jmdict: jmdict, download: true)
         async let countersReload: () = counterCorpus.load(db: db, download: true)
+        async let kanjiTopUsageReload: () = kanjiTopUsageStore.reload()
         async let grammarReload = forceDownloadGrammar()
         async let corpusReload: () = forceDownloadCorpus()
         await vocabReload
         await pairsReload
         await countersReload
+        await kanjiTopUsageReload
         if let m = await grammarReload {
             grammarStore.manifest = m
             try? await db.backfillEquivalenceGroupEbisu(from: m)

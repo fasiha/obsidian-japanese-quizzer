@@ -34,6 +34,9 @@ struct VocabWordEntry: Codable {
     /// Frequency in the BCCWJ corpus (approx. 83 million words), expressed as occurrences per million words.
     /// Absent for words not matched in BCCWJ.
     let bccwjPerMillionWords: Double?
+    /// LLM-identified kanjidic2 meanings active in this word, keyed by kanji character.
+    /// Absent for words without kanji or not yet analyzed by the kanjiMeanings LLM step.
+    let kanjiMeanings: [String: [String]]?
 
     /// Union of sense indices across all corpus occurrences, sorted and deduplicated.
     /// Empty when no reference has llm_sense data.

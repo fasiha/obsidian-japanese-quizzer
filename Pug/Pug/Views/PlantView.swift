@@ -156,23 +156,10 @@ struct PlantView: View {
 
                 Divider()
 
-                // Kanji toggle (only when the word has real kanji forms)
+                // Kanji info cards (only when the word has real kanji forms).
+                // Tap a card to enroll that kanji; deselect all to skip kanji learning.
                 if !word.writtenTexts.isEmpty && !word.isKanaOnly {
-                    Toggle(isOn: $session.currentIntroKanjiEnabled) {
-                        Label("Learn the kanji spelling too", systemImage: "character.book.closed")
-                    }
-                    .toggleStyle(.switch)
-                    .onChange(of: session.currentIntroKanjiEnabled) { _, enabled in
-                        if enabled && session.currentIntroSelectedKanji.isEmpty {
-                            // Default: select all kanji in the first written form.
-                            let allKanji = introKanjiChars(for: word)
-                            session.currentIntroSelectedKanji = Set(allKanji)
-                        }
-                    }
-
-                    if session.currentIntroKanjiEnabled {
-                        kanjiCharPicker(for: word)
-                    }
+                    kanjiCharPicker(for: word)
                 }
 
                 Divider()
@@ -185,7 +172,7 @@ struct PlantView: View {
                             origin: .document(title: session.documentTitle)
                         )
                     } label: {
-                        Label("Explore word", systemImage: "sparkles")
+                        Text("Details")
                             .font(.subheadline)
                     }
                     .buttonStyle(.bordered)
@@ -375,6 +362,7 @@ struct PlantView: View {
     // MARK: - Done screens
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(VocabCorpus.self) private var corpus
 
     private var batchDoneView: some View {
         ScrollView {
@@ -482,42 +470,39 @@ struct PlantView: View {
         return firstForm.furigana.extractKanji()
     }
 
-    /// Tappable kanji character picker, mirroring the kanji char picker in WordDetailSheet.
+    /// Tappable kanji info cards for the intro (planting) flow.
     @ViewBuilder
     private func kanjiCharPicker(for word: VocabItem) -> some View {
+        let firstFormSegments = word.writtenForms.flatMap(\.forms).first?.furigana ?? []
         let allKanji = introKanjiChars(for: word)
         if !allKanji.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text("Kanji to learn")
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
                     .tracking(0.5)
-                FlowLayout(spacing: 8) {
-                    ForEach(allKanji, id: \.self) { kanji in
-                        let selected = session.currentIntroSelectedKanji.contains(kanji)
-                        let isLastSelected = selected && session.currentIntroSelectedKanji.count == 1
-                        Button {
+                ForEach(allKanji, id: \.self) { kanji in
+                    let enrolled = session.currentIntroSelectedKanji.contains(kanji)
+                    KanjiInfoCard(
+                        kanji: kanji,
+                        wordReading: readingForKanji(kanji, in: firstFormSegments),
+                        activeWordMeanings: word.kanjiMeanings?[kanji] ?? [],
+                        kanjidicDB: toolHandler.kanjidic,
+                        isWordEnrolled: enrolled,
+                        isKanjiEnrolled: false,
+                        otherWords: corpus.otherEnrolledWords(for: kanji, excluding: word.id),
+                        onToggleWord: {
                             var chars = session.currentIntroSelectedKanji
                             if chars.contains(kanji) { chars.remove(kanji) } else { chars.insert(kanji) }
                             session.currentIntroSelectedKanji = chars
-                        } label: {
-                            Text(kanji)
-                                .font(.title2)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(selected ? Color.green.opacity(0.2) : Color(.secondarySystemBackground))
-                                .foregroundStyle(selected ? .green : .primary)
-                                .clipShape(RoundedRectangle(cornerRadius: 8))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .stroke(selected ? Color.green : Color.clear, lineWidth: 1.5)
-                                )
+                        },
+                        onToggleKanji: {},
+                        onTapOtherWord: { other in
+                            selectedWordForDetail = VocabItemSelection(item: other, origin: nil)
                         }
-                        .buttonStyle(.plain)
-                        .disabled(isLastSelected)
-                    }
+                    )
                 }
             }
         }

@@ -14,6 +14,10 @@
 import SwiftUI
 import GRDB
 
+private struct IdentifiableString: Identifiable {
+    let id: String
+}
+
 /// Where the user navigated from when opening WordDetailSheet.
 /// Used to scope sense highlighting to the specific document or line the student was reading,
 /// rather than showing the corpus-wide union of all senses.
@@ -103,6 +107,14 @@ struct WordDetailSheet: View {
     @State private var pastTurns: [ChatTurn] = []
     @State private var wordReviews: [Review] = []
     @State private var selectedReview: IdentifiableReview? = nil
+    @State private var kanjiOtherWordDetail: VocabItem? = nil
+    @State private var selectedKanjiForDetail: IdentifiableString? = nil
+    /// Maps kanji character → other VocabItems that have enrolled this kanji (via source_jmdicts),
+    /// excluding the current word. Loaded async in loadEbisuModels.
+    @State private var kanjiSponsorWords: [String: [VocabItem]] = [:]
+    /// Tracks which kanji characters have global kanji quiz rows sponsored by this word
+    /// (word_type="kanji" with this word's jmdict ID in source_jmdicts). Loaded async.
+    @State private var kanjiQuizEnrolled: [String: Bool] = [:]
 
     var body: some View {
         NavigationStack {
@@ -164,6 +176,14 @@ struct WordDetailSheet: View {
                 TransitivePairDetailSheet(initialItem: pairItem, pairCorpus: pairCorpus,
                                           db: db, jmdict: jmdict,
                                           client: client, toolHandler: toolHandler)
+            }
+            .sheet(item: $kanjiOtherWordDetail) { otherItem in
+                WordDetailSheet(initialItem: otherItem, db: db, client: client,
+                                toolHandler: toolHandler, jmdict: jmdict, origin: nil)
+            }
+            .sheet(item: $selectedKanjiForDetail) { item in
+                KanjiDetailSheet(kanji: item.id, db: db, client: client,
+                                 toolHandler: toolHandler, jmdict: jmdict)
             }
         }
     }
@@ -400,14 +420,9 @@ struct WordDetailSheet: View {
                 readingStateControl
             }
 
-            // Kanji state control (only if word has kanji and reading is not unknown)
+            // Kanji info cards (only if word has kanji and reading is not unknown)
             if item.hasKanjiOptions && item.readingState != .unknown {
-                kanjiStateControl
-            }
-
-            // Kanji character picker (only when kanji = learning)
-            if item.kanjiState == .learning {
-                kanjiCharPicker
+                kanjiInfoCards
             }
 
             ForEach(counterItemsToShow) { counterItem in
@@ -634,66 +649,55 @@ struct WordDetailSheet: View {
         }
     }
 
-    // MARK: - Kanji state control
+    // MARK: - Kanji info cards
 
-    private var kanjiStateControl: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private var kanjiInfoCards: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text("Kanji")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
-            Picker("Kanji", selection: Binding(
-                get: { item.kanjiState },
-                set: { newState in setKanjiState(newState) }
-            )) {
-                Text("Don't know").tag(FacetState.unknown)
-                Text("Learning").tag(FacetState.learning)
-                // Known only available if reading is known
-                if item.readingState == .known {
-                    Text("Known").tag(FacetState.known)
+            let segments = committedFuriganaSegments
+            let allKanji = segments.extractKanji()
+            ForEach(allKanji, id: \.self) { kanji in
+                HStack(alignment: .center, spacing: 12) {
+                    KanjiInfoCard(
+                        kanji: kanji,
+                        wordReading: readingForKanji(kanji, in: segments),
+                        activeWordMeanings: item.kanjiMeanings?[kanji] ?? [],
+                        kanjidicDB: toolHandler?.kanjidic,
+                        isWordEnrolled: selectedKanjiChars.contains(kanji),
+                        isKanjiEnrolled: kanjiQuizEnrolled[kanji] == true,
+                        otherWords: otherEnrolledWords(for: kanji),
+                        onToggleWord: { toggleKanjiChar(kanji) },
+                        onToggleKanji: { toggleKanjiQuiz(kanji) },
+                        onTapOtherWord: { kanjiOtherWordDetail = $0 }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        selectedKanjiForDetail = IdentifiableString(id: kanji)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
-            .pickerStyle(.segmented)
         }
     }
 
-    // MARK: - Kanji character picker
+    private var committedFuriganaSegments: [FuriganaSegment] {
+        guard let json = item.commitment?.furigana,
+              let data = json.data(using: .utf8),
+              let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
+        else { return [] }
+        return segs
+    }
 
-    private var kanjiCharPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Kanji to learn")
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.secondary)
-                .textCase(.uppercase)
-                .tracking(0.5)
-            let allKanji = extractKanjiFromCommitment()
-            FlowLayout(spacing: 8) {
-                ForEach(allKanji, id: \.self) { kanji in
-                    let selected = selectedKanjiChars.contains(kanji)
-                    let isLastSelected = selected && selectedKanjiChars.count == 1
-                    Button {
-                        toggleKanjiChar(kanji)
-                    } label: {
-                        Text(kanji)
-                            .font(.title2)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selected ? Color.green.opacity(0.2) : Color(.secondarySystemBackground))
-                            .foregroundStyle(selected ? .green : .primary)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selected ? Color.green : Color.clear, lineWidth: 1.5)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isLastSelected)
-                }
-            }
-        }
+    private func otherEnrolledWords(for kanji: String) -> [VocabItem] {
+        kanjiSponsorWords[kanji] ?? []
     }
 
     // MARK: - Ebisu halflives table
@@ -773,6 +777,14 @@ struct WordDetailSheet: View {
             switch quizType {
             case "meaning-to-reading": return "\(counterPrefix)Meaning → Reading"
             case "counter-number-to-reading": return "\(counterPrefix)Number → Reading"
+            default: return quizType
+            }
+        }
+        if wordType == "kanji" {
+            switch quizType {
+            case "kanji-to-on-reading":  return "Kanji Quiz: Character → On-reading"
+            case "kanji-to-kun-reading": return "Kanji Quiz: Character → Kun-reading"
+            case "kanji-to-meaning":     return "Kanji Quiz: Character → Meaning"
             default: return quizType
             }
         }
@@ -925,6 +937,7 @@ struct WordDetailSheet: View {
     // MARK: - Action implementations
 
     private var selectedKanjiChars: Set<String> {
+        guard item.kanjiState == .learning else { return [] }
         guard let json = item.commitment?.kanjiChars,
               let data = json.data(using: .utf8),
               let arr = try? JSONDecoder().decode([String].self, from: data)
@@ -1004,13 +1017,37 @@ struct WordDetailSheet: View {
         }
     }
 
+    /// Toggles word-context kanji facets (kanji-to-reading, meaning-reading-to-kanji) for this word.
     private func toggleKanjiChar(_ kanji: String) {
         var current = selectedKanjiChars
-        if current.contains(kanji) { current.remove(kanji) } else { current.insert(kanji) }
+        let wasEnrolled = current.contains(kanji)
+        if wasEnrolled { current.remove(kanji) } else { current.insert(kanji) }
         isWorking = true
         Task {
-            await corpus.setKanjiState(.learning, wordId: item.id,
-                                        kanjiChars: Array(current), db: db)
+            if current.isEmpty {
+                // Deselecting the last kanji is equivalent to "don't know kanji".
+                await corpus.setKanjiState(.unknown, wordId: item.id, kanjiChars: nil, db: db)
+            } else {
+                await corpus.setKanjiState(.learning, wordId: item.id,
+                                            kanjiChars: Array(current), db: db)
+            }
+            await loadEbisuModels()
+            isWorking = false
+        }
+    }
+
+    /// Toggles the global kanji quiz facets (kanji-to-on-reading, kanji-to-kun-reading,
+    /// kanji-to-meaning) for the given kanji character, sponsored by this word.
+    private func toggleKanjiQuiz(_ kanji: String) {
+        guard let quizDB = toolHandler?.quizDB else { return }
+        let wasEnrolled = kanjiQuizEnrolled[kanji] == true
+        isWorking = true
+        Task {
+            if wasEnrolled {
+                try? await quizDB.setKanjiQuizUnknown(kanjiChar: kanji, jmdictId: item.id)
+            } else {
+                try? await quizDB.setKanjiQuizLearning(kanjiChar: kanji, jmdictId: item.id)
+            }
             await loadEbisuModels()
             isWorking = false
         }
@@ -1064,10 +1101,44 @@ struct WordDetailSheet: View {
             }
         }
 
-        let order = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading", "meaning-reading-to-kanji", "counter-number-to-reading"]
-        ebisuModels = allRecords.sorted {
-            (order.firstIndex(of: $0.quizType) ?? 99) < (order.firstIndex(of: $1.quizType) ?? 99)
+        // Load kanji quiz halflives (word_type="kanji", word_id=kanjiChar) only for kanji
+        // where this word is a sponsor (i.e. the user tapped the toggle in this WordDetailSheet).
+        // Kanji enrolled from other words are not shown here — they appear in those words' sheets.
+        let segments = committedFuriganaSegments
+        let allKanji = segments.extractKanji()
+        var newKanjiQuizEnrolled: [String: Bool] = [:]
+        for kanjiChar in allKanji {
+            if let commitment = try? await quizDB.commitment(wordType: "kanji", wordId: kanjiChar),
+               let json = commitment.sourceJmdicts,
+               let data = json.data(using: .utf8),
+               let sponsors = try? JSONDecoder().decode([String].self, from: data),
+               sponsors.contains(item.id) {
+                newKanjiQuizEnrolled[kanjiChar] = true
+                if let kanjiRecords = try? await quizDB.ebisuRecords(wordType: "kanji", wordId: kanjiChar) {
+                    allRecords.append(contentsOf: kanjiRecords)
+                }
+            }
         }
+        kanjiQuizEnrolled = newKanjiQuizEnrolled
+
+        // Populate kanjiSponsorWords: for each kanji in this word, find other VocabItems
+        // whose jmdict ID appears in source_jmdicts for that kanji character.
+        var sponsorMap: [String: [VocabItem]] = [:]
+        for kanjiChar in allKanji {
+            let otherIds = (try? await quizDB.kanjiSponsors(kanjiChar: kanjiChar, excluding: item.id)) ?? []
+            if !otherIds.isEmpty {
+                let otherItems = corpus.items.filter { otherIds.contains($0.id) }
+                if !otherItems.isEmpty { sponsorMap[kanjiChar] = otherItems }
+            }
+        }
+        kanjiSponsorWords = sponsorMap
+
+        let quizTypeOrder = ["reading-to-meaning", "meaning-to-reading", "kanji-to-reading",
+                             "meaning-reading-to-kanji", "counter-number-to-reading",
+                             "kanji-to-on-reading", "kanji-to-kun-reading", "kanji-to-meaning"]
+        let quizTypeIndex = Dictionary(uniqueKeysWithValues: quizTypeOrder.enumerated().map { ($1, $0) })
+        let rank = { (r: EbisuRecord) in (r.wordType == "jmdict" ? 0 : 100) + (quizTypeIndex[r.quizType] ?? 99) }
+        ebisuModels = allRecords.sorted { rank($0) < rank($1) }
 
         var counts: [String: Int] = [:]
         for record in allRecords {
