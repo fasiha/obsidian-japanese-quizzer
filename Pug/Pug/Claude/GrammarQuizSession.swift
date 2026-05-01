@@ -1405,18 +1405,16 @@ nonisolated func fetchAndResolveVocab(
     // Step 1: Ask Haiku for key vocabulary with brief glosses.
     let prompt = """
     Japanese text: \(sentence)
-    Grammar topic: \(topicId)
 
-    List all content-word vocabulary (nouns, verbs, adjectives, adverbs) that a beginner N4-level \
-    learner would likely need to understand. Exclude: particles, copulas (だ/です), proper nouns \
+    List all content-word vocabulary (nouns, verbs, adjectives, adverbs) that a beginner Japanese \
+    learner might need to understand the sentence. Exclude: particles, copulas (だ/です), proper nouns \
     (names of people/places), and pure grammar auxiliaries (e.g. てしまう, ておく, によって as a \
     grammar marker).
 
-    Always include: all kanji words (unless only basic kanji: 私, 日, 月, etc.), uncommon kana words.
+    Definitely include all words using kanji since different learners will be at different kanji levels.
 
     Use dictionary form: 編む not 編まれ, 弾く not 弾いて, 弾いた becomes 弾く.
 
-    Err toward inclusion — it is better to include a common word than to omit an unfamiliar one.
     If there are no such words, return [].
 
     Reply with ONLY a JSON array, nothing else:
