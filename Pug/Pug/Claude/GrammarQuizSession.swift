@@ -1420,10 +1420,10 @@ nonisolated func fetchAndResolveVocab(
     If there are no such words, return [].
 
     Reply with ONLY a JSON array, nothing else:
-    [{"word":"...","gloss":"brief English meaning"},...]
+    [{"word":"...","reading":"kana reading in hiragana","gloss":"brief English meaning"},...]
     """
 
-    let haikuWords: [(word: String, gloss: String)]
+    let haikuWords: [(word: String, reading: String?, gloss: String)]
     do {
         let (response, _, _) = try await client.send(
             messages: [AnthropicMessage(role: "user", content: [.text(prompt)])],
@@ -1444,7 +1444,8 @@ nonisolated func fetchAndResolveVocab(
         haikuWords = arr.compactMap { dict in
             guard let w = dict["word"], let g = dict["gloss"],
                   !w.isEmpty, !g.isEmpty else { return nil }
-            return (w, g)
+            let r = dict["reading"].flatMap { $0.isEmpty ? nil : $0 }
+            return (w, r, g)
         }
     } catch {
         return []
@@ -1461,7 +1462,7 @@ nonisolated func fetchAndResolveVocab(
 
     // Map each original word to its alternate lookup key (する-stripped), if applicable.
     let suruAlternates: [String: String] = Dictionary(
-        uniqueKeysWithValues: haikuWords.compactMap { (word, _) -> (String, String)? in
+        uniqueKeysWithValues: haikuWords.compactMap { (word, _, _) -> (String, String)? in
             guard let prefix = suruPrefix(word) else { return nil }
             return (word, prefix)
         }
@@ -1503,7 +1504,7 @@ nonisolated func fetchAndResolveVocab(
         entriesByText[row.text, default: []].append(row)
     }
 
-    return haikuWords.map { (word, haikuGloss) in
+    return haikuWords.map { (word, haikuReading, haikuGloss) in
         // Prefer entries for the original word; fall back to the する-stripped form if no match.
         let matchedRows: [EntryRow]
         if let rows = entriesByText[word], !rows.isEmpty {
@@ -1516,14 +1517,36 @@ nonisolated func fetchAndResolveVocab(
             return VocabGloss(word: word, rubySegments: nil, gloss: haikuGloss, jmdictWordIds: nil)
         }
 
-        // Sort common entries before uncommon ones so the most-used meaning leads.
         let lookupText = suruAlternates[word] ?? word
-        let sortedRows = matchedRows.sorted { a, b in
-            let aRaw = (a.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-            let bRaw = (b.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
-            let aCommon = aRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
-            let bCommon = bRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
-            return aCommon && !bCommon
+
+        // When Haiku supplied a kana reading, sort entries that contain that exact kana form
+        // first so the contextually correct reading wins (e.g. はいる before いる for 入る).
+        // Fall back to sorting by commonness when no reading was supplied.
+        let sortedRows: [EntryRow]
+        if let targetReading = haikuReading {
+            sortedRows = matchedRows.sorted { a, b in
+                let aHasReading = (a.entryJson.data(using: .utf8))
+                    .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+                    .map { raw in
+                        (raw["kana"] as? [[String: Any]] ?? [])
+                            .contains { ($0["text"] as? String) == targetReading }
+                    } ?? false
+                let bHasReading = (b.entryJson.data(using: .utf8))
+                    .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+                    .map { raw in
+                        (raw["kana"] as? [[String: Any]] ?? [])
+                            .contains { ($0["text"] as? String) == targetReading }
+                    } ?? false
+                return aHasReading && !bHasReading
+            }
+        } else {
+            sortedRows = matchedRows.sorted { a, b in
+                let aRaw = (a.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+                let bRaw = (b.entryJson.data(using: .utf8)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
+                let aCommon = aRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
+                let bCommon = bRaw.map { isCommonMatch($0, lookupText: lookupText) } ?? false
+                return aCommon && !bCommon
+            }
         }
         let ids = sortedRows.map { $0.entryId }
 
@@ -1535,22 +1558,30 @@ nonisolated func fetchAndResolveVocab(
             return glossFromEntry(raw)
         }.joined(separator: " / ")
 
-        // Extract the first kana reading from the best-matched entry to key into the
-        // furigana table. JmdictFurigana is keyed on (written form, kana reading).
+        // Pick the kana reading for the furigana table lookup. Prefer Haiku's reading when
+        // available (it's contextually correct); otherwise fall back to the first kana form
+        // in the best-matched JMDict entry.
         let furiganaSegments: [FuriganaSegment]?
-        if let firstEntryData = sortedRows.first?.entryJson.data(using: .utf8),
-           let firstRaw = try? JSONSerialization.jsonObject(with: firstEntryData) as? [String: Any],
-           let kanaForms = firstRaw["kana"] as? [[String: Any]],
-           let firstKana = kanaForms.first?["text"] as? String {
-            let segs = lookupFurigana(text: lookupText, reading: firstKana, db: db)
+        let resolvedKana: String?
+        if let r = haikuReading {
+            resolvedKana = r
+        } else if let firstEntryData = sortedRows.first?.entryJson.data(using: .utf8),
+                  let firstRaw = try? JSONSerialization.jsonObject(with: firstEntryData) as? [String: Any],
+                  let kanaForms = firstRaw["kana"] as? [[String: Any]] {
+            resolvedKana = kanaForms.first?["text"] as? String
+        } else {
+            resolvedKana = nil
+        }
+        if let kana = resolvedKana {
+            let segs = lookupFurigana(text: lookupText, reading: kana, db: db)
             if segs == nil {
-                print("[furigana] miss: text=\(lookupText) reading=\(firstKana)")
+                print("[furigana] miss: text=\(lookupText) reading=\(kana)")
             } else {
-                print("[furigana] hit:  text=\(lookupText) reading=\(firstKana) segs=\(segs!.count)")
+                print("[furigana] hit:  text=\(lookupText) reading=\(kana) segs=\(segs!.count)")
             }
             furiganaSegments = segs
         } else {
-            print("[furigana] no kana reading found in JMDict entry for word=\(word) lookupText=\(lookupText)")
+            print("[furigana] no kana reading found for word=\(word) lookupText=\(lookupText)")
             furiganaSegments = nil
         }
 
