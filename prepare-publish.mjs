@@ -654,6 +654,17 @@ function buildKanjiTopUsage(words, jmdictById, corpusWordIds, bccwjDatabase, jmd
     "SELECT 1 FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1"
   );
 
+  // Fallback for BCCWJ rows that use a rare-kanji (rK) or otherwise excluded form
+  // that pairToId skips. Looks up by exact (kanji, reading) in jmdict.sqlite
+  // regardless of kanji tags, returning the entry ID if found.
+  // raws stores every surface form (kanji and kana) with a UNIQUE(text, entry_id) index,
+  // so a self-join on entry_id is fast and avoids JSON parsing.
+  const jmdictExactQuery = jmdictDb.prepare(`
+    SELECT k.entry_id FROM raws k JOIN raws n ON n.entry_id = k.entry_id
+    WHERE k.text = ? AND n.text = ?
+    LIMIT 1
+  `);
+
   const result = {};
 
   for (const ch of [...kanjiChars].sort()) {
@@ -686,8 +697,22 @@ function buildKanjiTopUsage(words, jmdictById, corpusWordIds, bccwjDatabase, jmd
 
     // Match each BCCWJ row to a JMDict ID
     const wordEntries = rows.map((row) => {
-      const key = `${row.kanji}\t${toHiragana(row.reading)}`;
-      const id = pairToId.get(key) ?? null;
+      const hiraganaReading = toHiragana(row.reading);
+      const key = `${row.kanji}\t${hiraganaReading}`;
+      let id = pairToId.get(key) ?? null;
+      if (id === null) {
+        // Fallback: BCCWJ may use a rare-kanji (rK) form excluded from pairToId.
+        // Query jmdict.sqlite directly by exact (kanji, reading), ignoring tags.
+        const hit = jmdictExactQuery.get(row.kanji, hiraganaReading);
+        if (hit) id = hit.entry_id;
+      }
+      if (id === null && row.kanji.endsWith("する") && hiraganaReading.endsWith("する")) {
+        // BCCWJ lemmatizes suru-compound verbs as 〜する but JMDict stores the noun stem.
+        const stemKanji = row.kanji.slice(0, -2);
+        const stemReading = hiraganaReading.slice(0, -2);
+        const hit = jmdictExactQuery.get(stemKanji, stemReading);
+        if (hit) id = hit.entry_id;
+      }
       if (id !== null) {
         return { id, pmw: row.pmw };
       }
