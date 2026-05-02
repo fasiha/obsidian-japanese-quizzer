@@ -68,16 +68,20 @@ Six areas:
 | `buildFuriganaForWord` | Kana-only words have empty forms; reading keys are hiragana-normalized; every form's `text` is in `word.kanji` (filtered) | **PASS** |
 | `extractContextBefore` | Prose extraction across single + multi-line `<details>` blocks; nested `<details>` blocks; adversarial inputs | **BUG #3** (see below) |
 | `migrateEquivalences` | Idempotency: `migrate(migrate(x)) === migrate(x)` | **PASS** |
+| `check-vocab.mjs` resolution | Line-number correctness (23 bullets × 237 .md files); direct-ID validity; resolved IDs exist; no crashes; nested-`<details>` false-positive scan | **PASS on resolution + BUG #4 found** (see below) |
 
-**Refactor**: moved [`toHiragana`](../.claude/scripts/shared.mjs), [`isFuriganaParent`](../.claude/scripts/shared.mjs), [`buildFuriganaForWord`](../.claude/scripts/shared.mjs), and [`extractContextBefore`](../.claude/scripts/shared.mjs) from `prepare-publish.mjs` to `shared.mjs` so `fuzz.mjs` can import the canonical versions instead of maintaining copies. Verified `prepare-publish.mjs --no-llm` runs end-to-end after the move.
+**Refactor**: moved [`toHiragana`](../.claude/scripts/shared.mjs), [`isFuriganaParent`](../.claude/scripts/shared.mjs), [`buildFuriganaForWord`](../.claude/scripts/shared.mjs), [`extractContextBefore`](../.claude/scripts/shared.mjs), and [`extractVocabBulletsWithLines`](../.claude/scripts/shared.mjs) (line-number-aware variant) from `prepare-publish.mjs` and `check-vocab.mjs` to `shared.mjs`, so `fuzz.mjs` can import the canonical versions. Verified `prepare-publish.mjs --no-llm` and `check-vocab.mjs` both run end-to-end after the move.
 
-**Pending** (J in the iteration-2 proposals): `check-vocab.mjs` bullet resolution. Heavy data-fixture setup; deferred to iteration 3.
+**Note on corpus scope**: only the public Counters/ files are present on this laptop. The user's full personal Markdown corpus is on another machine. Iteration-2 stats reflect the public corpus only — re-running the J area on the full corpus will likely surface more findings.
 
 ## 🚨 Bugs to fix
 
-**Common root cause** for BUG #1 and BUG #3: regex / linear-scan code in `shared.mjs` does not
-track `<details>` block depth, so it mispairs inner and outer tags. Two functions affected; the
-proper fix is a small stack-based tag-depth tracker that both functions share.
+**Common root cause** for BUG #1, BUG #3, and BUG #4: regex / linear-scan code in `shared.mjs`
+does not understand Markdown context (no awareness of `<details>` block depth, inline code
+spans, or fenced code blocks). Three functions affected (`extractDetailsBlocks`,
+`extractContextBefore`, plus knock-on effects in `extractVocabBulletsWithLines` and
+`buildFuriganaForWord`-style downstream consumers); the proper fix is a small Markdown-aware
+helper that strips code spans and code fences, plus tracks `<details>` depth with a stack.
 
 ### BUG #1: `extractDetailsBlocks` mishandles nested `<details>` blocks
 
@@ -173,6 +177,38 @@ Same fix applies.
 **Same root cause as BUG #1** — the regex in `extractDetailsBlocks` and the inner loop here
 both fail to track block depth. A single shared depth-tracking helper would fix both.
 
+### BUG #4: `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences
+
+**Where**: [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs) — same regex as BUG #1.
+
+**Symptom**: when a file contains `<details>` mentions in prose (typically inside inline code
+spans like `` `<details>` `` or fenced code blocks showing example markdown), the lazy regex
+treats the first such mention as a real opening tag and matches greedily-but-laz​ily until the
+first `</details>` it can find. If the captured chunk happens to contain `<summary>Vocab</summary>`
+somewhere in its middle, the entire chunk is misclassified as a Vocab block.
+
+**Concrete repro** (found by the J fuzzer in [docs/TODO-reader.md](TODO-reader.md)):
+
+The file has `<details>` mentioned in inline code spans on lines 17, 28, 30, 53 (e.g.
+"Do not parse `` `<details>` `` bullet text"), and a fenced-code-block example showing real
+Vocab block syntax on lines 56–64. The regex starts matching at line 17's `<details>` and
+runs to line 60's `</details>`, capturing 43 lines of unrelated prose. Because the chunk
+contains `<summary>Vocab</summary>` (line 58), it's yielded as a Vocab block.
+
+**Currently fires?** The fuzzer found three files where this manifests: `docs/TODO-reader.md`
+(genuine corpus instance) and two hits in `docs/TODO-fuzzing.md` (this very file — the bug
+example I documented under BUG #1 triggers BUG #4 in itself). None currently cause data
+corruption because:
+- These files don't have `llm-review: true` in frontmatter
+- The bullet-like lines inside the malformed match don't happen to be Japanese (so they're
+  silently skipped at the `extractJapaneseTokens` step)
+
+**Risk**: any future content file that (a) has `llm-review: true` and (b) discusses
+`<details>` syntax in prose would silently extract prose lines as vocab bullets.
+
+**Fix**: same proper fix as BUG #1 — a Markdown-aware helper that strips code spans and code
+fences before regex matching, or a real Markdown parser pass.
+
 ### Documented limitation: `gradeFillin` does not strip half-width ｡ (U+FF61)
 
 The fillin fuzzer found that `gradeFillin(["食べます\u{FF61}"], ["食べます"])` returns false —
@@ -219,7 +255,7 @@ fuzzer was implemented and run), **DROPPED** (on inspection, no productive fuzz 
 | G | `buildFuriganaForWord` | **DONE** — PASS |
 | H | `extractContextBefore` | **DONE** — **BUG #3 FOUND** (predicted same-pattern bug confirmed) |
 | I | `migrateEquivalences` idempotency | **DONE** — PASS |
-| J | `check-vocab.mjs` bullet resolution | **PENDING** — heaviest target; needs fixture setup, deferred |
+| J | `check-vocab.mjs` bullet resolution | **DONE** — resolution invariants PASS on 23 bullets across 237 files; **BUG #4 FOUND** (new variant of BUG #1: regex confused by `<details>` in inline code spans / fences) |
 
 The iteration-2 predictions held up: F was predicted to find a bug (the empty-array case
 noted during code review) — confirmed. H was predicted to have the same backward-walking-
@@ -386,24 +422,32 @@ one bug that:
 - was not covered by an existing test or test harness path, **and**
 - would have been observable to a user (wrong quiz output, silent data corruption, or a crash).
 
-**Final result** (iterations 1 + 2 complete): **three confirmed bugs**:
+**Final result** (iterations 1 + 2 complete): **four confirmed bugs**:
 - [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>`
 - [BUG #2](#bug-2-isfuriganaparent-returns-true-for-two-distinct-empty-furigana-objects) — `isFuriganaParent` empty-array edge case
 - [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>`
+- [BUG #4](#bug-4-extractdetailsblocks-matches-details-inside-inline-code-spans--code-fences) — `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences
 
-All three are in the same file ([`shared.mjs`](../.claude/scripts/shared.mjs)) and two share a
-single root cause (no `<details>` block-depth tracking). All three are silent-data-loss class
-bugs: vocabulary bullets, parent-relationship judgments, and prose context paragraphs can all
-be lost or corrupted without any error message. None currently fire in the corpus, so they
-are latent — but they would fire the moment a content author uses a nested `<details>` block,
-which is a reasonable Markdown pattern to want.
+All four are in the same file ([`shared.mjs`](../.claude/scripts/shared.mjs)). Three of them
+(BUG #1, #3, #4) share a single root cause (regex code that doesn't understand Markdown
+context — no `<details>` depth tracking, no awareness of inline code spans or code fences).
+All four are silent-data-loss class bugs: vocabulary bullets, parent-relationship judgments,
+prose context paragraphs, and even Vocab-block boundaries themselves can be lost or
+corrupted without any error message. None currently fire in production (none of the affected
+files have `llm-review: true`), but they are dormant traps that would fire the moment a
+content author either nests a `<details>` block or includes prose discussing `<details>`
+syntax inside an `llm-review: true` file.
 
-**Hypothesis proved.** Three "Claude wrote this, human reviewed it, no one noticed" bugs
-found across two iterations totaling roughly 4 hours of work.
+**Hypothesis proved.** Four "Claude wrote this, human reviewed it, no one noticed" bugs
+found across two iterations totaling roughly 5 hours of work. Notably, BUG #4 was **discovered
+by the fuzzer** rather than predicted by code review — the J area's nested-`<details>` scan
+flagged real corpus files (TODO-reader.md and the bug example I documented in this very file
+TODO-fuzzing.md), and tracing those flags led to the new bug variant. It's the first finding
+in this experiment that came from random-data-style fuzzing rather than targeted code reading.
 
 **Final stats**:
 - Swift: 215,611 + 231,776 + 1,516 + 8,031 + 150,000 + 5,019 = **611,953 items checked**, 0 bugs
-- Node.js: ~80 fuzz checks across 8 areas = **3 bugs found** (all in `shared.mjs` content-pipeline code)
+- Node.js: ~85 fuzz checks across 9 areas + 23 real bullets across 237 .md files = **4 bugs found** (all in `shared.mjs` content-pipeline code)
 - Lines added: ~700 in [Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift) + ~500 in [fuzz.mjs](../fuzz.mjs)
 - Build infrastructure: `--fuzz <area>` mode in TestHarness; `node fuzz.mjs` for the Node side
 
@@ -415,15 +459,23 @@ home of latent silent-data-loss bugs.
 
 ## Recommended fixes
 
-Single shared block-depth helper in [`shared.mjs`](../.claude/scripts/shared.mjs):
+Single shared Markdown-aware preprocessing helper in [`shared.mjs`](../.claude/scripts/shared.mjs):
 
 ```javascript
+// Strip inline code spans (`...`) and fenced code blocks (```...```) from `content`,
+// replacing them with same-length blanks (so character offsets are preserved).
+// This makes downstream regex/scan code see only "live" Markdown, not example syntax.
+export function stripCodeRegions(content) { /* state machine */ }
+
 // Find the matching </details> for an opening <details> at character offset `start`,
-// or null if unbalanced. Returns the offset of the start of the matching </details>.
+// tracking depth so nested blocks pair correctly. Returns the offset of the start of the
+// matching </details>, or null if unbalanced.
 export function findMatchingDetailsClose(content, start) { /* stack-based scan */ }
 ```
 
-Use this in:
-- `extractDetailsBlocks` — replace the lazy regex with explicit balanced matching
-- `extractContextBefore` — replace the inner backward-walking loop with a backward depth scan
+Use these in:
+- `extractDetailsBlocks` — preprocess with `stripCodeRegions` to fix BUG #4; use
+  `findMatchingDetailsClose` instead of the lazy regex to fix BUG #1
+- `extractContextBefore` — preprocess with `stripCodeRegions`, replace the inner
+  backward-walking loop with a backward depth scan (fixes BUG #3)
 - `isFuriganaParent` — separate one-line fix: add `if (xx.length === 0 && yy.length === 0) return false;`

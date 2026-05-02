@@ -15,13 +15,19 @@ import {
     extractJapaneseTokens,
     extractDetailsBlocks,
     extractVocabBullets,
+    extractVocabBulletsWithLines,
     isJapanese,
+    intersectSets,
     migrateEquivalences,
     toHiragana,
     isFuriganaParent,
     buildFuriganaForWord,
     extractContextBefore,
+    findMdFiles,
+    openJmdictDb,
+    projectRoot,
 } from "./.claude/scripts/shared.mjs";
+import { findExactIds } from "jmdict-simplified-node";
 import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -648,6 +654,210 @@ console.log("\n=== migrateEquivalences idempotency ===");
         }
     }
     ok(`migrateEquivalences idempotent on ${inputs.length} inputs`, idempotencyFails === 0);
+}
+
+// ── 9. check-vocab.mjs bullet resolution invariants (Area J) ─────────────────
+
+console.log("\n=== check-vocab.mjs resolution invariants ===");
+
+{
+    const db = await openJmdictDb({ checkJournalMode: false });
+    const idExistsStmt = db.prepare("SELECT 1 FROM entries WHERE id = ?");
+    const idExists = (id) => !!idExistsStmt.get(String(id));
+
+    // Scan ALL Markdown files (not just llm-review: true) for structural checks.
+    // Resolution checks are restricted to llm-review files since that's what the
+    // production check-vocab.mjs validates.
+    const allMdFiles = findMdFiles(projectRoot);
+
+    let totalBullets = 0;
+    let totalLlmReviewBullets = 0;
+    let lineNumberMismatches = 0;
+    let directIdInvalids = 0;
+    let resolvedIdInvalids = 0;
+    let nestedDetailsHits = [];
+    let resolveCrashes = 0;
+
+    for (const filePath of allMdFiles) {
+        let content;
+        try { content = readFileSync(filePath, "utf8"); }
+        catch { continue; }
+
+        const fm = parseFrontmatter(content);
+        const isLlmReview = fm?.["llm-review"] === true;
+        const fileLines = content.split("\n");
+        const relPath = path.relative(projectRoot, filePath);
+
+        // Detect two related extractDetailsBlocks failure modes:
+        //   (a) real nested <details> inside a Vocab block (BUG #1)
+        //   (b) regex started matching from a stray <details> in prose / code span /
+        //       code fence, capturing a huge chunk of unrelated text. The match
+        //       does not actually start with "<details ... <summary>Vocab"
+        //       — the <summary>Vocab</summary> is somewhere in the middle of the captured chunk.
+        for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
+            const matchStart = content.slice(match.index, match.index + 200);
+            const looksLikeRealVocabOpener =
+                /^<details\b[^>]*>\s*<summary>\s*Vocab\s*<\/summary>/i.test(matchStart);
+            if (!looksLikeRealVocabOpener) {
+                nestedDetailsHits.push(`${relPath} [stray-opener]`);
+            } else if (stripped.includes("<details")) {
+                nestedDetailsHits.push(`${relPath} [real-nested]`);
+            }
+        }
+
+        let bullets;
+        try { bullets = extractVocabBulletsWithLines(content); }
+        catch (e) {
+            console.error(`[FAIL] extractVocabBulletsWithLines threw on ${relPath}: ${e.message}`);
+            failed++; total++;
+            continue;
+        }
+
+        // Skip files with no bullets (no Vocab block).
+        if (bullets.length === 0) continue;
+
+        // Check 1: every returned (bullet, line) corresponds to a real bullet line in the file.
+        for (const { bullet, line } of bullets) {
+            totalBullets++;
+            if (line < 1 || line > fileLines.length) {
+                lineNumberMismatches++;
+                console.error(`[FAIL] line out of range: ${relPath}:${line} (file has ${fileLines.length} lines)`);
+                continue;
+            }
+            const actualLine = fileLines[line - 1];
+            const trimmed = actualLine.trim();
+            if (!trimmed.startsWith("-")) {
+                lineNumberMismatches++;
+                console.error(`[FAIL] line does not start with "-": ${relPath}:${line} → "${actualLine.slice(0, 60)}"`);
+                continue;
+            }
+            // The line's bullet text should match the returned bullet (after the same trimming).
+            const lineBullet = trimmed.slice(1).trim();
+            if (lineBullet !== bullet && !lineBullet.startsWith(bullet)) {
+                lineNumberMismatches++;
+                console.error(`[FAIL] line content mismatch: ${relPath}:${line} expected "${bullet}" got "${lineBullet.slice(0, 60)}"`);
+            }
+        }
+
+        // Resolution-only checks: only run on llm-review files (matches production scope).
+        if (!isLlmReview) continue;
+
+        for (const { bullet, line } of bullets) {
+            totalLlmReviewBullets++;
+
+            // Direct-ID branch: bullet starts with digits.
+            const directIdMatch = bullet.match(/^(\d+)/);
+            if (directIdMatch) {
+                const id = directIdMatch[1];
+                if (!idExists(id)) {
+                    directIdInvalids++;
+                    console.error(`[FAIL] direct-ID bullet ${relPath}:${line} references non-existent JMDict ID ${id}: "${bullet}"`);
+                }
+                continue;
+            }
+
+            // Token-resolution branch.
+            let tokens;
+            try { tokens = extractJapaneseTokens(bullet); }
+            catch (e) {
+                resolveCrashes++;
+                console.error(`[FAIL] extractJapaneseTokens threw on "${bullet}": ${e.message}`);
+                continue;
+            }
+            if (tokens.length === 0) continue;
+
+            let matchIds;
+            try {
+                const idSets = tokens.map((t) => new Set(findExactIds(db, t)));
+                matchIds = [...intersectSets(idSets)];
+            } catch (e) {
+                resolveCrashes++;
+                console.error(`[FAIL] resolution threw on "${bullet}": ${e.message}`);
+                continue;
+            }
+
+            // Every resolved ID must exist in JMDict (sanity check on findExactIds output).
+            for (const id of matchIds) {
+                if (!idExists(id)) {
+                    resolvedIdInvalids++;
+                    console.error(`[FAIL] resolved ID ${id} from "${bullet}" (${relPath}:${line}) does not exist in jmdict.sqlite`);
+                }
+            }
+        }
+    }
+
+    info("scope", {
+        files: allMdFiles.length,
+        total_bullets: totalBullets,
+        llm_review_bullets: totalLlmReviewBullets,
+    });
+    ok(`line numbers correct (${totalBullets} bullets across ${allMdFiles.length} files)`,
+       lineNumberMismatches === 0,
+       `${lineNumberMismatches} mismatches`);
+    ok(`direct-ID bullets reference real JMDict IDs`, directIdInvalids === 0);
+    ok(`resolved IDs all exist in JMDict`, resolvedIdInvalids === 0);
+    ok(`no resolution crashes`, resolveCrashes === 0);
+    const realNested = nestedDetailsHits.filter((h) => h.endsWith("[real-nested]"));
+    const strayOpener = nestedDetailsHits.filter((h) => h.endsWith("[stray-opener]"));
+    if (realNested.length > 0) {
+        console.error(
+            `[BUG #1] ${realNested.length} file(s) have a real nested <details> in a Vocab block — ` +
+            `bullets between inner and outer </details> would be silently dropped. ` +
+            `Files: ${realNested.slice(0, 5).join(", ")}`,
+        );
+        failed++; total++;
+    } else {
+        ok(`no real nested <details> in Vocab blocks (BUG #1 dormant)`, true);
+    }
+    if (strayOpener.length > 0) {
+        console.error(
+            `[BUG #4 — new variant] ${strayOpener.length} file(s) trigger extractDetailsBlocks ` +
+            `to start matching from a <details> in prose / inline code span / code fence, ` +
+            `capturing unrelated text as a Vocab block. Same root cause as BUG #1 (regex doesn't ` +
+            `understand Markdown context). Files: ${strayOpener.slice(0, 5).join(", ")}`,
+        );
+        failed++; total++;
+    } else {
+        ok(`no stray-opener confusions (BUG #4 dormant)`, true);
+    }
+
+    // Adversarial: synthesized bullets shouldn't crash the resolution pipeline.
+    {
+        const adversarial = [
+            "",                     // empty (filtered before resolution)
+            " ",                    // whitespace
+            "\0",                   // null byte
+            "🍣 sushi",              // emoji + English
+            "1234567890",           // pure digits (direct-ID branch, will probably miss)
+            "999999999999",         // direct-ID with implausible ID
+            "12 食べる",             // direct-ID prefix + Japanese
+            "食べる、 飲む。",        // multi-token with punctuation
+            "...",                  // only punctuation
+            "食",                    // single char (lots of homonyms)
+            "○○○",                  // ideographic placeholders
+            "食べる" + "x".repeat(1000),  // very long input
+            "\n\n\n",               // newlines (shouldn't appear but test anyway)
+            "食\nべる",              // newline mid-bullet (extracted upstream so unlikely, but still)
+        ];
+        let throws = 0;
+        for (const b of adversarial) {
+            try {
+                const directId = b.match(/^(\d+)/);
+                if (directId) { idExists(directId[1]); continue; }
+                const tokens = extractJapaneseTokens(b);
+                if (tokens.length > 0) {
+                    const idSets = tokens.map((t) => new Set(findExactIds(db, t)));
+                    [...intersectSets(idSets)];
+                }
+            } catch (e) {
+                throws++;
+                console.error(`[FAIL] adversarial input "${b.slice(0, 30)}" threw: ${e.message}`);
+            }
+        }
+        ok(`adversarial bullets: no crashes (${adversarial.length} inputs)`, throws === 0);
+    }
+
+    db.close();
 }
 
 // ── Summary ───────────────────────────────────────────────────────────────────

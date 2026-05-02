@@ -179,6 +179,32 @@ export function extractVocabBullets(content) {
   return bullets;
 }
 
+// Like extractVocabBullets but also returns 1-indexed line numbers per bullet.
+// Used by check-vocab.mjs (for diagnostic line refs) and fuzz.mjs (to verify line tracking).
+//
+// Line number derivation: the inner content of a <details> block starts right
+// after the opening tag. We count newlines before that point in the file to get
+// the 1-indexed line number of the first character of the inner block, then
+// add the 0-indexed line offset within the block for each bullet.
+export function extractVocabBulletsWithLines(content) {
+  const bullets = [];
+  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
+    const openingTagLen = match[0].length - match[1].length - "</details>".length;
+    const innerStartIdx = match.index + openingTagLen;
+    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
+    const innerLines = stripped.split("\n");
+    for (let i = 0; i < innerLines.length; i++) {
+      const trimmed = innerLines[i].trim();
+      if (!trimmed.startsWith("-")) continue;
+      const bullet = trimmed.slice(1).trim();
+      if (bullet && !bullet.startsWith("counter:")) {
+        bullets.push({ bullet, line: innerStartLine + i });
+      }
+    }
+  }
+  return bullets;
+}
+
 // Extract counter IDs from all <details><summary>Vocab</summary> blocks in a file.
 // Returns the id strings (the part after "counter:") for bullets of the form "- counter:id".
 export function extractCounterBullets(content) {
