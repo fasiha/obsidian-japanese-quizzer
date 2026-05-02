@@ -156,7 +156,7 @@ function buildFuriganaForWord(word, furiganaMap) {
   if (!word.kanji || word.kanji.length === 0) {
     // Kana-only word
     return word.kana
-      .filter((k) => !k.tags || !k.tags.includes("ik"))
+      .filter((k) => !k.tags || (!k.tags.includes("ik") && !k.tags.includes("sk")))
       .map((k) => ({ reading: k.text, forms: [] }));
   }
 
@@ -165,7 +165,7 @@ function buildFuriganaForWord(word, furiganaMap) {
     .filter((k) => !k.tags || !k.tags.includes("iK"))
     .map((k) => k.text);
   const kanaEntries = word.kana.filter(
-    (k) => !k.tags || !k.tags.includes("ik"),
+    (k) => !k.tags || (!k.tags.includes("ik") && !k.tags.includes("sk")),
   );
 
   // Group by reading, normalizing katakana to hiragana so readings that differ

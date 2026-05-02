@@ -416,6 +416,13 @@ struct WordDetailSheet: View {
                 let allForms = item.writtenForms.flatMap(\.forms)
                 if allForms.count > 1 && !item.writtenForms.isEmpty {
                     furiganaPickerSection
+                } else if !allForms.isEmpty {
+                    // Single-form words: show committed form and kanji buttons
+                    committedFormSection
+                } else if item.hasKanjiOptions {
+                    // Words with kanji but no writtenForms data (old vocab.json):
+                    // still show kanji buttons for accessibility
+                    legacyKanjiButtonsSection
                 }
                 readingStateControl
             }
@@ -584,6 +591,92 @@ struct WordDetailSheet: View {
         }
     }
 
+    // MARK: - Legacy kanji buttons (for words with no writtenForms data)
+
+    @ViewBuilder
+    private var legacyKanjiButtonsSection: some View {
+        let kanji = committedFuriganaSegments.extractKanji().isEmpty
+            ? Array(Set(
+                item.writtenTexts.joined()
+                    .unicodeScalars
+                    .filter { $0.value >= 0x4E00 && $0.value <= 0x9FFF ||
+                              $0.value >= 0x3400 && $0.value <= 0x4DBF ||
+                              $0.value >= 0xF900 && $0.value <= 0xFAFF }
+                    .map { String($0) }
+            )).sorted()
+            : committedFuriganaSegments.extractKanji()
+
+        if !kanji.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Kanji")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+
+                FlowLayout(spacing: 8) {
+                    ForEach(kanji, id: \.self) { char in
+                        Button {
+                            selectedKanjiForDetail = IdentifiableString(id: char)
+                        } label: {
+                            Text(char)
+                                .font(.headline)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.1))
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Committed form display (for single-form words)
+
+    @ViewBuilder
+    private var committedFormSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Written form")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+                .textCase(.uppercase)
+                .tracking(0.5)
+
+            if let form = item.writtenForms.flatMap(\.forms).first {
+                HStack {
+                    furiganaText(form.furigana)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+
+                let kanji = form.furigana.extractKanji()
+                if !kanji.isEmpty {
+                    Divider()
+                        .padding(.vertical, 4)
+                    FlowLayout(spacing: 8) {
+                        ForEach(kanji, id: \.self) { char in
+                            Button {
+                                selectedKanjiForDetail = IdentifiableString(id: char)
+                            } label: {
+                                Text(char)
+                                    .font(.headline)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.accentColor.opacity(0.1))
+                                    .cornerRadius(6)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: - Furigana picker
 
     @ViewBuilder
@@ -623,6 +716,27 @@ struct WordDetailSheet: View {
                         .foregroundStyle(item.commitment != nil ? .green : .secondary)
                 }
                 .padding(.vertical, 4)
+            }
+
+            let kanji = committedFuriganaSegments.extractKanji()
+            if !kanji.isEmpty {
+                Divider()
+                    .padding(.vertical, 4)
+                FlowLayout(spacing: 8) {
+                    ForEach(kanji, id: \.self) { char in
+                        Button {
+                            selectedKanjiForDetail = IdentifiableString(id: char)
+                        } label: {
+                            Text(char)
+                                .font(.headline)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.accentColor.opacity(0.1))
+                                .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
         }
     }
