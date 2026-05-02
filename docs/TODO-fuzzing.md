@@ -32,34 +32,52 @@ Null hypothesis / prior belief: the non-UI logic in this codebase (JMDict querie
 furigana segmentation, grammar data loading) is clean enough that a few hours of fuzzing will
 not surface anything important. This is a codebase where the author was skeptical.
 
-**Verdict so far** (iteration 1): one real, non-trivial bug found in
-[`extractDetailsBlocks`](../.claude/scripts/shared.mjs) — a regex limitation that causes silent
-data loss when a `<details>` block is nested inside a Vocab block. It is currently latent (not
-fired by the corpus) but is a genuine "Claude wrote this, human reviewed it, no one noticed"
-bug. Hypothesis weakly proved; iteration 2 should test that "weakly" more aggressively.
+**Verdict so far** (iteration 2 complete): **three confirmed bugs**, all "Claude wrote this,
+human reviewed it, no one noticed" class. All three are silent-data-loss bugs in the content
+pipeline, currently latent (the corpus does not exercise them today). Hypothesis **proved**.
+See [Bugs to fix](#-bugs-to-fix) for the catalog.
 
-## Iteration 1: implemented
+## Implemented
 
 **Swift fuzz harness** in [Pug/TestHarness/Sources/TestHarness/Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift),
 dispatched via `TestHarness --fuzz <area>` (added in [main.swift](../Pug/TestHarness/Sources/TestHarness/main.swift)).
-Three areas:
+Six areas:
 
 | Area | What it checks | Items checked | Result |
 |---|---|---|---|
 | `jmdict` | `QuizContext.jmdictWordData` returns non-empty `kanaTexts` and non-empty `text` for every entry; adversarial IDs return nothing | 215,611 entries (+ 9 adversarial IDs) | **PASS** (2 silently skipped — entries where every kana is tagged `ik`) |
 | `furigana` | For every row in the `furigana` table, joined ruby fields exactly equal the row's `text` field | 231,776 rows | **PASS** |
 | `fillin` | `GrammarQuizSession.gradeFillin` reflexivity; 。-strip invariant on either side; documented edge cases | 16 fixed cases + 500 random reflexivity + 1,000 random 。-strip | **PASS** |
+| `ebisu` | `predictRecall` ∈ [0,1] across halflives 0.5h–10000h; `updateRecall` produces well-formed models; perfect-score halflife ≥ zero-score halflife (monotonicity); adversarial inputs throw cleanly | 27 fixed cases + 5,000 random predictRecall + 3,000 random updateRecall + 4 adversarial | **PASS** |
+| `partial-template` | `buildPartialTemplate` round-trips: all kanji committed → output equals text; output matches manually computed expected for any subset | 50,000 furigana rows × 3 invariants | **PASS** (+ surfaced a non-bug data note about katakana, see below) |
+| `romaji` | `romajiToHiragana` known cases; doesn't crash on random ASCII; output is hiragana-only when not nil | 19 fixed cases + 5,000 random ASCII | **PASS** |
 
-**Node.js fuzzer** in [fuzz.mjs](../fuzz.mjs), run via `node fuzz.mjs`. Four areas:
+**Skipped on inspection** (invariants hold trivially by construction, not productive to fuzz):
+- MC shuffle correctness — single `swapAt(0, newCorrectIndex)` provably keeps `choices[correctIndex] == correctAnswer`
+- Tier graduation monotonicity — three comparisons that are monotone in `(reviewCount, halflife)` by inspection
+
+**Node.js fuzzer** in [fuzz.mjs](../fuzz.mjs), run via `node fuzz.mjs`. Eight areas:
 
 | Area | What it checks | Result |
 |---|---|---|
 | `parseFrontmatter` | BOM/CRLF, colon-in-value, empty key lines, adversarial inputs (10k char strings, null bytes, etc.) | **PASS** (22/22) |
-| `extractDetailsBlocks` | Single block, two separate blocks, case-insensitive summary, nested `<details>` | **2 BUGS FOUND** (see below) |
+| `extractDetailsBlocks` | Single block, two separate blocks, case-insensitive summary, nested `<details>` | **BUG #1** (see below) |
 | `grammar-equivalences.json` partition | No duplicate topic IDs across groups; no empty groups; format `source:slug`; no duplicate sub-use IDs | **PASS** (107 IDs, 46 groups) |
 | `extractJapaneseTokens` | Returned tokens always satisfy `isJapanese`, always non-empty, stop at first non-Japanese token | **PASS** (fixed cases + 1,000 random) |
+| `isFuriganaParent` | Self-reference is false; real parent relationship; asymmetry property; no throws on random inputs | **BUG #2** (see below) |
+| `buildFuriganaForWord` | Kana-only words have empty forms; reading keys are hiragana-normalized; every form's `text` is in `word.kanji` (filtered) | **PASS** |
+| `extractContextBefore` | Prose extraction across single + multi-line `<details>` blocks; nested `<details>` blocks; adversarial inputs | **BUG #3** (see below) |
+| `migrateEquivalences` | Idempotency: `migrate(migrate(x)) === migrate(x)` | **PASS** |
+
+**Refactor**: moved [`toHiragana`](../.claude/scripts/shared.mjs), [`isFuriganaParent`](../.claude/scripts/shared.mjs), [`buildFuriganaForWord`](../.claude/scripts/shared.mjs), and [`extractContextBefore`](../.claude/scripts/shared.mjs) from `prepare-publish.mjs` to `shared.mjs` so `fuzz.mjs` can import the canonical versions instead of maintaining copies. Verified `prepare-publish.mjs --no-llm` runs end-to-end after the move.
+
+**Pending** (J in the iteration-2 proposals): `check-vocab.mjs` bullet resolution. Heavy data-fixture setup; deferred to iteration 3.
 
 ## 🚨 Bugs to fix
+
+**Common root cause** for BUG #1 and BUG #3: regex / linear-scan code in `shared.mjs` does not
+track `<details>` block depth, so it mispairs inner and outer tags. Two functions affected; the
+proper fix is a small stack-based tag-depth tracker that both functions share.
 
 ### BUG #1: `extractDetailsBlocks` mishandles nested `<details>` blocks
 
@@ -101,6 +119,60 @@ reasonable Markdown pattern to want.
   depth. ~20 lines of code; would also fix `extractContextBefore`'s similar backward-walking
   logic which has the same vulnerability.
 
+### BUG #2: `isFuriganaParent` returns `true` for two distinct empty-furigana objects
+
+**Where**: [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs) — the function
+`isFuriganaParent(elt, maybeParent)` returns `true` for any pair of distinct objects whose
+`furigana` arrays are both empty. The `while (xx.length || yy.length)` loop never executes,
+so the function falls through to the default `return true`.
+
+**Repro**:
+```javascript
+isFuriganaParent({furigana: []}, {furigana: []})  // returns true (should be false)
+```
+
+**Currently fires?** No. Callers in `buildFuriganaForWord` only pass furigana objects that
+came from `furiganaMap.get(...)` matches, which are non-empty by construction. But a future
+caller change — or upstream JmdictFurigana data with an empty furigana array — would silently
+collapse all such forms (`forms.filter(f => !forms.some(other => isFuriganaParent(f, other)))`
+would drop every form because everyone is everyone's "parent").
+
+**Fix**: add an explicit `if (xx.length === 0 && yy.length === 0) return false;` guard at the
+top of the function. One line.
+
+### BUG #3: `extractContextBefore` loses prose context with nested `<details>`
+
+**Where**: [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs) —
+`extractContextBefore` walks backward looking for `<details` to find the start of a multi-line
+block, but the inner loop matches the inner `<details>` first when blocks are nested.
+
+**Symptom**: when a Vocab block contains a nested `<details>` (e.g. a Grammar block) and is
+preceded by prose, that prose is silently lost. The function returns `{ text: null, line: null }`
+instead of the actual prose paragraph.
+
+**Repro** (in fuzz.mjs):
+```
+Prose paragraph.
+<details><summary>Vocab</summary>
+- 食べる eat
+<details><summary>Grammar</summary>
+- ている
+</details>
+- 飲む drink
+</details>
+```
+Expected: `{ text: "Prose paragraph.", line: 1 }`. Actual: `{ text: null, line: null }`.
+
+The backward walker, after seeing the outer `</details>`, descends into the outer block
+looking for `<details`, finds the *inner* `<details>` instead, decrements past it, and lands
+inside the outer block on a bullet line — which terminates prose collection.
+
+**Currently fires?** Same status as BUG #1 (corpus has no nested `<details>` blocks today).
+Same fix applies.
+
+**Same root cause as BUG #1** — the regex in `extractDetailsBlocks` and the inner loop here
+both fail to track block depth. A single shared depth-tracking helper would fix both.
+
 ### Documented limitation: `gradeFillin` does not strip half-width ｡ (U+FF61)
 
 The fillin fuzzer found that `gradeFillin(["食べます\u{FF61}"], ["食べます"])` returns false —
@@ -108,6 +180,18 @@ the half-width ideographic full stop is not stripped, only the full-width 。 (U
 
 iOS Japanese keyboards always emit U+3002, so this is unlikely to fire for real users. Probably
 not worth fixing, but the fuzz test now documents the boundary explicitly.
+
+### Documented finding (not a bug): katakana surface forms in partial-template
+
+The fuzzer initially reported 367 mismatches in `buildPartialTemplate` for the invariant
+"with no kanji committed, output equals the row's `reading` field". On inspection these are
+all katakana-surface entries (e.g. `text='アッと言う間に'` reading `'あっというまに'`). The
+furigana segments preserve the original katakana (`{ruby: "アッ"}` with no `rt`), so
+`buildPartialTemplate` correctly emits "アッ…" while the canonicalized `reading` column is
+"あっ…". This is by design — the partial template preserves katakana for kana segments —
+but **the discrepancy between the canonicalized `reading` column and the rendered template
+is worth knowing about**: any UI that displays both fields side-by-side would show
+inconsistent spelling. Test fuzzer was relaxed to assert the actual contract instead.
 
 ### Pre-existing build breakage (fixed during this work)
 
@@ -118,10 +202,30 @@ updated for. The TestHarness was not building. Fixed by passing `nil` and `[]`. 
 because **this is exactly the kind of drift fuzzing-as-build-gate would catch** — if `--fuzz`
 ran in CI, the build break would have been caught at PR time.
 
-## Iteration 2: more areas to test (proposed)
+## Iteration 2: status of proposed targets
 
-The iteration-1 hypothesis verdict is "weakly proved." To test it more aggressively, here are
-the most promising additional targets, ranked by expected bug yield.
+Each target from the original iteration-2 proposal got one of three outcomes: **DONE** (a
+fuzzer was implemented and run), **DROPPED** (on inspection, no productive fuzz target), or
+**PENDING** (deferred to a future iteration).
+
+| Code | Target | Outcome |
+|---|---|---|
+| A | `EbisuModel` math invariants | **DONE** — PASS |
+| B | `buildPartialTemplate` round-trip | **DONE** — PASS (+ surfaced katakana/reading discrepancy as a UI consideration) |
+| C | MC shuffle correctness | **DROPPED** — single-swap algorithm; invariant trivial by construction |
+| D | Tier graduation monotonicity | **DROPPED** — three comparisons; monotone by inspection |
+| E | `RomajiConverter.romajiToHiragana` | **DONE** — PASS |
+| F | `isFuriganaParent` adversarial | **DONE** — **BUG #2 FOUND** (predicted edge case confirmed) |
+| G | `buildFuriganaForWord` | **DONE** — PASS |
+| H | `extractContextBefore` | **DONE** — **BUG #3 FOUND** (predicted same-pattern bug confirmed) |
+| I | `migrateEquivalences` idempotency | **DONE** — PASS |
+| J | `check-vocab.mjs` bullet resolution | **PENDING** — heaviest target; needs fixture setup, deferred |
+
+The iteration-2 predictions held up: F was predicted to find a bug (the empty-array case
+noted during code review) — confirmed. H was predicted to have the same backward-walking-
+with-nested-HTML bug as BUG #1 — confirmed.
+
+The full original proposals follow for reference.
 
 ### iOS / Swift
 
@@ -282,13 +386,44 @@ one bug that:
 - was not covered by an existing test or test harness path, **and**
 - would have been observable to a user (wrong quiz output, silent data corruption, or a crash).
 
-**Iteration 1 result**: one such bug found ([`extractDetailsBlocks`](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks)).
-Currently latent in the corpus but it satisfies the criterion. Hypothesis weakly proved.
+**Final result** (iterations 1 + 2 complete): **three confirmed bugs**:
+- [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>`
+- [BUG #2](#bug-2-isfuriganaparent-returns-true-for-two-distinct-empty-furigana-objects) — `isFuriganaParent` empty-array edge case
+- [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>`
 
-The experiment **confirms the null hypothesis** if N ≥ 5,000 fuzz iterations across all areas
-produce zero new failures beyond what the existing test harness already catches.
+All three are in the same file ([`shared.mjs`](../.claude/scripts/shared.mjs)) and two share a
+single root cause (no `<details>` block-depth tracking). All three are silent-data-loss class
+bugs: vocabulary bullets, parent-relationship judgments, and prose context paragraphs can all
+be lost or corrupted without any error message. None currently fire in the corpus, so they
+are latent — but they would fire the moment a content author uses a nested `<details>` block,
+which is a reasonable Markdown pattern to want.
 
-**Iteration 1 stats**: 215,611 + 231,776 + 1,516 + 50 = **448,953 items checked**, one bug
-found. The "low effort" half of Dan's claim is well-supported (under 2 hours of work). The
-"finds bugs" half is supported by exactly one finding — which is why iteration 2 is worth
-doing.
+**Hypothesis proved.** Three "Claude wrote this, human reviewed it, no one noticed" bugs
+found across two iterations totaling roughly 4 hours of work.
+
+**Final stats**:
+- Swift: 215,611 + 231,776 + 1,516 + 8,031 + 150,000 + 5,019 = **611,953 items checked**, 0 bugs
+- Node.js: ~80 fuzz checks across 8 areas = **3 bugs found** (all in `shared.mjs` content-pipeline code)
+- Lines added: ~700 in [Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift) + ~500 in [fuzz.mjs](../fuzz.mjs)
+- Build infrastructure: `--fuzz <area>` mode in TestHarness; `node fuzz.mjs` for the Node side
+
+The Swift side ran clean across 600k+ items — strong evidence that the quiz-logic and
+math-heavy code is correct. All bugs were in the content-processing pipeline, where the code
+parses Markdown and JMDict-derived data with regex-based linear scans. That's the predicted
+shape of the result: simple regex on structured-but-not-quite-regular input is the canonical
+home of latent silent-data-loss bugs.
+
+## Recommended fixes
+
+Single shared block-depth helper in [`shared.mjs`](../.claude/scripts/shared.mjs):
+
+```javascript
+// Find the matching </details> for an opening <details> at character offset `start`,
+// or null if unbalanced. Returns the offset of the start of the matching </details>.
+export function findMatchingDetailsClose(content, start) { /* stack-based scan */ }
+```
+
+Use this in:
+- `extractDetailsBlocks` — replace the lazy regex with explicit balanced matching
+- `extractContextBefore` — replace the inner backward-walking loop with a backward depth scan
+- `isFuriganaParent` — separate one-line fix: add `if (xx.length === 0 && yy.length === 0) return false;`
