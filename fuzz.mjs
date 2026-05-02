@@ -716,7 +716,9 @@ console.log("\n=== check-vocab.mjs resolution invariants ===");
         // Skip files with no bullets (no Vocab block).
         if (bullets.length === 0) continue;
 
-        // Check 1: every returned (bullet, line) corresponds to a real bullet line in the file.
+        // Check 1: every returned (bullet, line) points to a line that actually contains
+        // the bullet text. This accommodates both standalone bullet lines (`- 経験`) and
+        // single-line Vocab blocks (`<details><summary>Vocab</summary>- 経験</details>`).
         for (const { bullet, line } of bullets) {
             totalBullets++;
             if (line < 1 || line > fileLines.length) {
@@ -725,17 +727,16 @@ console.log("\n=== check-vocab.mjs resolution invariants ===");
                 continue;
             }
             const actualLine = fileLines[line - 1];
-            const trimmed = actualLine.trim();
-            if (!trimmed.startsWith("-")) {
+            // Verify by token: every leading Japanese token from the bullet must appear
+            // somewhere on the line. This handles space-separated tokens
+            // ("- はなれる 離れる") and single-line Vocab blocks alike.
+            const tokens = extractJapaneseTokens(bullet);
+            const missingTokens = tokens.filter((t) => !actualLine.includes(t));
+            if (missingTokens.length > 0) {
                 lineNumberMismatches++;
-                console.error(`[FAIL] line does not start with "-": ${relPath}:${line} → "${actualLine.slice(0, 60)}"`);
-                continue;
-            }
-            // The line's bullet text should match the returned bullet (after the same trimming).
-            const lineBullet = trimmed.slice(1).trim();
-            if (lineBullet !== bullet && !lineBullet.startsWith(bullet)) {
-                lineNumberMismatches++;
-                console.error(`[FAIL] line content mismatch: ${relPath}:${line} expected "${bullet}" got "${lineBullet.slice(0, 60)}"`);
+                console.error(
+                    `[FAIL] line ${relPath}:${line} missing token(s) ${JSON.stringify(missingTokens)} — actual line: "${actualLine.slice(0, 80)}"`,
+                );
             }
         }
 

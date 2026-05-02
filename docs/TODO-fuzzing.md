@@ -68,11 +68,13 @@ Six areas:
 | `buildFuriganaForWord` | Kana-only words have empty forms; reading keys are hiragana-normalized; every form's `text` is in `word.kanji` (filtered) | **PASS** |
 | `extractContextBefore` | Prose extraction across single + multi-line `<details>` blocks; nested `<details>` blocks; adversarial inputs | **BUG #3** (see below) |
 | `migrateEquivalences` | Idempotency: `migrate(migrate(x)) === migrate(x)` | **PASS** |
-| `check-vocab.mjs` resolution | Line-number correctness (23 bullets × 237 .md files); direct-ID validity; resolved IDs exist; no crashes; nested-`<details>` false-positive scan | **PASS on resolution + BUG #4 found** (see below) |
+| `check-vocab.mjs` resolution | Per-token line-number correctness (1,866 bullets × 277 .md files including the full personal corpus); direct-ID validity; resolved IDs exist; no crashes; nested-`<details>` false-positive scan | **PASS on resolution + BUG #4 found** (see below) |
 
 **Refactor**: moved [`toHiragana`](../.claude/scripts/shared.mjs), [`isFuriganaParent`](../.claude/scripts/shared.mjs), [`buildFuriganaForWord`](../.claude/scripts/shared.mjs), [`extractContextBefore`](../.claude/scripts/shared.mjs), and [`extractVocabBulletsWithLines`](../.claude/scripts/shared.mjs) (line-number-aware variant) from `prepare-publish.mjs` and `check-vocab.mjs` to `shared.mjs`, so `fuzz.mjs` can import the canonical versions. Verified `prepare-publish.mjs --no-llm` and `check-vocab.mjs` both run end-to-end after the move.
 
-**Note on corpus scope**: only the public Counters/ files are present on this laptop. The user's full personal Markdown corpus is on another machine. Iteration-2 stats reflect the public corpus only — re-running the J area on the full corpus will likely surface more findings.
+**Corpus run on the full Markdown corpus** (~280 .md files including content + docs): **~1,800 vocab bullets, zero new bugs surfaced from real data.** The author has consistently used the canonical `<details>` pattern (single-line and multi-line variants), so none of the latent parser bugs (BUG #1, BUG #4) actually fire on production content. Structural invariants (line numbers, direct-ID validity, resolved-ID existence, no crashes) all hold.
+
+A test-fuzzer bug surfaced during the corpus run: my initial line-number invariant assumed `actualLine.startsWith("-")`, which fails for the single-line Vocab block variant `<details><summary>Vocab</summary>- 食べる</details>` (the line starts with `<`, not `-`). Relaxed to "every leading Japanese token from the bullet must appear on the line" — catches real mismatches without false-positive on the single-line variant. Same lesson as the iteration-2 katakana/reading discrepancy in `partial-template`: **first-pass invariants tend to be too strong, and the corpus surfaces the over-strictness before any real-data bug.**
 
 ## 🚨 Bugs to fix
 
@@ -255,13 +257,90 @@ fuzzer was implemented and run), **DROPPED** (on inspection, no productive fuzz 
 | G | `buildFuriganaForWord` | **DONE** — PASS |
 | H | `extractContextBefore` | **DONE** — **BUG #3 FOUND** (predicted same-pattern bug confirmed) |
 | I | `migrateEquivalences` idempotency | **DONE** — PASS |
-| J | `check-vocab.mjs` bullet resolution | **DONE** — resolution invariants PASS on 23 bullets across 237 files; **BUG #4 FOUND** (new variant of BUG #1: regex confused by `<details>` in inline code spans / fences) |
+| J | `check-vocab.mjs` bullet resolution | **DONE** — resolution invariants PASS on 1,866 bullets across 277 files (full corpus); **BUG #4 FOUND** (new variant of BUG #1: regex confused by `<details>` in inline code spans / fences) |
 
 The iteration-2 predictions held up: F was predicted to find a bug (the empty-array case
 noted during code review) — confirmed. H was predicted to have the same backward-walking-
-with-nested-HTML bug as BUG #1 — confirmed.
+with-nested-HTML bug as BUG #1 — confirmed. J's nested-`<details>` scan was the **only finding
+that came from random-style data fuzzing rather than predicted-by-code-review** — it surfaced
+BUG #4 as a fresh variant.
 
-The full original proposals follow for reference.
+## Iteration 3: iOS quiz logic (planned)
+
+The first two iterations targeted data-pipeline parsing and Swift math/data-layer code. All
+four bugs found are in `shared.mjs` parsing — a class the author already suspected was
+fragile (regex-heavy hand-written parser, deliberately constrained to canonical patterns to
+keep it working). To genuinely test the "fuzzing finds bugs you didn't expect" half of Dan's
+claim, iteration 3 should target iOS quiz / commitment / kanji code where the author has
+higher confidence.
+
+### High-yield targets
+
+**K. Word commitment progression** — [`WordCommitment+CommittedForms.swift`](../Pug/Pug/Models/WordCommitment+CommittedForms.swift)
+Walk the commitment ladder ∅ → {k₁} → {k₁, k₂} → … → all-kanji for every JMDict word with
+kanji and verify:
+- The derived `partialKanjiTemplate` at each step satisfies the per-segment rule (ruby for
+  committed, rt for uncommitted) for **every** segment, not just the aggregate
+- Adding a new kanji to the committed set produces a template with strictly fewer
+  rt-substituted segments (monotone)
+- The all-committed template equals the original surface form (extends iteration-2 area B,
+  which only tested the static `buildPartialTemplate` function on isolated inputs — K tests
+  the full commitment-progression flow)
+
+Why risky: this code is in active flux. The recent `committedFurigana` and
+`siblingKanaReadings` fields were added to `QuizItem` without rebuilding the TestHarness
+target (caught and fixed during iteration 1). Multi-kanji words with okurigana (e.g.
+`閉じ籠もる`, `食べ物`) and alternate orthographies (e.g. `閉じこもる` vs `閉じ籠もる`) are
+the most-likely sites for off-by-one bugs.
+
+**L. Kanjidic2 cross-DB consistency**
+For every JMDict word's `kanji.text`, every CJK ideograph in that string must resolve in
+`kanjidic2.sqlite`. Scan all ~215k entries.
+
+Why risky: two independent third-party datasets (JMDict + KANJIDIC2) bundled together. Sync
+drift would manifest as the kanji-detail sheet showing empty data when the user taps a
+kanji that JMDict knows about but kanjidic2 doesn't. Classic "Claude wrote consistency-checking
+code with two examples in mind" bug class.
+
+**M. Counter pronunciation completeness** — `Counters/counters.json`
+For each counter, every `quizNumber` in the array must have a corresponding row in the 1–10
+pronunciation table; rendaku and 4/7/9 hint strings non-empty when present; `whatItCounts`
+non-empty.
+
+Why risky: hand-curated from Tofugu TSV. Exactly the kind of data where one row gets dropped
+silently during conversion.
+
+### Medium-yield
+
+**N. Transitive-pair distractor sanity** — `transitive-intransitive/`
+For every pair, the generated MC distractor must not equal the correct answer, must not be
+empty, must not contain disallowed characters. Pair-specific replacement logic in
+`QuizSession.swift` (the `pairs.count >= 4` block found near the shuffle code).
+
+**O. `vocab.json` structural invariants** (Node.js)
+- Every entry has `id`, `sources` (non-empty), `references` (consistent shapes)
+- IDs unique
+- Every source string in `references` keys appears as some Markdown file's title prefix
+- `writtenForms` array (when present) covers every `kanji` form and every `kana` reading
+
+Why risky: optional fields, custom decoders, the iOS app's `VocabSync.swift` and the
+generator `prepare-publish.mjs` must agree on the shape exactly.
+
+### Drop unless time permits
+
+**P. `rescaleHalflife` round-trip identity** — already covered by area A's single check.
+**Q. Quiz urgency determinism** — `predictRecall` is a pure function; determinism follows by construction.
+**R. Romaji round-trip** — only `romajiToHiragana` exists; no reverse direction.
+
+### Plan
+
+- **Single Swift batch**: K + L + M (and N if time). One rebuild, run all together.
+- **Single Node.js batch**: O.
+- **Refactor as needed**: probably extract `buildPartialTemplate`'s commitment-progression
+  driver into a testable function (mirroring the iteration-2 `shared.mjs` extractions).
+- Update this doc with iteration-3 outcomes the same way as iteration 2.
+
+The full original iteration-2 proposals (A–J) follow for reference.
 
 ### iOS / Swift
 
