@@ -487,16 +487,20 @@ struct QuizContext {
                         template += ruby
                     }
                 }
-                // Only set if there were actual uncommitted kanji replaced.
-                // Scan the committed form's furigana ruby fields (not the first JMDict written
-                // form) so that alternate-orthography words like 閉じ籠もる are handled correctly.
-                // The first JMDict written form may use a different kanji (e.g. 閉じ込もる) or
-                // hiragana (閉じこもる), causing the check to miss kanji that are present in the
-                // committed form and therefore incorrectly suppress the partial template.
-                let allKanjiInCommittedForm = Set(
-                    QuizSession.extractKanji(from: segments.map { $0["ruby"] ?? "" }.joined())
+                // Only set if there were actual uncommitted units replaced. Use the set of
+                // rt-bearing segment ruby values directly — these are the units the template
+                // builder above substitutes, so the two checks agree by construction. Using
+                // QuizSession.extractKanji on the joined ruby would miss the iteration mark
+                // 々 and fullwidth Latin (Ａ-Ｚ), since extractKanji only matches CJK
+                // ideographs; words like 国々 or ＣＤプレーヤー would incorrectly suppress the
+                // partial template even when uncommitted segments remain.
+                let allCommittableUnits = Set(
+                    segments.compactMap { seg -> String? in
+                        guard seg["rt"] != nil, let ruby = seg["ruby"], !ruby.isEmpty else { return nil }
+                        return ruby
+                    }
                 )
-                if !allKanjiInCommittedForm.subtracting(committedSet).isEmpty {
+                if !allCommittableUnits.subtracting(committedSet).isEmpty {
                     partialKanjiTemplate = template
                 }
             } else {

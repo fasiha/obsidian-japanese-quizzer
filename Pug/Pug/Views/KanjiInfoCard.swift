@@ -33,6 +33,11 @@ struct KanjiInfoCard: View {
     @State private var onReadings: [String] = []
     @State private var kunReadings: [String] = []
     @State private var allKanjidicMeanings: [String] = []
+    /// True after `loadKanjidicData` returns with no row in `kanjidic2.kanji` for this
+    /// character. ~98 CJK characters in JMDict (rare/archaic variants) are absent from
+    /// kanjidic2; without this flag the card silently omits its readings/meanings section
+    /// with no explanation.
+    @State private var kanjidicLookupMissing = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -65,6 +70,13 @@ struct KanjiInfoCard: View {
                         .background(isKanjiEnrolled ? Color.green.opacity(0.1) : Color.clear)
                 }
                 .buttonStyle(.plain)
+            } else if kanjidicLookupMissing {
+                Divider()
+                Text("No detailed information available for this character.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
             }
         }
         .background(Color(.secondarySystemBackground))
@@ -270,7 +282,7 @@ struct KanjiInfoCard: View {
 
     private func loadKanjidicData() async {
         guard let db = kanjidicDB else { return }
-        let result = try? await db.read { conn -> (on: [String], kun: [String], meanings: [String]) in
+        let result = try? await db.read { conn -> (rowFound: Bool, on: [String], kun: [String], meanings: [String]) in
             let row = try Row.fetchOne(conn,
                 sql: "SELECT on_readings, kun_readings, meanings FROM kanji WHERE literal = ?",
                 arguments: [kanji])
@@ -280,12 +292,14 @@ struct KanjiInfoCard: View {
                 else { return [] }
                 return arr
             }
-            return (decodeJSON("on_readings"), decodeJSON("kun_readings"), decodeJSON("meanings"))
+            return (row != nil,
+                    decodeJSON("on_readings"), decodeJSON("kun_readings"), decodeJSON("meanings"))
         }
         if let result {
             onReadings = result.on
             kunReadings = result.kun
             allKanjidicMeanings = result.meanings
+            kanjidicLookupMissing = !result.rowFound
         }
     }
 }

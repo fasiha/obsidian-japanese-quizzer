@@ -40,3 +40,4 @@ quiz.sqlite
 .vscode/
 jmdict*json
 Jmdict*json
+fuzz-markdown-golden.json

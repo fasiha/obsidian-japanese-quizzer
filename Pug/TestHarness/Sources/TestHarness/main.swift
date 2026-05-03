@@ -66,6 +66,18 @@ let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --l
 let isTestDisambiguation = args.contains("--test-disambiguation")
 let isCounterHints = args.contains("--counter-hints")
 
+// --fuzz <area>: run randomized / property-based fuzz tests (no API calls).
+// Areas: jmdict, furigana, fillin
+// Dispatched after jmdict.sqlite is opened; exits before any word-ID lookup.
+let isFuzzMode = args.contains("--fuzz")
+let fuzzArea: String?
+if isFuzzMode, let fi = args.firstIndex(of: "--fuzz"), fi + 1 < args.count,
+   !args[fi + 1].hasPrefix("--") {
+    fuzzArea = args[fi + 1]
+} else {
+    fuzzArea = nil
+}
+
 // --facet <name>: restrict --live mode to a single facet (omit to run all facets)
 let liveOnlyFacet: String?
 if let facetIdx = args.firstIndex(of: "--facet"), facetIdx + 1 < args.count {
@@ -468,6 +480,17 @@ guard let jmdictPath = findFile("jmdict.sqlite") else {
 // The test harness never writes to jmdict, but read-only open fails without an existing .shm.
 let jmdictDB = try DatabaseQueue(path: jmdictPath)
 
+// MARK: - Fuzz mode (needs jmdict; exits before word-ID lookup)
+
+if isFuzzMode {
+    guard let area = fuzzArea else {
+        fputs("Error: --fuzz requires an area (e.g. jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, all)\n", stderr)
+        exit(1)
+    }
+    try await runFuzz(area: area, jmdict: jmdictDB)
+    exit(0)
+}
+
 // MARK: - Look up word by entry ID
 
 // Reuse the canonical iOS implementation — same JSON parsing, xref extraction, and
@@ -586,6 +609,8 @@ let item = QuizItem(
     partialKanjiTemplate: itemPartialKanjiTemplate,
     committedReading: nil,
     committedWrittenText: itemCommittedWrittenText,
+    committedFurigana: nil,
+    siblingKanaReadings: [],
     corpusSenseIndices: [0],
     kanjiQuizData: nil
 )

@@ -21,33 +21,8 @@ import {
   parseFrontmatter,
   projectRoot,
   openJmdictDb,
-  extractDetailsBlocks,
+  extractVocabBulletsWithLines,
 } from "./shared.mjs";
-
-// Extract bullets (with 1-indexed line numbers) from all Vocab details blocks.
-//
-// Line number derivation: the inner content of a <details> block starts right
-// after the opening tag. We count newlines before that point in the file to get
-// the 1-indexed line number of the first character of the inner block, then
-// add the 0-indexed line offset within the block for each bullet.
-function extractVocabBullets(content) {
-  const bullets = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const openingTagLen = match[0].length - match[1].length - "</details>".length;
-    const innerStartIdx = match.index + openingTagLen;
-    // Line number (1-indexed) of the first character of the stripped content
-    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
-
-    const innerLines = stripped.split("\n");
-    for (let i = 0; i < innerLines.length; i++) {
-      const trimmed = innerLines[i].trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet && !bullet.startsWith("counter:")) bullets.push({ bullet, line: innerStartLine + i });
-    }
-  }
-  return bullets;
-}
 
 const db = await openJmdictDb({ checkJournalMode: true });
 const mdFiles = findMdFiles(projectRoot);
@@ -57,7 +32,7 @@ let totalChecked = 0;
 for (const filePath of mdFiles) {
   const content = readFileSync(filePath, "utf8");
   if (!parseFrontmatter(content)?.["llm-review"]) continue;
-  const bullets = extractVocabBullets(content);
+  const bullets = extractVocabBulletsWithLines(content);
   const relPath = path.relative(projectRoot, filePath);
 
   for (const { bullet, line } of bullets) {

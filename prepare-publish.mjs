@@ -47,20 +47,15 @@ import {
   loadGrammarDatabases,
   extractGrammarBullets,
   extractDetailsBlocks,
+  toHiragana,
+  isFuriganaParent,
+  buildFuriganaForWord,
+  extractContextBefore,
 } from "./.claude/scripts/shared.mjs";
 import { checkAndUpdateCompoundVerbs } from "./.claude/scripts/check-compound-verbs.mjs";
 
 // --- JmdictFurigana enrichment ---
 
-/**
- * Convert katakana characters to their hiragana equivalents.
- * Used to deduplicate readings that differ only in script (e.g. のど vs ノド).
- */
-function toHiragana(str) {
-  return str.replace(/[\u30A1-\u30F6]/g, (c) =>
-    String.fromCharCode(c.charCodeAt(0) - 0x60),
-  );
-}
 
 /**
  * Load JmdictFurigana.json and return a Map<text, entry[]> for fast lookup by
@@ -81,220 +76,39 @@ function loadJmdictFurigana() {
   return map;
 }
 
-/**
- * Determine if `maybeParent` is a "more kanji" version of `elt` — i.e., the
- * two furigana arrays represent the same text but `maybeParent` uses kanji
- * (ruby+rt) where `elt` uses plain kana (string).
- *
- * Works by nibbling both arrays from the front in parallel:
- * - Matching strings: consume character by character
- * - Matching ruby objects: consume if ruby+rt are identical
- * - String in elt vs ruby in maybeParent: consume if elt's string starts with
- *   maybeParent's rt (parent has kanji where child has plain kana)
- *
- * Returns true only if the entire arrays are consumed with no mismatches.
- */
-function isFuriganaParent(elt, maybeParent) {
-  if (maybeParent === elt) return false;
 
-  const xx = elt.furigana.map((o) => (o.rt ? o : o.ruby));
-  const yy = maybeParent.furigana.map((o) => (o.rt ? o : o.ruby));
 
-  while (xx.length || yy.length) {
-    const x = xx[0];
-    const y = yy[0];
-
-    if (!x || !y) return false;
-
-    if (typeof x === typeof y) {
-      if (typeof x === "string") {
-        // Both plain strings — nibble character by character
-        if (y.startsWith(x[0])) {
-          if (y.length > 1) yy[0] = y.slice(1);
-          else yy.shift();
-          if (x.length > 1) xx[0] = x.slice(1);
-          else xx.shift();
-        } else {
-          return false;
-        }
-      } else {
-        // Both ruby — must match exactly
-        if (x.ruby === y.ruby && x.rt === y.rt) {
-          xx.shift();
-          yy.shift();
-        } else {
-          return false;
-        }
-      }
-    } else {
-      // Mixed: elt has plain kana, maybeParent has ruby (kanji) — the parent
-      // relationship we're looking for
-      if (typeof x === "string" && x.startsWith(y.rt)) {
-        if (x.length > y.rt.length) xx[0] = x.slice(y.rt.length);
-        else xx.shift();
-        yy.shift();
-      } else {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-/**
- * Build furigana data for a single JMDict word.
- *
- * Returns: array of { reading: string, forms: [{ furigana: [...], text: string }] }
- * grouped by reading. Within each reading, lesser-kanji variants are collapsed
- * (e.g. "たき木" is dropped in favor of "焚き木" for reading "たきぎ").
- * Forms preserve JMDict kanji array order.
- *
- * For kana-only words (no kanji entries), returns [{ reading: kanaText, forms: [] }].
- */
-function buildFuriganaForWord(word, furiganaMap) {
-  if (!word.kanji || word.kanji.length === 0) {
-    // Kana-only word
-    return word.kana
-      .filter((k) => !k.tags || (!k.tags.includes("ik") && !k.tags.includes("sk")))
-      .map((k) => ({ reading: k.text, forms: [] }));
-  }
-
-  // Determine which readings apply to which kanji forms (preserving JMDict order)
-  const kanjiTexts = word.kanji
-    .filter((k) => !k.tags || !k.tags.includes("iK"))
-    .map((k) => k.text);
-  const kanaEntries = word.kana.filter(
-    (k) => !k.tags || (!k.tags.includes("ik") && !k.tags.includes("sk")),
-  );
-
-  // Group by reading, normalizing katakana to hiragana so readings that differ
-  // only in script (e.g. のど vs ノド) are merged into one group.
-  const byReading = new Map(); // hiragana-normalized reading -> [{furigana, text}]
-
-  for (const kana of kanaEntries) {
-    const applicableKanji =
-      kana.appliesToKanji && kana.appliesToKanji[0] === "*"
-        ? kanjiTexts
-        : (kana.appliesToKanji || []).filter((k) => kanjiTexts.includes(k));
-
-    // Build forms in JMDict kanji array order
-    const forms = [];
-    for (const kanjiText of applicableKanji) {
-      const furiganaEntries = furiganaMap.get(kanjiText) || [];
-      const match = furiganaEntries.find((e) => e.reading === kana.text);
-      if (match) {
-        forms.push({ furigana: match.furigana, text: kanjiText });
-      }
-    }
-
-    // Collapse: remove forms that have a "parent" (more-kanji version) in the list
-    const collapsed = forms.filter(
-      (f) => !forms.some((other) => isFuriganaParent(f, other)),
-    );
-
-    const key = toHiragana(kana.text);
-    if (!byReading.has(key)) {
-      byReading.set(key, collapsed);
-    } else {
-      // Merge, skipping forms whose kanji text is already present (katakana/hiragana
-      // variants of the same reading produce identical kanji forms).
-      const existing = byReading.get(key);
-      const existingTexts = new Set(existing.map((f) => f.text));
-      for (const form of collapsed) {
-        if (!existingTexts.has(form.text)) {
-          existing.push(form);
-          existingTexts.add(form.text);
-        }
-      }
-    }
-  }
-
-  return [...byReading.entries()].map(([reading, forms]) => ({
-    reading,
-    forms,
-  }));
-}
-
-// Return the nearest preceding contiguous prose paragraph before `endIdx` in content.
-// Scans backward from `endIdx`, skipping blank lines and entire <details> blocks
-// (so intervening Grammar/Vocab blocks between the prose and the target Vocab block
-// are transparently skipped). Then collects non-blank lines that are not bullets or
-// block-level HTML tags. Inline <ruby> tags within prose lines are preserved.
-// Returns { text, line } where text is the joined sentence text (or null) and line
-// is the 1-based line number of the last sentence line found (or null if none found).
-function extractContextBefore(content, endIdx) {
-  const lines = content.slice(0, endIdx).split("\n");
-  let i = lines.length - 1;
-  // Skip blank lines and entire <details>...</details> blocks going backward.
-  // Handles both multi-line blocks (last line is bare </details>) and
-  // single-line blocks (entire <details>...</details> on one line).
-  while (i >= 0) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "") {
-      i--;
-      continue;
-    }
-    if (trimmed === "</details>") {
-      // Multi-line block: scan backward to the opening <details> tag.
-      i--;
-      while (i >= 0 && !lines[i].trim().startsWith("<details")) i--;
-      i--;
-      continue;
-    }
-    if (trimmed.startsWith("<details")) {
-      // Single-line block: the entire block is on this line, skip it.
-      i--;
-      continue;
-    }
-    break;
-  }
-  if (i < 0) return { text: null, line: null };
-  // Collect contiguous prose lines. Stop at blank lines, bullet lines, or
-  // block-level <details>/<summary>/</details> lines. Inline <ruby> lines are prose.
-  const paraLines = [];
-  let lastSentenceLineIdx = i; // 0-indexed; tracks the last (bottom) sentence line
-  while (i >= 0) {
-    const trimmed = lines[i].trim();
-    if (
-      trimmed === "" ||
-      trimmed.startsWith("-") ||
-      trimmed.startsWith("<details") ||
-      trimmed.startsWith("</details") ||
-      trimmed.startsWith("<summary")
-    )
-      break;
-    paraLines.unshift(trimmed);
-    i--;
-  }
-  if (paraLines.length === 0) return { text: null, line: null };
-  return { text: paraLines.join(" "), line: lastSentenceLineIdx + 1 }; // 1-based
-}
 
 // Like shared.extractVocabBullets but also returns 1-indexed line numbers,
 // bullet narration text (non-Japanese text after the Japanese tokens), and
 // the context paragraph preceding the <details> block.
 function extractVocabBullets(content) {
   const bullets = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const openingTagLen = match[0].length - match[1].length - "</details>".length;
-    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
-    // Fallback: use the <details> opening line number if no sentence found above.
-    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
-    const line = sentenceLine ?? detailsOpeningLine;
+  for (const { stripped, fileOffset, blockLine } of extractDetailsBlocks(content, "Vocab")) {
+    const { text: context, line: sentenceLine } = extractContextBefore(content, fileOffset);
+    const line = sentenceLine ?? blockLine;
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (const innerLine of innerLines) {
-      const trimmed = innerLine.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (!bullet || bullet.startsWith("counter:")) continue;
-      // Narration = text after the leading Japanese tokens (or after the bare ID).
-      const parts = bullet.split(/\s+/);
-      let j = 0;
-      if (/^\d+$/.test(parts[0])) j = 1; // skip bare JMDict ID prefix
-      while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
-      const narration = parts.slice(j).join(" ").trim() || null;
-      bullets.push({ bullet, line, context, narration });
+      if (depth === 0) {
+        const trimmed = innerLine.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet && !bullet.startsWith("counter:")) {
+            // Narration = text after the leading Japanese tokens (or after the bare ID).
+            const parts = bullet.split(/\s+/);
+            let j = 0;
+            if (/^\d+$/.test(parts[0])) j = 1; // skip bare JMDict ID prefix
+            while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
+            const narration = parts.slice(j).join(" ").trim() || null;
+            bullets.push({ bullet, line, context, narration });
+          }
+        }
+      }
+      const opens = (innerLine.match(/<details\b/gi) || []).length;
+      const closes = (innerLine.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return bullets;
@@ -304,21 +118,26 @@ function extractVocabBullets(content) {
 // Returns { counterId, line, context } for each counter bullet found.
 function extractCounterBullets(content) {
   const counters = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
-    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
-    const line = sentenceLine ?? detailsOpeningLine;
+  for (const { stripped, fileOffset, blockLine } of extractDetailsBlocks(content, "Vocab")) {
+    const { text: context, line: sentenceLine } = extractContextBefore(content, fileOffset);
+    const line = sentenceLine ?? blockLine;
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (const innerLine of innerLines) {
-      const trimmed = innerLine.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet.startsWith("counter:")) {
-        const counterId = bullet.slice("counter:".length).trim();
-        if (counterId) {
-          counters.push({ counterId, line, context });
+      if (depth === 0) {
+        const trimmed = innerLine.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet.startsWith("counter:")) {
+            const counterId = bullet.slice("counter:".length).trim();
+            if (counterId) counters.push({ counterId, line, context });
+          }
         }
       }
+      const opens = (innerLine.match(/<details\b/gi) || []).length;
+      const closes = (innerLine.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return counters;
