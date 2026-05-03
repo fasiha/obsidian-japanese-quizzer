@@ -139,6 +139,8 @@ final class QuizSession {
     let db: QuizDB
     private var conversation: [AnthropicMessage] = []
     var allCandidates: [QuizItem] = []
+    /// All enrolled vocab items regardless of document scope — used as the distractor pool.
+    private var allEnrolledCandidates: [QuizItem] = []
 
     // Prefetched next question: kicked off as soon as the current item is graded.
     private var prefetched: (index: Int, question: String, multipleChoice: MultipleChoiceQuestion?,
@@ -892,6 +894,7 @@ final class QuizSession {
             // Restrict to a specific document when documentScope is set.
             // Kanji quiz items (word_type="kanji") appear regardless of document scope —
             // their identity is the character itself, not tied to any one parent word.
+            allEnrolledCandidates = candidates
             if let scope = documentScope, let manifest = VocabSync.cached() {
                 let scopedIds = Set(manifest.words.filter { $0.sources.contains(scope) }.map(\.id))
                 candidates = candidates.filter { item in
@@ -1860,7 +1863,9 @@ final class QuizSession {
     ///      whose gloss is empty.
     ///
     /// This is a synchronous, in-memory computation — no database or network calls.
-    private func distractorCandidates(for item: QuizItem, targetCount: Int = 25) -> [(display: String, gloss: String, kana: String)] {
+    /// `enrolledPool` determines which words are eligible as distractors — pass a document-scoped
+    /// subset to prefer same-document words, or the full enrolled set for the widest search.
+    private func distractorCandidates(for item: QuizItem, enrolledPool: [QuizItem], targetCount: Int = 25) -> [(display: String, gloss: String, kana: String)] {
         guard let manifest = VocabSync.cached() else {
             print("[QuizSession] distractorCandidates: manifest not cached, falling back to AI distractors")
             return []
@@ -1877,7 +1882,7 @@ final class QuizSession {
 
         // Collect candidate word IDs from the same documents first, then expand outward.
         // Only enrolled words are useful candidates (we need their senseExtras for the gloss).
-        let enrolledIDs = Set(allCandidates.map(\.wordId))
+        let enrolledIDs = Set(enrolledPool.map(\.wordId))
         var candidateIDs: [String] = []
         var seenIDs = Set<String>([item.wordId])
 
@@ -1924,25 +1929,15 @@ final class QuizSession {
         // Convert IDs to (display, gloss, kana) tuples using senseExtras already on each QuizItem.
         // We rely on the items loaded in the session for senseExtras, falling back to the
         // manifest's written forms for the display text.
+        // Always look up in allEnrolledCandidates so cross-document distractors resolve correctly.
+        let poolByID = Dictionary(enrolledPool.map { ($0.wordId, $0) }, uniquingKeysWith: { f, _ in f })
         var result: [(display: String, gloss: String, kana: String)] = []
         for wordID in candidateIDs.prefix(targetCount * 2) {   // over-fetch to account for empties
-            // Look up senseExtras from the loaded quiz items (already fetched from JMDict).
-            let senseExtras: [SenseExtra]
-            let corpusIndices: [Int]
-            let writtenTexts: [String]
-            let kanaTexts: [String]
-            // Search all enrolled candidates, not just the current session's items,
-            // so that words not due for review today can still serve as distractors.
-            if let quizItem = allCandidates.first(where: { $0.wordId == wordID }) {
-                senseExtras = quizItem.senseExtras
-                corpusIndices = quizItem.corpusSenseIndices
-                writtenTexts = quizItem.writtenTexts
-                kanaTexts = quizItem.kanaTexts
-            } else {
-                // Word is in the corpus but not enrolled — we have no senseExtras for it.
-                // Skip it; we only use enrolled words whose meanings we can display.
-                continue
-            }
+            guard let quizItem = poolByID[wordID] else { continue }
+            let senseExtras   = quizItem.senseExtras
+            let corpusIndices = quizItem.corpusSenseIndices
+            let writtenTexts  = quizItem.writtenTexts
+            let kanaTexts     = quizItem.kanaTexts
 
             // Pick one random corpus-attested sense, then one random gloss within it.
             // Two-stage selection gives each sense equal weight regardless of gloss count.
@@ -2293,16 +2288,39 @@ final class QuizSession {
 
     /// Build a multiple-choice question entirely in Swift from corpus candidates, no LLM call.
     /// Returns nil if there are not enough distinct candidates to form 3 distractors.
+    /// Strategy: try the document-scoped pool first (prefers same-document distractors), then
+    /// fall back to the full enrolled corpus (multi-document proximity search) for small documents.
     private func appSideMultipleChoice(for item: QuizItem) -> MultipleChoiceQuestion? {
         guard preferences.distractorSource == .documents,
               item.facet == "reading-to-meaning" || item.facet == "meaning-to-reading" else { return nil }
 
-        let candidates = distractorCandidates(for: item)
+        // Try scoped pool first; fall back to full enrolled pool if the document is too small.
+        // When no document scope is active the two pools are identical, so only one pass is needed.
+        let pools: [(label: String, items: [QuizItem])] = documentScope != nil
+            ? [("scoped(\(allCandidates.count))", allCandidates),
+               ("full(\(allEnrolledCandidates.count))", allEnrolledCandidates)]
+            : [("full(\(allEnrolledCandidates.count))", allEnrolledCandidates)]
+        for (label, pool) in pools {
+            let candidates = distractorCandidates(for: item, enrolledPool: pool)
+            if let question = buildMultipleChoiceFromCandidates(candidates, for: item) {
+                print("[QuizSession] appSideMultipleChoice: built question using \(label) pool for \(item.wordText) facet:\(item.facet)")
+                return question
+            }
+            print("[QuizSession] appSideMultipleChoice: \(label) pool insufficient for \(item.wordText) facet:\(item.facet)")
+        }
+        print("[QuizSession] appSideMultipleChoice: all pools exhausted for \(item.wordText) facet:\(item.facet) — falling back to AI")
+        return nil
+    }
 
+    /// Attempts to pick 3 distractors from `candidates` and build a multiple-choice question.
+    /// Returns nil if there are not enough distinct choices.
+    private func buildMultipleChoiceFromCandidates(
+        _ candidates: [(display: String, gloss: String, kana: String)],
+        for item: QuizItem
+    ) -> MultipleChoiceQuestion? {
         if item.facet == "reading-to-meaning" {
             let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
             let stem = "What does \(kana) mean?"
-            // Two-stage: random enrolled sense, then first gloss within it.
             let correctGloss = item.corpusSenses.randomElement()?.glosses.first ?? ""
             guard !correctGloss.isEmpty else { return nil }
 
