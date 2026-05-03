@@ -1146,6 +1146,12 @@ final class QuizSession {
                 phase = .awaitingTap(multipleChoice)
             } else if item.isFreeAnswer {
                 phase = .awaitingText(pf.question)
+            } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji" {
+                // Prefetch stored a nil multipleChoice for a facet that requires it — parse failed.
+                // Auto-advance rather than showing raw LLM reasoning to the student.
+                print("[QuizSession] prefetch MCQ parse failed for \(item.wordText) (\(item.facet)), skipping")
+                nextQuestion()
+                return
             } else {
                 conversation = pf.conversation
                 chatMessages = [(isUser: false, text: pf.question)]
@@ -1291,6 +1297,11 @@ final class QuizSession {
                 conversation = []
                 chatMessages = []
                 phase = .awaitingTap(multipleChoice)
+            } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji" {
+                // MCQ parse failed after all retries for a facet that requires multiple choice.
+                // Auto-advance rather than showing raw LLM reasoning to the student.
+                print("[QuizSession] MCQ parse failed for \(item.wordText) (\(item.facet)) after retries, skipping")
+                nextQuestion()
             } else {
                 conversation = finalMsgs
                 chatMessages = [(isUser: false, text: finalQuestion)]
@@ -1997,7 +2008,9 @@ final class QuizSession {
                         committedKanji: item.committedKanji, stem: stem, correctAnswer: correctAnswer,
                         forbiddenForms: Set(item.kanaTexts).union(item.siblingKanaReadings))
                 } else {
-                    parsedMC = nil
+                    parsedMC = parseKanjiToReadingDistractors(raw, stem: stem,
+                        correctAnswer: correctAnswer,
+                        forbiddenForms: Set(item.kanaTexts).union(item.siblingKanaReadings))
                 }
             } else {
                 parsedMC = parseMultipleChoiceJSON(raw)
@@ -2225,6 +2238,40 @@ final class QuizSession {
         guard distractors.count == 3 else { return nil }
         let correctIndex = Int.random(in: 0..<4)
         var choices = [correctAnswer] + distractors
+        choices.swapAt(0, correctIndex)
+        return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
+    }
+
+    /// Parses the kanji-to-reading response for words without furigana segmentation.
+    /// Expects a plain JSON array of 3 wrong kana readings: ["d1", "d2", "d3"].
+    private func parseKanjiToReadingDistractors(_ raw: String, stem: String, correctAnswer: String,
+                                                forbiddenForms: Set<String> = []) -> MultipleChoiceQuestion? {
+        func extractArray() -> String? {
+            var search = raw[...]
+            while let fenceStart = search.range(of: "```") {
+                let afterFence = search[fenceStart.upperBound...]
+                let body = afterFence.drop(while: { $0 != "\n" }).dropFirst()
+                if let closeRange = body.range(of: "```") {
+                    let candidate = String(body[..<closeRange.lowerBound])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if candidate.hasPrefix("[") { return candidate }
+                    search = body[closeRange.upperBound...]
+                } else { break }
+            }
+            if let open = raw.firstIndex(of: "["), let close = raw.lastIndex(of: "]") {
+                return String(raw[open...close])
+            }
+            return nil
+        }
+        guard let jsonText = extractArray(),
+              let data = jsonText.data(using: .utf8),
+              let distractors = try? JSONSerialization.jsonObject(with: data) as? [String]
+        else { return nil }
+        let forbidden = forbiddenForms.union([correctAnswer])
+        let valid = distractors.filter { !$0.isEmpty && !forbidden.contains($0) }
+        guard valid.count >= 3 else { return nil }
+        let correctIndex = Int.random(in: 0..<4)
+        var choices = [correctAnswer] + Array(valid.prefix(3))
         choices.swapAt(0, correctIndex)
         return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: correctIndex)
     }
@@ -2815,9 +2862,17 @@ final class QuizSession {
         }
         if item.facet == "kanji-to-reading" {
             if let furigana = item.committedFurigana {
-                let slots = Self.kanaSubstitutionSlotsString(furigana: furigana, committedKanji: item.committedKanji, count: 4)
+                // Use at least 3 slots per eligible kanji segment so the LLM has enough chances
+                // to provide distinct wrong readings even when the word has only 1–2 kanji.
+                let committedSet = Set(item.committedKanji ?? [])
+                let eligibleCount = furigana.filter { seg in
+                    guard let ruby = seg["ruby"], seg["rt"] != nil else { return false }
+                    return committedSet.isEmpty || committedSet.contains(ruby)
+                }.count
+                let slotCount = max(4, eligibleCount * 3)
+                let slots = Self.kanaSubstitutionSlotsString(furigana: furigana, committedKanji: item.committedKanji, count: slotCount)
                 return """
-                For each pre-filled pair [correct-segment-reading, ?], replace the ? with a plausible wrong reading. Think first if helpful, then end with a ```json code block containing exactly a 4-element array:
+                For each pre-filled pair [correct-segment-reading, ?], replace the ? with a plausible wrong reading. Use a different wrong reading for each slot, even when the same kanji segment appears more than once. Think first if helpful, then end with a ```json code block containing exactly a \(slotCount)-element array:
                 \(slots)
                 No other keys or wrapper — just the array.
                 """

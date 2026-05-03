@@ -218,9 +218,32 @@ func buildPaths(entry: QuizContext.JmdictEntry, furiganaMap: [String: [JmdictFur
 }
 
 /// Build a QuizItem for a given path.
-func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptPath) -> QuizItem {
+/// Pass `furiganaMap` to populate `committedFurigana` for kanji-to-reading paths, which enables
+/// the mora-substitution distractor prompt (the same path taken by the iOS app at runtime).
+func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptPath,
+                   furiganaMap: [String: [JmdictFuriganaEntry]] = [:]) -> QuizItem {
     let wordText = entry.writtenTexts.first ?? entry.kanaTexts.first ?? wordId
     let hasKanji = !entry.writtenTexts.isEmpty
+
+    // For kanji-to-reading with committed kanji, populate the furigana segmentation so the
+    // mora-substitution distractor path is exercised (matching iOS app runtime behavior).
+    let committedFurigana: [[String: String]]?
+    let committedReading: String?
+    if path.facet == "kanji-to-reading", path.committedKanji != nil,
+       let written = entry.writtenTexts.first,
+       let reading = entry.kanaTexts.first,
+       let parts = lookupFurigana(text: written, reading: reading, furiganaMap: furiganaMap) {
+        committedFurigana = parts.map { part in
+            var seg: [String: String] = ["ruby": part.ruby]
+            if let rt = part.rt { seg["rt"] = rt }
+            return seg
+        }
+        committedReading = reading
+    } else {
+        committedFurigana = nil
+        committedReading = nil
+    }
+
     return QuizItem(
         wordType: "jmdict",
         wordId: wordId,
@@ -233,9 +256,9 @@ func buildQuizItem(entry: QuizContext.JmdictEntry, wordId: String, path: PromptP
         senseExtras: Array(entry.senseExtras.prefix(5)),
         committedKanji: path.committedKanji,
         partialKanjiTemplate: path.partialKanjiTemplate,
-        committedReading: nil,
+        committedReading: committedReading,
         committedWrittenText: path.committedWrittenText,
-        committedFurigana: nil,
+        committedFurigana: committedFurigana,
         siblingKanaReadings: [],
         corpusSenseIndices: [0],
         kanjiQuizData: nil
@@ -297,7 +320,7 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
 
     for (i, path) in paths.enumerated() {
         let isGenerating = path.mode == "multiple-choice-generation"
-        let item = buildQuizItem(entry: entry, wordId: wordId, path: path)
+        let item = buildQuizItem(entry: entry, wordId: wordId, path: path, furiganaMap: furiganaMap)
 
         let system = session.systemPrompt(for: item, isGenerating: isGenerating,
                                            preRecall: 0.5, preHalflife: 24.0)
@@ -399,7 +422,7 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
         // --gen-only: skip all free-grading paths
         if genOnly && path.mode != "multiple-choice-generation" { continue }
 
-        let item = buildQuizItem(entry: entry, wordId: wordId, path: path)
+        let item = buildQuizItem(entry: entry, wordId: wordId, path: path, furiganaMap: furiganaMap)
 
         printPathHeader(index: i, total: paths.count, path: path)
 
@@ -478,6 +501,11 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
                     case "kanji-to-reading":
                         if !entry.kanaTexts.contains(correct) {
                             issues.append("WARN: correct choice '\(correct)' not in entry kana \(entry.kanaTexts)")
+                        }
+                        // All 4 choices must be distinct — duplicate distractors indicate the distractor
+                        // generation produced too few unique wrong readings (e.g. for short 2-kanji words).
+                        if Set(mc.choices).count != mc.choices.count {
+                            issues.append("FAIL: choices contain duplicates: \(mc.choices)")
                         }
                     case "meaning-reading-to-kanji":
                         // Correct answer is now deterministic: Swift reconstructs it from the enrolled form.
