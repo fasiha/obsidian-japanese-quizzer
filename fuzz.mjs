@@ -861,6 +861,296 @@ console.log("\n=== check-vocab.mjs resolution invariants ===");
     db.close();
 }
 
+// ── 9. vocab.json structural invariants (target O) ───────────────────────────
+
+console.log("\n=== vocab.json structural invariants ===");
+{
+    const vocabPath = path.join(HERE, "vocab.json");
+    if (!existsSync(vocabPath)) {
+        console.log("[skip] vocab.json not found — run prepare-publish.mjs to generate it.");
+    } else {
+        const v = JSON.parse(readFileSync(vocabPath, "utf-8"));
+
+        // Top-level shape
+        ok("vocab.json has generatedAt", typeof v.generatedAt === "string" && /\d{4}-\d{2}-\d{2}T/.test(v.generatedAt));
+        ok("vocab.json has stories array", Array.isArray(v.stories));
+        ok("vocab.json has words array", Array.isArray(v.words));
+        ok("vocab.json has sourceOrders object", v.sourceOrders && typeof v.sourceOrders === "object" && !Array.isArray(v.sourceOrders));
+
+        // stories: each has a non-empty title string
+        const storyTitles = new Set();
+        let storyShapeFails = 0;
+        for (const s of v.stories) {
+            if (!s || typeof s.title !== "string" || s.title.length === 0) storyShapeFails++;
+            else storyTitles.add(s.title);
+        }
+        ok(`stories[*].title non-empty strings (${v.stories.length} stories)`, storyShapeFails === 0,
+           `${storyShapeFails} malformed`);
+
+        // sourceOrders: keys strings, values integers
+        let soFails = 0;
+        for (const [k, val] of Object.entries(v.sourceOrders)) {
+            if (typeof k !== "string" || k.length === 0) soFails++;
+            if (typeof val !== "number" || !Number.isInteger(val)) soFails++;
+        }
+        ok(`sourceOrders shape (${Object.keys(v.sourceOrders).length} keys)`, soFails === 0,
+           `${soFails} bad pairs`);
+
+        // Words: id is digits, unique, sources non-empty, references keys ⊆ sources
+        const seenIds = new Set();
+        let dupIds = 0;
+        let badIdShape = 0;
+        let emptySources = 0;
+        let refsKeysMismatchSources = 0;
+        let refsLineNotPositive = 0;
+        let badLlmSense = 0;
+        let badAnnotatedForms = 0;
+        let badBccwj = 0;
+        let badKanjiMeanings = 0;
+        let sourceNotInStories = 0;
+        let badContextOrNarration = 0;
+        let badRefCounter = 0;
+        let computedFromNotSortedDedup = 0;
+        let writtenFormsRoundTripFails = 0;
+        const sourcesSeen = new Set();
+        const sampleFails = { dupIds: [], badIdShape: [], emptySources: [], refsKeysMismatchSources: [],
+                              refsLineNotPositive: [], badLlmSense: [], badAnnotatedForms: [], badBccwj: [],
+                              badKanjiMeanings: [], sourceNotInStories: [],
+                              badContextOrNarration: [], badRefCounter: [],
+                              computedFromNotSortedDedup: [], writtenFormsRoundTripFails: [] };
+        function record(bucket, msg) {
+            if (sampleFails[bucket].length < 3) sampleFails[bucket].push(msg);
+        }
+
+        for (const w of v.words) {
+            if (typeof w.id !== "string" || !/^\d+$/.test(w.id)) {
+                badIdShape++; record("badIdShape", `id=${JSON.stringify(w.id)}`);
+            }
+            if (seenIds.has(w.id)) { dupIds++; record("dupIds", w.id); }
+            seenIds.add(w.id);
+
+            if (!Array.isArray(w.sources) || w.sources.length === 0) {
+                emptySources++; record("emptySources", w.id);
+            } else {
+                for (const src of w.sources) sourcesSeen.add(src);
+                for (const src of w.sources) {
+                    if (!storyTitles.has(src)) {
+                        sourceNotInStories++;
+                        record("sourceNotInStories", `${w.id} → '${src}'`);
+                    }
+                }
+            }
+
+            if (w.references != null) {
+                const refKeys = new Set(Object.keys(w.references));
+                const sourceSet = new Set(w.sources || []);
+                // Symmetric difference
+                const onlyRefs = [...refKeys].filter(k => !sourceSet.has(k));
+                const onlySources = [...sourceSet].filter(k => !refKeys.has(k));
+                if (onlyRefs.length || onlySources.length) {
+                    refsKeysMismatchSources++;
+                    record("refsKeysMismatchSources",
+                        `${w.id}: refs-only=${onlyRefs} sources-only=${onlySources}`);
+                }
+                for (const [src, list] of Object.entries(w.references)) {
+                    if (!Array.isArray(list)) {
+                        refsKeysMismatchSources++;
+                        record("refsKeysMismatchSources", `${w.id}/${src} is not an array`);
+                        continue;
+                    }
+                    for (const ref of list) {
+                        if (typeof ref.line !== "number" || !Number.isInteger(ref.line) || ref.line < 1) {
+                            refsLineNotPositive++;
+                            record("refsLineNotPositive", `${w.id}/${src} line=${ref.line}`);
+                        }
+                        // context/narration: per spec, may be null or a string.
+                        if (ref.context !== undefined && ref.context !== null
+                            && typeof ref.context !== "string") {
+                            badContextOrNarration++;
+                            record("badContextOrNarration",
+                                `${w.id}/${src}:L${ref.line} context=${typeof ref.context}`);
+                        }
+                        if (ref.narration !== undefined && ref.narration !== null
+                            && typeof ref.narration !== "string") {
+                            badContextOrNarration++;
+                            record("badContextOrNarration",
+                                `${w.id}/${src}:L${ref.line} narration=${typeof ref.narration}`);
+                        }
+                        // ref.counter: when present, non-empty array of strings.
+                        if (ref.counter !== undefined) {
+                            if (!Array.isArray(ref.counter) || ref.counter.length === 0
+                                || ref.counter.some(c => typeof c !== "string" || c.length === 0)) {
+                                badRefCounter++;
+                                record("badRefCounter",
+                                    `${w.id}/${src}:L${ref.line} counter=${JSON.stringify(ref.counter)}`);
+                            }
+                        }
+                        if (ref.annotated_forms !== undefined) {
+                            if (!Array.isArray(ref.annotated_forms) || ref.annotated_forms.length === 0
+                                || ref.annotated_forms.some(t => typeof t !== "string" || t.length === 0)) {
+                                badAnnotatedForms++;
+                                record("badAnnotatedForms",
+                                    `${w.id}/${src}:L${ref.line} annotated_forms=${JSON.stringify(ref.annotated_forms)}`);
+                            }
+                        }
+                        if (ref.llm_sense !== undefined && ref.llm_sense !== null) {
+                            const s = ref.llm_sense;
+                            if (!Array.isArray(s.sense_indices)
+                                || s.sense_indices.some(i => !Number.isInteger(i) || i < 0)) {
+                                badLlmSense++;
+                                record("badLlmSense",
+                                    `${w.id}/${src}:L${ref.line} sense_indices=${JSON.stringify(s.sense_indices)}`);
+                            }
+                            if (s.computed_from !== undefined) {
+                                if (!Array.isArray(s.computed_from)) {
+                                    badLlmSense++;
+                                    record("badLlmSense",
+                                        `${w.id}/${src}:L${ref.line} computed_from is not an array`);
+                                } else {
+                                    // Per spec: sorted + deduplicated.
+                                    const cf = s.computed_from;
+                                    const dedup = [...new Set(cf)];
+                                    const sorted = [...dedup].sort();
+                                    const isSortedDedup = cf.length === sorted.length
+                                        && cf.every((x, i) => x === sorted[i]);
+                                    if (!isSortedDedup) {
+                                        computedFromNotSortedDedup++;
+                                        record("computedFromNotSortedDedup",
+                                            `${w.id}/${src}:L${ref.line}`);
+                                    }
+                                }
+                            }
+                            // llm_sense.counter: array of strings, empty array, or null. Never an array
+                            // of non-strings.
+                            if (s.counter !== undefined && s.counter !== null) {
+                                if (!Array.isArray(s.counter)
+                                    || s.counter.some(c => typeof c !== "string")) {
+                                    badLlmSense++;
+                                    record("badLlmSense",
+                                        `${w.id}/${src}:L${ref.line} llm_sense.counter=${JSON.stringify(s.counter)}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (w.bccwjPerMillionWords !== null && w.bccwjPerMillionWords !== undefined) {
+                if (typeof w.bccwjPerMillionWords !== "number"
+                    || !Number.isFinite(w.bccwjPerMillionWords)
+                    || w.bccwjPerMillionWords < 0) {
+                    badBccwj++;
+                    record("badBccwj", `${w.id} bccwj=${w.bccwjPerMillionWords}`);
+                }
+            }
+
+            // writtenForms: each form's joined ruby fields must equal the form's text.
+            if (w.writtenForms !== undefined && w.writtenForms !== null) {
+                if (!Array.isArray(w.writtenForms)) {
+                    writtenFormsRoundTripFails++;
+                    record("writtenFormsRoundTripFails", `${w.id} writtenForms not an array`);
+                } else {
+                    for (const group of w.writtenForms) {
+                        if (typeof group?.reading !== "string" || group.reading.length === 0
+                            || !Array.isArray(group?.forms)) {
+                            writtenFormsRoundTripFails++;
+                            record("writtenFormsRoundTripFails",
+                                `${w.id} group reading=${JSON.stringify(group?.reading)}`);
+                            continue;
+                        }
+                        for (const form of group.forms) {
+                            if (typeof form?.text !== "string" || form.text.length === 0
+                                || !Array.isArray(form?.furigana)) {
+                                writtenFormsRoundTripFails++;
+                                record("writtenFormsRoundTripFails",
+                                    `${w.id} form text=${JSON.stringify(form?.text)}`);
+                                continue;
+                            }
+                            const joined = form.furigana.map(seg => seg?.ruby ?? "").join("");
+                            if (joined !== form.text) {
+                                writtenFormsRoundTripFails++;
+                                record("writtenFormsRoundTripFails",
+                                    `${w.id} '${form.text}' joined ruby='${joined}'`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (w.kanjiMeanings !== undefined && w.kanjiMeanings !== null) {
+                if (typeof w.kanjiMeanings !== "object" || Array.isArray(w.kanjiMeanings)) {
+                    badKanjiMeanings++;
+                    record("badKanjiMeanings", `${w.id}: kanjiMeanings not an object`);
+                } else {
+                    for (const [kch, meanings] of Object.entries(w.kanjiMeanings)) {
+                        // Each key should be a single CJK character.
+                        if ([...kch].length !== 1) {
+                            badKanjiMeanings++;
+                            record("badKanjiMeanings", `${w.id}: kanjiMeanings key '${kch}' not 1 char`);
+                        }
+                        if (!Array.isArray(meanings)
+                            || meanings.some(m => typeof m !== "string" || m.length === 0)) {
+                            badKanjiMeanings++;
+                            record("badKanjiMeanings",
+                                `${w.id}/${kch}: meanings=${JSON.stringify(meanings)}`);
+                        }
+                    }
+                }
+            }
+        }
+
+        info("vocab scope", { words: v.words.length, stories: v.stories.length,
+                              uniqueSources: sourcesSeen.size,
+                              sourceOrderKeys: Object.keys(v.sourceOrders).length });
+
+        ok("word ids well-formed (digits)", badIdShape === 0,
+           sampleFails.badIdShape.join(" / "));
+        ok("word ids unique", dupIds === 0,
+           sampleFails.dupIds.join(" / "));
+        ok("sources arrays non-empty", emptySources === 0,
+           sampleFails.emptySources.join(" / "));
+        ok("references keys exactly match sources", refsKeysMismatchSources === 0,
+           sampleFails.refsKeysMismatchSources.join(" / "));
+        ok("every source appears as a story title", sourceNotInStories === 0,
+           sampleFails.sourceNotInStories.join(" / "));
+        ok("reference line numbers are positive integers", refsLineNotPositive === 0,
+           sampleFails.refsLineNotPositive.join(" / "));
+        ok("annotated_forms arrays well-formed when present", badAnnotatedForms === 0,
+           sampleFails.badAnnotatedForms.join(" / "));
+        ok("llm_sense.sense_indices well-formed when present", badLlmSense === 0,
+           sampleFails.badLlmSense.join(" / "));
+        ok("bccwjPerMillionWords is finite ≥ 0 when present", badBccwj === 0,
+           sampleFails.badBccwj.join(" / "));
+        ok("kanjiMeanings well-formed when present", badKanjiMeanings === 0,
+           sampleFails.badKanjiMeanings.join(" / "));
+        ok("ref.context / ref.narration null-or-string", badContextOrNarration === 0,
+           sampleFails.badContextOrNarration.join(" / "));
+        ok("ref.counter is non-empty string array when present", badRefCounter === 0,
+           sampleFails.badRefCounter.join(" / "));
+        ok("llm_sense.computed_from is sorted and deduplicated", computedFromNotSortedDedup === 0,
+           sampleFails.computedFromNotSortedDedup.join(" / "));
+        ok("writtenForms: every form's joined ruby == form.text", writtenFormsRoundTripFails === 0,
+           sampleFails.writtenFormsRoundTripFails.join(" / "));
+
+        // sourceOrders keys should typically correspond to source paths or directory paths.
+        // Don't assert this strictly (directory keys are valid), but flag if a key is neither
+        // a known source nor a prefix of any source.
+        let dangling = 0;
+        const sampleDangling = [];
+        for (const k of Object.keys(v.sourceOrders)) {
+            const isSource = sourcesSeen.has(k);
+            const isDirPrefix = [...sourcesSeen].some(s => s.startsWith(k + "/"));
+            if (!isSource && !isDirPrefix) {
+                dangling++;
+                if (sampleDangling.length < 5) sampleDangling.push(k);
+            }
+        }
+        // This is a soft check — record as info, not a failure assertion.
+        info("sourceOrders keys not seen in any source path",
+             { count: dangling, sample: sampleDangling });
+    }
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 console.log(`\n=== SUMMARY ===`);

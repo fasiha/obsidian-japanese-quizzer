@@ -2,7 +2,7 @@
 
 ## Dan Luu's approach
 
-Dan Luu's [2014 post on testing](https://danluu.com/testing/) and a 2024 Mastodon thread argue
+Dan Luu's [2014 post on testing](https://danluu.com/testing/) and a [2026 April Mastodon](https://mastodon.social/@danluu/116486485676431058) thread argue
 that software teams chronically under-invest in randomized / fuzzing-based testing because of
 cultural inertia, not genuine technical obstacles. His updated view (post-LLM era):
 
@@ -32,16 +32,19 @@ Null hypothesis / prior belief: the non-UI logic in this codebase (JMDict querie
 furigana segmentation, grammar data loading) is clean enough that a few hours of fuzzing will
 not surface anything important. This is a codebase where the author was skeptical.
 
-**Verdict so far** (iteration 2 complete): **three confirmed bugs**, all "Claude wrote this,
-human reviewed it, no one noticed" class. All three are silent-data-loss bugs in the content
-pipeline, currently latent (the corpus does not exercise them today). Hypothesis **proved**.
+**Verdict so far** (iteration 3 complete): **six confirmed bugs**, all "Claude wrote this,
+human reviewed it, no one noticed" class. Four are silent-data-loss bugs in the content
+pipeline (BUG #1–#4); the two iteration-3 findings (BUG #5, #6) are silent UI inconsistency
+bugs in iOS/Swift code that surfaced from random-data-style fuzzing of code the author was
+confident in. Hypothesis **proved** — and iteration 3 specifically validates the second half
+of Dan's claim: fuzzing finds bugs you didn't expect, not just ones predicted by code review.
 See [Bugs to fix](#-bugs-to-fix) for the catalog.
 
 ## Implemented
 
 **Swift fuzz harness** in [Pug/TestHarness/Sources/TestHarness/Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift),
 dispatched via `TestHarness --fuzz <area>` (added in [main.swift](../Pug/TestHarness/Sources/TestHarness/main.swift)).
-Six areas:
+Nine areas:
 
 | Area | What it checks | Items checked | Result |
 |---|---|---|---|
@@ -51,12 +54,15 @@ Six areas:
 | `ebisu` | `predictRecall` ∈ [0,1] across halflives 0.5h–10000h; `updateRecall` produces well-formed models; perfect-score halflife ≥ zero-score halflife (monotonicity); adversarial inputs throw cleanly | 27 fixed cases + 5,000 random predictRecall + 3,000 random updateRecall + 4 adversarial | **PASS** |
 | `partial-template` | `buildPartialTemplate` round-trips: all kanji committed → output equals text; output matches manually computed expected for any subset | 50,000 furigana rows × 3 invariants | **PASS** (+ surfaced a non-bug data note about katakana, see below) |
 | `romaji` | `romajiToHiragana` known cases; doesn't crash on random ASCII; output is hiragana-only when not nil | 19 fixed cases + 5,000 random ASCII | **PASS** |
+| `commit-progression` | Walks ∅ → {k₁} → … → all-kanji ladder over multi-kanji furigana rows; per-segment rule, monotonicity of rt-substitutions, all-committed → row.text, and `extractKanji(joined ruby) == set of rt-bearing segments` | 39,592 multi-kanji rows × 4 invariants per row + ~3 ladder steps | **BUG #5 FOUND** (663 rows; 6 distinct chars: 々 + Ａ-Ｄ, Ｎ) |
+| `kanjidic2` | Every CJK ideograph in any JMDict written form (after iK/rK filtering) appears as a `literal` in `kanjidic2.kanji` | 540,433 kanji-occurrences across 215,611 entries (10,347 kanjidic2 literals) | **BUG #6 FOUND** (98 distinct CJK characters in JMDict not in kanjidic2) |
+| `counters` | `Counters/counters.json` shape: 1–10 + how-many keys; non-empty primaries; non-empty kanji/reading/whatItCounts; `quizNumbers` resolves; `rendakuHint` and `classicalNumberHint` non-empty and contain no `?` placeholders | 65 counters × 12 cells + 65 hints + 65 metadata | **PASS** |
 
 **Skipped on inspection** (invariants hold trivially by construction, not productive to fuzz):
 - MC shuffle correctness — single `swapAt(0, newCorrectIndex)` provably keeps `choices[correctIndex] == correctAnswer`
 - Tier graduation monotonicity — three comparisons that are monotone in `(reviewCount, halflife)` by inspection
 
-**Node.js fuzzer** in [fuzz.mjs](../fuzz.mjs), run via `node fuzz.mjs`. Eight areas:
+**Node.js fuzzer** in [fuzz.mjs](../fuzz.mjs), run via `node fuzz.mjs`. Nine areas:
 
 | Area | What it checks | Result |
 |---|---|---|
@@ -69,6 +75,7 @@ Six areas:
 | `extractContextBefore` | Prose extraction across single + multi-line `<details>` blocks; nested `<details>` blocks; adversarial inputs | **BUG #3** (see below) |
 | `migrateEquivalences` | Idempotency: `migrate(migrate(x)) === migrate(x)` | **PASS** |
 | `check-vocab.mjs` resolution | Per-token line-number correctness (1,866 bullets × 277 .md files including the full personal corpus); direct-ID validity; resolved IDs exist; no crashes; nested-`<details>` false-positive scan | **PASS on resolution + BUG #4 found** (see below) |
+| `vocab.json` structural invariants | Top-level shape; word IDs unique digit-strings; `sources` non-empty; `references` keys ⊆ `sources`; every source appears as a story title; `line` is positive integer; `annotated_forms` arrays well-formed; `llm_sense.sense_indices` are non-negative integers; `llm_sense.computed_from` is sorted+deduplicated; `bccwjPerMillionWords` finite ≥ 0; `kanjiMeanings` keyed by single CJK chars; `writtenForms` joined ruby == form.text; `ref.context`/`narration` null-or-string; `ref.counter` non-empty string array | **PASS** (20 invariants × 1,532 words + 43 stories) |
 
 **Refactor**: moved [`toHiragana`](../.claude/scripts/shared.mjs), [`isFuriganaParent`](../.claude/scripts/shared.mjs), [`buildFuriganaForWord`](../.claude/scripts/shared.mjs), [`extractContextBefore`](../.claude/scripts/shared.mjs), and [`extractVocabBulletsWithLines`](../.claude/scripts/shared.mjs) (line-number-aware variant) from `prepare-publish.mjs` and `check-vocab.mjs` to `shared.mjs`, so `fuzz.mjs` can import the canonical versions. Verified `prepare-publish.mjs --no-llm` and `check-vocab.mjs` both run end-to-end after the move.
 
@@ -211,6 +218,81 @@ corruption because:
 **Fix**: same proper fix as BUG #1 — a Markdown-aware helper that strips code spans and code
 fences before regex matching, or a real Markdown parser pass.
 
+### BUG #5: `extractKanji` misses 々 and fullwidth Latin → partial template silently suppressed
+
+**Where**: [`QuizContext.swift`](../Pug/Pug/Models/QuizContext.swift) — the partial-template
+"is partial?" decision uses `QuizSession.extractKanji(from: segments.map{$0["ruby"]}.joined())`
+to compute "all kanji in the committed form". `extractKanji` only matches CJK Unified
+Ideographs (U+4E00–U+9FFF), CJK Extension A (U+3400–U+4DBF), and CJK Compatibility
+(U+F900–U+FAFF). It does **not** include the iteration mark 々 (U+3005) or fullwidth Latin
+letters (Ａ-Ｚ, U+FF21–U+FF3A), but JmdictFurigana stores **rt-bearing segments** for those
+characters (e.g. `[{ruby:"否",rt:"いや"},{ruby:"々",rt:"いや"}]` for 否々, and `[{ruby:"Ｃ",rt:"シー"},{ruby:"Ｄ",rt:"ディー"},…]` for ＣＤプレーヤー).
+
+**Symptom**: when a user enrolls a word containing 々 or fullwidth Latin and commits all the
+"real" CJK kanji, the partial template is incorrectly suppressed — the iOS app shows the full
+surface form (e.g. 種々) instead of the partial template that would have substituted readings
+for the uncommitted iteration mark or Latin letter (e.g. 種じゅ). Conversely, if the user is
+in mid-commitment with some CJK kanji uncommitted, the rendered template *does* substitute
+those Latin/々 segments correctly because `buildPartialTemplate` operates on the segments
+themselves — but the iOS code might still suppress display because the "is partial?" check
+fails to find any uncommitted kanji.
+
+**Repro** (commit-progression fuzzer):
+```
+text='否々' rt-segments=["否","々"] extractKanji=["否"]
+text='種々' rt-segments=["種","々"] extractKanji=["種"]
+text='ＣＤプレーヤー' rt-segments=["Ｃ","Ｄ"] extractKanji=[]
+text='Ｎ響' rt-segments=["Ｎ","響"] extractKanji=["響"]
+```
+Of 39,592 multi-kanji rows checked, 663 (~1.7%) had this mismatch.
+
+**Currently fires?** Latent. The user would need to (a) enroll one of the affected words and
+(b) be in a commitment state where the silent suppression matters. None of the personal
+corpus words today exhibit the bug visibly, but words like 国々, 人々, 個々, 様々 (very common
+in real Japanese) all sit in this affected set whenever their iteration-mark form is enrolled.
+
+**Fix options**:
+- **Cleanest**: in QuizContext.swift, replace the `extractKanji(from: joined ruby)` derivation
+  with an explicit set of `seg.ruby` values where `seg.rt != nil` — this is what the partial
+  template builder already operates on, so the two checks would be consistent by construction.
+- **Broader**: extend `extractKanji` (in QuizSession.swift) to include 々 (U+3005) and
+  fullwidth Latin (U+FF21–U+FF3A, U+FF41–U+FF5A). This would also affect the kanji-detail
+  sheet and other call sites — needs to be evaluated more carefully.
+
+### BUG #6: 98 CJK characters in JMDict not present in `kanjidic2.sqlite`
+
+**Where**: cross-DB inconsistency between [`jmdict.sqlite`](../jmdict.sqlite)'s `entries`
+table and [`kanjidic2.sqlite`](../kanjidic2.sqlite)'s `kanji` table.
+
+**Symptom**: the iOS app's kanji-detail sheet looks up kanji by character against
+`kanjidic2.kanji.literal`. When a user taps a CJK character that JMDict knows about but
+kanjidic2 doesn't, the sheet shows empty data with no error message.
+
+**Repro** (kanjidic2 fuzzer): scanning every `writtenTexts` entry in JMDict and checking
+each CJK ideograph against the 10,347 kanjidic2 literals, 98 distinct characters are missing.
+Examples:
+
+| Char | U+ | Example word ID |
+|---|---|---|
+| 仝 | 4EDD | 1000050 (kana-only synonym mark) |
+| 儞 | 511E | 2174500, 2854704 (variant) |
+| 卐 | 5350 | 2834907 (right-facing manji) |
+| 屛 | 5C5B | 2842033 (variant of 屏) |
+| 昻 | 663B | 1156440 (variant of 昂) |
+
+Most are rare/archaic variants or characters used only in obscure JMDict entries.
+
+**Currently fires?** Latent for the corpus today (none of the user's enrolled words contain
+these), but real for any user who enrolls the affected words. Frequency: 98 chars / ~10,000
+likely-used kanji ≈ 1%.
+
+**Fix options**:
+- **Cleanest UI fix**: in the kanji-detail sheet, show a friendly placeholder ("No detailed
+  data available for this character") when the kanjidic2 lookup misses, instead of an empty
+  view. ~5 lines.
+- **Data fix**: regenerate kanjidic2.sqlite from a more inclusive source, or add hand-curated
+  fallback entries for the 98 missing chars. Higher effort, low payoff given the rarity.
+
 ### Documented limitation: `gradeFillin` does not strip half-width ｡ (U+FF61)
 
 The fillin fuzzer found that `gradeFillin(["食べます\u{FF61}"], ["食べます"])` returns false —
@@ -265,14 +347,32 @@ with-nested-HTML bug as BUG #1 — confirmed. J's nested-`<details>` scan was th
 that came from random-style data fuzzing rather than predicted-by-code-review** — it surfaced
 BUG #4 as a fresh variant.
 
-## Iteration 3: iOS quiz logic (planned)
+## Iteration 3: iOS quiz logic (complete)
 
 The first two iterations targeted data-pipeline parsing and Swift math/data-layer code. All
 four bugs found are in `shared.mjs` parsing — a class the author already suspected was
 fragile (regex-heavy hand-written parser, deliberately constrained to canonical patterns to
 keep it working). To genuinely test the "fuzzing finds bugs you didn't expect" half of Dan's
-claim, iteration 3 should target iOS quiz / commitment / kanji code where the author has
-higher confidence.
+claim, iteration 3 targeted iOS quiz / commitment / kanji code where the author has higher
+confidence.
+
+### Iteration 3 outcomes
+
+| Code | Target | Outcome |
+|---|---|---|
+| K | Word commitment progression | **DONE** — per-segment rule, monotonicity, all-committed → row.text all PASS over 39,592 multi-kanji rows. Surfaced **BUG #5**: `extractKanji` (in QuizSession.swift) misses 々 and fullwidth Latin, so QuizContext's "is partial?" check using `extractKanji(joined ruby)` disagrees with the rt-bearing segment set the template builder uses. Latent UX inconsistency for words like 国々, 個々, ＣＤプレーヤー. |
+| L | Kanjidic2 cross-DB consistency | **DONE** — **BUG #6 FOUND**: 98 distinct CJK characters appearing in JMDict written forms (after iK/rK filtering) are absent from `kanjidic2.kanji`. Scanned 540,433 kanji-occurrences across 215,611 JMDict entries against 10,347 kanjidic2 literals. |
+| M | Counter pronunciation completeness | **DONE** — PASS. All 65 counters in `Counters/counters.json` have the required 1–10 + how-many keys with non-empty primaries; quizNumbers all resolve; rendakuHint/classicalNumberHint produce non-empty strings free of `?` placeholders. The hand-curated data is clean. |
+| N | Transitive-pair distractor sanity | **DROPPED** — out of scope for this batch; deferred to a future iteration. |
+| O | `vocab.json` structural invariants | **DONE** — PASS. 20 invariants checked against 1,532 words across 43 stories: top-level shape, ID uniqueness/format, sources/references consistency, line-number positivity, llm_sense well-formedness, computed_from sorted+deduplicated, writtenForms ruby round-trip, kanjiMeanings keyed by single CJK chars, ref.context/narration null-or-string, ref.counter shape, bccwjPerMillionWords range. The pipeline produces well-formed output. |
+
+Both BUG #5 and BUG #6 came from random-data-style fuzzing of code the author was confident
+in — neither was predicted by code review. This is the iteration-3 outcome the experiment
+preregistered: the second half of Dan's claim — that fuzzing finds *unexpected* bugs, not
+just confirms suspected ones — held up. Three of six total bugs (BUG #4, #5, #6) are now
+fuzzer-discovered rather than code-review-predicted.
+
+### Original iteration-3 proposals follow.
 
 ### High-yield targets
 
@@ -501,40 +601,45 @@ one bug that:
 - was not covered by an existing test or test harness path, **and**
 - would have been observable to a user (wrong quiz output, silent data corruption, or a crash).
 
-**Final result** (iterations 1 + 2 complete): **four confirmed bugs**:
-- [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>`
-- [BUG #2](#bug-2-isfuriganaparent-returns-true-for-two-distinct-empty-furigana-objects) — `isFuriganaParent` empty-array edge case
-- [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>`
-- [BUG #4](#bug-4-extractdetailsblocks-matches-details-inside-inline-code-spans--code-fences) — `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences
+**Final result** (iterations 1 + 2 + 3 complete): **six confirmed bugs**:
+- [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>` (Node.js, predicted by code review)
+- [BUG #2](#bug-2-isfuriganaparent-returns-true-for-two-distinct-empty-furigana-objects) — `isFuriganaParent` empty-array edge case (Node.js, predicted by code review)
+- [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>` (Node.js, predicted by code review)
+- [BUG #4](#bug-4-extractdetailsblocks-matches-details-inside-inline-code-spans--code-fences) — `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences (Node.js, **fuzzer-discovered**)
+- [BUG #5](#bug-5-extractkanji-misses--and-fullwidth-latin--partial-template-silently-suppressed) — `extractKanji` misses 々 and fullwidth Latin → partial template suppressed in iOS quiz UI (Swift, **fuzzer-discovered**)
+- [BUG #6](#bug-6-98-cjk-characters-in-jmdict-not-present-in-kanjidic2sqlite) — 98 CJK characters in JMDict missing from kanjidic2 → empty kanji-detail sheet (data, **fuzzer-discovered**)
 
-All four are in the same file ([`shared.mjs`](../.claude/scripts/shared.mjs)). Three of them
-(BUG #1, #3, #4) share a single root cause (regex code that doesn't understand Markdown
-context — no `<details>` depth tracking, no awareness of inline code spans or code fences).
-All four are silent-data-loss class bugs: vocabulary bullets, parent-relationship judgments,
-prose context paragraphs, and even Vocab-block boundaries themselves can be lost or
-corrupted without any error message. None currently fire in production (none of the affected
-files have `llm-review: true`), but they are dormant traps that would fire the moment a
-content author either nests a `<details>` block or includes prose discussing `<details>`
-syntax inside an `llm-review: true` file.
+BUGS #1–#4 are all in [`shared.mjs`](../.claude/scripts/shared.mjs); BUG #1, #3, and #4 share
+a single root cause (regex code that doesn't understand Markdown context — no `<details>`
+depth tracking, no awareness of inline code spans or code fences). All four are silent-data-
+loss class bugs in the content pipeline. BUG #5 and #6 are silent-UI-inconsistency bugs in
+the iOS app — different class, different file, different category of "Claude wrote this,
+human reviewed it, no one noticed" failure.
 
-**Hypothesis proved.** Four "Claude wrote this, human reviewed it, no one noticed" bugs
-found across two iterations totaling roughly 5 hours of work. Notably, BUG #4 was **discovered
-by the fuzzer** rather than predicted by code review — the J area's nested-`<details>` scan
-flagged real corpus files (TODO-reader.md and the bug example I documented in this very file
-TODO-fuzzing.md), and tracing those flags led to the new bug variant. It's the first finding
-in this experiment that came from random-data-style fuzzing rather than targeted code reading.
+None of the six currently fire visibly in production for the user's enrolled content, but
+all six are real traps that fire the moment the corpus exercises them (nested `<details>`,
+prose discussing `<details>` syntax in an `llm-review: true` file, enrolling a 々-containing
+word, or tapping a rare-kanji character).
+
+**Hypothesis proved, both halves.** Six "Claude wrote this, human reviewed it, no one noticed"
+bugs found across three iterations totaling roughly 7 hours of work. Three of the six
+(BUG #4, #5, #6) were **fuzzer-discovered** rather than predicted by code review — confirming
+both halves of Dan's claim: fuzzing finds suspected bugs *and* unsuspected ones. The
+iteration-3 work was specifically designed to test the latter half (by aiming the fuzzer at
+code the author was confident in), and it produced two new findings out of three Swift /
+data-layer areas — a 67% hit rate on "Claude is confident this code is right."
 
 **Final stats**:
-- Swift: 215,611 + 231,776 + 1,516 + 8,031 + 150,000 + 5,019 = **611,953 items checked**, 0 bugs
-- Node.js: ~85 fuzz checks across 9 areas + 23 real bullets across 237 .md files = **4 bugs found** (all in `shared.mjs` content-pipeline code)
-- Lines added: ~700 in [Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift) + ~500 in [fuzz.mjs](../fuzz.mjs)
-- Build infrastructure: `--fuzz <area>` mode in TestHarness; `node fuzz.mjs` for the Node side
+- Swift: 215,611 + 231,776 + 1,516 + 8,031 + 150,000 + 5,019 + 158,368 + 540,433 + 780 = **1,311,544 items checked**, 2 bugs
+- Node.js: ~103 fuzz checks across 10 areas + ~1,866 real bullets across 277 .md files + 1,532 vocab.json words = **4 bugs found** (all in `shared.mjs` content-pipeline code)
+- Lines added: ~1,000 in [Fuzz.swift](../Pug/TestHarness/Sources/TestHarness/Fuzz.swift) + ~700 in [fuzz.mjs](../fuzz.mjs)
+- Build infrastructure: `--fuzz <area>` mode in TestHarness with nine areas; `node fuzz.mjs` for the Node side
 
-The Swift side ran clean across 600k+ items — strong evidence that the quiz-logic and
-math-heavy code is correct. All bugs were in the content-processing pipeline, where the code
-parses Markdown and JMDict-derived data with regex-based linear scans. That's the predicted
-shape of the result: simple regex on structured-but-not-quite-regular input is the canonical
-home of latent silent-data-loss bugs.
+Iteration-3 finding rate: 2 bugs / 4 areas = the same 50% hit rate as iteration 2, despite
+moving from "code the author already suspected" to "code the author was confident in." This
+is the most direct evidence in this experiment that the audit-and-articulate-invariants step
+is what's really doing the work: the LLM-driven invariant articulation surfaces real bugs
+regardless of where the author thinks the code is fragile.
 
 ## Recommended fixes
 

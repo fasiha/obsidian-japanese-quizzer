@@ -16,6 +16,9 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
     case "ebisu":            fuzzEbisu()
     case "partial-template": try await fuzzPartialTemplate(jmdict: jmdict)
     case "romaji":           fuzzRomaji()
+    case "commit-progression": try await fuzzCommitProgression(jmdict: jmdict)
+    case "kanjidic2":        try await fuzzKanjidic2(jmdict: jmdict)
+    case "counters":         fuzzCounters()
     case "all":
         try await fuzzJmdict(jmdict: jmdict)
         try await fuzzFurigana(jmdict: jmdict)
@@ -23,8 +26,11 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
         fuzzEbisu()
         try await fuzzPartialTemplate(jmdict: jmdict)
         fuzzRomaji()
+        try await fuzzCommitProgression(jmdict: jmdict)
+        try await fuzzKanjidic2(jmdict: jmdict)
+        fuzzCounters()
     default:
-        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, all\n", stderr)
+        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, all\n", stderr)
         exit(1)
     }
 }
@@ -567,4 +573,306 @@ func fuzzRomaji() {
     print("  random ASCII (\(iterations) iters): \(nonHiraganaOutputs == 0 ? "[PASS]" : "[FAIL] \(nonHiraganaOutputs) bad-output failures")")
 
     report(area: "romaji", checked: known.count + iterations, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area K: Word commitment progression
+
+// Walks the commitment ladder ∅ → {k₁} → {k₁, k₂} → … → all-kanji for furigana rows
+// that have at least two kanji segments, and verifies invariants at each step.
+//
+// Why this is different from area B: B tests random subsets independently. K tests
+// a coherent progression where each step must be consistent with the prior step.
+// The invariants exercise the per-segment rule and monotonicity of rt-substitution
+// — the contract the iOS app's QuizContext relies on when computing partialKanjiTemplate
+// at every kanji-commit event.
+func fuzzCommitProgression(jmdict: DatabaseQueue) async throws {
+    print("=== FUZZ: word commitment progression ===")
+
+    struct FRow { let text: String; let reading: String; let segs: String }
+
+    // Pull rows that have at least one CJK ideograph in text — those are the only ones
+    // a user can progressively commit. 50k random sample for speed.
+    let rows = try await jmdict.read { db -> [FRow] in
+        let cursor = try Row.fetchCursor(db, sql: "SELECT text, reading, segs FROM furigana LIMIT 50000")
+        var buf: [FRow] = []
+        buf.reserveCapacity(50_000)
+        while let row = try cursor.next() {
+            buf.append(FRow(text: row["text"], reading: row["reading"], segs: row["segs"]))
+        }
+        return buf
+    }
+    print("Loaded \(rows.count) furigana rows.")
+
+    let decoder = JSONDecoder()
+    var failures: [(String, String)] = []
+    var monotonicityFails = 0
+    var perSegmentFails = 0
+    var allCommittedFails = 0
+    var kanjiSetMismatchFails = 0
+    var checkedRows = 0
+    var multiKanjiRows = 0
+
+    var rng: UInt64 = 0xFADE_BEEF_DEAD_BABE
+    func next() -> UInt64 { rng ^= rng &<< 13; rng ^= rng >> 7; rng ^= rng &<< 17; return rng }
+
+    for (n, row) in rows.enumerated() {
+        guard let data = row.segs.data(using: .utf8),
+              let parts = try? decoder.decode([FuriganaPart].self, from: data) else {
+            continue
+        }
+        // Order-preserving deduplicated kanji from rt-bearing segments.
+        var seenK = Set<String>()
+        let kanjiInOrder: [String] = parts.compactMap { p -> String? in
+            guard p.rt != nil else { return nil }
+            return seenK.insert(p.ruby).inserted ? p.ruby : nil
+        }
+        if kanjiInOrder.count < 2 { continue }
+        multiKanjiRows += 1
+        checkedRows += 1
+
+        // Cross-check that the iOS app's "is partial?" trigger logic agrees with the
+        // segment-derived kanji set: extractKanji on the joined ruby fields must equal
+        // the set of rt-bearing segment ruby values.
+        let joinedRuby = parts.map(\.ruby).joined()
+        let extracted = Set(QuizSession.extractKanji(from: joinedRuby))
+        if extracted != Set(kanjiInOrder) {
+            kanjiSetMismatchFails += 1
+            if kanjiSetMismatchFails <= 5 {
+                failures.append(("kanji-set-mismatch",
+                    "text='\(row.text)' rt-segments=\(kanjiInOrder.sorted()) extractKanji=\(extracted.sorted())"))
+            }
+        }
+
+        // Random commitment ordering — Fisher-Yates over kanjiInOrder.
+        var order = kanjiInOrder
+        if order.count > 1 {
+            for i in stride(from: order.count - 1, through: 1, by: -1) {
+                let j = Int(next() % UInt64(i + 1))
+                order.swapAt(i, j)
+            }
+        }
+
+        // Walk the ladder ∅ → … → all. Check invariants at each step.
+        var committed: Set<String> = []
+        var prevRtCount = parts.filter { $0.rt != nil }.count
+        // Step 0 is ∅; verify expected rt count and per-segment rule.
+        for stepIdx in 0 ... order.count {
+            if stepIdx > 0 { committed.insert(order[stepIdx - 1]) }
+            let template = buildPartialTemplate(furigana: parts, committedKanji: committed)
+
+            // Per-segment expected output.
+            var expected = ""
+            var rtCount = 0
+            for p in parts {
+                if let rt = p.rt, !committed.contains(p.ruby) {
+                    expected += rt
+                    rtCount += 1
+                } else {
+                    expected += p.ruby
+                }
+            }
+            if template != expected {
+                perSegmentFails += 1
+                if perSegmentFails <= 5 {
+                    failures.append(("per-segment step=\(stepIdx)",
+                        "text='\(row.text)' committed=\(committed.sorted()) → '\(template)' vs expected '\(expected)'"))
+                }
+            }
+            // Monotonicity: rt-substitutions must be non-increasing.
+            if stepIdx > 0 && rtCount > prevRtCount {
+                monotonicityFails += 1
+                if monotonicityFails <= 5 {
+                    failures.append(("monotonicity step=\(stepIdx)",
+                        "text='\(row.text)' rtCount=\(rtCount) > prev=\(prevRtCount) committed=\(committed.sorted())"))
+                }
+            }
+            prevRtCount = rtCount
+
+            // All-committed final state: template must equal row.text exactly.
+            if stepIdx == order.count {
+                if template != row.text {
+                    allCommittedFails += 1
+                    if allCommittedFails <= 5 {
+                        failures.append(("all-committed",
+                            "text='\(row.text)' final='\(template)' (committed=\(committed.sorted()))"))
+                    }
+                }
+            }
+        }
+
+        if n > 0 && n % 25_000 == 0 { print("  \(n)/\(rows.count) (multi-kanji so far: \(multiKanjiRows))…") }
+    }
+
+    print("  per-segment rule: \(perSegmentFails == 0 ? "[PASS]" : "[FAIL] \(perSegmentFails) failures")")
+    print("  monotonicity (rt-count non-increasing): \(monotonicityFails == 0 ? "[PASS]" : "[FAIL] \(monotonicityFails) failures")")
+    print("  all-committed → row.text: \(allCommittedFails == 0 ? "[PASS]" : "[FAIL] \(allCommittedFails) failures")")
+    print("  extractKanji ↔ rt-segments agree: \(kanjiSetMismatchFails == 0 ? "[PASS]" : "[FAIL] \(kanjiSetMismatchFails) failures")")
+    print("  Multi-kanji rows checked: \(multiKanjiRows)")
+
+    report(area: "commit-progression", checked: checkedRows * 4, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area L: Kanjidic2 cross-DB consistency
+
+// Every CJK ideograph appearing in any JMDict written form should also be present in
+// kanjidic2.kanji.literal. A miss means the kanji-detail sheet shows empty data when
+// the user taps that character — silent UX failure with a free oracle.
+func fuzzKanjidic2(jmdict: DatabaseQueue) async throws {
+    print("=== FUZZ: kanjidic2 cross-DB consistency ===")
+
+    guard let kanjidicPath = findFile("kanjidic2.sqlite") else {
+        fputs("Error: kanjidic2.sqlite not found\n", stderr)
+        return
+    }
+    let kanjidicDB = try DatabaseQueue(path: kanjidicPath)
+
+    let kanjidicLiterals = try await kanjidicDB.read { db in
+        try Set(String.fetchAll(db, sql: "SELECT literal FROM kanji"))
+    }
+    print("Loaded \(kanjidicLiterals.count) kanjidic2 literals.")
+
+    // Iterate every JMDict entry. We use jmdictWordData (canonical) so that iK/rK/ik
+    // filtering is applied — i.e. we only check kanji forms the iOS app actually shows.
+    let allIds = try await jmdict.read { db in
+        try String.fetchAll(db, sql: "SELECT id FROM entries ORDER BY CAST(id AS INTEGER)")
+    }
+    print("Checking \(allIds.count) JMDict entries…")
+
+    var failures: [(String, String)] = []
+    var missingKanji: [String: [String]] = [:]   // kanji → up to 3 example word IDs
+    var totalKanjiChecked = 0
+    var entriesChecked = 0
+    let batchSize = 1000
+    var i = 0
+
+    while i < allIds.count {
+        let batch = Array(allIds[i ..< min(i + batchSize, allIds.count)])
+        let result = try await QuizContext.jmdictWordData(ids: batch, jmdict: jmdict)
+        for id in batch {
+            guard let entry = result[id] else { continue }
+            entriesChecked += 1
+            for written in entry.writtenTexts {
+                for scalar in written.unicodeScalars {
+                    let v = scalar.value
+                    let isCJK = (v >= 0x4E00 && v <= 0x9FFF) ||
+                                (v >= 0x3400 && v <= 0x4DBF) ||
+                                (v >= 0xF900 && v <= 0xFAFF)
+                    if isCJK {
+                        totalKanjiChecked += 1
+                        let k = String(scalar)
+                        if !kanjidicLiterals.contains(k) {
+                            if missingKanji[k] == nil { missingKanji[k] = [] }
+                            if missingKanji[k]!.count < 3 { missingKanji[k]!.append("\(id):\(written)") }
+                        }
+                    }
+                }
+            }
+        }
+        i += batchSize
+        if i % 50_000 == 0 { print("  \(i)/\(allIds.count)…") }
+    }
+
+    if !missingKanji.isEmpty {
+        for (k, examples) in missingKanji.sorted(by: { $0.key < $1.key }) {
+            failures.append(("missing-kanji",
+                "'\(k)' (U+\(String(k.unicodeScalars.first!.value, radix: 16, uppercase: true))) used in: \(examples.joined(separator: ", "))"))
+        }
+    }
+    print("  Distinct CJK characters seen in JMDict written forms; \(missingKanji.count) missing from kanjidic2.")
+
+    report(area: "kanjidic2", checked: totalKanjiChecked, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area M: Counter pronunciation completeness
+
+// Validates Counters/counters.json against the contract the iOS app implicitly requires:
+//   • 1–10 + how-many keys present, each with a non-empty primary array
+//   • whatItCounts, kanji, reading, id non-empty
+//   • countExamples non-empty
+//   • Every quizNumber in the counter's quizNumbers array has a matching pronunciation
+//     with a non-empty primary
+//   • rendakuHint and classicalNumberHint return non-empty strings (their contract
+//     promises this — verify it across all real counters)
+func fuzzCounters() {
+    print("=== FUZZ: counter pronunciation completeness ===")
+
+    guard let path = findFile("Counters/counters.json"),
+          let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+          let counters = try? JSONDecoder().decode([Counter].self, from: data) else {
+        fputs("Error: cannot load Counters/counters.json\n", stderr)
+        return
+    }
+    print("Loaded \(counters.count) counters from \(path).")
+
+    var failures: [(String, String)] = []
+    let requiredKeys: Set<String> = ["1","2","3","4","5","6","7","8","9","10","how-many"]
+    var checked = 0
+
+    for c in counters {
+        let cid = c.id
+
+        if c.id.isEmpty           { failures.append((cid, "empty id")) }
+        if c.kanji.isEmpty         { failures.append((cid, "empty kanji")) }
+        if c.reading.isEmpty       { failures.append((cid, "empty reading")) }
+        if c.whatItCounts.isEmpty  { failures.append((cid, "empty whatItCounts")) }
+        if c.countExamples.isEmpty { failures.append((cid, "empty countExamples")) }
+        if let j = c.jmdict, j.id.isEmpty { failures.append((cid, "jmdict.id empty")) }
+        for (idx, ex) in c.countExamples.enumerated() {
+            if ex.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                failures.append((cid, "countExamples[\(idx)] is blank"))
+            }
+        }
+
+        let pkeys = Set(c.pronunciations.keys)
+        let missing = requiredKeys.subtracting(pkeys)
+        let extra   = pkeys.subtracting(requiredKeys)
+        if !missing.isEmpty {
+            failures.append((cid, "missing pronunciation keys: \(missing.sorted())"))
+        }
+        if !extra.isEmpty {
+            failures.append((cid, "unexpected pronunciation keys: \(extra.sorted())"))
+        }
+        for key in requiredKeys {
+            guard let cell = c.pronunciations[key] else { continue }
+            if cell.primary.isEmpty {
+                failures.append((cid, "pronunciation \(key) has empty primary array"))
+            }
+            for (i, p) in cell.primary.enumerated() {
+                if p.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    failures.append((cid, "pronunciation \(key) primary[\(i)] is blank"))
+                }
+            }
+            for (i, r) in cell.rare.enumerated() {
+                if r.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    failures.append((cid, "pronunciation \(key) rare[\(i)] is blank"))
+                }
+            }
+            checked += 1
+        }
+
+        // quizNumbers contract: each entry must resolve to a non-empty primary list.
+        for qn in c.quizNumbers {
+            guard let cell = c.pronunciations[qn] else {
+                failures.append((cid, "quizNumber '\(qn)' has no pronunciation entry"))
+                continue
+            }
+            if cell.primary.isEmpty {
+                failures.append((cid, "quizNumber '\(qn)' has empty primary"))
+            }
+        }
+
+        // Hint contracts: must be non-empty.
+        let rh = c.rendakuHint
+        let ch = c.classicalNumberHint
+        if rh.isEmpty            { failures.append((cid, "rendakuHint is empty")) }
+        if ch.isEmpty            { failures.append((cid, "classicalNumberHint is empty")) }
+
+        // Hints reference numbers that exist in the data — sanity that the formatters
+        // didn't end up with a "?" placeholder.
+        if ch.contains("?") {
+            failures.append((cid, "classicalNumberHint contains '?': \(ch)"))
+        }
+    }
+
+    report(area: "counters", checked: checked + counters.count, silentlySkipped: 0, failures: failures)
 }
