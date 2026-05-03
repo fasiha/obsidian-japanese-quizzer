@@ -1336,22 +1336,34 @@ if (!dryRun) {
 }
 
 // --- Kanji top-usage frequency data ---
-const kanjiTopUsage = buildKanjiTopUsage(
-  words,
-  jmdictById,
-  new Set(words.map((w) => w.id)),
-  bccwjDb,
-  db
-);
+// Skip the (slow) rebuild if the word-ID set hasn't changed since the last run.
 const kanjiTopUsagePath = path.join(projectRoot, "kanji-top-usage.json");
-if (!dryRun) {
-  writeFileSync(
-    kanjiTopUsagePath,
-    JSON.stringify({ generatedAt: new Date().toISOString(), kanji: kanjiTopUsage }, null, 2) + "\n"
-  );
-  console.log(`Wrote ${Object.keys(kanjiTopUsage).length} kanji entries → ${kanjiTopUsagePath}`);
-} else {
-  console.log(`[DRY RUN] Would write ${Object.keys(kanjiTopUsage).length} kanji entries to ${kanjiTopUsagePath}`);
+const currentWordIds = words.map((w) => w.id).sort();
+let kanjiTopUsage;
+let kanjiCacheHit = false;
+if (existsSync(kanjiTopUsagePath)) {
+  const cached = JSON.parse(readFileSync(kanjiTopUsagePath, "utf8"));
+  if (
+    Array.isArray(cached.sourceWordIds) &&
+    cached.sourceWordIds.length === currentWordIds.length &&
+    cached.sourceWordIds.every((id, i) => id === currentWordIds[i])
+  ) {
+    kanjiTopUsage = cached.kanji;
+    kanjiCacheHit = true;
+    console.log(`Kanji top-usage cache hit (${Object.keys(kanjiTopUsage).length} entries) — skipping rebuild.`);
+  }
+}
+if (!kanjiCacheHit) {
+  kanjiTopUsage = buildKanjiTopUsage(words, jmdictById, new Set(currentWordIds), bccwjDb, db);
+  if (!dryRun) {
+    writeFileSync(
+      kanjiTopUsagePath,
+      JSON.stringify({ generatedAt: new Date().toISOString(), sourceWordIds: currentWordIds, kanji: kanjiTopUsage }, null, 2) + "\n"
+    );
+    console.log(`Wrote ${Object.keys(kanjiTopUsage).length} kanji entries → ${kanjiTopUsagePath}`);
+  } else {
+    console.log(`[DRY RUN] Would write ${Object.keys(kanjiTopUsage).length} kanji entries to ${kanjiTopUsagePath}`);
+  }
 }
 
 const output = {
