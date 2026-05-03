@@ -169,9 +169,9 @@ console.log("\n=== extractDetailsBlocks ===");
 - 飲む drink
 </details>`;
     const matches = [...extractDetailsBlocks(content, "Vocab")];
-    const bullets = matches.flatMap((m) =>
-        m.stripped.split("\n").filter((l) => l.trim().startsWith("-")).map((l) => l.trim()),
-    );
+    // Use the public extractVocabBullets API: depth tracking ensures bullets
+    // inside nested <details> are not leaked into the Vocab extraction.
+    const bullets = extractVocabBullets(content);
     info("nested block: matches found",  matches.length);
     info("nested block: bullets found",  bullets);
 
@@ -179,29 +179,11 @@ console.log("\n=== extractDetailsBlocks ===");
     const foundNomu   = bullets.some((b) => b.includes("飲む"));
 
     ok("nested block: 食べる (before inner block) is found", foundTaberu);
-
-    // 飲む appears after the inner </details>. With the lazy regex it is lost.
-    if (!foundNomu) {
-        console.error(
-            "[BUG] nested block: '飲む' silently dropped — lazy regex matched inner" +
-            " </details> instead of outer, so bullets after the inner block are lost.",
-        );
-        failed++; total++;
-    } else {
-        ok("nested block: 飲む (after inner block) is found", true);
-    }
+    ok("nested block: 飲む (after inner block) is found — BUG #1 fixed", foundNomu);
 
     // The Grammar bullet 'ている' should NOT appear as a Vocab bullet.
-    // If it does, the inner block's content leaked into the Vocab extraction.
     const foundTeiru = bullets.some((b) => b.includes("ている"));
-    if (foundTeiru) {
-        console.error(
-            "[BUG] nested block: Grammar bullet 'ている' leaked into Vocab extraction.",
-        );
-        failed++; total++;
-    } else {
-        ok("nested block: Grammar bullet ている did not leak into Vocab", true);
-    }
+    ok("nested block: Grammar bullet ている did not leak into Vocab — BUG #1 fixed", !foundTeiru);
 }
 
 // ── 3. grammar-equivalences.json partition invariants ────────────────────────
@@ -694,8 +676,8 @@ console.log("\n=== check-vocab.mjs resolution invariants ===");
         //       code fence, capturing a huge chunk of unrelated text. The match
         //       does not actually start with "<details ... <summary>Vocab"
         //       — the <summary>Vocab</summary> is somewhere in the middle of the captured chunk.
-        for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-            const matchStart = content.slice(match.index, match.index + 200);
+        for (const { fileOffset, stripped } of extractDetailsBlocks(content, "Vocab")) {
+            const matchStart = content.slice(fileOffset, fileOffset + 200);
             const looksLikeRealVocabOpener =
                 /^<details\b[^>]*>\s*<summary>\s*Vocab\s*<\/summary>/i.test(matchStart);
             if (!looksLikeRealVocabOpener) {

@@ -84,25 +84,31 @@ function loadJmdictFurigana() {
 // the context paragraph preceding the <details> block.
 function extractVocabBullets(content) {
   const bullets = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const openingTagLen = match[0].length - match[1].length - "</details>".length;
-    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
-    // Fallback: use the <details> opening line number if no sentence found above.
-    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
-    const line = sentenceLine ?? detailsOpeningLine;
+  for (const { stripped, fileOffset, blockLine } of extractDetailsBlocks(content, "Vocab")) {
+    const { text: context, line: sentenceLine } = extractContextBefore(content, fileOffset);
+    const line = sentenceLine ?? blockLine;
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (const innerLine of innerLines) {
-      const trimmed = innerLine.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (!bullet || bullet.startsWith("counter:")) continue;
-      // Narration = text after the leading Japanese tokens (or after the bare ID).
-      const parts = bullet.split(/\s+/);
-      let j = 0;
-      if (/^\d+$/.test(parts[0])) j = 1; // skip bare JMDict ID prefix
-      while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
-      const narration = parts.slice(j).join(" ").trim() || null;
-      bullets.push({ bullet, line, context, narration });
+      if (depth === 0) {
+        const trimmed = innerLine.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet && !bullet.startsWith("counter:")) {
+            // Narration = text after the leading Japanese tokens (or after the bare ID).
+            const parts = bullet.split(/\s+/);
+            let j = 0;
+            if (/^\d+$/.test(parts[0])) j = 1; // skip bare JMDict ID prefix
+            while (j < parts.length && parts[j] && isJapanese(parts[j])) j++;
+            const narration = parts.slice(j).join(" ").trim() || null;
+            bullets.push({ bullet, line, context, narration });
+          }
+        }
+      }
+      const opens = (innerLine.match(/<details\b/gi) || []).length;
+      const closes = (innerLine.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return bullets;
@@ -112,21 +118,26 @@ function extractVocabBullets(content) {
 // Returns { counterId, line, context } for each counter bullet found.
 function extractCounterBullets(content) {
   const counters = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const { text: context, line: sentenceLine } = extractContextBefore(content, match.index);
-    const detailsOpeningLine = content.slice(0, match.index).split("\n").length;
-    const line = sentenceLine ?? detailsOpeningLine;
+  for (const { stripped, fileOffset, blockLine } of extractDetailsBlocks(content, "Vocab")) {
+    const { text: context, line: sentenceLine } = extractContextBefore(content, fileOffset);
+    const line = sentenceLine ?? blockLine;
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (const innerLine of innerLines) {
-      const trimmed = innerLine.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet.startsWith("counter:")) {
-        const counterId = bullet.slice("counter:".length).trim();
-        if (counterId) {
-          counters.push({ counterId, line, context });
+      if (depth === 0) {
+        const trimmed = innerLine.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet.startsWith("counter:")) {
+            const counterId = bullet.slice("counter:".length).trim();
+            if (counterId) counters.push({ counterId, line, context });
+          }
         }
       }
+      const opens = (innerLine.match(/<details\b/gi) || []).length;
+      const closes = (innerLine.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return counters;

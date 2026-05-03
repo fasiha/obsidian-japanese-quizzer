@@ -8,6 +8,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import { setup } from "jmdict-simplified-node";
+import { iterateDetailsBlocks, findContextBefore } from "./markdown-ast.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const projectRoot = path.resolve(__dirname, "../..");
@@ -146,60 +147,49 @@ export function intersectSets(sets) {
 }
 
 // Helper: extract <details> blocks matching a summary type, with summary tags stripped.
-// Yields { match, inner, stripped } for each matching block.
+// Yields { fileOffset, innerStartOffset, innerEndOffset, blockLine, innerStartLine, stripped }
+// for each matching block. Backed by markdown-ast.mjs so code spans / fences can't
+// be mistaken for real <details> tags (BUG #4) and nested <details> blocks pair
+// correctly via depth tracking (BUG #1).
 export function* extractDetailsBlocks(content, summaryType) {
-  const summaryRegex = new RegExp(
-    `<summary>\\s*${summaryType}\\s*<\\/summary>`,
-    "i",
-  );
-  const detailsRegex = /<details\b[^>]*>([\s\S]*?)<\/details>/gi;
-  let match;
-  while ((match = detailsRegex.exec(content)) !== null) {
-    const inner = match[1];
-    if (!summaryRegex.test(inner)) continue;
-    const stripped = inner.replace(/<summary>[\s\S]*?<\/summary>/i, "");
-    yield { match, inner, stripped };
-  }
+  yield* iterateDetailsBlocks(content, summaryType);
 }
 
 // Extract bullet text from all <details><summary>Vocab</summary> blocks in a file.
 // Returns plain strings (no line numbers). Used by get-quiz-context.mjs.
 // check-vocab.mjs has its own version that also tracks line numbers.
 // Bullets starting with "counter:" are counter enrollments, not JMDict vocab — skipped here.
+// Bullets inside nested <details> blocks are skipped (depth-tracked).
 export function extractVocabBullets(content) {
-  const bullets = [];
-  for (const { stripped } of extractDetailsBlocks(content, "Vocab")) {
-    for (const line of stripped.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet && !bullet.startsWith("counter:")) bullets.push(bullet);
-    }
-  }
-  return bullets;
+  return extractVocabBulletsWithLines(content).map((b) => b.bullet);
 }
 
 // Like extractVocabBullets but also returns 1-indexed line numbers per bullet.
 // Used by check-vocab.mjs (for diagnostic line refs) and fuzz.mjs (to verify line tracking).
 //
-// Line number derivation: the inner content of a <details> block starts right
-// after the opening tag. We count newlines before that point in the file to get
-// the 1-indexed line number of the first character of the inner block, then
-// add the 0-indexed line offset within the block for each bullet.
+// Bullets inside nested <details> blocks within a Vocab block are skipped
+// (the AST-backed iterator already trims to the outer block; we additionally
+// track depth here at the line level for the nested-bullet case).
 export function extractVocabBulletsWithLines(content) {
   const bullets = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Vocab")) {
-    const openingTagLen = match[0].length - match[1].length - "</details>".length;
-    const innerStartIdx = match.index + openingTagLen;
-    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
+  for (const { stripped, innerStartLine } of extractDetailsBlocks(content, "Vocab")) {
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (let i = 0; i < innerLines.length; i++) {
-      const trimmed = innerLines[i].trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet && !bullet.startsWith("counter:")) {
-        bullets.push({ bullet, line: innerStartLine + i });
+      const line = innerLines[i];
+      if (depth === 0) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet && !bullet.startsWith("counter:")) {
+            bullets.push({ bullet, line: innerStartLine + i });
+          }
+        }
       }
+      const opens = (line.match(/<details\b/gi) || []).length;
+      const closes = (line.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return bullets;
@@ -207,14 +197,27 @@ export function extractVocabBulletsWithLines(content) {
 
 // Extract counter IDs from all <details><summary>Vocab</summary> blocks in a file.
 // Returns the id strings (the part after "counter:") for bullets of the form "- counter:id".
+// Bullets inside nested <details> blocks are skipped.
 export function extractCounterBullets(content) {
   const ids = [];
   for (const { stripped } of extractDetailsBlocks(content, "Vocab")) {
-    for (const line of stripped.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (bullet.startsWith("counter:")) ids.push(bullet.slice("counter:".length).trim());
+    const innerLines = stripped.split("\n");
+    let depth = 0;
+    for (let i = 0; i < innerLines.length; i++) {
+      const line = innerLines[i];
+      if (depth === 0) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet.startsWith("counter:")) {
+            ids.push(bullet.slice("counter:".length).trim());
+          }
+        }
+      }
+      const opens = (line.match(/<details\b/gi) || []).length;
+      const closes = (line.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return ids;
@@ -344,42 +347,46 @@ export function loadGrammarDatabases() {
 
 /**
  * Extract grammar bullets (with line numbers) from Grammar details blocks.
- * Returns [{ topicId, note, line }] where topicId is the prefixed ID (first token)
- * and note is any free text after it.
+ * Returns [{ topicId, note, line, matchIndex }] where topicId is the prefixed
+ * ID (first token), note is any free text after it, and matchIndex is the
+ * file offset of the parent <details> block's opening tag (used by callers
+ * to look up the prose context above).
+ *
+ * Bullets inside nested <details> blocks are skipped (depth-tracked).
  */
 export function extractGrammarBullets(content) {
   const bullets = [];
-  for (const { match, stripped } of extractDetailsBlocks(content, "Grammar")) {
-    const openingTagLen =
-      match[0].length - match[1].length - "</details>".length;
-    const innerStartIdx = match.index + openingTagLen;
-    const innerStartLine = content.slice(0, innerStartIdx).split("\n").length;
-
+  for (const { stripped, innerStartLine, fileOffset } of extractDetailsBlocks(content, "Grammar")) {
     const innerLines = stripped.split("\n");
+    let depth = 0;
     for (let i = 0; i < innerLines.length; i++) {
-      const trimmed = innerLines[i].trim();
-      if (!trimmed.startsWith("-")) continue;
-      const bullet = trimmed.slice(1).trim();
-      if (!bullet) continue;
-
-      // First token is the topic ID (must contain a colon for the source prefix)
-      const spaceIdx = bullet.indexOf(" ");
-      const topicId = spaceIdx === -1 ? bullet : bullet.slice(0, spaceIdx);
-      const note = spaceIdx === -1 ? "" : bullet.slice(spaceIdx + 1).trim();
-
-      // Normalize prefix to lowercase
-      const colonIdx = topicId.indexOf(":");
-      const normalized =
-        colonIdx === -1
-          ? topicId
-          : topicId.slice(0, colonIdx).toLowerCase() + topicId.slice(colonIdx);
-
-      bullets.push({
-        topicId: normalized,
-        note,
-        line: innerStartLine + i,
-        matchIndex: match.index,
-      });
+      const line = innerLines[i];
+      if (depth === 0) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("-")) {
+          const bullet = trimmed.slice(1).trim();
+          if (bullet) {
+            const spaceIdx = bullet.indexOf(" ");
+            const topicId = spaceIdx === -1 ? bullet : bullet.slice(0, spaceIdx);
+            const note = spaceIdx === -1 ? "" : bullet.slice(spaceIdx + 1).trim();
+            const colonIdx = topicId.indexOf(":");
+            const normalized =
+              colonIdx === -1
+                ? topicId
+                : topicId.slice(0, colonIdx).toLowerCase() + topicId.slice(colonIdx);
+            bullets.push({
+              topicId: normalized,
+              note,
+              line: innerStartLine + i,
+              matchIndex: fileOffset,
+            });
+          }
+        }
+      }
+      const opens = (line.match(/<details\b/gi) || []).length;
+      const closes = (line.match(/<\/details\b/gi) || []).length;
+      depth += opens - closes;
+      if (depth < 0) depth = 0;
     }
   }
   return bullets;
@@ -551,59 +558,15 @@ export function buildFuriganaForWord(word, furiganaMap) {
 
 /**
  * Return the nearest preceding contiguous prose paragraph before `endIdx` in content.
- * Scans backward from `endIdx`, skipping blank lines and entire <details> blocks
- * (so intervening Grammar/Vocab blocks between the prose and the target Vocab block
- * are transparently skipped). Then collects non-blank lines that are not bullets or
- * block-level HTML tags. Inline <ruby> tags within prose lines are preserved.
- * Returns { text, line } where text is the joined sentence text (or null) and line
- * is the 1-based line number of the last sentence line found (or null if none found).
+ * Backed by markdown-ast.mjs: walks the AST sibling list backward, skipping html
+ * nodes that are pure <details> sequences, and returns the previous paragraph
+ * node's text (line-trimmed and joined by single spaces, matching the
+ * historical regex output exactly so cache keys do not churn).
+ * Returns { text, line } where line is the 1-based line number of the LAST
+ * (bottom-most) line of the paragraph (null if no paragraph found).
  */
 export function extractContextBefore(content, endIdx) {
-  const lines = content.slice(0, endIdx).split("\n");
-  let i = lines.length - 1;
-  // Skip blank lines and entire <details>...</details> blocks going backward.
-  // Handles both multi-line blocks (last line is bare </details>) and
-  // single-line blocks (entire <details>...</details> on one line).
-  while (i >= 0) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "") {
-      i--;
-      continue;
-    }
-    if (trimmed === "</details>") {
-      // Multi-line block: scan backward to the opening <details> tag.
-      i--;
-      while (i >= 0 && !lines[i].trim().startsWith("<details")) i--;
-      i--;
-      continue;
-    }
-    if (trimmed.startsWith("<details")) {
-      // Single-line block: the entire block is on this line, skip it.
-      i--;
-      continue;
-    }
-    break;
-  }
-  if (i < 0) return { text: null, line: null };
-  // Collect contiguous prose lines. Stop at blank lines, bullet lines, or
-  // block-level <details>/<summary>/</details> lines. Inline <ruby> lines are prose.
-  const paraLines = [];
-  let lastSentenceLineIdx = i; // 0-indexed; tracks the last (bottom) sentence line
-  while (i >= 0) {
-    const trimmed = lines[i].trim();
-    if (
-      trimmed === "" ||
-      trimmed.startsWith("-") ||
-      trimmed.startsWith("<details") ||
-      trimmed.startsWith("</details") ||
-      trimmed.startsWith("<summary")
-    )
-      break;
-    paraLines.unshift(trimmed);
-    i--;
-  }
-  if (paraLines.length === 0) return { text: null, line: null };
-  return { text: paraLines.join(" "), line: lastSentenceLineIdx + 1 }; // 1-based
+  return findContextBefore(content, endIdx);
 }
 
 // Parse YAML frontmatter and return key-value pairs, or null if none present.

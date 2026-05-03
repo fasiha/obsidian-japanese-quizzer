@@ -92,7 +92,7 @@ spans, or fenced code blocks). Three functions affected (`extractDetailsBlocks`,
 `buildFuriganaForWord`-style downstream consumers); the proper fix is a small Markdown-aware
 helper that strips code spans and code fences, plus tracks `<details>` depth with a stack.
 
-### BUG #1: `extractDetailsBlocks` mishandles nested `<details>` blocks
+### BUG #1: `extractDetailsBlocks` mishandles nested `<details>` blocks — **FIXED**
 
 **Where**: [.claude/scripts/shared.mjs](../.claude/scripts/shared.mjs) — the regex
 `/<details\b[^>]*>([\s\S]*?)<\/details>/gi`.
@@ -154,7 +154,7 @@ would drop every form because everyone is everyone's "parent").
 top of the function. One line. **Applied** in [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs);
 fuzzer now reports `[pass] empty-furigana arrays: distinct objects are not parent-child`.
 
-### BUG #3: `extractContextBefore` loses prose context with nested `<details>`
+### BUG #3: `extractContextBefore` loses prose context with nested `<details>` — **FIXED**
 
 **Where**: [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs) —
 `extractContextBefore` walks backward looking for `<details` to find the start of a multi-line
@@ -187,7 +187,7 @@ Same fix applies.
 **Same root cause as BUG #1** — the regex in `extractDetailsBlocks` and the inner loop here
 both fail to track block depth. A single shared depth-tracking helper would fix both.
 
-### BUG #4: `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences
+### BUG #4: `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences — **FIXED**
 
 **Where**: [`.claude/scripts/shared.mjs`](../.claude/scripts/shared.mjs) — same regex as BUG #1.
 
@@ -615,19 +615,64 @@ one bug that:
 - was not covered by an existing test or test harness path, **and**
 - would have been observable to a user (wrong quiz output, silent data corruption, or a crash).
 
-**Final result** (iterations 1 + 2 + 3 complete): **six confirmed bugs, three fixed**:
-- [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>` (Node.js, predicted by code review) — *deferred until Markdown AST switch*
+**Final result** (iterations 1 + 2 + 3 complete): **six confirmed bugs, all six fixed**:
+- [BUG #1](#bug-1-extractdetailsblocks-mishandles-nested-details-blocks) — `extractDetailsBlocks` nested `<details>` (Node.js, predicted by code review) — **FIXED** (stack-based depth tracking in [`markdown-ast.mjs`](../.claude/scripts/markdown-ast.mjs))
 - [BUG #2](#bug-2-isfuriganaparent-returns-true-for-two-distinct-empty-furigana-objects--fixed) — `isFuriganaParent` empty-array edge case (Node.js, predicted by code review) — **FIXED** (1-line guard in shared.mjs)
-- [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>` (Node.js, predicted by code review) — *deferred until Markdown AST switch*
-- [BUG #4](#bug-4-extractdetailsblocks-matches-details-inside-inline-code-spans--code-fences) — `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences (Node.js, **fuzzer-discovered**) — *deferred until Markdown AST switch*
+- [BUG #3](#bug-3-extractcontextbefore-loses-prose-context-with-nested-details) — `extractContextBefore` nested `<details>` (Node.js, predicted by code review) — **FIXED** (precomputed top-level spans used to jump over nested blocks during backward scan)
+- [BUG #4](#bug-4-extractdetailsblocks-matches-details-inside-inline-code-spans--code-fences) — `extractDetailsBlocks` matches `<details>` inside inline code spans / code fences (Node.js, **fuzzer-discovered**) — **FIXED** (remark-parse identifies code regions; those bytes masked to spaces before scanning)
 - [BUG #5](#bug-5-extractkanji-misses--and-fullwidth-latin--partial-template-silently-suppressed--fixed) — `extractKanji` misses 々 and fullwidth Latin → partial template suppressed in iOS quiz UI (Swift, **fuzzer-discovered**) — **FIXED** (use rt-bearing segment set in QuizContext.swift)
 - [BUG #6](#bug-6-98-cjk-characters-in-jmdict-not-present-in-kanjidic2sqlite--mitigated) — 98 CJK characters in JMDict missing from kanjidic2 → empty kanji-detail sheet (data, **fuzzer-discovered**) — **MITIGATED** (UI placeholder in KanjiInfoCard.swift; data gap remains)
 
-The three deferred bugs (#1, #3, #4) all share the same root cause — regex code that doesn't
-understand Markdown context — and will be fixed together when the content pipeline switches
-from regex/linear-scan parsing to a real Markdown AST (Pandoc or similar). A single shared
-preprocessing pass (strip code spans + code fences, track `<details>` depth with a stack)
-would also work, but the AST switch is the cleaner long-term direction.
+BUG #1, #3, #4 were fixed together by a hybrid AST-aware preprocessor in
+[`markdown-ast.mjs`](../.claude/scripts/markdown-ast.mjs):
+
+1. `maskCodeRegions(content)` parses with `remark-parse` and replaces every byte
+   inside a fenced code block (`code` node) or inline code span (`inlineCode` node)
+   with a space, preserving newlines and offsets. Downstream scanners can no
+   longer see `<details>` mentions in example syntax — fixes BUG #4.
+2. `findTopLevelDetailsSpans(masked)` is a stack-based scanner that returns the
+   spans of every depth-0 `<details>...</details>` block. Nested blocks pair
+   correctly — fixes BUG #1.
+3. `findContextBefore` keeps the original line-by-line backward walk (so prose
+   output is byte-identical and LLM cache keys do not churn) but now uses the
+   precomputed spans to jump over nested blocks instead of nibbling backward to
+   the first `<details` it sees — fixes BUG #3.
+
+Why not a "real" AST end-to-end? The CommonMark type-6 HTML block rule (block
+ends only at blank line, not at matching `</details>`) collapses the corpus's
+typical `prose\n<details>\n</details>\nprose\n<details>\n</details>` pattern
+into ONE html node, hiding the prose-between-details lines we need. GFM
+inherits this rule unchanged. Pandoc's own `markdown` flavor parses raw HTML
+blocks by matching tags, but switching parsing models would diverge from
+Obsidian/GitHub rendering of the same files. The hybrid (AST for code masking
++ legacy line scan for everything else) keeps parser behavior aligned with
+what readers see while still fixing every bug class the fuzzer found.
+
+**Regression net**: [`fuzz-markdown-golden.mjs`](../fuzz-markdown-golden.mjs)
+captures the per-bullet text, line, narration, and **cache key** (matching
+the cache key `prepare-publish.mjs` uses for `llm_sense.computed_from`) for
+every bullet across the corpus into `fuzz-markdown-golden.json`. The golden
+file is gitignored (derived from personal / copyrighted .md content); each
+contributor regenerates it locally via `node fuzz-markdown-golden.mjs --write`
+and re-runs `node fuzz-markdown-golden.mjs` after parser changes to verify
+no diff. On the author's corpus the snapshot has 1853 vocab + 273 grammar +
+65 counter bullets across 43 `llm-review: true` files; after the BUG #1/#3/#4
+rewrite the diff was zero cache-key changes — so prepare-publish.mjs would
+not re-burn LLM tokens for any ref.
+[`fuzz-markdown-golden-verify.mjs`](../fuzz-markdown-golden-verify.mjs)
+cross-checks the captured cache keys against the live `vocab.json`: all 1908
+refs with `llm_sense` resolve to a cacheKey in the golden, confirming the
+harness is faithful to what `prepare-publish.mjs` actually uses at lookup
+time.
+
+**Bonus fix found during verification**: [`Genki 2/Genki 2, L13.md`](../Genki%202/Genki%202,%20L13.md)
+had 5 `</detail>` typos (missing `s`) on lines 77/82/87/92/97. The old
+greedy regex tolerated these by silently swallowing later content (matching
+the next valid `</details>` from a `<summary>Translation</summary>` opener);
+the new stack-based scanner correctly halts at unclosed `<details>`. Fixing
+the typos recovered 5 grammar bullets (`genki:shi`) that the old parser had
+been silently dropping. No similar typos exist elsewhere in the corpus
+(verified by `grep -rE "</?detail>" --include="*.md"`).
 
 BUGS #1–#4 are all in [`shared.mjs`](../.claude/scripts/shared.mjs); BUG #1, #3, and #4 share
 a single root cause (regex code that doesn't understand Markdown context — no `<details>`
