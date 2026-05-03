@@ -12,7 +12,7 @@ import { readFileSync } from "fs";
 import path from "path";
 import { projectRoot } from "./.claude/scripts/shared.mjs";
 
-const VOCAB_JSON = "/Users/ahmed.fasih/Downloads/pug-files/vocab.json";
+const VOCAB_JSON = "vocab.json";
 const GOLDEN_PATH = path.join(projectRoot, "fuzz-markdown-golden.json");
 
 function stripRuby(text) {
@@ -56,7 +56,14 @@ let matched = 0;
 let mismatchedComputedFrom = 0; // ref.llm_sense.computed_from disagrees with what we'd derive from ref.context+narration
 let missingFromGolden = 0;
 let unknownSource = 0;
-const sampleMisses = [];
+// Fatal findings (mean the harness is NOT faithful to prepare-publish.mjs's
+// cache-key construction; verify must fail).
+const fatalSamples = [];
+// Advisory findings (informational only — vocab.json's stored fields drifted
+// from current normalization rules; cache lookups still work because the
+// lookup key is recomputed fresh from ref.context at every prepare-publish
+// run, but the on-disk computed_from is historical residue).
+const advisorySamples = [];
 
 for (const w of vocab.words ?? []) {
   for (const [source, refs] of Object.entries(w.references ?? {})) {
@@ -73,12 +80,13 @@ for (const w of vocab.words ?? []) {
         [...new Set(ref.llm_sense.computed_from)].sort(),
       );
 
-      // These two should be equal — sanity check on vocab.json's internal consistency.
+      // ADVISORY: stored llm_sense.computed_from differs from what current
+      // normalization would produce. Harmless — lookup uses the fresh key,
+      // not the stored one. Surfaces historical drift in vocab.json.
       if (derivedKey !== computedFromKey) {
         mismatchedComputedFrom++;
-        if (sampleMisses.length < 3) {
-          sampleMisses.push({
-            kind: "internal-inconsistency",
+        if (advisorySamples.length < 3) {
+          advisorySamples.push({
             wordId: w.id,
             source,
             line: ref.line,
@@ -88,21 +96,25 @@ for (const w of vocab.words ?? []) {
         }
       }
 
+      // FATAL: ref points to a source file the golden has no entry for.
+      // Means the corpus and the golden disagree on which files exist.
       if (!goldenKeys) {
         unknownSource++;
-        if (sampleMisses.length < 3) {
-          sampleMisses.push({ kind: "unknown-source", wordId: w.id, source, line: ref.line });
+        if (fatalSamples.length < 3) {
+          fatalSamples.push({ kind: "unknown-source", wordId: w.id, source, line: ref.line });
         }
         continue;
       }
 
-      // 3. The key (as captured by the golden harness) should appear in the golden.
+      // FATAL: ref's derived cacheKey is not in the golden — means the
+      // harness's cacheKey calculation has drifted from prepare-publish.mjs's,
+      // OR the corpus changed since the golden was written.
       if (goldenKeys.has(derivedKey)) {
         matched++;
       } else {
         missingFromGolden++;
-        if (sampleMisses.length < 6) {
-          sampleMisses.push({
+        if (fatalSamples.length < 6) {
+          fatalSamples.push({
             kind: "missing-from-golden",
             wordId: w.id,
             source,
@@ -117,15 +129,41 @@ for (const w of vocab.words ?? []) {
   }
 }
 
-console.log(`refs with llm_sense:           ${totalRefsWithLlm}`);
-console.log(`  matched in golden:           ${matched}`);
-console.log(`  missing from golden:         ${missingFromGolden}`);
-console.log(`  source not in golden:        ${unknownSource}`);
-console.log(`  vocab.json self-inconsistent: ${mismatchedComputedFrom}`);
-if (sampleMisses.length) {
-  console.log(`\nsample issues:`);
-  for (const s of sampleMisses) console.log("  " + JSON.stringify(s));
+const ok = missingFromGolden === 0 && unknownSource === 0;
+const verbose = process.argv.slice(2).includes("--verbose");
+
+console.log(`refs with llm_sense in vocab.json: ${totalRefsWithLlm}`);
+console.log(`  matched in golden:               ${matched}`);
+if (missingFromGolden > 0) console.log(`  [FATAL] missing from golden:     ${missingFromGolden}`);
+if (unknownSource > 0)     console.log(`  [FATAL] source not in golden:    ${unknownSource}`);
+
+if (ok) {
+  console.log(`\n[pass] harness faithfully reproduces prepare-publish.mjs cache keys.`);
+} else {
+  console.log(`\n[FAIL] harness's cacheKey calculation has drifted from prepare-publish.mjs.`);
+  console.log(`fatal samples:`);
+  for (const s of fatalSamples) console.log("  " + JSON.stringify(s));
 }
 
-const ok = missingFromGolden === 0 && unknownSource === 0;
+// Historical-drift advisory is INFORMATIONAL ONLY — does not affect cache
+// correctness. Hidden behind --verbose because the typical reader who sees
+// it worries about it (the on-disk computed_from disagrees with what current
+// normalization would produce, but cache lookups don't use the on-disk field
+// as a key so this is harmless). See the script header for the full story.
+if (mismatchedComputedFrom > 0 && verbose) {
+  console.log(
+    `\n[--verbose] historical-drift advisory: ${mismatchedComputedFrom} ref(s) in\n` +
+      `vocab.json have stored llm_sense.computed_from that disagrees with what current\n` +
+      `normalizeContextForCache would produce from ref.context. This is historical\n` +
+      `drift (the refs were written before the normalizer was extended); cache lookups\n` +
+      `still hit because the lookup key is recomputed fresh from ref.context every\n` +
+      `prepare-publish.mjs run. The stored field is just record-keeping. Sample drifts:`,
+  );
+  for (const s of advisorySamples) console.log("  " + JSON.stringify(s));
+} else if (mismatchedComputedFrom > 0) {
+  console.log(
+    `\n(${mismatchedComputedFrom} historical-drift advisory ref(s) suppressed; pass --verbose to inspect — informational only, does not affect cache correctness.)`,
+  );
+}
+
 process.exit(ok ? 0 : 1);
