@@ -430,6 +430,9 @@ export function isFuriganaParent(elt, maybeParent) {
   const xx = elt.furigana.map((o) => (o.rt ? o : o.ruby));
   const yy = maybeParent.furigana.map((o) => (o.rt ? o : o.ruby));
 
+  // Two distinct objects with empty furigana arrays have no parent relationship.
+  if (xx.length === 0 && yy.length === 0) return false;
+
   while (xx.length || yy.length) {
     const x = xx[0];
     const y = yy[0];

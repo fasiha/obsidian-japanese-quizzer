@@ -630,17 +630,19 @@ func fuzzCommitProgression(jmdict: DatabaseQueue) async throws {
         multiKanjiRows += 1
         checkedRows += 1
 
-        // Cross-check that the iOS app's "is partial?" trigger logic agrees with the
-        // segment-derived kanji set: extractKanji on the joined ruby fields must equal
-        // the set of rt-bearing segment ruby values.
+        // Documented limitation of QuizSession.extractKanji: it only matches CJK ideographs
+        // (U+4E00–U+9FFF, U+3400–U+4DBF, U+F900–U+FAFF). It does not match the iteration
+        // mark 々 (U+3005) or fullwidth Latin (Ａ-Ｚ), so its output is not equal to the
+        // rt-bearing segment set for words like 国々, 個々, ＣＤプレーヤー. QuizContext used
+        // to derive its partial-template suppression decision from extractKanji on the
+        // joined ruby; that's BUG #5, fixed by switching the suppression check to use the
+        // rt-bearing segment ruby set directly. We leave extractKanji's narrower contract
+        // alone — it's the right behavior for the global kanji-quiz character iteration —
+        // and just track the count of words where the two sets disagree as an info metric.
         let joinedRuby = parts.map(\.ruby).joined()
         let extracted = Set(QuizSession.extractKanji(from: joinedRuby))
         if extracted != Set(kanjiInOrder) {
-            kanjiSetMismatchFails += 1
-            if kanjiSetMismatchFails <= 5 {
-                failures.append(("kanji-set-mismatch",
-                    "text='\(row.text)' rt-segments=\(kanjiInOrder.sorted()) extractKanji=\(extracted.sorted())"))
-            }
+            kanjiSetMismatchFails += 1   // informational, not a failure now
         }
 
         // Random commitment ordering — Fisher-Yates over kanjiInOrder.
@@ -706,10 +708,10 @@ func fuzzCommitProgression(jmdict: DatabaseQueue) async throws {
     print("  per-segment rule: \(perSegmentFails == 0 ? "[PASS]" : "[FAIL] \(perSegmentFails) failures")")
     print("  monotonicity (rt-count non-increasing): \(monotonicityFails == 0 ? "[PASS]" : "[FAIL] \(monotonicityFails) failures")")
     print("  all-committed → row.text: \(allCommittedFails == 0 ? "[PASS]" : "[FAIL] \(allCommittedFails) failures")")
-    print("  extractKanji ↔ rt-segments agree: \(kanjiSetMismatchFails == 0 ? "[PASS]" : "[FAIL] \(kanjiSetMismatchFails) failures")")
+    print("  [info] extractKanji ⊊ rt-segments for \(kanjiSetMismatchFails) row(s) (々, Ａ-Ｚ — not a failure post-BUG #5 fix)")
     print("  Multi-kanji rows checked: \(multiKanjiRows)")
 
-    report(area: "commit-progression", checked: checkedRows * 4, silentlySkipped: 0, failures: failures)
+    report(area: "commit-progression", checked: checkedRows * 3, silentlySkipped: 0, failures: failures)
 }
 
 // MARK: - Area L: Kanjidic2 cross-DB consistency
@@ -772,13 +774,21 @@ func fuzzKanjidic2(jmdict: DatabaseQueue) async throws {
         if i % 50_000 == 0 { print("  \(i)/\(allIds.count)…") }
     }
 
+    // BUG #6 was demoted to a data-quality report once the kanji-detail sheet learned to
+    // handle missing kanjidic2 entries gracefully. The iOS app no longer relies on every
+    // JMDict CJK character being present in kanjidic2.kanji.literal, so the divergence is
+    // no longer a code-contract violation. We still print the list of missing characters
+    // so a future kanjidic2 regenerate has a ready-made target list.
+    print("  Distinct CJK characters seen in JMDict written forms; \(missingKanji.count) missing from kanjidic2.")
     if !missingKanji.isEmpty {
-        for (k, examples) in missingKanji.sorted(by: { $0.key < $1.key }) {
-            failures.append(("missing-kanji",
-                "'\(k)' (U+\(String(k.unicodeScalars.first!.value, radix: 16, uppercase: true))) used in: \(examples.joined(separator: ", "))"))
+        let preview = missingKanji.sorted(by: { $0.key < $1.key }).prefix(15).map { (k, examples) in
+            "'\(k)' (U+\(String(k.unicodeScalars.first!.value, radix: 16, uppercase: true))) used in: \(examples.joined(separator: ", "))"
+        }
+        for line in preview { print("  [info] missing-kanji: \(line)") }
+        if missingKanji.count > 15 {
+            print("  [info] … and \(missingKanji.count - 15) more — see BUG #6 for context.")
         }
     }
-    print("  Distinct CJK characters seen in JMDict written forms; \(missingKanji.count) missing from kanjidic2.")
 
     report(area: "kanjidic2", checked: totalKanjiChecked, silentlySkipped: 0, failures: failures)
 }
