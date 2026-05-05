@@ -555,10 +555,11 @@ final class GrammarQuizSession {
                 The Japanese stem must naturally contain the target grammar. It must NOT contain \
                 any English.
                 All four choices must be natural, idiomatic English sentences — not grammar \
-                labels or descriptions. Only the correct choice accurately reflects what the \
-                target grammar contributes to the sentence's meaning; the other three are \
-                plausible mistranslations a student would produce by confusing the target \
-                grammar with a related grammar point.
+                labels or descriptions. Only the correct choice accurately reflects the \
+                sentence's meaning; the three distractors say something clearly different \
+                from the correct translation — not alternate phrasings or framings of the \
+                same meaning. A student who understood the Japanese sentence should be able \
+                to rule each distractor out by meaning alone.
                 """
             } else if isGenerating && isFreeTextStemGeneration {
                 facetRule = """
@@ -708,11 +709,8 @@ final class GrammarQuizSession {
 
             Step 1 — Japanese stem: Write one complete, natural Japanese sentence using the target grammar. No English.
             Step 2 — Correct translation: Write a natural, idiomatic English translation that accurately reflects what the target grammar contributes to the meaning.
-            Step 3 — Distractors: Write three alternative English translations. Each must:
-              (a) be a natural English sentence a fluent speaker would actually say — NOT a grammar label or description,
-              (b) be a plausible mistranslation a student would produce by confusing the target grammar with a specific related grammar point — name the confusion for each (e.g. "confuses causative with passive"),
-              (c) NOT be a valid alternative way to translate the stem — if a native speaker could reasonably accept it, revise it.
-            Step 4 — Self-check: (a) Does any distractor express a meaning close enough to the correct answer that a student could reasonably argue for it? If yes, revise. (b) Are all four choices clearly different in meaning, not just in nuance?
+            Step 3 — Distractors: Write three natural English misunderstandings or mistranslations of the stem — plausible but incorrect readings of what the Japanese actually says.
+            Step 4 — Fairness check: Could a student who fully understood the Japanese sentence still reasonably read any distractor as a correct translation? If yes, return to Step 1 and write a different Japanese sentence.
 
             Finally, end with a ```json code block:
             {"stem":"<Step 1>","choices":[["<correct translation>"],["<distractor 1>"],["<distractor 2>"],["<distractor 3>"]],"sub_use":"<phrase>"}
