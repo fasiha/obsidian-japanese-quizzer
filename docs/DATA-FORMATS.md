@@ -161,7 +161,8 @@ LLM-authored but human-reviewed.
     "subUses": [
       {
         "id": "…stable-slug-id…",      // derived from first meaningful English words before ":"
-        "text": "…example use with Japanese…"
+        "text": "…example use with Japanese…",
+        "generationInstructions": "…optional LLM generation-only guidance…"  // omitted when absent
       },
       …
     ],
@@ -176,7 +177,13 @@ LLM-authored but human-reviewed.
 - `id` — a stable slug derived from the first meaningful English words (e.g.
   `"casual-suggestion-or"`). Once assigned, the ID never changes, allowing the
   iOS app to track opt-in/opt-out preferences per sub-use.
-- `text` — the full description including a Japanese example.
+- `text` — the full description including a Japanese example. Used in the app UI,
+  quiz-history notes, and the `sub_use` field stored in reviews.
+- `generationInstructions` — optional. When present, injected into quiz generation
+  prompts instead of `text`. Use placeholder-based instructions (e.g.
+  `"[verb phrase]のは[predicate]"`) rather than concrete example sentences, which
+  act as templates that the model copies verbatim. Omit this field entirely when
+  `text` is sufficient for generation.
 
 When `enrich-grammar-descriptions.mjs` writes a group, it converts plain-string
 sub-uses to objects by deriving stable IDs. The `GrammarSubUse` decoder in Swift

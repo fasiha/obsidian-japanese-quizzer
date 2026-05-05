@@ -489,7 +489,8 @@ final class GrammarQuizSession {
         if isGenerating, let idx = item.nextSubUseIndex {
             let targetSubUses = item.enrolledSubUses ?? item.subUses ?? []
             if idx < targetSubUses.count {
-                subUseDirective = "\nTarget this specific sub-use: \(targetSubUses[idx].text)"
+                let subUsePromptText = targetSubUses[idx].generationInstructions ?? targetSubUses[idx].text
+                subUseDirective = "\nTarget this specific sub-use: \(subUsePromptText)"
             }
         }
 

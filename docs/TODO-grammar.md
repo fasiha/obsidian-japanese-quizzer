@@ -947,6 +947,77 @@ on Step 6 (the Swift model must accept the new format before the UI can use it).
 
 ---
 
+## Sub-use `generationInstructions` for quiz generation guidance
+
+### Rationale
+
+Sub-use `text` entries (e.g. `"Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)"`)
+are injected verbatim into quiz generation prompts as the sub-use directive. The example
+sentences in `text` act as structural templates: Haiku does lexical substitution rather
+than generating freely, producing near-identical sentences across multiple quiz generations
+for the same sub-use.
+
+For recognition tier 1, this causes a second problem: some sub-use examples use predicates
+(bare quality adjectives like 難しい, 楽しい) whose English translations have multiple
+equally natural surface forms ("Learning X is difficult" / "It is difficult to learn X" /
+"X is difficult to learn"). Haiku cannot write fair distractors when every candidate
+is a valid rephrasing of the correct answer, so students face coin-flip questions.
+
+### Decision
+
+Add an optional `generationInstructions` field to each `subUse` object, alongside the
+existing `id` and `text`. When present, `generationInstructions` is injected into the
+quiz prompt instead of `text`. `text` is preserved unchanged as the human-readable label
+used in the app UI, quiz-history notes, and the `sub_use` field stored in reviews.
+
+Key design choices:
+- **Optional with fallback**: most sub-uses do not need this field; the code falls back
+  to `text` when `generationInstructions` is absent. Add it only where template-copying
+  or distractor synonymy is observed in practice.
+- **Placeholder-based instructions**: use structural placeholders like `[verb phrase]`,
+  `[named person or place]` rather than concrete example sentences. Concrete examples
+  act as moulds; placeholders describe the pattern without providing one sentence for
+  Haiku to copy.
+- **Plain string for now**: `generationInstructions` is a single string. If facet-specific
+  guidance becomes necessary (recognition tier 1 and production tier 1 have different
+  generation concerns), it can be extended to an object keyed by facet
+  (`{"recognition": "...", "production": "..."}`). That extension is a small, localised
+  breaking change: old grammar-equivalences.json with string values will fail to parse if
+  the Swift model expects an object, so the two must be deployed together. For now, a
+  single string suffices; per-facet concerns can be addressed with prose inside the string
+  ("For recognition: … For production: …").
+- **Cautions vs generationInstructions**: cautions in `grammar-equivalences.json` are
+  general linguistic guidance injected into every prompt (generation and coaching alike).
+  `generationInstructions` is specific to generation: advice about sentence construction,
+  predicate selection, and distractor fairness that would be noise in a coaching context.
+
+### Example (のは)
+
+Existing `text` (human-readable, unchanged):
+```
+"Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)"
+```
+
+New `generationInstructions`:
+```
+"Pattern: [verb phrase]のは[predicate]. Do not use a bare quality adjective (難しい, 楽しい, etc.)
+as the predicate — those produce English synonyms that make fair distractors impossible.
+Choose a predicate that makes a specific or comparative claim about the action."
+```
+
+### Work breakdown
+
+- [ ] **Step 1** — Update `GrammarSubUse` struct: add `generationInstructions: String?`
+  (Codable; omitted from JSON when nil).
+- [ ] **Step 2** — Update `GrammarQuizSession.systemPrompt`: in the sub-use directive,
+  use `subUse.generationInstructions ?? subUse.text`.
+- [ ] **Step 3** — Ensure test harness (see `docs/TESTING.md`) builds and works, and update `docs/DATA-FORMATS.md`
+- [defer] ~**Step 4** — Update `cluster-grammar-topics.md` and `enrich-grammar-descriptions.mjs` to document and support the new optional field.~ Skip for now, let's plan to gather more data on which grammar topic clusters actually need this and revisit, rather than trying to put this into the grammar authoring step right away.
+- [defer] **Step 5** — Audit enrolled grammar topics on a case-by-case basis; add
+  `generationInstructions` where template repetition or distractor synonymy is observed.
+
+---
+
 ## Future
 
 - [ ] Error-correction and sentence-completion quiz variants

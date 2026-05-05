@@ -134,8 +134,10 @@ For each group:
    Produce:
    - `summary`: 2–3 sentences describing what the form looks like (conjugation
      pattern) and what it means. Plain English. No copyrighted example sentences.
-   - `subUses`: array of strings, one per distinct grammatical sub-use of this
-     topic. Each entry should name the sub-use and include a short **original**
+   - `subUses`: array of objects, one per distinct grammatical sub-use of this
+     topic. Each object has:
+     - `id`: a short hyphenated slug for this sub-use (e.g. `"sequential-actions"`).
+     - `text`: a short student-friendly string that names the sub-use and include a short **original**
      example sentence (not copied from any reference page). Example:
      `"Sequential actions: 歩いて帰った (walked home on foot)"`
    - `cautions`: array of strings for edge cases and confusables Haiku must know

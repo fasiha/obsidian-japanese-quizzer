@@ -63,11 +63,16 @@ struct GrammarTopic: Codable {
 /// object format, so old cached grammar-equivalences.json files keep working after the migration.
 struct GrammarSubUse: Codable, Equatable {
     let id: String      // stable slug, e.g. "casual-suggestion-or"
-    let text: String    // full description with Japanese example
+    let text: String    // full description with Japanese example; used in the app UI and stored in review notes
+    /// When present, injected into quiz generation prompts instead of `text`.
+    /// Use placeholder-based instructions (e.g. "[verb phrase]のは[predicate]") rather than
+    /// concrete example sentences, which act as templates that Haiku copies verbatim.
+    let generationInstructions: String?
 
-    init(id: String, text: String) {
+    init(id: String, text: String, generationInstructions: String? = nil) {
         self.id = id
         self.text = text
+        self.generationInstructions = generationInstructions
     }
 
     init(from decoder: Decoder) throws {
@@ -75,9 +80,11 @@ struct GrammarSubUse: Codable, Equatable {
         if let container = try? decoder.container(keyedBy: CodingKeys.self) {
             id   = try container.decode(String.self, forKey: .id)
             text = try container.decode(String.self, forKey: .text)
+            generationInstructions = try container.decodeIfPresent(String.self, forKey: .generationInstructions)
         } else {
             let plain = try decoder.singleValueContainer().decode(String.self)
             text = plain
+            generationInstructions = nil
             // Derive a best-effort slug from the plain string (stable for the life of the cache).
             id = plain
                 .split(separator: ":").first
@@ -85,7 +92,7 @@ struct GrammarSubUse: Codable, Equatable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case id, text }
+    private enum CodingKeys: String, CodingKey { case id, text, generationInstructions }
 }
 
 /// One equivalence group from grammar/grammar-equivalences.json.

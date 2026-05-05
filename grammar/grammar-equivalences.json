@@ -1022,17 +1022,21 @@
     "subUses": [
       {
         "id": "nominalizing-as-topic",
+        "generationInstructions": "Pattern: [verb phrase]のは[predicate]. Do not use a bare quality adjective (難しい, 楽しい, etc.) as the predicate — those produce English synonyms that make fair distractors impossible. Choose a predicate that makes a specific or comparative claim about the action.",
         "text": "Nominalizing as topic with のは: 泳ぐのは楽しい (Swimming is fun)"
       },
       {
+        "generationInstructions": "Pattern: [verb phrase]のが[emotive adjective]. The emotive adjective should be a personal evaluation: 好き, 嫌い, 上手, 苦手, 得意, 楽しみ, etc.",
         "id": "nominalizing-as-subject",
         "text": "Nominalizing as subject with のが + emotive adjective: 絵を描くのが好きだ (I like drawing pictures)"
       },
       {
+        "generationInstructions": "Pattern: [subject]が[verb phrase]のを[perception or experience verb]. Use a verb other than 見る or 聞く — try 感じる, 知る, 待つ, 手伝う, 止める, etc.",
         "id": "nominalizing-as-object",
         "text": "Nominalizing as object with のを: 鳥が飛ぶのを見た (I saw a bird fly)"
       },
       {
+        "generationInstructions": "Pattern: [verb phrase]のは[specific named person, place, or thing]だ. The predicate must be a proper noun or specific concrete referent — not a quality adjective. Do not use 最初に or 早く as the qualifier; choose a different relational phrase.",
         "id": "cleft-sentence-exhaustive",
         "text": "Cleft sentence / exhaustive listing with のは...だ: 早く咲くのは東京だ (The one that blooms earliest is Tokyo)"
       }
