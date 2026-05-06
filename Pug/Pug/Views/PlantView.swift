@@ -62,6 +62,7 @@ struct PlantView: View {
             }
             .navigationTitle("Learn: \(shortTitle)")
             .navigationBarTitleDisplayMode(.inline)
+            .overlay(alignment: .bottom) { ProblemReportBanner(report: $session.pendingReport) }
             .onChange(of: session.phase) { _, newPhase in
                 if case .tapFeedback(let correct, _) = newPhase, let mc = session.lastAnsweredMC {
                     seedPostDrillChat(mc: mc, choiceIndex: session.lastAnswerChoiceIndex, correct: correct)
@@ -280,7 +281,8 @@ struct PlantView: View {
                 selectedWordForDetail = VocabItemSelection(item: word,
                                                            origin: .document(title: session.documentTitle))
             },
-            tutorMeAction: tutorAction
+            tutorMeAction: tutorAction,
+            onReportProblem: { session.reportProblem() }
         )
     }
 

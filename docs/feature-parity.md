@@ -15,6 +15,7 @@ opens `WordDetailSheet` or `TransitivePairDetailSheet` depending on `wordType`).
 | ---------------------------- | ---------- | ----------------- |
 | Don't know / Inkling buttons | yes        | yes               |
 | Skip button                  | yes        | yes               |
+| Report problem button        | yes        | yes               |
 
 **Post-answer chatting phase** (shown after student answers):
 
@@ -29,9 +30,42 @@ opens `WordDetailSheet` or `TransitivePairDetailSheet` depending on `wordType`).
 | Tutor me button (wrong answers)     | yes        | yes               |
 
 When adding a new quiz type, implement both phases from an existing quiz view:
-pre-answer controls (Don't know, Inkling, Skip) and post-answer controls
-(Details, chat input, Tutor me). Halflife adjustment lives in the detail sheet,
-not the quiz view — the detail sheet's rescale UI also shows review count.
+pre-answer controls (Don't know, Inkling, Skip, Report problem) and post-answer controls
+(Details, chat input, Tutor me, Report problem). The "Report problem" button appears
+next to Skip in every phase. Use `ReportProblemButton` (pre-answer) and pass
+`onReportProblem` to `PostAnswerChatView` (post-answer). See the Problem reporting
+checklist in `docs/quiz-architecture.md`.
+
+## Complete word-type × facet enumeration
+
+This table is the authoritative list of every quiz path in the app. **Update it when
+adding a new word type or facet.** The quiz-architecture checklist also requires
+updating this table.
+
+All `QuizView` paths share a single `PostAnswerChatView` for the post-answer phase.
+All `GrammarQuizView` paths share a single `chattingView` for the post-answer phase.
+
+| `wordType` | facet | pre-answer phase | pre-answer view | post-answer view |
+| ---------- | ----- | ---------------- | --------------- | ---------------- |
+| `jmdict` | `reading-to-meaning` | `.awaitingTap` or `.awaitingText` | `awaitingTapView` / `awaitingTextView` | `PostAnswerChatView` |
+| `jmdict` | `meaning-to-reading` | `.awaitingTap` or `.awaitingText` | `awaitingTapView` / `awaitingTextView` | `PostAnswerChatView` |
+| `jmdict` | `kanji-to-reading` | `.awaitingTap` | `awaitingTapView` | `PostAnswerChatView` |
+| `jmdict` | `meaning-reading-to-kanji` | `.awaitingTap` | `awaitingTapView` | `PostAnswerChatView` |
+| `counter` | `meaning-to-reading` | `.awaitingText` | `awaitingTextView` | `PostAnswerChatView` |
+| `counter` | `counter-number-to-reading` | `.awaitingText` | `awaitingTextView` | `PostAnswerChatView` |
+| `transitive-pair` | `pair-discrimination` | `.awaitingPair` | `awaitingPairView` | `PostAnswerChatView` |
+| `transitive-pair` | `transitive` | `.awaitingPair` | `awaitingPairView` | `PostAnswerChatView` |
+| `transitive-pair` | `intransitive` | `.awaitingPair` | `awaitingPairView` | `PostAnswerChatView` |
+| `kanji` | `kanji-to-on-reading` | `.awaitingTap` | `awaitingTapView` | `PostAnswerChatView` |
+| `kanji` | `kanji-to-kun-reading` | `.awaitingTap` | `awaitingTapView` | `PostAnswerChatView` |
+| `kanji` | `kanji-to-meaning` | `.awaitingTap` | `awaitingTapView` | `PostAnswerChatView` |
+| `grammar` | `production` | `GrammarQuizView .awaitingTap` | `awaitingTapView` | `GrammarQuizView.chattingView` |
+| `grammar` | `recognition` | `GrammarQuizView .awaitingTap` | `awaitingTapView` | `GrammarQuizView.chattingView` |
+
+Notes:
+- `jmdict` reading-to-meaning and meaning-to-reading use `.awaitingTap` at lower recall (multiple choice) and `.awaitingText` at higher recall (free answer), controlled by `QuizItem.isFreeAnswer`.
+- `kanji` (wordType) is distinct from `jmdict` words that have committed kanji. It refers to standalone kanji quiz items sourced from kanjidic2, not JMDict entries.
+- `planting` drills (`PlantView`) share `PostAnswerChatView` for the post-answer phase but have no pre-answer Skip button by design — skipping happens on the introduce card.
 
 ## Detail sheets
 

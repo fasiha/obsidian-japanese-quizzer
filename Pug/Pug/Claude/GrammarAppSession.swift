@@ -56,6 +56,21 @@ final class GrammarAppSession {
         }
     }
 
+    // MARK: - Problem reporting
+    // Grammar generation errors surface via the GrammarQuizView error view, not auto-skip,
+    // so there are no automatic pendingReport assignments here — only the manual button path.
+
+    var pendingReport: ProblemReport? = nil
+
+    func reportProblem() {
+        let topicId = items[safe: currentIndex]?.topicId ?? "unknown topic"
+        let facet   = items[safe: currentIndex]?.facet   ?? "unknown facet"
+        pendingReport = ProblemReport(
+            message: "Problem reported at \(ProblemReport.timestamp()): grammar quiz for \(topicId) (\(facet)). Please share with the quiz admin.",
+            timestamp: Date()
+        )
+    }
+
     // MARK: - Dependencies
 
     let client: AnthropicClient

@@ -38,6 +38,12 @@ Every new facet or quiz type must satisfy all of the following. Verify each one 
 - [ ] `quiz_type` value is human-readable when displayed in the history list (no raw snake_case that needs translation).
 - [ ] `session_id` is set on every review row so `ReviewDetailSheet` can load the post-quiz chat.
 
+### Problem reporting
+
+- [ ] Every phase that shows a Skip button also shows a **"Report problem"** button next to it. The button calls `session.reportProblem()` (or an equivalent closure in views that don't own a `QuizSession`), which sets `session.pendingReport` and triggers the failure banner with a ShareLink. Use `ReportProblemButton { session.reportProblem() }` (pre-answer) and pass `onReportProblem` to `PostAnswerChatView` (post-answer) — do not duplicate the button or banner logic.
+- [ ] If the new facet can auto-skip due to a generation failure (e.g. a parse failure after all LLM retries), set `session.pendingReport` with a descriptive auto-skip message **before** calling `nextQuestion()` so the word name is still available.
+- [ ] Add the new `wordType` × facet row(s) to the **Complete word-type × facet enumeration** table in `docs/feature-parity.md`.
+
 ### Prefetch parity
 
 - [ ] `prefetchQuestion()` handles the new facet in the same dispatch order as `generateQuestion()`. See the type-dispatch order note in the counter section below.

@@ -63,6 +63,20 @@ final class PlantingSession {
         case error(String)
     }
 
+    // MARK: - Problem reporting
+    // Planting drills use app-generated multiple-choice questions (no LLM), so there are no
+    // auto-skip failure paths — only the manual button path from PostAnswerChatView.
+
+    var pendingReport: ProblemReport? = nil
+
+    func reportProblem() {
+        let wordText = lastAnsweredMC?.item.wordText ?? currentIntroWord?.wordText ?? "unknown word"
+        pendingReport = ProblemReport(
+            message: "Problem reported at \(ProblemReport.timestamp()): planting drill for \(wordText). Please share with the quiz admin.",
+            timestamp: Date()
+        )
+    }
+
     // MARK: - Observed state
 
     var phase: Phase = .idle

@@ -57,6 +57,7 @@ struct QuizView: View {
                 default: break
                 }
             }
+            .overlay(alignment: .bottom) { ProblemReportBanner(report: $session.pendingReport) }
             .sheet(isPresented: $showSettings) { SettingsView(db: session.db) }
             .sheet(isPresented: $showDetailsSheet) {
                 if let item = session.currentItem {
@@ -162,10 +163,10 @@ struct QuizView: View {
                 }
                 .frame(maxWidth: .infinity)
 
-                // Skip
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
+                ReportProblemButton { session.reportProblem() }
             }
             .padding()
         }
@@ -228,6 +229,7 @@ struct QuizView: View {
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
+                ReportProblemButton { session.reportProblem() }
             }
             .padding()
         }
@@ -322,6 +324,7 @@ struct QuizView: View {
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
+                ReportProblemButton { session.reportProblem() }
             }
             .padding()
         }
@@ -348,7 +351,8 @@ struct QuizView: View {
             onSend: session.sendChatMessage,
             onAdvance: session.nextQuestion,
             onShowDetails: session.gradedScore != nil ? { showDetailsSheet = true } : nil,
-            tutorMeAction: tutorAction
+            tutorMeAction: tutorAction,
+            onReportProblem: { session.reportProblem() }
         )
     }
 
@@ -382,7 +386,7 @@ struct QuizView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(.orange)
-            Text("Something went wrong")
+            Text("Something went wrong?")
                 .font(.headline)
             Text(message)
                 .font(.caption)

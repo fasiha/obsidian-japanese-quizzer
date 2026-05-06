@@ -24,6 +24,8 @@ struct PostAnswerChatView: View {
     let onShowDetails: (() -> Void)?
     /// Nil = hide "Tutor me" button.
     let tutorMeAction: (() -> Void)?
+    /// Nil = hide "Report problem" button.
+    let onReportProblem: (() -> Void)?
 
     @FocusState private var isChatFocused: Bool
 
@@ -114,6 +116,7 @@ struct PostAnswerChatView: View {
                         .buttonStyle(.borderedProminent)
                         .frame(maxWidth: onShowDetails == nil ? .infinity : nil)
                 }
+                if let action = onReportProblem { ReportProblemButton(action: action) }
             }
             .padding()
         }

@@ -77,6 +77,21 @@ final class QuizSession {
     var preQuizHalflife: Double? = nil // halflife (hours) at the start of this item (nil for new words)
     var gradedHalflife: Double? = nil      // updated halflife after recordReview; nil until graded
 
+    // MARK: - Problem reporting
+
+    /// Set when the app auto-skips due to an MCQ parse failure, or when the student manually taps
+    /// "Report problem". QuizView observes this to show the failure banner with a ShareLink.
+    var pendingReport: ProblemReport? = nil
+
+    func reportProblem() {
+        let wordText = currentItem?.wordText ?? "unknown word"
+        let facet = currentItem?.facet ?? "unknown facet"
+        pendingReport = ProblemReport(
+            message: "Problem reported at \(ProblemReport.timestamp()): quiz for \(wordText) (\(facet)). Please share with the quiz admin.",
+            timestamp: Date()
+        )
+    }
+
     // MARK: - Quiz filter
 
     enum QuizFilter {
@@ -1150,6 +1165,10 @@ final class QuizSession {
                 // Prefetch stored a nil multipleChoice for a facet that requires it — parse failed.
                 // Auto-advance rather than showing raw LLM reasoning to the student.
                 print("[QuizSession] prefetch MCQ parse failed for \(item.wordText) (\(item.facet)), skipping")
+                pendingReport = ProblemReport(
+                    message: "Auto-skip at \(ProblemReport.timestamp()): multiple-choice quiz for \(item.wordText) (\(item.facet)) failed to generate. Please share with the quiz admin.",
+                    timestamp: Date()
+                )
                 nextQuestion()
                 return
             } else {
@@ -1301,6 +1320,10 @@ final class QuizSession {
                 // MCQ parse failed after all retries for a facet that requires multiple choice.
                 // Auto-advance rather than showing raw LLM reasoning to the student.
                 print("[QuizSession] MCQ parse failed for \(item.wordText) (\(item.facet)) after retries, skipping")
+                pendingReport = ProblemReport(
+                    message: "Auto-skip at \(ProblemReport.timestamp()): multiple-choice quiz for \(item.wordText) (\(item.facet)) failed to generate. Please share with the quiz admin.",
+                    timestamp: Date()
+                )
                 nextQuestion()
             } else {
                 conversation = finalMsgs

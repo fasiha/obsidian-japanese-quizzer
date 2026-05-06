@@ -107,6 +107,7 @@ struct GrammarQuizView: View {
         .onChange(of: session.currentItem?.topicId) { vocabExpanded = false }
         .onChange(of: session.phase) { audioPlayer.stop() }
         .onDisappear { audioPlayer.stop() }
+        .overlay(alignment: .bottom) { ProblemReportBanner(report: $session.pendingReport) }
         .sheet(isPresented: $showDetailsSheet) {
             if let item = session.currentItem,
                let topic = manifest.topics[item.topicId],
@@ -263,6 +264,7 @@ struct GrammarQuizView: View {
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
+                ReportProblemButton { session.reportProblem() }
             }
             .padding()
         }
@@ -451,6 +453,7 @@ struct GrammarQuizView: View {
                         .buttonStyle(.bordered)
                         .frame(maxWidth: .infinity)
                 }
+                ReportProblemButton { session.reportProblem() }
             }
             .padding()
         }
@@ -484,7 +487,7 @@ struct GrammarQuizView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 48))
                 .foregroundStyle(.orange)
-            Text("Something went wrong")
+            Text("Something went wrong?")
                 .font(.headline)
             Text(message)
                 .font(.caption)
