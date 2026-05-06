@@ -25,11 +25,15 @@ struct KanjiDetailSheet: View {
     /// Text, reading, and all glosses (senses joined with "; ", sub-glosses with ", ") for
     /// non-corpus JMDict words in the top-usage list, keyed by JMDict entry ID.
     @State private var topUsageWordDetails: [String: (text: String, reading: String?, gloss: String?)] = [:]
+    @State private var kanjiMnemonic: String? = nil
+    @State private var isEditingMnemonic = false
+    @State private var editingMnemonicDraft = ""
 
     var body: some View {
         NavigationStack {
             List {
                 kanjiHeaderSection
+                mnemonicsSectionView
                 if !sponsorWords.isEmpty {
                     sponsorWordsSection
                 }
@@ -52,6 +56,7 @@ struct KanjiDetailSheet: View {
         .task {
             await loadSponsorWords()
             await loadTopUsageWordDetails()
+            await loadMnemonic()
         }
     }
 
@@ -75,6 +80,64 @@ struct KanjiDetailSheet: View {
             )
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         }
+    }
+
+    // MARK: - Mnemonic
+
+    private var mnemonicsSectionView: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Mnemonic")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .tracking(0.5)
+                    Spacer()
+                    if isEditingMnemonic {
+                        Button("Cancel") { isEditingMnemonic = false }
+                            .font(.caption)
+                        Button("Save") { Task { await saveMnemonic() } }
+                            .font(.caption).fontWeight(.semibold)
+                    } else {
+                        Button {
+                            editingMnemonicDraft = kanjiMnemonic ?? ""
+                            isEditingMnemonic = true
+                        } label: {
+                            Image(systemName: "pencil")
+                                .padding(8)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                }
+                if isEditingMnemonic {
+                    TextEditor(text: $editingMnemonicDraft)
+                        .frame(minHeight: 80)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
+                } else if let m = kanjiMnemonic {
+                    Text(m)
+                } else {
+                    Text("None")
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .textSelection(.enabled)
+        }
+    }
+
+    private func loadMnemonic() async {
+        if let m = try? await db.mnemonic(wordType: "kanji", wordId: kanji) {
+            kanjiMnemonic = m.mnemonic
+        }
+    }
+
+    private func saveMnemonic() async {
+        let text = editingMnemonicDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        try? await db.setMnemonic(wordType: "kanji", wordId: kanji, text: text)
+        kanjiMnemonic = text
+        isEditingMnemonic = false
     }
 
     // MARK: - Sponsor words

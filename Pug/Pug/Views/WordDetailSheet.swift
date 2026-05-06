@@ -14,7 +14,7 @@
 import SwiftUI
 import GRDB
 
-private struct IdentifiableString: Identifiable {
+private struct IdentifiableString: Identifiable, Equatable {
     let id: String
 }
 
@@ -184,6 +184,9 @@ struct WordDetailSheet: View {
             .sheet(item: $selectedKanjiForDetail) { item in
                 KanjiDetailSheet(kanji: item.id, db: db, client: client,
                                  toolHandler: toolHandler, jmdict: jmdict)
+            }
+            .onChange(of: selectedKanjiForDetail) { _, new in
+                if new == nil { Task { await loadMnemonics() } }
             }
         }
     }
