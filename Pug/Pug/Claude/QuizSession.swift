@@ -997,7 +997,7 @@ final class QuizSession {
             case "kanji-to-kun-reading":
                 return "Type a kun-reading of \(kd.kanjiChar):"
             case "kanji-to-meaning":
-                return "What does \(kd.kanjiChar) mean?"
+                return "What does the character \(kd.kanjiChar) mean?"
             default:
                 return "What is \(kd.kanjiChar)?"
             }
@@ -1009,9 +1009,9 @@ final class QuizSession {
             return meanings.isEmpty ? item.wordText : meanings
         case "kanji-to-reading":
             if let template = item.partialKanjiTemplate {
-                return "What is the full reading for: \(template)"
+                return "What is the full reading of the word: \(template)"
             }
-            return "What is the reading for: \(item.wordText)"
+            return "How do you read the word \(item.wordText)?"
         case "reading-to-meaning":
             return "What does \(kana) mean?"
         default:
@@ -2479,7 +2479,7 @@ final class QuizSession {
                 .flatMap { row in Array(row.meanings.prefix(2)) }
             let distractors = Array(Set(pool).subtracting(ownMeanings).subtracting([correct]).subtracting([""]))
                 .shuffled().prefix(3)
-            return padToFour(stem: "What does \(kanji) mean?",
+            return padToFour(stem: "What does the character \(kanji) mean?",
                              correct: correct, distractors: Array(distractors), placeholder: "—")
 
         default:
