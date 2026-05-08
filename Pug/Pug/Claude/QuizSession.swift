@@ -2742,10 +2742,13 @@ final class QuizSession {
             }
         case "meaning-to-reading":
             if isGenerating {
-                facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses."
-                // No explicit correct-answer pin here: for kana-only words with multiple readings
-                // (e.g. そっと/そうっと/そおっと/そーっと) the model seems to pick the first
-                // listed kana, which is the primary reading. That's acceptable behaviour.
+                // Pin the correct kana when the user has committed to a specific annotated form
+                // (e.g. コチコチ rather than the JMDict-first カチカチ). Without pinning, the LLM
+                // freely picks from allKana and often picks the first entry, which disagrees with
+                // the user's committed reading for pure-kana words.
+                let pinnedKana = item.committedReading ?? item.kanaTexts.first ?? ""
+                let correctPin = pinnedKana.isEmpty ? "" : " Correct answer is exactly: \(pinnedKana)."
+                facetRule = "Show English meaning (enrolled senses only: \(allMeanings)). Ask for kana reading. Do not reference other JMDict senses.\(correctPin)"
                 wordLine = "Word: \(entryRef). Correct answer must be listed kana."
             } else {
                 facetRule = "Facet tested: meaning-to-reading (student sees English, answers with kana reading)."
