@@ -1,40 +1,62 @@
 ---
-description: Annotate all Japanese lines in a Markdown file with vocabulary from JMDict for N4-level learners
+description: Annotate all Japanese lines in a Markdown file with vocabulary from JMDict for N5-level learners
 ---
 
-Annotate every Japanese line in the file at path `$ARGUMENTS` with vocabulary bullet points.
+Annotate every Japanese line in the file at path `$ARGUMENTS` with links to entries in the JMDict dictionary.
 
-## Step 1 — Filter the file
+## Step 1 — Create the work file
 
 ```bash
-node filter-for-annotation.mjs "$ARGUMENTS"
+node annotate-harness.mjs start "$ARGUMENTS"
 ```
 
-This outputs a JSON array of unique Japanese lines that need annotation:
+This prints the path of a JSON work file, e.g. `/tmp/Shippo-annotations-1716480000000.json`.
 
+Read that file. It contains:
 ```json
-[{ "id": 5, "text": "日本語の文章です。" }, ...]
+{
+  "sourceFile": "/abs/path/to/file.md",
+  "sentences": [
+    {
+      "id": 5,
+      "text": "stripped of ruby tags",
+      "furigana": "base[reading]…",
+      "morphemes": [
+        {
+          "literal": "息",
+          "pronunciation": "イキ",
+          "lemmaReading": "イキ",
+          "lemmaReadingHiragana": "いき",
+          "lemma": "息",
+          "pos": "noun-common-general",
+          "posJa": "名詞-普通名詞-一般",
+          "inflectionType": "sahen_verb_irregular",
+          "inflectionTypeJa": "サ行変格",
+          "inflection": "continuative-general",
+          "inflectionJa": "連用形-一般",
+          "isContentWord": true,
+          "compoundHint": { "reading": 5, "kanji": 5 }
+        }
+      ],
+      "annotations": []
+    }
+  ]
+}
 ```
 
-`id` is the line index in the original file. `text` has ruby tags already stripped.
-If the original line contained ruby annotations, a `furigana` field is also present with readings inlined (e.g. `"furigana": "夢を運命[さだめ]と呼ぶ"` for `夢を<ruby>運命<rt>さだめ</rt></ruby>と呼ぶ`). Use `furigana` to resolve ateji or unusual readings when looking up JMDict — the bracketed reading shows exactly which kanji the author assigned an unexpected reading to.
-Duplicates, YAML frontmatter, blank lines, section headers in brackets, and purely English/romanized lines are already excluded.
+`inflectionType`, `inflection`, and their `*Ja` counterparts are omitted when not applicable. `compoundHint` is omitted when both counts are 0.
 
-## Step 2 — Annotate each item
+If the original line contained ruby annotations, a `furigana` field is present with readings inlined (e.g. `"furigana": "夢を運命[さだめ]と呼ぶ"`). Use it to resolve ateji or unusual readings when looking up JMDict.
 
-For each item in the JSON array, annotate the `text` field using the full `annotate-vocab` procedure:
+## Step 2 — Annotate each sentence
 
-### 2a — Run MeCab with compound hints
+For each sentence in `sentences`, we want a list of entries in JMDict.
 
-```bash
-node mecab-with-hints.mjs "{text}"
-```
+### 2a — Identify content word lemmas
 
-Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs, adjectival nouns, etc. Skip morphemes like particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い.
+From `morphemes`, consider the entries where `isContentWord` is `true`: these are nouns, verbs, adjectives, adverbs, adjectival nouns, etc., and these are likely to have dictionary entries. Use `lemma` as the lookup form (dictionary form for verbs and adjectives). Use `lemmaReadingHiragana` when constructing kana-based searches since the dictionary lookup will normalized to hiragana.
 
-Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞) — words like 度 (たび), 本 (ほん), 枚 (まい) carry real lexical meaning. For any word with a borderline POS classification (e.g., 連体詞, unusual noun subtypes), include it. When uncertain whether to include a word (e.g., it has an unusual MeCab classification), include it. If it has semantic content and isn't purely grammatical, include it.
-
-Content-word lines include a `[compound_extensions: reading:N kanji:M]` hint — the count of JMdict entries that begin with this morpheme's reading and kanji, respectively, and are longer than it. (Omitted kanji count means 0.) Non-zero counts can be used to guess whether the dictionary contains an entry that includes this morpeheme and the ones that follow (e.g., idiomatic usage).
+When a morpheme has `isContentWord: true` but seems purely grammatical in context, you may skip it — but when uncertain, include it.
 
 ### 2b — Look up each lemma in JMDict
 
@@ -44,58 +66,33 @@ node lookup.mjs {lemma}
 
 Classify as found, not found (try conjugated/inflected base form or prefix search `node lookup.mjs '{stem}*'`), elongated form (cite base), or mimetic/onomatopoeia (try hiragana/katakana/long-vowel/gemination variants).
 
-For morphemes with a non-zero compound hint, consider constructing and running multi-anchor searches combining this morpheme's **kana reading** with the kana reading of relevant subsequent content tokens. Always use kana readings (field 3 in the MeCab output), never kanji surfaces — JMdict entries are not always representationally exhaustive, so a kanji+kana mix may miss entries stored differently. Always single-quote the argument to prevent the shell from glob-expanding `*`:
+For morphemes with a non-zero `compoundHint`, construct and run multi-anchor searches combining this morpheme's `lemmaReadingHiragana` with the `lemmaReadingHiragana` of relevant subsequent morphemes. Never use kanji surfaces. Always single-quote the argument:
 
 ```bash
 node lookup.mjs 'いき*づらい'
 node lookup.mjs 'いきおい*よく'
-# three anchors span a particle between two content words:
+# span a particle between two content words:
 node lookup.mjs 'おなか*が*へ'
 node lookup.mjs 'あし*を*とめ'
 ```
 
-This finds dictionary entries spanning multiple morphemes (phrases, idioms, compound words) that are often much more informative than the individual parts. The dictionary will often include particles between content words, so a two-anchor search can surface a three-token entry. If a longer compound entry fits the context, be sure to use it. Include its individual parts if they are useful to an N5-level learner.
+This finds dictionary entries spanning multiple morphemes. If a longer compound fits the context, use it. Include the individual parts too if useful to an N5-level learner.
 
-## Step 3 — Write annotation JSON and recombine
+### 2c — Write annotations into the work file
 
-Write a JSON file to `/tmp/annotations.json` in this format:
+For each sentence, set its `annotations` array in the work file. Each string is one of:
 
-```json
-[
-  { "id": 5, "entries": ["- たび 度", "- はな 花"] },
-  { "id": 8, "entries": ["- Not in JMDict: ホゲ — some contextual meaning"] }
-]
-```
-
-Each `id` must match the `id` from Step 1. Each string in `entries` follows one of these formats:
-
-For words **found in JMDict** with kanji:
-```
-- {kana reading} {kanji form}
-```
-For kana-only words:
-```
-- {kana}
-```
-For words **not in JMDict**:
-```
-- Not in JMDict: {word as it appears in text} — {concise meaning in context}
-```
-For proper nouns like names, places:
-```
-- Proper noun: {word as it appears in text} — {MeCab-proposed reading} — {in English, your guess about whether this is a famous place (example: "Uji, suburb of Kyoto"), a famous person ("Fukuzawa Yukichi, famous author"), or just some person or place's name}
-```
+- Found in JMDict with kanji: `{kana reading} {kanji form}`
+- Kana-only word: `{kana}`
+- Not in JMDict: `Not in JMDict: {word as it appears in text} — {concise meaning in context}`
+- Proper noun: `Proper noun: {word} — {MeCab reading} — {English: place, person, or just a name}`
 
 Do **not** include English meanings for JMDict words.
 Do **not** annotate grammar (て-form, たら, ので, etc.) — vocabulary only.
-If a line has no content words at all, include `{ "id": N, "entries": [] }` — the recombine script will skip the vocab block for empty entries.
+If a sentence has no content words, leave `annotations` as `[]`.
 
-Then run:
+After completing each sentence (or a batch of sentences), write the updated JSON back to the work file.
 
-```bash
-node recombine-annotations.mjs "$ARGUMENTS" /tmp/annotations.json
-```
+## Step 3 — Report
 
-## Step 4 — Report
-
-Print the one-line summary output by `recombine-annotations.mjs`.
+When finished, run `node annotate-harness.mjs done <work-file>`.

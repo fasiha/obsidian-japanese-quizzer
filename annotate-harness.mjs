@@ -1,0 +1,412 @@
+#!/usr/bin/env node
+/**
+ * Two-step harness for the annotate-file skill.
+ *
+ * start: read a Markdown file, run MeCab on every Japanese line, and write a
+ *        pre-populated work JSON that the LLM fills in.
+ *
+ *   node annotate-harness.mjs start <file.md>
+ *
+ *   Prints the path of the created work file, e.g.:
+ *     /tmp/Shippo-annotations-1716480000000.json
+ *
+ *   Work file shape:
+ *   {
+ *     "sourceFile": "/abs/path/to/file.md",
+ *     "sentences": [
+ *       {
+ *         "id": 5,                         // line index in source file
+ *         "text": "stripped of ruby tags",
+ *         "furigana": "base[reading]…",    // only when ruby tags were present
+ *         "morphemes": [                   // MeCab output, one object per morpheme
+ *           {
+ *             "literal": "息",
+ *             "pronunciation": "イキ",
+ *             "lemmaReading": "イキ",
+ *             "lemma": "息",
+ *             "pos": "noun-common-general",
+ *             "posJa": "名詞-普通名詞-一般",
+ *             "inflectionType": "sahen_verb_irregular",  // omitted when absent
+ *             "inflectionTypeJa": "サ行変格",             // omitted when absent
+ *             "inflection": "continuative-general",      // omitted when absent
+ *             "inflectionJa": "連用形-一般",              // omitted when absent
+ *             "compoundHint": { "reading": 5, "kanji": 5 } // omitted when 0
+ *           }
+ *         ],
+ *         "annotations": []  // LLM fills this in
+ *       }
+ *     ]
+ *   }
+ *
+ *   The LLM fills each "annotations" array with strings in the annotate-vocab
+ *   format, e.g. ["- いきおい 勢い", "- Not in JMDict: ぽーん — thud sound"].
+ *   Lines with no content words get an empty array and no vocab block.
+ *
+ * done: read the completed work file and produce the annotated Markdown.
+ *
+ *   node annotate-harness.mjs done <work.json>
+ *
+ *   Writes <original-dir>/<basename>.annotated.<timestamp>.md and prints a
+ *   one-line summary. Can be called before all sentences are annotated —
+ *   sentences with empty annotations arrays get no vocab block.
+ */
+
+import { execSync } from "child_process";
+import { readFileSync, writeFileSync } from "fs";
+import Database from "better-sqlite3";
+import path from "path";
+
+// ---------------------------------------------------------------------------
+// UniDic POS / inflection translation tables (ported from mecabUnidic.ts)
+// ---------------------------------------------------------------------------
+
+const POS_MAP = new Map([
+  ["代名詞", "pronoun"],
+  ["副詞", "adverb"],
+  ["助動詞", "auxiliary_verb"],
+  ["助詞", "particle"],
+  ["係助詞", "binding"],
+  ["副助詞", "adverbial"],
+  ["接続助詞", "conjunctive"],
+  ["格助詞", "case"],
+  ["準体助詞", "nominal"],
+  ["終助詞", "phrase_final"],
+  ["動詞", "verb"],
+  ["一般", "general"],
+  ["非自立可能", "bound"],
+  ["名詞", "noun"],
+  ["助動詞語幹", "auxiliary"],
+  ["固有名詞", "proper"],
+  ["人名", "name"],
+  ["名", "firstname"],
+  ["姓", "surname"],
+  ["地名", "place"],
+  ["国", "country"],
+  ["数詞", "numeral"],
+  ["普通名詞", "common"],
+  ["サ変可能", "verbal_suru"],
+  ["サ変形状詞可能", "verbal_adjectival"],
+  ["副詞可能", "adverbial_suffix"],
+  ["助数詞可能", "counter"],
+  ["形状詞可能", "adjectival"],
+  ["形容詞", "adjective_i"],
+  ["形状詞", "adjectival_noun"],
+  ["タリ", "tari"],
+  ["感動詞", "interjection"],
+  ["フィラー", "filler"],
+  ["接尾辞", "suffix"],
+  ["動詞的", "verbal"],
+  ["名詞的", "nominal_suffix"],
+  ["助数詞", "counter_suffix"],
+  ["形容詞的", "adjective_i_suffix"],
+  ["形状詞的", "adjectival_noun_suffix"],
+  ["接続詞", "conjunction"],
+  ["接頭辞", "prefix"],
+  ["空白", "whitespace"],
+  ["補助記号", "supplementary_symbol"],
+  ["ＡＡ", "ascii_art"],
+  ["顔文字", "emoticon"],
+  ["句点", "period"],
+  ["括弧閉", "bracket_close"],
+  ["括弧開", "bracket_open"],
+  ["読点", "comma"],
+  ["記号", "symbol"],
+  ["文字", "character"],
+  ["連体詞", "adnominal"],
+  ["未知語", "unknown_words"],
+  ["カタカナ文", "katakana"],
+  ["漢文", "chinese_writing"],
+  ["言いよどみ", "hesitation"],
+  ["web誤脱", "errors_omissions"],
+  ["方言", "dialect"],
+  ["ローマ字文", "latin_alphabet"],
+  ["新規未知語", "new_unknown_words"],
+]);
+
+const INFL_TYPE_MAP = new Map([
+  ["五段", "godan_verb"],
+  ["ワア行", "wa_a_column"],
+  ["カ行変格", "kahen_verb_irregular"],
+  ["サ行変格", "sahen_verb_irregular"],
+  ["上一段", "kamiichidan_verb_i_row"],
+  ["下一段", "shimoichidan_verb_e_row"],
+  ["形容詞", "adjective"],
+  ["ダ行", "da_column"],
+  ["ラ行", "ra_column"],
+  ["マ行", "ma_column"],
+  ["ナ行", "na_column"],
+  ["バ行", "ba_column"],
+  ["タ行", "ta_column"],
+  ["カ行", "ka_column"],
+  ["サ行", "sa_column"],
+  ["ハ行", "ha_column"],
+  ["ガ行", "ga_column"],
+  ["ア行", "a_column"],
+  ["ヤ行", "ya_column"],
+  ["ザ行", "za_column"],
+  ["ダ", "da"],
+  ["タイ", "tai"],
+  ["マス", "masu"],
+  ["デス", "desu"],
+  ["レル", "reru"],
+  ["ナイ", "nai"],
+  ["ラシイ", "rashii"],
+  ["無変化型", "uninflected_form"],
+  ["助動詞", "auxiliary"],
+  ["一般", "general"],
+]);
+
+const INFL_MAP = new Map([
+  ["連用形", "continuative"],
+  ["終止形", "conclusive"],
+  ["連体形", "attributive"],
+  ["仮定形", "conditional"],
+  ["命令形", "imperative"],
+  ["未然形", "irrealis"],
+  ["已然形", "realis"],
+  ["意志推量形", "volitional_tentative"],
+  ["語幹", "word_stem"],
+  ["一般", "general"],
+  ["融合", "integrated"],
+  ["長音", "long_sound"],
+  ["促音便", "euphonic_change_t"],
+  ["撥音便", "euphonic_change_n"],
+  ["ウ音便", "euphonic_change_u"],
+  ["イ音便", "euphonic_change_i"],
+  ["省略", "abbreviation"],
+  ["補助", "auxiliary_inflection"],
+  ["ト", "change_to"],
+  ["ニ", "change_ni"],
+  ["セ", "se"],
+  ["サ", "sa"],
+  ["*", "uninflected"],
+]);
+
+function translateDashed(raw, map) {
+  if (!raw) return null;
+  const parts = raw.split("-");
+  return parts.map((k) => map.get(k) ?? k).join("-");
+}
+
+// ---------------------------------------------------------------------------
+// MeCab parsing
+// ---------------------------------------------------------------------------
+
+function katakanaToHiragana(s) {
+  return s.replace(/[ァ-ヶ]/g, (c) =>
+    String.fromCharCode(c.charCodeAt(0) - 0x60)
+  );
+}
+
+// POS top-level categories that are purely grammatical
+const GRAMMAR_POS_PREFIXES = ["助詞", "助動詞", "補助記号", "記号"];
+
+// Lemmas that are grammatical despite having a content-word POS
+const GRAMMAR_LEMMAS = new Set(["無い", "ない"]);
+
+function isContentWord(posJa, lemma) {
+  if (GRAMMAR_POS_PREFIXES.some((p) => posJa.startsWith(p))) return false;
+  if (GRAMMAR_LEMMAS.has(lemma)) return false;
+  return true;
+}
+
+function parseMecabLine(raw) {
+  const fields = raw.split("\t");
+  if (fields.length < 5) return null;
+  const [literal, pronunciation, lemmaReading, lemma, posRaw, inflTypeRaw, inflRaw] = fields;
+  const posJa = posRaw || "";
+  const inflectionTypeJa = inflTypeRaw || null;
+  const inflectionJa = inflRaw || null;
+  return { literal, pronunciation, lemmaReading, lemma, posJa, inflectionTypeJa, inflectionJa };
+}
+
+function runMecab(sentence) {
+  const raw = execSync(`echo ${JSON.stringify(sentence)} | mecab`, {
+    encoding: "utf8",
+  });
+  const morphemes = [];
+  for (const line of raw.split("\n")) {
+    if (!line || line === "EOS") continue;
+    const parsed = parseMecabLine(line);
+    if (parsed) morphemes.push(parsed);
+  }
+  return morphemes;
+}
+
+function buildMorphemeObjects(rawMorphemes, countExtensions) {
+  return rawMorphemes.map((m) => {
+    const pos = translateDashed(m.posJa, POS_MAP);
+    const inflectionType = m.inflectionTypeJa
+      ? translateDashed(m.inflectionTypeJa, INFL_TYPE_MAP)
+      : null;
+    const inflection = m.inflectionJa
+      ? translateDashed(m.inflectionJa, INFL_MAP)
+      : null;
+
+    const obj = {
+      literal: m.literal,
+      pronunciation: m.pronunciation,
+      lemmaReading: m.lemmaReading,
+      lemmaReadingHiragana: katakanaToHiragana(m.lemmaReading),
+      lemma: m.lemma,
+      pos,
+      posJa: m.posJa,
+    };
+    if (inflectionType) {
+      obj.inflectionType = inflectionType;
+      obj.inflectionTypeJa = m.inflectionTypeJa;
+    }
+    if (inflection) {
+      obj.inflection = inflection;
+      obj.inflectionJa = m.inflectionJa;
+    }
+
+    const isContent = isContentWord(m.posJa, m.lemma);
+    obj.isContentWord = isContent;
+
+    if (isContent) {
+      const hiraReading = katakanaToHiragana(m.lemmaReading);
+      const readingCount = countExtensions(hiraReading);
+      const kanjiCount =
+        m.lemma !== hiraReading ? countExtensions(m.lemma) : 0;
+      if (readingCount > 0 || kanjiCount > 0) {
+        obj.compoundHint = { reading: readingCount };
+        if (kanjiCount > 0) obj.compoundHint.kanji = kanjiCount;
+      }
+    }
+
+    return obj;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Markdown filtering (same logic as filter-for-annotation.mjs)
+// ---------------------------------------------------------------------------
+
+function isJapaneseLine(line) {
+  if (/^\s*\[.*\]\s*$/.test(line)) return false;
+  return /[぀-鿿]/.test(line);
+}
+
+function stripRuby(line) {
+  let r = line.replace(/<rp>[^<]*<\/rp>/g, "");
+  r = r.replace(/<rt>[^<]*<\/rt>/g, "");
+  r = r.replace(/<\/?ruby>/g, "");
+  return r;
+}
+
+function rubyToAnnotated(line) {
+  let r = line.replace(/<rp>[^<]*<\/rp>/g, "");
+  r = r.replace(/<ruby>([^<]*)<rt>([^<]*)<\/rt><\/ruby>/g, "$1[$2]");
+  r = r.replace(/<\/?ruby>/g, "");
+  return r;
+}
+
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+
+const [, , subcommand, arg] = process.argv;
+
+if (!subcommand || !arg) {
+  console.error(
+    "Usage:\n" +
+      "  node annotate-harness.mjs start <file.md>   — create work JSON\n" +
+      "  node annotate-harness.mjs done  <work.json> — produce annotated Markdown"
+  );
+  process.exit(1);
+}
+
+if (subcommand === "start") {
+  const filePath = path.resolve(arg);
+  const text = readFileSync(filePath, "utf8");
+  const lines = text.split("\n");
+
+  const db = new Database("jmdict.sqlite", { readonly: true });
+  db.pragma("journal_mode = WAL");
+  const countExtensionsStmt = db
+    .prepare(
+      `SELECT COUNT(DISTINCT entry_id) FROM raws WHERE text LIKE ? AND text != ?`
+    )
+    .pluck();
+  const countExtensions = (form) =>
+    countExtensionsStmt.get(`${form}%`, form);
+
+  const seen = new Set();
+  let inFrontmatter = false;
+  const sentences = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (i === 0 && line.trim() === "---") { inFrontmatter = true; continue; }
+    if (inFrontmatter && line.trim() === "---") { inFrontmatter = false; continue; }
+    if (inFrontmatter) continue;
+    if (!isJapaneseLine(line)) continue;
+    if (seen.has(line)) continue;
+    seen.add(line);
+
+    const hasRuby = /<ruby>/.test(line);
+    const text = stripRuby(line);
+    const rawMorphemes = runMecab(text);
+    const morphemes = buildMorphemeObjects(rawMorphemes, countExtensions);
+
+    const entry = { id: i, text, morphemes, annotations: [] };
+    if (hasRuby) entry.furigana = rubyToAnnotated(line);
+    sentences.push(entry);
+  }
+
+  db.close();
+
+  const timestamp = Date.now();
+  const basename = path.basename(filePath, path.extname(filePath));
+  const workPath = `/tmp/${basename}-annotations-${timestamp}.json`;
+
+  const workFile = { sourceFile: filePath, sentences };
+  writeFileSync(workPath, JSON.stringify(workFile, null, 2), "utf8");
+  console.log(workPath);
+} else if (subcommand === "done") {
+  const workPath = path.resolve(arg);
+  const work = JSON.parse(readFileSync(workPath, "utf8"));
+
+  const sourceText = readFileSync(work.sourceFile, "utf8");
+  const lines = sourceText.split("\n");
+
+  const annotationMap = new Map(
+    work.sentences.map((s) => [s.id, s.annotations])
+  );
+
+  const outputLines = [];
+  for (let i = 0; i < lines.length; i++) {
+    outputLines.push(lines[i]);
+    const entries = annotationMap.get(i);
+    if (entries && entries.length > 0) {
+      outputLines.push("<details><summary>Vocab</summary>");
+      for (const entry of entries) {
+        outputLines.push(entry.startsWith("- ") ? entry : `- ${entry}`);
+      }
+      outputLines.push("</details>");
+    }
+  }
+
+  const timestamp = Date.now();
+  const sourceDir = path.dirname(work.sourceFile);
+  const sourceBase = path.basename(
+    work.sourceFile,
+    path.extname(work.sourceFile)
+  );
+  const outputPath = path.join(
+    sourceDir,
+    `${sourceBase}.annotated.${timestamp}.md`
+  );
+
+  writeFileSync(outputPath, outputLines.join("\n"), "utf8");
+
+  const annotated = work.sentences.filter((s) => s.annotations.length > 0).length;
+  const total = work.sentences.length;
+  console.log(
+    `Wrote ${outputPath} — ${annotated}/${total} sentences annotated`
+  );
+} else {
+  console.error(`Unknown subcommand: ${subcommand}. Use "start" or "done".`);
+  process.exit(1);
+}
