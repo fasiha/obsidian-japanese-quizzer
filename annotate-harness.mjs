@@ -2,12 +2,12 @@
 /**
  * Two-step harness for the annotate-file skill.
  *
- * start: read a Markdown file, run MeCab on every Japanese line, and write a
- *        pre-populated work JSON that the LLM fills in.
+ * start: read a Markdown file, run MeCab on every Japanese line, and create a
+ *        SQLite work database that the LLM fills in.
  *
  *   node annotate-harness.mjs start <file.md>
  *
- *   Prints the path of the created work file, e.g.:
+ *   Prints the path of the created work database, e.g.:
  *     /tmp/Shippo-annotations-1716480000000.json
  *
  *   Work file shape:
@@ -246,6 +246,7 @@ function buildMorphemeObjects(rawMorphemes, countExtensions) {
     const obj = {
       literal: m.literal,
       pronunciation: m.pronunciation,
+      pronunciationHiragana: katakanaToHiragana(m.pronunciation),
       lemmaReading: m.lemmaReading,
       lemmaReadingHiragana: katakanaToHiragana(m.lemmaReading),
       lemma: m.lemma,
@@ -311,8 +312,8 @@ const [, , subcommand, arg] = process.argv;
 if (!subcommand || !arg) {
   console.error(
     "Usage:\n" +
-      "  node annotate-harness.mjs start <file.md>   — create work JSON\n" +
-      "  node annotate-harness.mjs done  <work.json> — produce annotated Markdown"
+      "  node annotate-harness.mjs start <file.md>  — create work database\n" +
+      "  node annotate-harness.mjs done  <work.db>  — produce annotated Markdown"
   );
   process.exit(1);
 }
@@ -322,9 +323,9 @@ if (subcommand === "start") {
   const text = readFileSync(filePath, "utf8");
   const lines = text.split("\n");
 
-  const db = new Database("jmdict.sqlite", { readonly: true });
-  db.pragma("journal_mode = WAL");
-  const countExtensionsStmt = db
+  const jmdict = new Database("jmdict.sqlite", { readonly: true });
+  jmdict.pragma("journal_mode = WAL");
+  const countExtensionsStmt = jmdict
     .prepare(
       `SELECT COUNT(DISTINCT entry_id) FROM raws WHERE text LIKE ? AND text != ?`
     )
@@ -346,33 +347,65 @@ if (subcommand === "start") {
     seen.add(line);
 
     const hasRuby = /<ruby>/.test(line);
-    const text = stripRuby(line);
-    const rawMorphemes = runMecab(text);
+    const stripped = stripRuby(line);
+    const rawMorphemes = runMecab(stripped);
     const morphemes = buildMorphemeObjects(rawMorphemes, countExtensions);
 
-    const entry = { id: i, text, morphemes, annotations: [] };
+    const entry = { id: i, text: stripped, morphemes };
     if (hasRuby) entry.furigana = rubyToAnnotated(line);
     sentences.push(entry);
   }
 
-  db.close();
+  jmdict.close();
 
   const timestamp = Date.now();
   const basename = path.basename(filePath, path.extname(filePath));
-  const workPath = `/tmp/${basename}-annotations-${timestamp}.json`;
+  const workPath = `/tmp/${basename}-annotations-${timestamp}.db`;
 
-  const workFile = { sourceFile: filePath, sentences };
-  writeFileSync(workPath, JSON.stringify(workFile, null, 2), "utf8");
+  const work = new Database(workPath);
+  work.exec(`
+    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE sentences (
+      id        INTEGER PRIMARY KEY,
+      text      TEXT NOT NULL,
+      furigana  TEXT,
+      morphemes TEXT NOT NULL,
+      annotations TEXT NOT NULL DEFAULT '[]'
+    );
+  `);
+
+  work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
+
+  const insertSentence = work.prepare(
+    `INSERT INTO sentences (id, text, furigana, morphemes) VALUES (?, ?, ?, ?)`
+  );
+  const insertAll = work.transaction((rows) => {
+    for (const s of rows) {
+      insertSentence.run(
+        s.id,
+        s.text,
+        s.furigana ?? null,
+        JSON.stringify(s.morphemes, null, 2)
+      );
+    }
+  });
+  insertAll(sentences);
+  work.close();
+
   console.log(workPath);
 } else if (subcommand === "done") {
   const workPath = path.resolve(arg);
-  const work = JSON.parse(readFileSync(workPath, "utf8"));
+  const work = new Database(workPath, { readonly: true });
 
-  const sourceText = readFileSync(work.sourceFile, "utf8");
+  const sourceFile = work.prepare(`SELECT value FROM meta WHERE key = 'sourceFile'`).pluck().get();
+  const rows = work.prepare(`SELECT id, annotations FROM sentences`).all();
+  work.close();
+
+  const sourceText = readFileSync(sourceFile, "utf8");
   const lines = sourceText.split("\n");
 
   const annotationMap = new Map(
-    work.sentences.map((s) => [s.id, s.annotations])
+    rows.map((r) => [r.id, JSON.parse(r.annotations)])
   );
 
   const outputLines = [];
@@ -389,23 +422,14 @@ if (subcommand === "start") {
   }
 
   const timestamp = Date.now();
-  const sourceDir = path.dirname(work.sourceFile);
-  const sourceBase = path.basename(
-    work.sourceFile,
-    path.extname(work.sourceFile)
-  );
-  const outputPath = path.join(
-    sourceDir,
-    `${sourceBase}.annotated.${timestamp}.md`
-  );
+  const sourceDir = path.dirname(sourceFile);
+  const sourceBase = path.basename(sourceFile, path.extname(sourceFile));
+  const outputPath = path.join(sourceDir, `${sourceBase}.annotated.${timestamp}.md`);
 
   writeFileSync(outputPath, outputLines.join("\n"), "utf8");
 
-  const annotated = work.sentences.filter((s) => s.annotations.length > 0).length;
-  const total = work.sentences.length;
-  console.log(
-    `Wrote ${outputPath} — ${annotated}/${total} sentences annotated`
-  );
+  const annotated = rows.filter((r) => JSON.parse(r.annotations).length > 0).length;
+  console.log(`Wrote ${outputPath} — ${annotated}/${rows.length} sentences annotated`);
 } else {
   console.error(`Unknown subcommand: ${subcommand}. Use "start" or "done".`);
   process.exit(1);
