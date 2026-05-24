@@ -12,7 +12,7 @@ node annotate-harness.mjs start "$ARGUMENTS"
 
 This prints the path of a SQLite work database, e.g. `/tmp/Shippo-annotations-1716480000000.db`.
 
-The database has a `sentences` table with columns: `id, text, furigana, morphemes, annotations`.
+The database has a `sentences` table with columns: `id, text, furigana, morphemes, hits, annotations`.
 
 ## Step 2 — Survey and annotate in batches
 
@@ -21,68 +21,47 @@ Start by counting how many sentences need annotation:
 sqlite3 /tmp/work.db "SELECT COUNT(*) FROM sentences"
 ```
 
-Then read the sentence texts (without the large `morphemes` blobs) to get an overview:
+Then read the sentence texts to get an overview:
 ```bash
 sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana FROM sentences"
 ```
 
-For a short file, process all sentences together. For a long file, work in batches — fetch the `morphemes` for a chunk at a time using LIMIT and OFFSET:
+For a short file, process all sentences together. For a long file, work in batches — fetch `hits` for a chunk at a time using LIMIT and OFFSET:
 ```bash
-sqlite3 /tmp/work.db ".mode json" "SELECT id, morphemes FROM sentences LIMIT 10 OFFSET 0"
-sqlite3 /tmp/work.db ".mode json" "SELECT id, morphemes FROM sentences LIMIT 10 OFFSET 10"
+sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana, hits FROM sentences LIMIT 10 OFFSET 0"
 ```
 
-Each row's `morphemes` column is a JSON array of objects, which comes from MeCab-Unidic:
+### 2a — Understand the hits array
+
+Each sentence has a `hits` array — a pre-computed list of JMDict entries found in the sentence, sorted **start ascending, end descending** (longest span at each position comes first):
+
 ```json
-[{
-  "literal": "息",
-  "pronunciation": "イキ",
-  "pronunciationHiragana": "いき",
-  "lemmaReading": "イキ",
-  "lemmaReadingHiragana": "いき",
-  "lemma": "息",
-  "pos": "noun-common-general",
-  "posJa": "名詞-普通名詞-一般",
-  "inflectionType": "sahen_verb_irregular",
-  "inflectionTypeJa": "サ行変格",
-  "inflection": "continuative-general",
-  "inflectionJa": "連用形-一般",
-  "isContentWord": true,
-  "compoundHint": { "reading": 5, "kanji": 5 }
-}]
+[
+  { "start": 3, "end": 6, "wordId": "1234567",
+    "forms": "written:お腹が減る,お腹がへる  reading:おなかがへる",
+    "meanings": "(1) to become hungry [expressions, Godan verb with 'ru' ending]" },
+  { "start": 3, "end": 4, "wordId": "1234568",
+    "forms": "written:お腹,お腹  reading:おなか",
+    "meanings": "(1) belly; stomach [noun]" },
+  ...
+]
 ```
 
-`inflectionType`, `inflection`, and their `*Ja` counterparts are omitted when not applicable. `compoundHint` is omitted when both counts are 0.
+`start` and `end` are indices into the MeCab morpheme array (end is exclusive). An entry with `end - start > 1` spans multiple morphemes — a compound verb, idiom, or set phrase. **Prefer longer spans when they fit the sentence context.**
 
-If a sentence has a non-null `furigana` field, use it to resolve ateji or unusual readings when looking up JMDict (e.g. `"furigana": "夢を運命[さだめ]と呼ぶ"` tells you 運命 is read さだめ here).
+If `furigana` is non-null (e.g. `"夢を運命[さだめ]と呼ぶ"`), use it to resolve unusual readings when a hit's forms don't obviously match the text.
 
-For each sentence, look up and annotate its content words, then move to the next batch.
+### 2b — Select vocabulary coverage
 
-### 2a — Identify content word lemmas
+Read the `hits` array for a sentence. Work through it position by position. For each position:
 
-From `morphemes`, consider the entries where `isContentWord` is `true`: these are nouns, verbs, adjectives, adverbs, adjectival nouns, etc., and these are likely to have dictionary entries. Use `lemma` as the lookup form (dictionary form for verbs and adjectives). Use `lemmaReadingHiragana` when constructing kana-based searches since the dictionary lookup will normalized to hiragana.
+1. Look at the longest-span entry first (it appears first in the array due to the sort order).
+2. If it fits the sentence context, annotate it as a single vocabulary entry covering those morphemes.
+3. Then also annotate any content-word components of that compound individually — an N5-level learner needs to know おなか and 減る separately to recognize お腹が減る in new contexts. Look for the component words at their respective positions in the `hits` array.
+4. If the longest span doesn't fit, try shorter spans at the same start position.
+5. If no hit at this position covers a content word you want to annotate, fall back to `node lookup.mjs {word}` — use this when MeCab clearly misparsed, the reading is unusual, or the word is mimetic/onomatopoeic.
 
-When a morpheme has `isContentWord: true` but seems purely grammatical in context, you may skip it — but when uncertain, include it. Process and annotate morphemes in left-to-right order so the vocab list follows the sentence.
-
-### 2b — Look up each lemma in JMDict
-
-```bash
-node lookup.mjs {lemma}
-```
-
-Classify as found, not found (try conjugated/inflected base form or prefix search `node lookup.mjs '{stem}*'`), elongated form (cite base), or mimetic/onomatopoeia (try hiragana/katakana/long-vowel/gemination variants).
-
-Often, the dictionary will have entries that span multiple morphemes: phrases, idioms, compound words, etc., and we should aggressively search for these. The challenge is that the dictionary will often have slightly different headwords than found in text. For morphemes with a non-zero `compoundHint`, construct and run multi-anchor searches combining this morpheme's reading (`lemmaReadingHiragana` or `pronunciationHiragana`) with the readings of relevant subsequent morphemes to look for such multi-morpheme dictionary entries. Don't use kanji surfaces since JMDict is loose with kanji. Always single-quote the argument:
-
-```bash
-node lookup.mjs 'いき*づらい'
-node lookup.mjs 'いきおい*よく'
-# span a particle between two content words:
-node lookup.mjs 'おなか*が*へ'
-node lookup.mjs 'あし*を*とめ'
-```
-
-If you find a longer entry in the dictionary that fits the context, use it. Include the individual parts too if useful to an N5-level learner.
+You do not need to consult `morphemes` for most sentences — `hits` already encodes the content words and their dictionary forms. `morphemes` is available if you need POS details or to resolve a furigana ambiguity.
 
 ### 2c — Write annotations into the database
 

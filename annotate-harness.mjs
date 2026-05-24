@@ -55,6 +55,7 @@ import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import Database from "better-sqlite3";
 import path from "path";
+import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
 
 // ---------------------------------------------------------------------------
 // UniDic POS / inflection translation tables (ported from mecabUnidic.ts)
@@ -233,7 +234,7 @@ function runMecab(sentence) {
   return morphemes;
 }
 
-function buildMorphemeObjects(rawMorphemes, countExtensions) {
+function buildMorphemeObjects(rawMorphemes) {
   return rawMorphemes.map((m) => {
     const pos = translateDashed(m.posJa, POS_MAP);
     const inflectionType = m.inflectionTypeJa
@@ -265,16 +266,6 @@ function buildMorphemeObjects(rawMorphemes, countExtensions) {
     const isContent = isContentWord(m.posJa, m.lemma);
     obj.isContentWord = isContent;
 
-    if (isContent) {
-      const hiraReading = katakanaToHiragana(m.lemmaReading);
-      const readingCount = countExtensions(hiraReading);
-      const kanjiCount =
-        m.lemma !== hiraReading ? countExtensions(m.lemma) : 0;
-      if (readingCount > 0 || kanjiCount > 0) {
-        obj.compoundHint = { reading: readingCount };
-        if (kanjiCount > 0) obj.compoundHint.kanji = kanjiCount;
-      }
-    }
 
     return obj;
   });
@@ -304,6 +295,198 @@ function rubyToAnnotated(line) {
 }
 
 // ---------------------------------------------------------------------------
+// Exhaustive compound candidate search
+// ---------------------------------------------------------------------------
+
+const MAX_COMPOUND_SPAN = 5;
+const COMPOUND_LIMIT = 20; // max dictionary hits per search variant
+
+const tokenize = (s) => s.split("").join(" ");
+
+function forkingPaths(arrays) {
+  let result = [[]];
+  for (const choices of arrays) {
+    result = choices.flatMap((choice) => result.map((path) => [...path, choice]));
+  }
+  return result;
+}
+
+function hasKanji(s) {
+  return /[一-鿿㐀-䶿]/.test(s);
+}
+
+function isParticleMorpheme(m) {
+  return m.pos?.startsWith("particle");
+}
+
+/**
+ * For a span of morphemes, produce the set of search strings to try.
+ * Returns { readingSearches: string[], kanjiSearches: string[] }.
+ *
+ * Reading searches: cartesian product of (pronunciationHiragana, lemmaReadingHiragana) per morpheme.
+ * Kanji searches: cartesian product of (literal, lemma) per morpheme, filtered to kanji-containing strings.
+ * Particle-skipped reading: same as reading searches but with particle morphemes removed from the span.
+ */
+function spanSearchStrings(span) {
+  // Per-morpheme reading alternatives: pronunciation + lemma reading (deduplicated).
+  // Particles use their literal (orthographic) form, not pronunciationHiragana, because
+  // dictionary entries spell は/へ/を as written — は is pronounced わ but appears as は
+  // in compound headwords like おなかがへる.
+  const readingChoices = span.map((m) => {
+    if (isParticleMorpheme(m)) return [m.literal];
+    const forms = [m.pronunciationHiragana];
+    if (m.lemmaReadingHiragana !== m.pronunciationHiragana) {
+      forms.push(m.lemmaReadingHiragana);
+    }
+    return [...new Set(forms)];
+  });
+
+  // Per-morpheme kanji alternatives: literal + lemma (deduplicated, kept only if kanji-containing)
+  const kanjiChoices = span.map((m) => {
+    return [...new Set([m.literal, m.lemma])];
+  });
+
+  const readingSearches = forkingPaths(readingChoices).map((parts) =>
+    parts.join("")
+  );
+
+  const kanjiSearches = forkingPaths(kanjiChoices)
+    .map((parts) => parts.join(""))
+    .filter(hasKanji);
+
+  // Particle-stripped reading: remove particle morphemes, keep content morphemes only
+  const contentMorphemes = span.filter((m) => !isParticleMorpheme(m));
+  let particleStrippedSearches = [];
+  if (contentMorphemes.length >= 2 && contentMorphemes.length < span.length) {
+    const strippedChoices = contentMorphemes.map((m) => {
+      const forms = [m.pronunciationHiragana];
+      if (m.lemmaReadingHiragana !== m.pronunciationHiragana) {
+        forms.push(m.lemmaReadingHiragana);
+      }
+      return [...new Set(forms)];
+    });
+    particleStrippedSearches = forkingPaths(strippedChoices).map((parts) =>
+      parts.join("")
+    );
+  }
+
+  return {
+    readingSearches: [...new Set(readingSearches)],
+    kanjiSearches: [...new Set(kanjiSearches)],
+    particleStrippedSearches: [...new Set(particleStrippedSearches)],
+  };
+}
+
+function runFts5Query(db, table, query) {
+  try {
+    return db
+      .prepare(
+        `SELECT entries.entry_json FROM ${table}
+         JOIN entries ON ${table}.entry_id = entries.id
+         WHERE ${table}.text MATCH ?
+         GROUP BY entries.id
+         LIMIT ${COMPOUND_LIMIT}`
+      )
+      .pluck()
+      .all(query);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * For every position in the morpheme array, search JMDict for all matching entries —
+ * both single-morpheme exact matches (for content words) and multi-morpheme prefix
+ * matches (for compounds, phrases, idioms).
+ *
+ * Returns a flat array of hits sorted start-ascending then end-descending, so the
+ * longest span at each position appears first. The LLM reads this array and selects
+ * the best non-overlapping coverage without needing to call lookup.mjs.
+ *
+ * Deduplication is per (start, wordId): the same dictionary entry can appear at two
+ * different start positions (word used twice in a sentence), but is deduplicated
+ * within a single start position across multiple search paths.
+ *
+ * Multi-morpheme search strategies per span:
+ *   1. Full span reading — cartesian product of (pronunciationHiragana, lemmaReadingHiragana)
+ *      per morpheme; particles use literal (orthographic) form to avoid は→わ artifacts
+ *   2. Full span kanji — cartesian product of (literal, lemma), filtered to kanji-containing
+ *   3. Particle-stripped reading — same as (1) but particle morphemes removed from span,
+ *      catching entries like おなかがへる from the span [おなか, が, へる]
+ */
+function buildSentenceHits(morphemes, jmdict, tags) {
+  const exactStmt = jmdict.prepare(`
+    SELECT entries.entry_json FROM raws
+    JOIN entries ON raws.entry_id = entries.id
+    WHERE raws.text = ?
+    GROUP BY entries.id
+    LIMIT ${COMPOUND_LIMIT}
+  `).pluck();
+
+  const allHits = [];
+  // Key: "start-wordId" — deduplicates within a start position, but allows the same
+  // word to appear at two different positions (annotated twice if used twice).
+  const seen = new Set();
+
+  const addHit = (start, end, word) => {
+    const key = `${start}-${word.id}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    allHits.push({
+      start,
+      end,
+      wordId: word.id,
+      forms: wordFormsPart(word),
+      meanings: wordMeanings(word, { partOfSpeech: true, numbered: true, tags }),
+    });
+  };
+
+  for (let start = 0; start < morphemes.length; start++) {
+    const m = morphemes[start];
+
+    // Single-morpheme exact lookup for content words
+    if (m.isContentWord) {
+      const searches = [...new Set([m.literal, m.lemma, m.pronunciationHiragana, m.lemmaReadingHiragana])];
+      for (const search of searches) {
+        for (const row of exactStmt.all(search)) {
+          addHit(start, start + 1, JSON.parse(row));
+        }
+      }
+    }
+
+    // Multi-morpheme span prefix lookups
+    for (
+      let end = Math.min(morphemes.length, start + MAX_COMPOUND_SPAN);
+      end > start + 1;
+      end--
+    ) {
+      const span = morphemes.slice(start, end);
+      const { readingSearches, kanjiSearches, particleStrippedSearches } = spanSearchStrings(span);
+
+      for (const search of readingSearches) {
+        for (const row of runFts5Query(jmdict, "kanas", `^"${tokenize(search)}"`)) {
+          addHit(start, end, JSON.parse(row));
+        }
+      }
+      for (const search of kanjiSearches) {
+        for (const row of runFts5Query(jmdict, "kanjis", `^"${tokenize(search)}"`)) {
+          addHit(start, end, JSON.parse(row));
+        }
+      }
+      for (const search of particleStrippedSearches) {
+        for (const row of runFts5Query(jmdict, "kanas", `^"${tokenize(search)}"`)) {
+          addHit(start, end, JSON.parse(row));
+        }
+      }
+    }
+  }
+
+  // Sort: start ascending, then end descending (longest span first within each position)
+  allHits.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
+  return allHits;
+}
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
@@ -325,13 +508,7 @@ if (subcommand === "start") {
 
   const jmdict = new Database("jmdict.sqlite", { readonly: true });
   jmdict.pragma("journal_mode = WAL");
-  const countExtensionsStmt = jmdict
-    .prepare(
-      `SELECT COUNT(DISTINCT entry_id) FROM raws WHERE text LIKE ? AND text != ?`
-    )
-    .pluck();
-  const countExtensions = (form) =>
-    countExtensionsStmt.get(`${form}%`, form);
+  const tags = JSON.parse(jmdict.prepare(`SELECT value_json FROM metadata WHERE key = 'tags'`).pluck().get() ?? "{}");
 
   const seen = new Set();
   let inFrontmatter = false;
@@ -349,9 +526,10 @@ if (subcommand === "start") {
     const hasRuby = /<ruby>/.test(line);
     const stripped = stripRuby(line);
     const rawMorphemes = runMecab(stripped);
-    const morphemes = buildMorphemeObjects(rawMorphemes, countExtensions);
+    const morphemes = buildMorphemeObjects(rawMorphemes);
+    const hits = buildSentenceHits(morphemes, jmdict, tags);
 
-    const entry = { id: i, text: stripped, morphemes };
+    const entry = { id: i, text: stripped, morphemes, hits };
     if (hasRuby) entry.furigana = rubyToAnnotated(line);
     sentences.push(entry);
   }
@@ -370,6 +548,7 @@ if (subcommand === "start") {
       text      TEXT NOT NULL,
       furigana  TEXT,
       morphemes TEXT NOT NULL,
+      hits      TEXT NOT NULL DEFAULT '[]',
       annotations TEXT NOT NULL DEFAULT '[]'
     );
   `);
@@ -377,7 +556,7 @@ if (subcommand === "start") {
   work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
 
   const insertSentence = work.prepare(
-    `INSERT INTO sentences (id, text, furigana, morphemes) VALUES (?, ?, ?, ?)`
+    `INSERT INTO sentences (id, text, furigana, morphemes, hits) VALUES (?, ?, ?, ?, ?)`
   );
   const insertAll = work.transaction((rows) => {
     for (const s of rows) {
@@ -385,7 +564,8 @@ if (subcommand === "start") {
         s.id,
         s.text,
         s.furigana ?? null,
-        JSON.stringify(s.morphemes, null, 2)
+        JSON.stringify(s.morphemes, null, 2),
+        JSON.stringify(s.hits)
       );
     }
   });
