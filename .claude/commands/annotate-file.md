@@ -1,97 +1,88 @@
 ---
-description: Annotate all Japanese lines in a Markdown file with vocabulary from JMDict for N4-level learners
+description: Annotate all Japanese lines in a Markdown file with vocabulary from JMDict for N5-level learners
 ---
 
-Annotate every Japanese line in the file at path `$ARGUMENTS` with vocabulary bullet points.
+Annotate every Japanese line in the file at path `$ARGUMENTS` with links to entries in the JMDict dictionary.
 
-## Step 1 — Filter the file
-
-```bash
-node filter-for-annotation.mjs "$ARGUMENTS"
-```
-
-This outputs a JSON array of unique Japanese lines that need annotation:
-
-```json
-[{ "id": 5, "text": "日本語の文章です。" }, ...]
-```
-
-`id` is the line index in the original file. `text` has ruby tags already stripped.
-If the original line contained ruby annotations, a `furigana` field is also present with readings inlined (e.g. `"furigana": "夢を運命[さだめ]と呼ぶ"` for `夢を<ruby>運命<rt>さだめ</rt></ruby>と呼ぶ`). Use `furigana` to resolve ateji or unusual readings when looking up JMDict — the bracketed reading shows exactly which kanji the author assigned an unexpected reading to.
-Duplicates, YAML frontmatter, blank lines, section headers in brackets, and purely English/romanized lines are already excluded.
-
-## Step 2 — Annotate each item
-
-For each item in the JSON array, annotate the `text` field using the full `annotate-vocab` procedure:
-
-### 2a — Run MeCab
+## Step 1 — Create the work file
 
 ```bash
-echo "{text}" | mecab
+node annotate-harness.mjs start "$ARGUMENTS"
 ```
 
-Collect all **content word lemmas**: nouns, verbs (dictionary form), adjectives (dictionary form), adverbs, adjectival nouns, etc. Skip morphemes like particles, auxiliary verbs, punctuation, proper nouns, pure grammar morphemes, and 無い.
+This prints the path of a SQLite work database, e.g. `/tmp/Shippo-annotations-1716480000000.db`.
 
-Include counter nouns (MeCab tags 名詞-普通名詞-助数詞可能 and 名詞-助数詞) — words like 度 (たび), 本 (ほん), 枚 (まい) carry real lexical meaning. For any word with a borderline POS classification (e.g., 連体詞, unusual noun subtypes), include it. When uncertain whether to include a word (e.g., it has an unusual MeCab classification), include it. If it has semantic content and isn't purely grammatical, include it.
+The database has a `sentences` table with columns: `id, text, furigana, morphemes, hits, annotations`.
 
-### 2b — Look up each lemma in JMDict
+## Step 2 — Survey and annotate in batches
 
+Start by counting how many sentences need annotation:
 ```bash
-node lookup.mjs {lemma}
+sqlite3 /tmp/work.db "SELECT COUNT(*) FROM sentences"
 ```
 
-Classify as found, not found (try conjugated/inflected base form or prefix search `node lookup.mjs '{stem}*'`), elongated form (cite base), or mimetic/onomatopoeia (try hiragana/katakana/long-vowel/gemination variants).
-
-### 2c — Check for multi-morpheme compounds
-
-After processing individual lemmas, scan for adjacent morphemes that form compound verbs, compound nouns, or particle compounds (e.g. ままに, ために, として). Look up the concatenation:
-
+Then read the sentence texts to get an overview:
 ```bash
-node lookup.mjs {combined}
+sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana FROM sentences"
 ```
 
-If found, use the compound entry and drop its individual parts.
+For a short file, process all sentences together. For a long file, work in batches — fetch `hits` for a chunk at a time using LIMIT and OFFSET:
+```bash
+sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana, hits FROM sentences LIMIT 10 OFFSET 0"
+```
 
-## Step 3 — Write annotation JSON and recombine
+### 2a — Understand the hits array
 
-Write a JSON file to `/tmp/annotations.json` in this format:
+Each sentence has a `hits` array — a pre-computed list of JMDict entries found in the sentence, sorted **start ascending, end descending** (longest span at each position comes first):
 
 ```json
 [
-  { "id": 5, "entries": ["- たび 度", "- はな 花"] },
-  { "id": 8, "entries": ["- Not in JMDict: ホゲ — some contextual meaning"] }
+  { "start": 3, "end": 6, "wordId": "1234567",
+    "forms": "written:お腹が減る,お腹がへる  reading:おなかがへる",
+    "meanings": "(1) to become hungry [expressions, Godan verb with 'ru' ending]" },
+  { "start": 3, "end": 4, "wordId": "1234568",
+    "forms": "written:お腹,お腹  reading:おなか",
+    "meanings": "(1) belly; stomach [noun]" },
+  ...
 ]
 ```
 
-Each `id` must match the `id` from Step 1. Each string in `entries` follows one of these formats:
+`start` and `end` are indices into the MeCab morpheme array (end is exclusive). An entry with `end - start > 1` spans multiple morphemes — a compound verb, idiom, or set phrase. **Prefer longer spans when they fit the sentence context.**
 
-For words **found in JMDict** with kanji:
-```
-- {kana reading} {kanji form}
-```
-For kana-only words:
-```
-- {kana}
-```
-For words **not in JMDict**:
-```
-- Not in JMDict: {word as it appears in text} — {concise meaning in context}
-```
-For proper nouns like names, places:
-```
-- Proper noun: {word as it appears in text} — {MeCab-proposed reading} — {in English, your guess about whether this is a famous place (example: "Uji, suburb of Kyoto"), a famous person ("Fukuzawa Yukichi, famous author"), or just some person or place's name}
+If `furigana` is non-null (e.g. `"夢を運命[さだめ]と呼ぶ"`), use it to resolve unusual readings when a hit's forms don't obviously match the text.
+
+### 2b — Select vocabulary coverage
+
+Read the `hits` array for a sentence. Work through it position by position. For each position:
+
+1. Look at the longest-span entry first (it appears first in the array due to the sort order).
+2. If it fits the sentence context, annotate it as a single vocabulary entry covering those morphemes.
+3. Then also annotate any content-word components of that compound individually — an N5-level learner needs to know おなか and 減る separately to recognize お腹が減る in new contexts. Look for the component words at their respective positions in the `hits` array.
+4. If the longest span doesn't fit, try shorter spans at the same start position.
+5. If no hit at this position covers a content word you want to annotate, fall back to `node lookup.mjs {word}` — use this when MeCab clearly misparsed, the reading is unusual, or the word is mimetic/onomatopoeic.
+
+You do not need to consult `morphemes` for most sentences — `hits` already encodes the content words and their dictionary forms. `morphemes` is available if you need POS details or to resolve a furigana ambiguity.
+
+### 2c — Write annotations into the database
+
+For each sentence, append each vocabulary entry to its `annotations` array. Each string is one of:
+
+- Found in JMDict with kanji: `{kana reading} {kanji form}`
+- Kana-only word: `{kana}`
+- Not in JMDict: `Not in JMDict: {word as it appears in text} — {concise meaning in context}`
+- Proper noun: `Proper noun: {word} — {MeCab reading} — {English: place, person, or just a name}`
+
+Append entries, either one at a time or all entries for a sentence at once:
+```bash
+sqlite3 /tmp/work.db "UPDATE sentences SET annotations = json_insert(annotations, '\$[#]', 'いきおい 勢い') WHERE id = 9"
+# or
+sqlite3 /tmp/work.db "UPDATE sentences SET annotations = json('["いきおい 勢い","せなか 背中"]') WHERE id = 9"
 ```
 
 Do **not** include English meanings for JMDict words.
 Do **not** annotate grammar (て-form, たら, ので, etc.) — vocabulary only.
-If a line has no content words at all, include `{ "id": N, "entries": [] }` — the recombine script will skip the vocab block for empty entries.
+If a sentence has no content words, leave `annotations` as `[]` (the default).
 
-Then run:
+## Step 3 — Report
 
-```bash
-node recombine-annotations.mjs "$ARGUMENTS" /tmp/annotations.json
-```
-
-## Step 4 — Report
-
-Print the one-line summary output by `recombine-annotations.mjs`.
+When finished, run `node annotate-harness.mjs done <work.db>`.

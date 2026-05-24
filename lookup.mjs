@@ -33,6 +33,8 @@ var mapper = (word) => {
   }
 };
 
+const tokenize = (s) => s.split("").join(" ");
+
 if (lookup.match(/^[0-9]+$/)) {
   words = idsToWords(db, [lookup]);
 } else if (lookup.endsWith("*")) {
@@ -41,6 +43,31 @@ if (lookup.match(/^[0-9]+$/)) {
 } else if (lookup.startsWith("*")) {
   readingAnywhere(db, lookup.slice(1)).forEach(mapper);
   kanjiAnywhere(db, lookup.slice(1)).forEach(mapper);
+} else if (lookup.includes("*")) {
+  // Multi-anchor search: X*Y finds entries containing X then Y in sequence.
+  // Example: 'あし*とめ' finds あしをとめる; '足*止' finds 足を止める.
+  const parts = lookup.split("*");
+  const ftsQuery = `^"${tokenize(parts[0])}" ${parts.slice(1).map(p => `"${tokenize(p)}"`).join(" ")}`;
+
+  const rawKanas = db
+    .prepare(
+      `SELECT entries.entry_json FROM kanas
+       JOIN entries ON kanas.entry_id = entries.id
+       WHERE kanas.text MATCH ?
+       GROUP BY entries.id`,
+    )
+    .pluck()
+    .all(ftsQuery);
+  const rawKanjis = db
+    .prepare(
+      `SELECT entries.entry_json FROM kanjis
+       JOIN entries ON kanjis.entry_id = entries.id
+       WHERE kanjis.text MATCH ?
+       GROUP BY entries.id`,
+    )
+    .pluck()
+    .all(ftsQuery);
+  [...rawKanas, ...rawKanjis].map((r) => JSON.parse(r)).forEach(mapper);
 } else {
   words = findExact(db, lookup);
 }
