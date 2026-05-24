@@ -22,9 +22,6 @@ if (!lookup) {
   process.exit(1);
 }
 
-import { appendFileSync } from "fs";
-appendFileSync("/tmp/lookups.txt", `${new Date().toISOString()} ${lookup}\n`);
-
 var { db, tags } = await setup("jmdict.sqlite");
 var words = [];
 
