@@ -354,8 +354,9 @@ function spanSearchStrings(span) {
     .map((parts) => parts.join(""))
     .filter(hasKanji);
 
-  // Particle-stripped reading: remove particle morphemes, keep content morphemes only
-  const contentMorphemes = span.filter((m) => !isParticleMorpheme(m));
+  // Particle-stripped reading: remove particle morphemes and punctuation (empty
+  // pronunciation) to prevent collapsed queries that over-match short entries.
+  const contentMorphemes = span.filter((m) => !isParticleMorpheme(m) && m.pronunciationHiragana);
   let particleStrippedSearches = [];
   if (contentMorphemes.length >= 2 && contentMorphemes.length < span.length) {
     const strippedChoices = contentMorphemes.map((m) => {
@@ -454,7 +455,10 @@ function buildSentenceHits(morphemes, jmdict, tags) {
       }
     }
 
-    // Multi-morpheme span prefix lookups
+    // Multi-morpheme span prefix lookups — only start at content words so that
+    // non-content morphemes (particles, punctuation) cannot anchor a span.
+    // They can still appear in the middle of a span started by a content word.
+    if (!m.isContentWord) continue;
     for (
       let end = Math.min(morphemes.length, start + MAX_COMPOUND_SPAN);
       end > start + 1;
