@@ -183,32 +183,16 @@ struct GrammarQuizView: View {
                 // Collapsible vocabulary hints — disabled while fetch is in progress
                 assumedVocabDisclosure
 
-                // Choice buttons — show a cloze template header when the choices share
-                // a meaningful common prefix and suffix (typically production-facet questions).
+                // Choice buttons — show full text with shared characters dimmed so the
+                // eye goes straight to the meaningful differences between choices.
                 let letters = ["A", "B", "C", "D"]
-                let cloze = question.choiceClozeTemplate()
-                let hasCloze = !cloze.prefix.isEmpty || !cloze.suffix.isEmpty
                 // Furigana only applies to production-facet choices (Japanese text).
                 // Recognition-facet choices are English — always plain text.
                 let isProduction = session.currentItem?.facet == "production"
                 let glosses = isProduction ? session.assumedVocab : nil
+                let choiceTexts = question.choices.map { $0.joined(separator: ", ") }
+                let allDimRuns = multiSequenceDimRuns(choices: choiceTexts)
                 VStack(spacing: 10) {
-                    if hasCloze {
-                        // Template header: "prefix ___ suffix" — annotate with furigana when ready.
-                        let template = "\(cloze.prefix)\(grammarGapToken)\(cloze.suffix)"
-                        if let gs = glosses, !gs.isEmpty {
-                            SentenceFuriganaView(sentence: template, glosses: gs)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 4)
-                        } else {
-                            Text(template)
-                                .font(.body)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 4)
-                        }
-                    }
                     ForEach(0..<question.choices.count, id: \.self) { i in
                         Button { session.tapChoice(i) } label: {
                             HStack(spacing: 12) {
@@ -217,18 +201,15 @@ struct GrammarQuizView: View {
                                     .frame(width: 28, height: 28)
                                     .background(.tint.opacity(0.15), in: Circle())
                                     .foregroundStyle(.tint)
-                                // When there is a cloze template, show only the unique core
-                                // with … on whichever sides were trimmed; otherwise full text.
-                                let core = hasCloze ? cloze.cores[safe: i] ?? question.choiceDisplay(i) : nil
-                                let coreDisplay = core.map {
-                                    "\(cloze.prefix.isEmpty ? "" : "…")\($0)\(cloze.suffix.isEmpty ? "" : "…")"
-                                }
-                                let labelText = coreDisplay ?? question.choiceDisplay(i)
+                                let labelText = question.choiceDisplay(i)
+                                let runs = allDimRuns[safe: i] ?? []
                                 if let gs = glosses, !gs.isEmpty {
-                                    SentenceFuriganaView(sentence: labelText, glosses: gs)
+                                    SentenceFuriganaView(sentence: labelText, glosses: gs, dimRuns: runs)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 } else {
-                                    Text(labelText)
+                                    // Plain-text path (recognition facet, English): build an
+                                    // AttributedString so each dim/bright run gets its own color.
+                                    Text(dimAttributedString(from: runs))
                                         .multilineTextAlignment(.leading)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
@@ -600,6 +581,18 @@ private func kanjiSafeHead(of s: String, maxChars: Int) -> String {
         end += 1
     }
     return String(chars[..<end])
+}
+
+/// Builds an `AttributedString` from `[DimRun]`, applying tertiary label color to shared
+/// (dim) runs and primary label color to unique (bright) runs.
+private func dimAttributedString(from runs: [DimRun]) -> AttributedString {
+    var result = AttributedString()
+    for run in runs {
+        var part = AttributedString(run.text)
+        part.foregroundColor = run.dim ? UIColor.tertiaryLabel : UIColor.label
+        result.append(part)
+    }
+    return result
 }
 
 private extension Character {

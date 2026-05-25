@@ -60,6 +60,7 @@ if let gIdx = args.firstIndex(of: "--grammar"), gIdx + 1 < args.count {
     grammarTopicId = nil
 }
 
+let isDimTest  = args.contains("--dim-test")
 let isDumpMode = args.contains("--dump-prompts")
 let isLiveMode = args.contains("--live")
 let isGenOnly  = args.contains("--gen-only")   // skip free-grading paths in --live mode
@@ -249,6 +250,67 @@ if isTestDisambiguation {
     let model  = env["ANTHROPIC_MODEL"] ?? ProcessInfo.processInfo.environment["ANTHROPIC_MODEL"] ?? "claude-haiku-4-5-20251001"
     let client = AnthropicClient(apiKey: apiKey, model: model)
     await testDisambiguation(client: client)
+    exit(0)
+}
+
+// MARK: - Dim-test (--dim-test, no API calls)
+// Runs the multi-sequence LCS dimming algorithm on hardcoded Japanese grammar quiz examples
+// so the algorithm output can be inspected before wiring it into the UI.
+
+if isDimTest {
+    let examples: [(label: String, choices: [String])] = [
+        (
+            label: "てならない — production (long shared prefix)",
+            choices: [
+                "飛行機の遅延で六時間も空港で待たされて、サラは接続便を逃すことが心配だろう。",
+                "飛行機の遅延で六時間も空港で待たされて、サラは接続便を逃すことが心配でならない。",
+                "飛行機の遅延で六時間も空港で待たされて、サラは接続便を逃させられるのが心配だ。",
+                "飛行機の遅延で六時間も空港で待たされて、サラは接続便を逃すことを心配している。",
+            ]
+        ),
+        (
+            label: "potential verbs — production (differs only in verb ending)",
+            choices: [
+                "ユキは才能あるピアニストです。コンサートホールが小さいですが、そこで難しいショパンの曲を弾かせます。",
+                "ユキは才能あるピアニストです。コンサートホールが小さいですが、そこで難しいショパンの曲を弾けます。",
+                "ユキは才能あるピアニストです。コンサートホールが小さいですが、そこで難しいショパンの曲を弾かれます。",
+                "ユキは才能あるピアニストです。コンサートホールが小さいですが、そこで難しいショパンの曲を弾きます。",
+            ]
+        ),
+        (
+            label: "shi — production (particle choices across parallel clauses)",
+            choices: [
+                "チケットが高かったら、仕事で疲れていたら、コンサートに行くのをやめた。",
+                "チケットが高いし、仕事で疲れているし、コンサートに行くのをやめた。",
+                "チケットが高くて、仕事で疲れて、コンサートに行くのをやめた。",
+                "チケットが高くさせるし、仕事で疲れさせたから、コンサートに行くのをやめた。",
+            ]
+        ),
+        (
+            label: "transitive-intransitive — production (short, maximally divergent)",
+            choices: [
+                "リビングの電気が消えた。",
+                "サラがリビングの電気を消した。",
+                "サラがリビングの電気を消させた。",
+                "リビングの電気がサラに消された。",
+            ]
+        ),
+    ]
+
+    let letters = ["A", "B", "C", "D"]
+    // ANSI codes: dim=faint, reset
+    let dim   = "\u{1B}[2m"
+    let reset = "\u{1B}[0m"
+
+    for example in examples {
+        print("\n=== \(example.label) ===")
+        let allRuns = multiSequenceDimRuns(choices: example.choices)
+        for (i, runs) in allRuns.enumerated() {
+            let letter = i < letters.count ? letters[i] : "?"
+            let rendered = runs.map { r in r.dim ? "\(dim)\(r.text)\(reset)" : r.text }.joined()
+            print("\(letter)) \(rendered)")
+        }
+    }
     exit(0)
 }
 

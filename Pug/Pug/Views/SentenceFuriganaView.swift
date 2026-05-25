@@ -223,6 +223,39 @@ func furiganaSegmentsFromHTMLRuby(_ html: String) -> [FuriganaSegment] {
     return segments
 }
 
+// MARK: - Dim-flag helpers
+
+/// Converts a `[DimRun]` (from `multiSequenceDimRuns`) into a parallel `[Bool]` aligned
+/// with `segments`, where `true` means every character in that segment is shared across
+/// all quiz choices (and should render dim).
+private func buildSegmentDimFlags(segments: [FuriganaSegment], dimRuns: [DimRun]) -> [Bool] {
+    // Build a per-character Bool array from the dim runs.
+    var charDim: [Bool] = []
+    charDim.reserveCapacity(dimRuns.reduce(0) { $0 + $1.text.count })
+    for run in dimRuns {
+        charDim.append(contentsOf: Array(repeating: run.dim, count: run.text.count))
+    }
+
+    // For each segment, look up whether all of its characters are dim.
+    var flags: [Bool] = []
+    flags.reserveCapacity(segments.count)
+    var offset = 0
+    for seg in segments {
+        let len = seg.ruby.count
+        let end = min(offset + len, charDim.count)
+        let isDim = offset < end && charDim[offset..<end].allSatisfy { $0 }
+        flags.append(isDim)
+        offset += len
+    }
+    return flags
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+
 // MARK: - View
 
 /// Renders a Japanese sentence with furigana above annotated words.
@@ -235,12 +268,18 @@ struct SentenceFuriganaView: View {
     var trailingAlignment: Bool = false
 
     let textStyle: Font.TextStyle
+    /// Parallel to `segments`: true means this segment's characters are shared across all
+    /// grammar quiz choices and should render dim. Nil means no dimming (all primary).
+    let segmentDimFlags: [Bool]?
 
     /// Initialise from a plain sentence and a list of vocab glosses (grammar quiz / assumed-vocab path).
-    init(sentence: String, glosses: [VocabGloss], textStyle: Font.TextStyle = .body) {
+    /// Pass `dimRuns` from `multiSequenceDimRuns(choices:)[i]` to dim shared characters.
+    init(sentence: String, glosses: [VocabGloss], textStyle: Font.TextStyle = .body, dimRuns: [DimRun]? = nil) {
         self.sentence = sentence
-        self.segments = sentenceFuriganaSegments(sentence: sentence, glosses: glosses)
+        let segs = sentenceFuriganaSegments(sentence: sentence, glosses: glosses)
+        self.segments = segs
         self.textStyle = textStyle
+        self.segmentDimFlags = dimRuns.map { buildSegmentDimFlags(segments: segs, dimRuns: $0) }
     }
 
     /// Initialise from a corpus context string that may contain HTML `<ruby>` tags.
@@ -250,6 +289,7 @@ struct SentenceFuriganaView: View {
         self.sentence = segments.map(\.ruby).joined()
         self.trailingAlignment = trailingAlignment
         self.textStyle = textStyle
+        self.segmentDimFlags = nil
     }
 
     /// Initialise directly from pre-computed furigana segments (e.g. from writtenForms or
@@ -259,6 +299,7 @@ struct SentenceFuriganaView: View {
         self.sentence = segments.map(\.ruby).joined()
         self.trailingAlignment = false
         self.textStyle = textStyle
+        self.segmentDimFlags = nil
     }
 
     // Must be held as a persistent property; a synthesizer created inside a closure
@@ -266,7 +307,7 @@ struct SentenceFuriganaView: View {
     @State private var synthesizer = AVSpeechSynthesizer()
 
     var body: some View {
-        SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment, textStyle: textStyle)
+        SentenceFuriganaFlow(segments: segments, trailingAlignment: trailingAlignment, textStyle: textStyle, segmentDimFlags: segmentDimFlags)
             .contextMenu {
                 Button {
                     UIPasteboard.general.string = sentence
@@ -310,6 +351,8 @@ private struct SentenceFuriganaFlow: View {
     let segments: [FuriganaSegment]
     var trailingAlignment: Bool = false
     var textStyle: Font.TextStyle = .body
+    /// Parallel to `segments`: true = dim (shared across all choices), false/nil = primary.
+    var segmentDimFlags: [Bool]? = nil
 
     // Furigana reading is shown at roughly 60% of the base text size.
     // ScaledMetric ties the furigana size to the same Dynamic Type axis as the base font.
@@ -333,20 +376,24 @@ private struct SentenceFuriganaFlow: View {
 
     var body: some View {
         SentenceFuriganaLayout(trailingAlignment: trailingAlignment, canBreakBefore: canBreakBefore) {
-            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+            ForEach(Array(segments.enumerated()), id: \.offset) { i, seg in
+                let isDim = segmentDimFlags?[safe: i] ?? false
+                let baseColor: Color = isDim ? Color(.tertiaryLabel) : Color(.label)
                 if let rt = seg.rt {
                     VStack(spacing: 0) {
                         Text(rt)
                             .font(.system(size: scaledFuriganaSize))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color(.tertiaryLabel))
                             .lineLimit(1)
                         Text(seg.ruby)
                             .font(.system(textStyle))
+                            .foregroundStyle(baseColor)
                     }
                     .fixedSize()
                 } else {
                     Text(seg.ruby)
                         .font(.system(textStyle))
+                        .foregroundStyle(baseColor)
                         .fixedSize()
                 }
             }
