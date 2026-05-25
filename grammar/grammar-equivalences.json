@@ -923,6 +923,33 @@
   },
   {
     "topics": [
+      "bunpro:にくい",
+      "bunpro:やすい",
+      "dbjg:-nikui",
+      "dbjg:-yasui",
+      "genki:yasui-nikui",
+      "kanshudo:にくい",
+      "kanshudo:やすい"
+    ],
+    "summary": "やすい and にくい attach to the ます-stem of a verb to form an い-adjective meaning 'easy to do' or 'hard/difficult to do' respectively. They conjugate like regular い-adjectives: やすかった, やすくない, にくかった, etc. They can also modify nouns directly (食べやすい果物 = easy-to-eat fruit).",
+    "subUses": [
+      {
+        "id": "ease-of-action",
+        "text": "Ease of action (including natural tendencies): このペンは書きやすい (This pen is easy to write with); 白い服は汚れやすい (White clothes get dirty easily)"
+      },
+      {
+        "id": "difficulty-of-action",
+        "text": "Difficulty of action: いいにくかったことばが、すらっといえた (Words that had been hard to say came out smoothly)"
+      }
+    ],
+    "cautions": [
+      "Attaches to the ます-stem (連用形), not the dictionary form: 食べ＋にくい, not 食べる＋にくい — mark wrong if attached to dictionary form",
+      "にくい vs づらい: にくい describes objective or quality-based difficulty; づらい describes subjective discomfort or emotional difficulty. Both are acceptable at N4; do not mark にくい wrong where づらい might also fit",
+      "やすい meaning 'easy to' is not the same as standalone 易しい (easy/simple) or 安い (cheap) — the suffix always attaches to a verb stem"
+    ]
+  },
+  {
+    "topics": [
       "bunpro:になる-くなる",
       "dbjg:naru",
       "genki:naru-to-become"
@@ -1075,6 +1102,35 @@
     "cautions": [
       "のように/のような vs みたいに/みたいな is primarily a register difference: よう is formal/written, みたい is casual/spoken. Some textbooks claim a semantic distinction (direct knowledge vs observation) but this is not reliably borne out in practice",
       "Attachment rules: after a comparison noun, の is required (鳥のように). When the preceding element is a full clause (verb, い-adjective, or な-adjective predicate), よう attaches directly: 走っているように, 高いように, 静かなように (な-adjectives keep their な). Do not insert の between a clause and よう."
+    ]
+  },
+  {
+    "topics": [
+      "bunpro:みたい",
+      "bunpro:みたいに-みたいな",
+      "genki:mitaidesu",
+      "kanshudo:みたい"
+    ],
+    "summary": "みたい is a な-adjective that expresses resemblance or appearance — 'looks like,' 'seems like,' or 'similar to.' It attaches directly after nouns, plain-form verbs, and adjectives without any linking particle. Before another noun it becomes みたいな; as an adverb it becomes みたいに.",
+    "subUses": [
+      {
+        "id": "resemblance-to-noun",
+        "text": "Resemblance to a noun: りすみたいな大きなしっぽ (a big tail like a squirrel's)"
+      },
+      {
+        "id": "apparent-state-from-evidence",
+        "text": "Apparent state inferred from evidence: 雨が降ったみたいです (It looks like it rained)"
+      },
+      {
+        "id": "adverbial-in-the-manner-of",
+        "text": "Adverbial 'in the manner of' (みたいに): 子どもみたいに笑った (laughed like a child)"
+      }
+    ],
+    "cautions": [
+      "みたい is casual/spoken register; the formal written equivalent is ようだ/ようです — do not mark みたい wrong in casual contexts, but note that ようだ is the expected form in formal writing",
+      "みたい has no kanji form; 見たい (written with kanji) means 'want to see' — these are unrelated words",
+      "みたいな modifies nouns; みたいに modifies verbs and adjectives — using みたいな before a verb or みたいに before a noun is ungrammatical",
+      "The copula だ/です after みたい is frequently dropped in conversation; みたい alone at the end of a sentence is natural and grammatical"
     ]
   },
   {
