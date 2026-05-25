@@ -30,3 +30,28 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 | [TODO-sense.md](TODO-sense.md) | **done** | All steps including Step 5 (in-app sense enrollment) done as of 2026-04-08. | 2026-04-13 |
 | [TODO-swift6.md](TODO-swift6.md) | **not started** | Migration guide. Low urgency. | 2026-04-13 |
 | [TODO-transitive-intransitive-pairs.md](TODO-transitive-intransitive-pairs.md) | **done** | Completed in iOS. Future work is curating our small ~55 corpus of pedagogically-powerful pairs. | 2026-04-13 |
+
+## Appendix: Ichiran
+
+[Ichiran](https://github.com/tshatrov/ichiran) is a JMdict-based Japanese segmenter and dictionary lookup tool. Rather than doing NLP morphological analysis (like MeCab/UniDic), it works by greedily finding the best sequence of JMdict entries to cover a sentence. It runs as a Common Lisp process inside Docker, and a Node.js wrapper that calls it lives in the [tabito](https://github.com/fasiha/tabito) repo:
+
+- [`src/nlp-wrappers/ichiran.ts`](https://github.com/fasiha/tabito/blob/main/src/nlp-wrappers/ichiran.ts) — core wrapper: spawns `docker exec ichiran-main-1 ichiran-cli -f <text>`, parses the JSON output, and resolves Ichiran-internal conjugation sequence numbers back to JMdict-native root sequences via a second PostgreSQL query against `ichiran-pg-1`
+- [`src/nlp-wrappers/demo-ichiran.ts`](https://github.com/fasiha/tabito/blob/main/src/nlp-wrappers/demo-ichiran.ts) — usage demo
+- [`src/nlp-wrappers/ichiran-types.ts`](https://github.com/fasiha/tabito/blob/main/src/nlp-wrappers/ichiran-types.ts) — TypeScript types for the deeply nested JSON output structure
+
+**Strengths:**
+
+- Returns JMdict `seq` numbers directly for each token — no secondary dictionary lookup needed
+- Handles conjugation explicitly: the JSON output includes a `conj` array describing the inflection chain (part of speech, type such as "Past (~ta)", and the dictionary-form reading), so you get both the surface form and the root entry in one call; however in practice, I usually get much more extensive deconjugation info via https://github.com/fasiha/kamiya-codec
+- Often identifies compound expressions as single entries (e.g., もう一度, お腹が減る), but sometimes misses them
+- Recognizes counter values: e.g., 五回 is tagged with `counter: { value: "Value: 5" }` and the correct JMdict counter entry
+- Handles reading disambiguation: ambiguous single-kanji words (e.g., 音 as おと/おん/ね) are returned as an `alternative` array ranked by score, rather than silently picking one
+- Handles formal suru-verb compounds: e.g., 予約した is returned as a compound of 予約 + した with the した traced back to する via conjugation
+
+**Weaknesses and limitations:**
+
+- Fails or degrades on colloquial, informal, and manga-style text — text that deviates from standard written Japanese often produces zero results or wrong segmentations; MeCab can often handle such text
+- Requires Docker with two running containers
+- Misses some multi-morpheme compounds that span particles when the particle-stripped form isn't in JMdict (e.g., いきおいよく is split into いきおい + よく rather than recognized as a unit)
+- Unknown words (proper nouns, mimetics, non-standard kana strings) get score 0 and no `seq` — they appear in the output but are essentially unrecognized
+- The sequence numbers Ichiran returns for conjugated forms are sometimes Ichiran-internal IDs (above 1,000,000), not JMdict-native; the `getRootJmdictSeqs` helper in the tabito wrapper handles remapping these via the PostgreSQL `conjugation` table
