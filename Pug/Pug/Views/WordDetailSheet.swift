@@ -684,6 +684,17 @@ struct WordDetailSheet: View {
 
     @ViewBuilder
     private var furiganaPickerSection: some View {
+        // Single source of truth for which form is committed.
+        // committedWrittenText is the joined ruby of the stored furigana segments.
+        // isKanaCommitted is true when every segment has no rt — the committed form is pure kana.
+        let committedText = item.commitment?.committedWrittenText
+        let isKanaCommitted: Bool = {
+            guard let json = item.commitment?.furigana,
+                  let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: Data(json.utf8))
+            else { return false }
+            return segs.allSatisfy { $0.rt == nil }
+        }()
+
         VStack(alignment: .leading, spacing: 8) {
             Text("Written form")
                 .font(.caption)
@@ -694,7 +705,7 @@ struct WordDetailSheet: View {
 
             ForEach(item.writtenForms, id: \.reading) { group in
                 ForEach(group.forms, id: \.text) { form in
-                    let isSelected = isCommittedForm(form)
+                    let isSelected = form.text == committedText
                     Button {
                         selectForm(form)
                     } label: {
@@ -710,13 +721,13 @@ struct WordDetailSheet: View {
                     .opacity(item.commitment != nil && !isSelected ? 0.4 : 1.0)
                 }
             }
-            // Kana-only readings (no kanji forms)
+            // Kana-only readings (no kanji forms in the group)
             ForEach(item.writtenForms.filter { $0.forms.isEmpty }, id: \.reading) { group in
                 HStack {
                     Text(group.reading).font(.title3)
                     Spacer()
-                    Image(systemName: item.commitment != nil ? "largecircle.fill.circle" : "circle")
-                        .foregroundStyle(item.commitment != nil ? .green : .secondary)
+                    Image(systemName: isKanaCommitted ? "largecircle.fill.circle" : "circle")
+                        .foregroundStyle(isKanaCommitted ? .green : .secondary)
                 }
                 .padding(.vertical, 4)
             }
@@ -1068,15 +1079,7 @@ struct WordDetailSheet: View {
         return Set(arr)
     }
 
-    private func isCommittedForm(_ form: WrittenForm) -> Bool {
-        guard let json = item.commitment?.furigana,
-              let data = json.data(using: .utf8),
-              let committed = try? JSONDecoder().decode([FuriganaSegment].self, from: data)
-        else { return false }
-        // Compare by matching ruby/rt pairs
-        guard committed.count == form.furigana.count else { return false }
-        return zip(committed, form.furigana).allSatisfy { $0.ruby == $1.ruby && $0.rt == $1.rt }
-    }
+
 
     /// Silently commits the first available written form on first open,
     /// so the user can immediately start learning reading and kanji without

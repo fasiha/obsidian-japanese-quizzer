@@ -184,33 +184,51 @@ final class VocabCorpus {
 
             let corpusSenseIndices = entry.corpusSenseIndices
 
+            // Filter writtenForms to only the forms that survived the rK/iK/sK filter.
+            // This keeps VocabItem.writtenForms in sync with VocabItem.writtenTexts so that
+            // every downstream consumer (WordDetailSheet picker, defaultFuriganaJSON, etc.)
+            // sees a consistent view without needing per-site rK/sK checks.
+            //
+            // Rules:
+            //   • If writtenTexts is empty (all kanji filtered): drop all writtenForms.
+            //   • Otherwise: within each group, drop forms whose text is not in writtenTexts.
+            //     Drop groups that had forms but now have none. Keep groups that were
+            //     already kana-only (forms = []) — they represent valid pure-kana variants.
+            let allowedKanjiForms = Set(jd.writtenTexts)
+            let filteredWrittenForms: [WrittenFormGroup]
+            if allowedKanjiForms.isEmpty {
+                filteredWrittenForms = []
+            } else {
+                filteredWrittenForms = (entry.writtenForms ?? []).compactMap { group in
+                    if group.forms.isEmpty { return group }  // kana-only group — keep as-is
+                    let surviving = group.forms.filter { allowedKanjiForms.contains($0.text) }
+                    return surviving.isEmpty ? nil : WrittenFormGroup(reading: group.reading, forms: surviving)
+                }
+            }
+
             // Resolve the annotator's preferred form from the first reference's annotatedForms.
             // Sources are stored in sorted order; use the first source's first reference entry.
+            // Use filteredWrittenForms so resolveAnnotatedForms never returns a rK/sK form.
             let firstAnnotatedForms: [String] = entry.sources.lazy
                 .compactMap { entry.references?[$0]?.first?.annotatedForms }
                 .first ?? []
             let annotatorResolved = resolveAnnotatedForms(
                 annotatedForms: firstAnnotatedForms,
-                writtenForms: entry.writtenForms ?? [],
+                writtenForms: filteredWrittenForms,
                 kanaTexts: jd.kanaTexts
             )
 
-            // If the user has committed to a specific written form, use that for display
-            // rather than inferring from corpus senses — the commitment is the user's
-            // explicit choice and should always win.
-            let preferredText = commitment?.committedWrittenText
-            ?? annotatorResolved?.writtenForm.text
-            ?? preferredWrittenForm(
-                senseExtras: jd.senseExtras,
-                activeSenseIndices: corpusSenseIndices,
-                writtenForms: entry.writtenForms ?? []
-            )?.text
-            ?? preferredKanaForm(
-                senseExtras: jd.senseExtras,
-                activeSenseIndices: corpusSenseIndices,
-                kanaTexts: jd.kanaTexts
-            )
-            ?? jd.text
+            // Honor committedWrittenText only when it refers to a surviving (non-filtered) form.
+            // A commitment stored before this policy may reference a rK/sK form that no longer
+            // appears in writtenTexts; ignore it so the word falls back to kana display.
+            let validCommittedText = commitment?.committedWrittenText.flatMap {
+                allowedKanjiForms.contains($0) ? $0 : nil
+            }
+            let preferredText = validCommittedText
+                ?? annotatorResolved?.writtenForm.text
+                ?? preferredWrittenForm(senseExtras: jd.senseExtras, activeSenseIndices: corpusSenseIndices, writtenForms: filteredWrittenForms)?.text
+                ?? preferredKanaForm(senseExtras: jd.senseExtras, activeSenseIndices: corpusSenseIndices, kanaTexts: jd.kanaTexts)
+                ?? jd.text
 
             return VocabItem(
                 id: entry.id,
@@ -220,7 +238,7 @@ final class VocabCorpus {
                 writtenTexts: jd.writtenTexts,
                 kanaTexts: jd.kanaTexts,
                 senseExtras: jd.senseExtras,
-                writtenForms: entry.writtenForms ?? [],
+                writtenForms: filteredWrittenForms,
                 references: entry.references ?? [:],
                 corpusSenseIndices: corpusSenseIndices,
                 bccwjPerMillionWords: entry.bccwjPerMillionWords,
