@@ -293,6 +293,8 @@ for (const filePath of mdFiles) {
   }
 
   // --- Vocab extraction ---
+  // Track bullet position within each line so the iOS app can display chips in Markdown order.
+  const bulletIndexByLine = new Map();
   for (const { bullet, line, context, narration } of extractVocabBullets(content)) {
     // If the bullet starts with a bare JMDict ID (all digits), trust it directly.
     const directIdMatch = bullet.match(/^(\d+)/);
@@ -317,7 +319,9 @@ for (const filePath of mdFiles) {
       wordId = String(matchIds[0]);
     }
 
-    const occurrence = { line, context, narration, annotated_forms: annotatedForms.length > 0 ? annotatedForms : undefined };
+    const bulletIndex = bulletIndexByLine.get(line) ?? 0;
+    bulletIndexByLine.set(line, bulletIndex + 1);
+    const occurrence = { line, context, narration, bullet_index: bulletIndex, annotated_forms: annotatedForms.length > 0 ? annotatedForms : undefined };
     if (wordMap.has(wordId)) {
       const entry = wordMap.get(wordId);
       entry.sources.add(title);

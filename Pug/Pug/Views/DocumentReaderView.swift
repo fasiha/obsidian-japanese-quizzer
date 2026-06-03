@@ -408,14 +408,18 @@ struct DocumentReaderView: View {
 
     /// Maps each 1-based line number to the word IDs annotated on that line in this document.
     private func buildVocabMap() -> [Int: [String]] {
-        var map: [Int: [String]] = [:]
+        // Collect (wordId, bulletIndex) pairs per line, then sort by bulletIndex so chips
+        // appear in the same order as vocab bullets in the Markdown source.
+        var map: [Int: [(id: String, bulletIndex: Int)]] = [:]
         for item in corpus.items {
             guard let refs = item.references[entry.title] else { continue }
             for ref in refs {
-                map[ref.line, default: []].append(item.id)
+                map[ref.line, default: []].append((id: item.id, bulletIndex: ref.bulletIndex ?? 0))
             }
         }
-        return map
+        return map.mapValues { pairs in
+            pairs.sorted { $0.bulletIndex < $1.bulletIndex }.map(\.id)
+        }
     }
 
     /// Looks up furigana segments for each vocab word that appears in this document.

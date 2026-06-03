@@ -49,6 +49,9 @@ struct VocabWordEntry: Codable {
 /// One occurrence of a word in the source corpus, with surrounding context.
 struct VocabReference: Codable {
     let line: Int
+    /// Position of this word's bullet among all vocab bullets on the same line (0-based).
+    /// Absent in older vocab.json files; treat nil as 0 for sorting.
+    let bulletIndex: Int?
     /// Prose paragraph or bullet narration preceding the word's detail block; may contain HTML ruby tags.
     let context: String?
     /// Non-Japanese pedagogical annotation on the word's bullet line (e.g. "[kanji]").
@@ -64,6 +67,7 @@ struct VocabReference: Codable {
 
     private enum CodingKeys: String, CodingKey {
         case line, context, narration, counter
+        case bulletIndex = "bullet_index"
         case llmSense = "llm_sense"
         case annotatedForms = "annotated_forms"
     }
