@@ -226,6 +226,23 @@ struct QuizView: View {
                     .disabled(session.chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
 
+                // Uncertainty row: unlock button first to prevent misclicks,
+                // then "No idea" (score 0.0) and "Inkling" (score 0.25).
+                HStack(spacing: 8) {
+                    Button("Don't know?") { session.uncertaintyUnlocked = !session.uncertaintyUnlocked }
+                        .buttonStyle(.bordered)
+                        .tint(session.uncertaintyUnlocked ? .secondary : .orange)
+                    Button("No idea") { session.tapUncertain(score: 0.0) }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                        .disabled(!session.uncertaintyUnlocked)
+                    Button("Inkling") { session.tapUncertain(score: 0.25) }
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
+                        .disabled(!session.uncertaintyUnlocked)
+                }
+                .frame(maxWidth: .infinity)
+
                 Button("Skip →") { session.nextQuestion() }
                     .buttonStyle(.bordered)
                     .frame(maxWidth: .infinity)
