@@ -38,6 +38,37 @@ Every new facet or quiz type must satisfy all of the following. Verify each one 
 - [ ] `quiz_type` value is human-readable when displayed in the history list (no raw snake_case that needs translation).
 - [ ] `session_id` is set on every review row so `ReviewDetailSheet` can load the post-quiz chat.
 
+### UI controls per phase
+
+Every phase in every quiz view must show exactly the controls listed below — no more, no less. When adding a new phase or touching a cross-cutting control, scan the whole column to confirm every cell is still correct.
+
+Columns are view × phase combinations. "ungr." = ungraded (score not yet set); "gr." = graded (score set).
+
+| Control | QV: tap | QV: text | QV: pair | QV: chat ungr. | QV: chat gr. | GQ: tap | GQ: chat gr. | PV: drill | PV: post-drill |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Progress + facet badge | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Score badge | — | — | — | — | ✓ | — | ✓ | — | ✓ |
+| Chat input field | — | ✓ | — | ✓ | ✓ | — | ✓ | — | ✓ |
+| Uncertainty row (No idea / Inkling) | ✓ | ✓ | variant¹ | ✓ | — | ✓ | — | — ² | — ² |
+| Skip → | ✓ | ✓ | ✓ | ✓ ³ | — | ✓ | — | — ² | — |
+| Details… | — | — | — | — | ✓ | — | ✓ | ✓ | ✓ |
+| Next Question → / Finish | — | — | — | — | ✓ | — | ✓ | — | ✓ |
+| Tutor me | — | — | — | — | cond. ⁴ | — | cond. ⁴ | — | cond. ⁴ |
+| Report problem | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — ² | ✓ |
+| Audio playback | — | — | — | — | — | ✓ | — | — | — |
+| Vocabulary hints | — | — | — | — | — | ✓ | — | — | — |
+| "Another example" (counters only) | — | counter ⁶ | — | — | — | — | — | — | — |
+
+**View key:** QV = QuizView (vocab SRS), GQ = GrammarQuizView, PV = PlantView.
+
+**Notes:**
+1. `awaitingPair` replaces No idea/Inkling with "Don't know? → Reveal answers" (`tapTransitiveDrillDontKnow`), because both legs of the pair are revealed together rather than self-scored.
+2. PlantView intentionally omits uncertainty buttons, Skip, and Report problem on the drill card — the student is still learning, there is no SRS halflife to hedge, and skipping happens on the introduce card before the drill starts.
+3. In QV chatting (ungraded), the advance button shows the label "Skip →" but is the same button as "Next Question →" — the label changes once the score arrives.
+4. "Tutor me" appears only when `canStartTutorSession` is true: wrong answer, tutor not yet started, spinner not running.
+5. GrammarQuizView only reaches `.chatting` after tapping a multiple-choice answer, so the score is always set before chatting begins — there is no "GQ: chat ungr." column.
+6. Counter words in `QV: text` show an "Another example" button that reveals up to three additional usage examples one at a time. No other word type uses this control in `awaitingText`.
+
 ### Problem reporting
 
 - [ ] Every phase that shows a Skip button also shows a **"Report problem"** button next to it. The button calls `session.reportProblem()` (or an equivalent closure in views that don't own a `QuizSession`), which sets `session.pendingReport` and triggers the failure banner with a ShareLink. Use `ReportProblemButton { session.reportProblem() }` (pre-answer) and pass `onReportProblem` to `PostAnswerChatView` (post-answer) — do not duplicate the button or banner logic.
