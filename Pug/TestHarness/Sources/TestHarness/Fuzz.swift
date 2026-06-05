@@ -19,6 +19,7 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
     case "commit-progression": try await fuzzCommitProgression(jmdict: jmdict)
     case "kanjidic2":        try await fuzzKanjidic2(jmdict: jmdict)
     case "counters":         fuzzCounters()
+    case "written-form-picker": try await fuzzWrittenFormPicker(jmdict: jmdict)
     case "all":
         try await fuzzJmdict(jmdict: jmdict)
         try await fuzzFurigana(jmdict: jmdict)
@@ -29,8 +30,9 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
         try await fuzzCommitProgression(jmdict: jmdict)
         try await fuzzKanjidic2(jmdict: jmdict)
         fuzzCounters()
+        try await fuzzWrittenFormPicker(jmdict: jmdict)
     default:
-        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, all\n", stderr)
+        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, all\n", stderr)
         exit(1)
     }
 }
@@ -885,4 +887,142 @@ func fuzzCounters() {
     }
 
     report(area: "counters", checked: checked + counters.count, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area N: Written-form picker selection uniqueness
+
+// For every JMDict entry, constructs WrittenFormGroups as the iOS app does — one group per
+// kana reading, each containing the kanji forms that reading applies to — then calls the
+// app's deduplicateWrittenForms() function (same code the picker calls) and verifies the
+// invariant: after deduplication, no (text, formReading) pair appears more than once.
+//
+// Invariant: deduplicateWrittenForms produces a list where every (text, formReading) pair
+// is unique, so isSelected fires exactly once for any committed form.
+//
+// This fuzzer calls deduplicateWrittenForms directly (from VocabSync.swift, compiled into
+// TestHarness), so if that function changes, the test automatically uses the new version.
+// It also reports how many raw entries had duplicate pairs before deduplication — those are
+// handled correctly by deduplication, but the count is useful for tracking data quality.
+func fuzzWrittenFormPicker(jmdict: DatabaseQueue) async throws {
+    print("=== FUZZ: written-form picker selection uniqueness ===")
+
+    // Load furigana table as (text, reading) → segs JSON for fast lookup.
+    struct FuriganaKey: Hashable { let text: String; let reading: String }
+    print("Loading furigana table…")
+    let furiganaMap = try await jmdict.read { db -> [FuriganaKey: String] in
+        let cursor = try Row.fetchCursor(db, sql: "SELECT text, reading, segs FROM furigana")
+        var map: [FuriganaKey: String] = [:]
+        while let row = try cursor.next() {
+            map[FuriganaKey(text: row["text"], reading: row["reading"])] = row["segs"]
+        }
+        return map
+    }
+    print("Loaded \(furiganaMap.count) furigana rows.")
+
+    print("Loading all entry IDs…")
+    let allIds = try await jmdict.read { db in
+        try String.fetchAll(db, sql: "SELECT id FROM entries ORDER BY CAST(id AS INTEGER)")
+    }
+    print("Checking \(allIds.count) entries…")
+
+    let decoder = JSONDecoder()
+    var failures: [(String, String)] = []
+    var checkedEntries = 0
+    var rawDuplicateEntries = 0
+
+    let batchSize = 1000
+    var i = 0
+    while i < allIds.count {
+        let batch = Array(allIds[i ..< min(i + batchSize, allIds.count)])
+        let jsonRows = try await jmdict.read { db -> [String: String] in
+            var map: [String: String] = [:]
+            for id in batch {
+                if let json = try String.fetchOne(db, sql: "SELECT entry_json FROM entries WHERE id = ?", arguments: [id]) {
+                    map[id] = json
+                }
+            }
+            return map
+        }
+
+        for id in batch {
+            guard let json = jsonRows[id],
+                  let data = json.data(using: .utf8),
+                  let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+
+            // Filter kanji forms the same way as jmdictWordData and VocabCorpus.
+            let kanjiArray = raw["kanji"] as? [[String: Any]] ?? []
+            let validKanji: [String] = kanjiArray.compactMap { k in
+                let tags = k["tags"] as? [String] ?? []
+                guard !tags.contains("iK"), !tags.contains("rK"), !tags.contains("sK"),
+                      let text = k["text"] as? String else { return nil }
+                return text
+            }
+            guard !validKanji.isEmpty else { continue }
+
+            // Filter kana forms (exclude irregular kana).
+            let kanaArray = raw["kana"] as? [[String: Any]] ?? []
+            let validKana: [(text: String, appliesToKanji: [String])] = kanaArray.compactMap { k in
+                let tags = k["tags"] as? [String] ?? []
+                guard !tags.contains("ik"),
+                      let text = k["text"] as? String else { return nil }
+                let applies = k["appliesToKanji"] as? [String] ?? ["*"]
+                return (text: text, appliesToKanji: applies)
+            }
+            guard !validKana.isEmpty else { continue }
+
+            // Build WrittenFormGroup objects exactly as the app does —
+            // one group per kana reading, forms = kanji forms that reading applies to.
+            var groups: [WrittenFormGroup] = []
+            for kana in validKana {
+                let appliesToAll = kana.appliesToKanji == ["*"]
+                var forms: [WrittenForm] = []
+                for kanji in validKanji {
+                    if !appliesToAll && !kana.appliesToKanji.contains(kanji) { continue }
+                    let key = FuriganaKey(text: kanji, reading: kana.text)
+                    guard let segsJson = furiganaMap[key],
+                          let segsData = segsJson.data(using: .utf8),
+                          let segs = try? decoder.decode([FuriganaSegment].self, from: segsData)
+                    else { continue }
+                    forms.append(WrittenForm(furigana: segs, text: kanji))
+                }
+                if !forms.isEmpty {
+                    groups.append(WrittenFormGroup(reading: kana.text, forms: forms))
+                }
+            }
+
+            let rawFormCount = groups.flatMap(\.forms).count
+            guard rawFormCount >= 2 else { continue }
+            checkedEntries += 1
+
+            // Track raw duplicates (informational — these are handled by deduplication).
+            var rawSeen: Set<String> = []
+            var hadRawDuplicate = false
+            for form in groups.flatMap(\.forms) {
+                let key = "\(form.text)|\(form.furigana.readingText)"
+                if !rawSeen.insert(key).inserted { hadRawDuplicate = true }
+            }
+            if hadRawDuplicate { rawDuplicateEntries += 1 }
+
+            // Core invariant: call the app's deduplicateWrittenForms and verify the result
+            // has no duplicate (text, formReading) pairs. A failure here means the
+            // deduplication function is broken and isSelected would fire multiple times.
+            let deduplicated = deduplicateWrittenForms(groups)
+            var dedupSeen: Set<String> = []
+            for form in deduplicated {
+                let key = "\(form.text)|\(form.furigana.readingText)"
+                if !dedupSeen.insert(key).inserted {
+                    failures.append((id,
+                        "deduplicateWrittenForms left duplicate (\(form.text), \(form.furigana.readingText)) — isSelected would fire twice"))
+                }
+            }
+        }
+
+        i += batchSize
+        if i % 50_000 == 0 { print("  \(i)/\(allIds.count) entries checked…") }
+    }
+
+    print("  Entries with 2+ forms: \(checkedEntries)")
+    print("  Entries with raw (text, formReading) duplicates (handled by deduplication): \(rawDuplicateEntries)")
+    report(area: "written-form-picker", checked: checkedEntries, silentlySkipped: 0, failures: failures)
 }

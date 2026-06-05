@@ -39,8 +39,11 @@ extension WordCommitment {
     /// Returns nil if the furigana cannot be decoded.
     /// Example: たきぎ
     var committedReading: String? {
-        guard let segments = furiganaSegmentsForTemplate else { return nil }
-        let reading = segments.map { ($0["rt"] ?? $0["ruby"]) ?? "" }.joined()
+        guard let data = furigana.data(using: .utf8),
+              let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: data),
+              !segs.isEmpty
+        else { return nil }
+        let reading = segs.readingText
         return reading.isEmpty ? nil : reading
     }
 }

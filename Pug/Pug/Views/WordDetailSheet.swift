@@ -688,6 +688,7 @@ struct WordDetailSheet: View {
         // committedWrittenText is the joined ruby of the stored furigana segments.
         // isKanaCommitted is true when every segment has no rt — the committed form is pure kana.
         let committedText = item.commitment?.committedWrittenText
+        let committedReading = item.commitment?.committedReading
         let isKanaCommitted: Bool = {
             guard let json = item.commitment?.furigana,
                   let segs = try? JSONDecoder().decode([FuriganaSegment].self, from: Data(json.utf8))
@@ -703,23 +704,22 @@ struct WordDetailSheet: View {
                 .textCase(.uppercase)
                 .tracking(0.5)
 
-            ForEach(item.writtenForms, id: \.reading) { group in
-                ForEach(group.forms, id: \.text) { form in
-                    let isSelected = form.text == committedText
-                    Button {
-                        selectForm(form)
-                    } label: {
-                        HStack {
-                            furiganaText(form.furigana)
-                            Spacer()
-                            Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
-                                .foregroundStyle(isSelected ? .green : .secondary)
-                        }
-                        .padding(.vertical, 4)
+            let deduplicatedForms = deduplicateWrittenForms(item.writtenForms)
+            ForEach(deduplicatedForms, id: \.text) { form in
+                let isSelected = form.text == committedText && form.furigana.readingText == committedReading
+                Button {
+                    selectForm(form)
+                } label: {
+                    HStack {
+                        furiganaText(form.furigana)
+                        Spacer()
+                        Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(isSelected ? .green : .secondary)
                     }
-                    .buttonStyle(.plain)
-                    .opacity(item.commitment != nil && !isSelected ? 0.4 : 1.0)
+                    .padding(.vertical, 4)
                 }
+                .buttonStyle(.plain)
+                .opacity(item.commitment != nil && !isSelected ? 0.4 : 1.0)
             }
             // Kana-only readings (no kanji forms in the group)
             ForEach(item.writtenForms.filter { $0.forms.isEmpty }, id: \.reading) { group in

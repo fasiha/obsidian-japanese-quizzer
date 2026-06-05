@@ -114,6 +114,10 @@ struct FuriganaSegment: Codable, Equatable {
 }
 
 extension Array where Element == FuriganaSegment {
+    /// The full kana reading derived from furigana segments: rt if present, otherwise ruby.
+    /// Matches the reading stored in WrittenFormGroup.reading and WordCommitment.committedReading.
+    var readingText: String { map { $0.rt ?? $0.ruby }.joined() }
+
     /// Returns the distinct kanji characters (CJK Unified Ideographs) from segments that have a
     /// reading annotation (rt != nil). Order is preserved; duplicates are removed.
     func extractKanji() -> [String] {
@@ -129,6 +133,18 @@ extension Array where Element == FuriganaSegment {
             }
         }
         return result
+    }
+}
+
+/// Flatten and deduplicate all forms across all WrittenFormGroups, keeping the first
+/// occurrence of each (text, formReading) pair. This handles entries where hiragana/katakana
+/// kana variants (e.g. くすくすわらう vs クスクスわらう) produce identical furigana for the
+/// same kanji form — without deduplication, such entries would show the same row twice and
+/// mark both as selected.
+func deduplicateWrittenForms(_ groups: [WrittenFormGroup]) -> [WrittenForm] {
+    var seen: Set<String> = []
+    return groups.flatMap(\.forms).filter { form in
+        seen.insert("\(form.text)|\(form.furigana.readingText)").inserted
     }
 }
 
