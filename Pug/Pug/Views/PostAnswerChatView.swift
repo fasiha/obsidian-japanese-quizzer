@@ -26,6 +26,11 @@ struct PostAnswerChatView: View {
     let tutorMeAction: (() -> Void)?
     /// Nil = hide "Report problem" button.
     let onReportProblem: (() -> Void)?
+    /// Nil = hide the "Don't know?" uncertainty row entirely.
+    /// When non-nil, shown only while gradedScore == nil (AI hasn't returned a grade yet).
+    let onUncertain: ((Double) -> Void)?
+    let uncertaintyUnlocked: Bool
+    let onToggleUncertainty: (() -> Void)?
 
     @FocusState private var isChatFocused: Bool
 
@@ -74,6 +79,25 @@ struct PostAnswerChatView: View {
                         }
                     }
                     .padding(.top, messages.isEmpty ? 40 : 4)
+                }
+
+                // Uncertainty row: shown while the AI grader hasn't returned a score yet,
+                // so the student can self-report rather than wait for the LLM.
+                if gradedScore == nil, let uncertain = onUncertain, let toggleUncertainty = onToggleUncertainty {
+                    HStack(spacing: 8) {
+                        Button("Don't know?") { toggleUncertainty() }
+                            .buttonStyle(.bordered)
+                            .tint(uncertaintyUnlocked ? .secondary : .orange)
+                        Button("No idea") { uncertain(0.0) }
+                            .buttonStyle(.bordered)
+                            .tint(.red)
+                            .disabled(!uncertaintyUnlocked)
+                        Button("Inkling") { uncertain(0.25) }
+                            .buttonStyle(.bordered)
+                            .tint(.orange)
+                            .disabled(!uncertaintyUnlocked)
+                    }
+                    .frame(maxWidth: .infinity)
                 }
 
                 // Chat input

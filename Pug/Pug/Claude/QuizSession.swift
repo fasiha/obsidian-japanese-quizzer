@@ -311,6 +311,54 @@ final class QuizSession {
         Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
     }
 
+    /// Called when the student taps "No idea" or "Inkling" in the free-answer input view
+    /// (phase == .awaitingText), before submitting anything. Transitions immediately to chatting
+    /// so Claude can explain the word; shouldParseScore is false because the score is self-reported.
+    func tapTextUncertain(score: Double) {
+        guard case .awaitingText(let stem) = phase, let item = currentItem else { return }
+        chatInput = ""
+        let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
+        let openingMsg = score <= 0.05
+            ? "I had no idea what this word means. Please explain it to me."
+            : "I had a vague inkling but wasn't confident. Please explain the word and what I might have been thinking of."
+        chatMessages = [
+            (isUser: false, text: stem),
+            (isUser: true, text: openingMsg)
+        ]
+        gradedScore = score
+        uncertaintyUnlocked = false
+        phase = .chatting
+        isSendingChat = true
+        Task {
+            try? await recordReview(item: item, score: score, notes: noteText)
+            let nextIndex = currentIndex + 1
+            if nextIndex < items.count {
+                let nextItem = items[nextIndex]
+                prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+            }
+        }
+        Task { await doOpeningChatTurn(openingMsg, item: item, shouldParseScore: false) }
+    }
+
+    /// Called when the student taps "No idea" or "Inkling" while the AI grader is running
+    /// (phase == .chatting, gradedScore == nil). Records the self-reported score immediately;
+    /// the in-flight LLM response will still arrive but won't overwrite the score (see
+    /// doOpeningChatTurn: it only sets gradedScore when gradedScore == nil).
+    func tapFreeAnswerUncertain(score: Double) {
+        guard case .chatting = phase, gradedScore == nil, let item = currentItem else { return }
+        let noteText = score <= 0.05 ? "uncertainty: no idea" : "uncertainty: inkling"
+        gradedScore = score
+        uncertaintyUnlocked = false
+        Task {
+            try? await recordReview(item: item, score: score, notes: noteText)
+            let nextIndex = currentIndex + 1
+            if nextIndex < items.count {
+                let nextItem = items[nextIndex]
+                prefetchTask = Task { await prefetchQuestion(for: nextIndex, item: nextItem) }
+            }
+        }
+    }
+
     /// Called when the student submits the answer field(s) of a pair drill.
     /// Handles both pair-discrimination (two fields) and single-leg (one field) drills.
     func submitTransitivePairDrillAnswer() {

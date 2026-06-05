@@ -232,11 +232,11 @@ struct QuizView: View {
                     Button("Don't know?") { session.uncertaintyUnlocked = !session.uncertaintyUnlocked }
                         .buttonStyle(.bordered)
                         .tint(session.uncertaintyUnlocked ? .secondary : .orange)
-                    Button("No idea") { session.tapUncertain(score: 0.0) }
+                    Button("No idea") { session.tapTextUncertain(score: 0.0) }
                         .buttonStyle(.bordered)
                         .tint(.red)
                         .disabled(!session.uncertaintyUnlocked)
-                    Button("Inkling") { session.tapUncertain(score: 0.25) }
+                    Button("Inkling") { session.tapTextUncertain(score: 0.25) }
                         .buttonStyle(.bordered)
                         .tint(.orange)
                         .disabled(!session.uncertaintyUnlocked)
@@ -369,7 +369,10 @@ struct QuizView: View {
             onAdvance: session.nextQuestion,
             onShowDetails: session.gradedScore != nil ? { showDetailsSheet = true } : nil,
             tutorMeAction: tutorAction,
-            onReportProblem: { session.reportProblem() }
+            onReportProblem: { session.reportProblem() },
+            onUncertain: { score in session.tapFreeAnswerUncertain(score: score) },
+            uncertaintyUnlocked: session.uncertaintyUnlocked,
+            onToggleUncertainty: { session.uncertaintyUnlocked = !session.uncertaintyUnlocked }
         )
     }
 

@@ -282,7 +282,10 @@ struct PlantView: View {
                                                            origin: .document(title: session.documentTitle))
             },
             tutorMeAction: tutorAction,
-            onReportProblem: { session.reportProblem() }
+            onReportProblem: { session.reportProblem() },
+            onUncertain: nil,
+            uncertaintyUnlocked: false,
+            onToggleUncertainty: nil
         )
     }
 
