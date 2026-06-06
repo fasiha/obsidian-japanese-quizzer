@@ -105,14 +105,14 @@ default to the first entry — use sentence context to pick the correct one.
 
 ---
 
-## Part 2 — Sense classification during annotation
+## Part 2 — Sense classification during annotation (done)
 
 **Goal:** let the annotating LLM simultaneously record which JMDict sense(s)
 apply to each word in context, eliminating the separate Haiku call in
 `prepare-publish.mjs` and enabling `annotate-vocab-inline.mjs` to run without
 a populated `vocab.json`.
 
-### New skill: `annotate-file-with-senses.md`
+### New skill: `annotate-file-with-senses.md` ✅
 
 A variant of `annotate-file.md` with the same arguments (`<work.db> <from_id>
 <to_id>`) and the same DB lifecycle (no `start`, no `done`). Invoked by
@@ -127,14 +127,20 @@ The skill does everything `/annotate-file` does, and additionally:
    { "form": "いきおい 勢い", "wordId": "1234567", "sense_indices": [0] }
    ```
 
-Can be run on a fresh DB (annotate + classify in one pass) or on a DB that
-already has bare-string annotations (sense classification only — skip rows
-where annotations are already objects).
+For words not in JMDict or proper nouns, bare strings are still used (the
+harness handles both formats).
 
-### Changes to `annotate-harness.mjs done`
+Tested on `Bunsho-Dokkai-3nen/Story 7 Roasted Yams.original.md` (2026-06-06).
+The homophone わく was correctly resolved to 湧く (wordId 1606685, "to well
+up") rather than 沸く in the sentence `つばがわいてきた`, confirming the
+Part 1.5 homophone disambiguation instruction works end-to-end.
 
-- When sense data is present in the work database, emit a sidecar
-  `<basename>.vocab-inline-data.json` alongside the annotated Markdown:
+### Changes to `annotate-harness.mjs done` ✅
+
+`done` now accepts an optional `--senses` flag. When present:
+
+- When sense data (annotation objects) are present in the work database, emits
+  a sidecar `<basename>.vocab-inline-data.json` alongside the annotated Markdown:
   ```json
   {
     "words": {
@@ -142,14 +148,28 @@ where annotations are already objects).
     }
   }
   ```
-  BCCWJ frequency is looked up from `jmdict.sqlite` at `done` time.
+  Sense indices are merged across all sentences (union). BCCWJ frequency is
+  looked up from `bccwj.sqlite` at `done` time (gracefully absent if missing).
+- The Markdown output handles both old bare-string annotations and new sense
+  objects transparently (uses `entry.form` for objects).
 
-### Changes to `annotate-vocab-inline.mjs`
+### Changes to `annotate-vocab-inline.mjs` ✅
 
-- Accept an optional `--inline-data <path>` argument pointing to the sidecar
-  JSON produced above.
-- When `vocab.json` is absent or lacks an entry, fall back to the sidecar for
-  sense indices and frequency.
+- Auto-detects a sidecar `<input-basename>.vocab-inline-data.json` alongside the
+  input Markdown file (no new flag needed).
+- When `vocab.json` is absent or lacks a sense-index or frequency entry for a
+  word, falls back to the sidecar data.
 - This allows the full pipeline
-  `annotate-novel.mjs → annotate-harness.mjs done → annotate-vocab-inline.mjs | pandoc`
+  `annotate-novel.mjs → annotate-harness.mjs done --senses → annotate-vocab-inline.mjs | pandoc`
   to produce a readable HTML file without ever running `prepare-publish.mjs`.
+
+### Changes to `prepare-publish.mjs` ✅
+
+- When building `vocab.json`, checks for a `<title>.vocab-inline-data.json`
+  sidecar alongside each reading file before queuing a Haiku sense-analysis
+  call for a word with multiple senses.
+- If the sidecar has `sense_indices` for that word, uses them directly and skips
+  the Haiku call — saving API spend for files annotated with the senses pipeline.
+- Sidecar data is loaded lazily and cached per file title.
+- Counter-based sense derivation and the existing `llm_sense` cache both take
+  priority over the sidecar (sidecar is a fallback, not an override).

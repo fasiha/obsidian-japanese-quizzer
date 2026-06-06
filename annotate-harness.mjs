@@ -51,7 +51,7 @@
  *   sentences with empty annotations arrays get no vocab block.
  */
 
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import Database from "better-sqlite3";
 import path from "path";
@@ -497,11 +497,13 @@ function buildSentenceHits(morphemes, jmdict, tags) {
 
 const [, , subcommand, arg, ...restArgs] = process.argv;
 
-if (!subcommand || !arg) {
+if (!subcommand || (!arg && subcommand !== "help")) {
   console.error(
     "Usage:\n" +
-      "  node annotate-harness.mjs start <file.md> [--mecab-user-dictionary /path/to/user.dic]  — create work database\n" +
-      "  node annotate-harness.mjs done  <work.db>  — produce annotated Markdown"
+      "  node annotate-harness.mjs full  <file.md>  [work options]  — start + work + done in one step\n" +
+      "  node annotate-harness.mjs start <file.md>  [--mecab-user-dictionary /path/to/user.dic]  — create work database\n" +
+      "  node annotate-harness.mjs work  <work.db>  [--morpheme-budget N] [--max-batches N] [--parallel] [--dry-run]  — annotate in batches\n" +
+      "  node annotate-harness.mjs done  <work.db>  — produce annotated Markdown (auto-detects sense data)"
   );
   process.exit(1);
 }
@@ -580,6 +582,7 @@ if (subcommand === "start") {
   work.close();
   process.stderr.write(`Done — ${processed} sentences written to ${workPath}\n`);
 } else if (subcommand === "done") {
+
   const workPath = path.resolve(arg);
   const work = new Database(workPath, { readonly: true });
 
@@ -601,7 +604,9 @@ if (subcommand === "start") {
     if (entries && entries.length > 0) {
       outputLines.push("<details><summary>Vocab</summary>");
       for (const entry of entries) {
-        outputLines.push(entry.startsWith("- ") ? entry : `- ${entry}`);
+        // Bare strings are "Not in JMDict:" and "Proper noun:" annotations.
+        const displayString = typeof entry === "string" ? entry : entry.form;
+        outputLines.push(displayString.startsWith("- ") ? displayString : `- ${displayString}`);
       }
       outputLines.push("</details>");
     }
@@ -616,7 +621,183 @@ if (subcommand === "start") {
 
   const annotated = rows.filter((r) => JSON.parse(r.annotations).length > 0).length;
   console.log(`Wrote ${outputPath} — ${annotated}/${rows.length} sentences annotated`);
+
+  {
+    // Collect per-wordId sense_indices, merging across sentences.
+    const wordSenses = new Map(); // wordId -> Set of sense indices
+    for (const [, entries] of annotationMap) {
+      for (const entry of entries) {
+        if (typeof entry === "object" && entry.wordId && Array.isArray(entry.sense_indices)) {
+          if (!wordSenses.has(entry.wordId)) wordSenses.set(entry.wordId, new Set());
+          for (const idx of entry.sense_indices) wordSenses.get(entry.wordId).add(idx);
+        }
+      }
+    }
+
+    {
+      // Look up BCCWJ frequency for each word using the best-matching kanji/reading pair.
+      const bccwjPath = path.join(path.dirname(new URL(import.meta.url).pathname), "bccwj.sqlite");
+      let bccwjDb = null;
+      try {
+        bccwjDb = new Database(bccwjPath, { readonly: true });
+      } catch {
+        // bccwj.sqlite absent — frequency will be omitted
+      }
+      const jmdictDb = new Database("jmdict.sqlite", { readonly: true });
+      const entryQuery = jmdictDb.prepare("SELECT entry_json FROM entries WHERE id = ?");
+      const bccwjQuery = bccwjDb
+        ? bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1")
+        : null;
+
+      const words = {};
+      for (const [wordId, senseSet] of wordSenses) {
+        const row = entryQuery.get(wordId);
+        let bccwjPerMillionWords = null;
+        if (row && bccwjQuery) {
+          const entry = JSON.parse(row.entry_json);
+          // Try each kanji×reading combination and take the highest pmw found.
+          const kanjiTexts = (entry.kanji ?? []).map((k) => k.text);
+          const readingTexts = (entry.kana ?? []).map((k) => k.text);
+          const pairs = kanjiTexts.length > 0
+            ? kanjiTexts.flatMap((k) => readingTexts.map((r) => [k, r]))
+            : readingTexts.map((r) => [r, r]);
+          for (const [kanji, reading] of pairs) {
+            const hit = bccwjQuery.get(kanji, reading);
+            if (hit && (bccwjPerMillionWords === null || hit.pmw > bccwjPerMillionWords)) {
+              bccwjPerMillionWords = hit.pmw;
+            }
+          }
+        }
+        const record = { sense_indices: [...senseSet].sort((a, b) => a - b) };
+        if (bccwjPerMillionWords !== null) record.bccwjPerMillionWords = bccwjPerMillionWords;
+        words[wordId] = record;
+      }
+
+      jmdictDb.close();
+      if (bccwjDb) bccwjDb.close();
+
+      // Place the sidecar next to the annotated output so annotate-vocab-inline
+      // can find it by replacing .md with .vocab-inline-data.json on the same path.
+      const sidecarPath = outputPath.replace(/\.md$/, ".vocab-inline-data.json");
+      writeFileSync(sidecarPath, JSON.stringify({ words }, null, 2), "utf8");
+      console.log(`Wrote ${sidecarPath} — ${wordSenses.size} words with sense data`);
+    }
+  }
+} else if (subcommand === "work" || subcommand === "full") {
+  // `work` expects an existing work.db; `full` creates one first from a .md file.
+  let workDb;
+  if (subcommand === "full") {
+    const filePath = arg;
+    console.log(`Creating work database for ${filePath} …`);
+    workDb = execSync(
+      `node ${process.argv[1]} start ${JSON.stringify(filePath)}`,
+      { encoding: "utf8" }
+    ).trim();
+    console.log(`Work database: ${workDb}`);
+  } else {
+    workDb = path.resolve(arg);
+    console.log(`Work database: ${workDb}`);
+  }
+
+  // Parse work options from restArgs (or process.argv for full).
+  const workArgs = subcommand === "full"
+    ? restArgs  // restArgs already excludes subcommand and arg
+    : restArgs;
+
+  function getWorkFlag(name) {
+    const i = workArgs.indexOf(name);
+    return i === -1 ? undefined : workArgs[i + 1];
+  }
+  const morphemeBudget = parseInt(getWorkFlag("--morpheme-budget") ?? "400", 10);
+  const maxBatches = getWorkFlag("--max-batches") !== undefined
+    ? parseInt(getWorkFlag("--max-batches"), 10)
+    : Infinity;
+  const parallel = workArgs.includes("--parallel");
+  const dryRun = workArgs.includes("--dry-run");
+
+  // Build batches from unannotated sentences.
+  const db = new Database(workDb, { readonly: true });
+  const sentences = db
+    .prepare(
+      `SELECT id, json_array_length(morphemes) AS morpheme_count
+       FROM sentences WHERE annotations = '[]' ORDER BY id`
+    )
+    .all();
+  db.close();
+
+  if (sentences.length === 0) {
+    console.log("All sentences already annotated — running done …");
+    execSync(`node ${process.argv[1]} done ${JSON.stringify(workDb)}`, { stdio: "inherit" });
+    process.exit(0);
+  }
+
+  // Greedy bin: accumulate until budget exceeded, then start a new batch.
+  const batches = [];
+  let current = [];
+  let currentMorphemes = 0;
+  for (const s of sentences) {
+    if (current.length > 0 && currentMorphemes + s.morpheme_count > morphemeBudget) {
+      batches.push(current);
+      current = [];
+      currentMorphemes = 0;
+    }
+    current.push(s);
+    currentMorphemes += s.morpheme_count;
+  }
+  if (current.length > 0) batches.push(current);
+
+  const batchesToRun = batches.slice(0, maxBatches === Infinity ? batches.length : maxBatches);
+
+  console.log(`\nPlan: ${sentences.length} unannotated sentences → ${batches.length} batches (morpheme budget: ${morphemeBudget})`);
+  if (maxBatches !== Infinity && maxBatches < batches.length) {
+    console.log(`Running first ${maxBatches} of ${batches.length} batches (${batches.length - maxBatches} deferred).`);
+  }
+  for (let i = 0; i < batchesToRun.length; i++) {
+    const b = batchesToRun[i];
+    const fromId = b[0].id;
+    const toId = b[b.length - 1].id;
+    const total = b.reduce((sum, s) => sum + s.morpheme_count, 0);
+    console.log(`  Batch ${i + 1}: sentences ${fromId}–${toId} (${b.length} sentences, ${total} morphemes)`);
+  }
+  if (batches.length > batchesToRun.length) {
+    const remaining = batches.slice(batchesToRun.length);
+    const remainingSentences = remaining.reduce((sum, b) => sum + b.length, 0);
+    console.log(`  … ${batches.length - batchesToRun.length} more batches (${remainingSentences} sentences) deferred`);
+  }
+
+  if (dryRun) {
+    console.log("\nDry run — exiting without calling claude.");
+    process.exit(0);
+  }
+
+  function runBatch(batch, batchIndex) {
+    const fromId = batch[0].id;
+    const toId = batch[batch.length - 1].id;
+    const prompt = `/annotate-file "${workDb} ${fromId} ${toId}"`;
+    console.log(`\nBatch ${batchIndex + 1}: claude -p '${prompt}'`);
+    return new Promise((resolve, reject) => {
+      const child = spawn("claude", ["-p", prompt], { stdio: "inherit" });
+      child.on("close", (code) => {
+        if (code === 0) resolve();
+        else reject(new Error(`Batch ${batchIndex + 1} exited with code ${code}`));
+      });
+      child.on("error", reject);
+    });
+  }
+
+  if (parallel) {
+    console.log(`\nRunning ${batchesToRun.length} batches in parallel …`);
+    await Promise.all(batchesToRun.map((batch, i) => runBatch(batch, i)));
+  } else {
+    console.log(`\nRunning ${batchesToRun.length} batches sequentially …`);
+    for (let i = 0; i < batchesToRun.length; i++) {
+      await runBatch(batchesToRun[i], i);
+    }
+  }
+
+  console.log("\nFinalizing …");
+  execSync(`node ${process.argv[1]} done ${JSON.stringify(workDb)}`, { stdio: "inherit" });
 } else {
-  console.error(`Unknown subcommand: ${subcommand}. Use "start" or "done".`);
+  console.error(`Unknown subcommand: ${subcommand}. Use start, work, done, or full.`);
   process.exit(1);
 }

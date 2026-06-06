@@ -1,8 +1,8 @@
 ---
-description: Annotate a range of Japanese sentences in an existing work database with vocabulary from JMDict
+description: Annotate a range of Japanese sentences in an existing work database with vocabulary from JMDict, recording which sense(s) apply in context
 ---
 
-Annotate Japanese sentences in an existing work database.
+Annotate Japanese sentences in an existing work database, and for each JMDict word record which sense(s) best fit the sentence context.
 
 Arguments (`$ARGUMENTS`): three space-separated values — work database path, start sentence ID, end sentence ID (both inclusive).
 
@@ -65,20 +65,36 @@ Read the `hits` array for a sentence. Work through it position by position. For 
 
 You do not need to consult `morphemes` for most sentences — `hits` already encodes the content words and their dictionary forms. `morphemes` is available if you need POS details or to resolve a furigana ambiguity.
 
-### 2c — Write annotations into the database
+### 2c — Determine sense indices
 
-For each sentence, append each vocabulary entry to its `annotations` array. Each string is one of:
+The `meanings` field in each hit lists all JMDict senses, numbered from (1). These are **1-indexed in display** but must be stored as **0-based integers**.
 
-- Found in JMDict with kanji: `{kana reading} {kanji form}`
-- Kana-only word: `{kana}`
-- Not in JMDict: `Not in JMDict: {word as it appears in text} — {concise meaning in context}`
-- Proper noun: `Proper noun: {word} — {MeCab reading} — {English: place, person, or just a name}`
+For each JMDict entry you decide to annotate, read all its senses and select the one(s) that best match how the word is used in this sentence. Most words have one applicable sense. Use multiple indices only when the sentence is genuinely ambiguous or metaphorical and two senses both apply.
 
-Append entries, either one at a time or all entries for a sentence at once:
+Example: 食べる has senses (1) to eat; (2) to live on (earnings). In a sentence about eating yams, `sense_indices` is `[0]`.
+
+### 2d — Write annotations into the database
+
+Each annotation is a JSON object with three fields:
+
+- `form` — the display string (same format as before):
+  - Found in JMDict with kanji: `"{kana reading} {kanji form}"`
+  - Kana-only word: `"{kana}"`
+- `wordId` — the JMDict entry ID string from the `hits` array
+- `sense_indices` — array of 0-based integers identifying which sense(s) apply
+
+For words **not in JMDict** or **proper nouns**, keep using the old bare-string format (the harness handles both):
+- Not in JMDict: `"Not in JMDict: {word as it appears in text} — {concise meaning in context}"`
+- Proper noun: `"Proper noun: {word} — {MeCab reading} — {English: place, person, or just a name}"`
+
+Write all annotations for a sentence at once using `json()`:
 ```bash
-sqlite3 <work.db> "UPDATE sentences SET annotations = json_insert(annotations, '\$[#]', 'いきおい 勢い') WHERE id = 9"
-# or
-sqlite3 <work.db> "UPDATE sentences SET annotations = json('["いきおい 勢い","せなか 背中"]') WHERE id = 9"
+sqlite3 <work.db> "UPDATE sentences SET annotations = json('[{\"form\":\"いきおい 勢い\",\"wordId\":\"1234567\",\"sense_indices\":[0]},{\"form\":\"せなか 背中\",\"wordId\":\"1234568\",\"sense_indices\":[0]}]') WHERE id = 9"
+```
+
+Or insert one object at a time:
+```bash
+sqlite3 <work.db> "UPDATE sentences SET annotations = json_insert(annotations, '\$[#]', json('{\"form\":\"いきおい 勢い\",\"wordId\":\"1234567\",\"sense_indices\":[0]}')) WHERE id = 9"
 ```
 
 Do **not** include English meanings for JMDict words.

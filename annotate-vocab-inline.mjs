@@ -86,6 +86,22 @@ if (existsSync(vocabJsonPath)) {
   }
 }
 
+// Fall back to a vocab-inline-data.json sidecar (produced by
+// `annotate-harness.mjs done --senses`) for words not covered by vocab.json.
+// The sidecar lives next to the input file, named <basename>.vocab-inline-data.json.
+const sidecarPath = filePath.replace(/\.md$/, ".vocab-inline-data.json");
+if (existsSync(sidecarPath)) {
+  const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
+  for (const [wordId, data] of Object.entries(sidecar.words ?? {})) {
+    if (!senseIndexMap.has(wordId) && Array.isArray(data.sense_indices) && data.sense_indices.length > 0) {
+      senseIndexMap.set(wordId, data.sense_indices);
+    }
+    if (!bccwjMap.has(wordId) && data.bccwjPerMillionWords != null) {
+      bccwjMap.set(wordId, data.bccwjPerMillionWords);
+    }
+  }
+}
+
 // Resolve a bullet text to a JMDict word object, or null with a warning.
 function resolveWord(bullet) {
   const directIdMatch = bullet.match(/^\d+/);

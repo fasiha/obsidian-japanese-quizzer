@@ -1034,9 +1034,29 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
   // the incremental vocab.json writes below never clobber previously-computed
   // data for entries not yet reached in the loop.
 
+  // Lazy cache of vocab-inline-data.json sidecars, keyed by the file title
+  // (relative path without .md extension, matching word.references keys).
+  // Produced by `annotate-harness.mjs done --senses`. When present for a title,
+  // sense indices are read from the sidecar instead of calling Haiku.
+  const sidecarCache = new Map(); // title → { words: { [wordId]: { sense_indices, bccwjPerMillionWords } } } | null
+  function getSidecar(title) {
+    if (sidecarCache.has(title)) return sidecarCache.get(title);
+    const sidecarPath = path.join(projectRoot, `${title}.vocab-inline-data.json`);
+    let data = null;
+    if (existsSync(sidecarPath)) {
+      try {
+        data = JSON.parse(readFileSync(sidecarPath, "utf8"));
+      } catch {
+        // Malformed sidecar — treat as absent
+      }
+    }
+    sidecarCache.set(title, data);
+    return data;
+  }
+
   for (const word of words) {
     const jmWord = jmdictById.get(word.id);
-    for (const refs of Object.values(word.references ?? {})) {
+    for (const [title, refs] of Object.entries(word.references ?? {})) {
       for (const ref of refs) {
         if (ref.counter?.length) {
           // ref.counter was set from manual counter bullets — we know exactly which
@@ -1080,7 +1100,20 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
             ref.llm_sense = { sense_indices: [], computed_from: [], counter: null };
           } else {
             const cached = existingRefSense.get(`${word.id}|${JSON.stringify(computedFrom)}`);
-            if (cached) ref.llm_sense = cached;
+            if (cached) {
+              ref.llm_sense = cached;
+            } else {
+              // Check sidecar before queuing a Haiku call.
+              const sidecar = getSidecar(title);
+              const sidecarEntry = sidecar?.words?.[word.id];
+              if (sidecarEntry?.sense_indices?.length > 0) {
+                ref.llm_sense = {
+                  sense_indices: sidecarEntry.sense_indices,
+                  computed_from: computedFrom,
+                  counter: null,
+                };
+              }
+            }
           }
         }
       }
