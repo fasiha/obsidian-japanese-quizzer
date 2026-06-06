@@ -41,3 +41,13 @@ quiz.sqlite
 jmdict*json
 Jmdict*json
 fuzz-markdown-golden.json
+
+*.csv
+*.tsv
+*.html
+*.dic
+*.txt
+*.db
+*.db-wal
+*.db-shm
+*.pdf

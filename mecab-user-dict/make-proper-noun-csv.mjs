@@ -16,6 +16,8 @@ Example words.tsv:
   いずみ	イズミ	名
   東京	トウキョウ	地名
 
+UniDic source dir: download and unzip unidic-mecab-2.1.2_src.zip (from, e.g., https://clrd.ninjal.ac.jp/unidic_archive/cwj/2.1.2/)
+
 Outputs:
   <words>.csv  — intermediate UniDic-format CSV
   <words>.dic  — compiled MeCab user dictionary (pass to mecab -u)
