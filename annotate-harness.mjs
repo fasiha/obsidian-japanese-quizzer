@@ -221,8 +221,9 @@ function parseMecabLine(raw) {
   return { literal, pronunciation, lemmaReading, lemma, posJa, inflectionTypeJa, inflectionJa };
 }
 
-function runMecab(sentence) {
-  const raw = execSync(`echo ${JSON.stringify(sentence)} | mecab`, {
+function runMecab(sentence, userDictionary = null) {
+  const dictFlag = userDictionary ? ` -u ${JSON.stringify(userDictionary)}` : "";
+  const raw = execSync(`echo ${JSON.stringify(sentence)} | mecab${dictFlag}`, {
     encoding: "utf8",
   });
   const morphemes = [];
@@ -494,21 +495,50 @@ function buildSentenceHits(morphemes, jmdict, tags) {
 // CLI
 // ---------------------------------------------------------------------------
 
-const [, , subcommand, arg] = process.argv;
+const [, , subcommand, arg, ...restArgs] = process.argv;
 
 if (!subcommand || !arg) {
   console.error(
     "Usage:\n" +
-      "  node annotate-harness.mjs start <file.md>  — create work database\n" +
+      "  node annotate-harness.mjs start <file.md> [--mecab-user-dictionary /path/to/user.dic]  — create work database\n" +
       "  node annotate-harness.mjs done  <work.db>  — produce annotated Markdown"
   );
   process.exit(1);
 }
 
+const userDictIdx = restArgs.indexOf("--mecab-user-dictionary");
+const userDictionary = userDictIdx !== -1 ? restArgs[userDictIdx + 1] : null;
+
 if (subcommand === "start") {
   const filePath = path.resolve(arg);
   const text = readFileSync(filePath, "utf8");
   const lines = text.split("\n");
+
+  const timestamp = Date.now();
+  const basename = path.basename(filePath, path.extname(filePath));
+  const workPath = `/tmp/${basename}-annotations-${timestamp}.db`;
+
+  const work = new Database(workPath);
+  work.pragma("journal_mode = WAL");
+  work.exec(`
+    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE sentences (
+      id        INTEGER PRIMARY KEY,
+      text      TEXT NOT NULL,
+      furigana  TEXT,
+      morphemes TEXT NOT NULL,
+      hits      TEXT NOT NULL DEFAULT '[]',
+      annotations TEXT NOT NULL DEFAULT '[]'
+    );
+  `);
+  work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
+  const insertSentence = work.prepare(
+    `INSERT INTO sentences (id, text, furigana, morphemes, hits) VALUES (?, ?, ?, ?, ?)`
+  );
+
+  // Print the work DB path immediately so the caller can monitor progress
+  // (e.g. watch the row count) while processing continues.
+  console.log(workPath);
 
   const jmdict = new Database("jmdict.sqlite", { readonly: true });
   jmdict.pragma("journal_mode = WAL");
@@ -516,7 +546,14 @@ if (subcommand === "start") {
 
   const seen = new Set();
   let inFrontmatter = false;
-  const sentences = [];
+  let processed = 0;
+
+  // Wrap each insert in its own transaction — this commits to disk after every
+  // sentence rather than buffering everything in memory until the end.
+  // For a novel this makes the file immediately visible and Ctrl-C safe.
+  const insertOne = work.transaction((id, text, furigana, morphemes, hits) => {
+    insertSentence.run(id, text, furigana, JSON.stringify(morphemes, null, 2), JSON.stringify(hits));
+  });
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -529,54 +566,19 @@ if (subcommand === "start") {
 
     const hasRuby = /<ruby>/.test(line);
     const stripped = stripRuby(line);
-    const rawMorphemes = runMecab(stripped);
+    const rawMorphemes = runMecab(stripped, userDictionary);
     const morphemes = buildMorphemeObjects(rawMorphemes);
     const hits = buildSentenceHits(morphemes, jmdict, tags);
+    const furigana = hasRuby ? rubyToAnnotated(line) : null;
 
-    const entry = { id: i, text: stripped, morphemes, hits };
-    if (hasRuby) entry.furigana = rubyToAnnotated(line);
-    sentences.push(entry);
+    insertOne(i, stripped, furigana, morphemes, hits);
+    processed++;
+    if (processed % 50 === 0) process.stderr.write(`${processed} sentences processed…\n`);
   }
 
   jmdict.close();
-
-  const timestamp = Date.now();
-  const basename = path.basename(filePath, path.extname(filePath));
-  const workPath = `/tmp/${basename}-annotations-${timestamp}.db`;
-
-  const work = new Database(workPath);
-  work.exec(`
-    CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-    CREATE TABLE sentences (
-      id        INTEGER PRIMARY KEY,
-      text      TEXT NOT NULL,
-      furigana  TEXT,
-      morphemes TEXT NOT NULL,
-      hits      TEXT NOT NULL DEFAULT '[]',
-      annotations TEXT NOT NULL DEFAULT '[]'
-    );
-  `);
-
-  work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
-
-  const insertSentence = work.prepare(
-    `INSERT INTO sentences (id, text, furigana, morphemes, hits) VALUES (?, ?, ?, ?, ?)`
-  );
-  const insertAll = work.transaction((rows) => {
-    for (const s of rows) {
-      insertSentence.run(
-        s.id,
-        s.text,
-        s.furigana ?? null,
-        JSON.stringify(s.morphemes, null, 2),
-        JSON.stringify(s.hits)
-      );
-    }
-  });
-  insertAll(sentences);
   work.close();
-
-  console.log(workPath);
+  process.stderr.write(`Done — ${processed} sentences written to ${workPath}\n`);
 } else if (subcommand === "done") {
   const workPath = path.resolve(arg);
   const work = new Database(workPath, { readonly: true });

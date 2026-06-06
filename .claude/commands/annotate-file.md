@@ -1,34 +1,34 @@
 ---
-description: Annotate all Japanese lines in a Markdown file with vocabulary from JMDict for N5-level learners
+description: Annotate a range of Japanese sentences in an existing work database with vocabulary from JMDict
 ---
 
-Annotate every Japanese line in the file at path `$ARGUMENTS` with links to entries in the JMDict dictionary.
+Annotate Japanese sentences in an existing work database.
 
-## Step 1 — Create the work file
+Arguments (`$ARGUMENTS`): three space-separated values — work database path, start sentence ID, end sentence ID (both inclusive).
 
-```bash
-node annotate-harness.mjs start "$ARGUMENTS"
-```
-
-This prints the path of a SQLite work database, e.g. `/tmp/Shippo-annotations-1716480000000.db`.
+Example: `/tmp/JustBecause-annotations-1716480000000.db 0 49`
 
 The database has a `sentences` table with columns: `id, text, furigana, morphemes, hits, annotations`.
 
-## Step 2 — Survey and annotate in batches
+## Step 1 — Orient yourself
 
-Start by counting how many sentences need annotation:
+Show the last three sentences that already have annotations, for tonal context:
 ```bash
-sqlite3 /tmp/work.db "SELECT COUNT(*) FROM sentences"
+sqlite3 <work.db> ".mode json" "SELECT id, text FROM sentences WHERE annotations != '[]' ORDER BY id DESC LIMIT 3"
 ```
 
-Then read the sentence texts to get an overview:
+Then count how many sentences in your range still need annotation:
 ```bash
-sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana FROM sentences"
+sqlite3 <work.db> "SELECT COUNT(*) FROM sentences WHERE id BETWEEN <from_id> AND <to_id> AND annotations = '[]'"
 ```
 
-For a short file, process all sentences together. For a long file, work in batches — fetch `hits` for a chunk at a time using LIMIT and OFFSET:
+If this is zero, you have no work to do. Stop.
+
+## Step 2 — Fetch and annotate
+
+Fetch the unannotated sentences in your range:
 ```bash
-sqlite3 /tmp/work.db ".mode json" "SELECT id, text, furigana, hits FROM sentences LIMIT 10 OFFSET 0"
+sqlite3 <work.db> ".mode json" "SELECT id, text, furigana, hits FROM sentences WHERE id BETWEEN <from_id> AND <to_id> AND annotations = '[]' ORDER BY id"
 ```
 
 ### 2a — Understand the hits array
@@ -76,9 +76,9 @@ For each sentence, append each vocabulary entry to its `annotations` array. Each
 
 Append entries, either one at a time or all entries for a sentence at once:
 ```bash
-sqlite3 /tmp/work.db "UPDATE sentences SET annotations = json_insert(annotations, '\$[#]', 'いきおい 勢い') WHERE id = 9"
+sqlite3 <work.db> "UPDATE sentences SET annotations = json_insert(annotations, '\$[#]', 'いきおい 勢い') WHERE id = 9"
 # or
-sqlite3 /tmp/work.db "UPDATE sentences SET annotations = json('["いきおい 勢い","せなか 背中"]') WHERE id = 9"
+sqlite3 <work.db> "UPDATE sentences SET annotations = json('["いきおい 勢い","せなか 背中"]') WHERE id = 9"
 ```
 
 Do **not** include English meanings for JMDict words.
@@ -87,4 +87,4 @@ If a sentence has no content words, leave `annotations` as `[]` (the default).
 
 ## Step 3 — Report
 
-When finished, run `node annotate-harness.mjs done <work.db>`.
+Report how many sentences you annotated out of how many were in your range.
