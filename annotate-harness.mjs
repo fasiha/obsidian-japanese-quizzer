@@ -502,8 +502,9 @@ if (!subcommand || (!arg && subcommand !== "help")) {
     "Usage:\n" +
       "  node annotate-harness.mjs full  <file.md>  [work options]  — start + work + done in one step\n" +
       "  node annotate-harness.mjs start <file.md>  [--mecab-user-dictionary /path/to/user.dic]  — create work database\n" +
-      "  node annotate-harness.mjs work  <work.db>  [--morpheme-budget N] [--max-batches N] [--parallel] [--dry-run]  — annotate in batches\n" +
-      "  node annotate-harness.mjs done  <work.db>  — produce annotated Markdown (auto-detects sense data)"
+      "  node annotate-harness.mjs work     <work.db>  [--morpheme-budget N] [--max-batches N] [--parallel] [--dry-run]  — annotate in batches\n" +
+      "  node annotate-harness.mjs done     <work.db>  — produce annotated Markdown and vocab-inline-data.json sidecar\n" +
+      "  node annotate-harness.mjs reimport <work.db> <annotated.md>  — sync edited Markdown back into the work database"
   );
   process.exit(1);
 }
@@ -623,14 +624,11 @@ if (subcommand === "start") {
   console.log(`Wrote ${outputPath} — ${annotated}/${rows.length} sentences annotated`);
 
   {
-    // Collect per-wordId sense_indices, merging across sentences.
-    const wordSenses = new Map(); // wordId -> Set of sense indices
+    // Collect unique wordIds for BCCWJ frequency lookup.
+    const wordIds = new Set();
     for (const [, entries] of annotationMap) {
       for (const entry of entries) {
-        if (typeof entry === "object" && entry.wordId && Array.isArray(entry.sense_indices)) {
-          if (!wordSenses.has(entry.wordId)) wordSenses.set(entry.wordId, new Set());
-          for (const idx of entry.sense_indices) wordSenses.get(entry.wordId).add(idx);
-        }
+        if (typeof entry === "object" && entry.wordId) wordIds.add(entry.wordId);
       }
     }
 
@@ -649,13 +647,13 @@ if (subcommand === "start") {
         ? bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1")
         : null;
 
+      // words: per-wordId BCCWJ frequency only (sense_indices are per-occurrence, stored in sentences).
       const words = {};
-      for (const [wordId, senseSet] of wordSenses) {
+      for (const wordId of wordIds) {
         const row = entryQuery.get(wordId);
         let bccwjPerMillionWords = null;
         if (row && bccwjQuery) {
           const entry = JSON.parse(row.entry_json);
-          // Try each kanji×reading combination and take the highest pmw found.
           const kanjiTexts = (entry.kanji ?? []).map((k) => k.text);
           const readingTexts = (entry.kana ?? []).map((k) => k.text);
           const pairs = kanjiTexts.length > 0
@@ -668,21 +666,208 @@ if (subcommand === "start") {
             }
           }
         }
-        const record = { sense_indices: [...senseSet].sort((a, b) => a - b) };
-        if (bccwjPerMillionWords !== null) record.bccwjPerMillionWords = bccwjPerMillionWords;
-        words[wordId] = record;
+        if (bccwjPerMillionWords !== null) words[wordId] = { bccwjPerMillionWords };
       }
 
       jmdictDb.close();
       if (bccwjDb) bccwjDb.close();
 
-      // Place the sidecar next to the annotated output so annotate-vocab-inline
-      // can find it by replacing .md with .vocab-inline-data.json on the same path.
+      // sentences: full per-occurrence annotation arrays keyed by sentence ID.
+      // Used by reimport (to restore annotations) and annotate-vocab-inline
+      // (for per-occurrence sense_indices rather than aggregated ones).
+      const sentences = Object.fromEntries(
+        [...annotationMap.entries()]
+          .filter(([, entries]) => entries.length > 0)
+          .map(([id, entries]) => [id, entries])
+      );
       const sidecarPath = outputPath.replace(/\.md$/, ".vocab-inline-data.json");
-      writeFileSync(sidecarPath, JSON.stringify({ words }, null, 2), "utf8");
-      console.log(`Wrote ${sidecarPath} — ${wordSenses.size} words with sense data`);
+      writeFileSync(sidecarPath, JSON.stringify({ sentences, words }, null, 2), "utf8");
+      console.log(`Wrote ${sidecarPath} — ${wordIds.size} words in sidecar`);
     }
   }
+} else if (subcommand === "reimport") {
+  // Re-read an edited annotated Markdown (and its sidecar) back into the work
+  // database. Enables the edit loop:
+  //   done → edit annotated.md / vocab-inline-data.json → reimport → work more → done
+  //
+  // Usage: node annotate-harness.mjs reimport <work.db> <annotated.md>
+  //
+  // The sidecar (<annotated.vocab-inline-data.json>) stores the full annotation
+  // objects keyed by sentence ID. reimport looks up unchanged bullets there by
+  // form string; only genuinely new/changed bullets need JMDict resolution.
+
+  const { existsSync: fsExistsSync } = await import("fs");
+  const { setup, findExactIds, idsToWords } = await import("jmdict-simplified-node");
+  const { extractJapaneseTokens, intersectSets, JMDICT_DB } = await import("./.claude/scripts/shared.mjs");
+
+  const annotatedPath = path.resolve(restArgs[0] ?? "");
+  if (!annotatedPath || !fsExistsSync(annotatedPath)) {
+    console.error("Usage: node annotate-harness.mjs reimport <work.db> <annotated.md>");
+    process.exit(1);
+  }
+
+  const workPath = path.resolve(arg);
+  const work = new Database(workPath);
+
+  // Load sidecar. It contains:
+  //   sentences: { [sentenceId]: annotation[] }  — full objects, for reimport
+  //   words:     { [wordId]: { sense_indices, bccwjPerMillionWords } }
+  const sidecarPath = annotatedPath.replace(/\.md$/, ".vocab-inline-data.json");
+  // form string → annotation object, built from sidecar sentences
+  const formToAnnotation = new Map();
+  // wordId → sense_indices from edited words section (user may have tweaked these)
+  const sidecarWordSenses = new Map();
+  const knownBareStrings = new Set(); // bare strings from sidecar → pass through without JMDict
+  if (fsExistsSync(sidecarPath)) {
+    const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
+    for (const entries of Object.values(sidecar.sentences ?? {})) {
+      for (const entry of entries) {
+        if (typeof entry === "object" && entry.form) {
+          formToAnnotation.set(entry.form, entry);
+        } else if (typeof entry === "string") {
+          knownBareStrings.add(entry);
+        }
+      }
+    }
+    for (const [wordId, data] of Object.entries(sidecar.words ?? {})) {
+      if (Array.isArray(data.sense_indices)) sidecarWordSenses.set(wordId, data.sense_indices);
+    }
+    console.log(`Loaded sidecar: ${formToAnnotation.size} known annotations, ${knownBareStrings.size} known bare strings, ${sidecarWordSenses.size} words`);
+  } else {
+    console.log("No sidecar found — all bullets will be resolved via JMDict");
+  }
+
+  // Build a map from stripped sentence text → sentence id for matching.
+  const rows = work.prepare("SELECT id, text FROM sentences").all();
+  const textToId = new Map(rows.map((r) => [r.text.trim(), r.id]));
+
+  // Set up JMDict for resolving genuinely new/changed form strings.
+  const { db: jmdictNode } = await setup(JMDICT_DB);
+
+  function resolveFormToWordId(formString) {
+    const tokens = extractJapaneseTokens(formString);
+    if (tokens.length === 0) return null;
+    const idSets = tokens.map((t) => new Set(findExactIds(jmdictNode, t)));
+    const matchIds = [...intersectSets(idSets)];
+    if (matchIds.length !== 1) return null;
+    return matchIds[0];
+  }
+
+  // Parse the annotated Markdown line-by-line.
+  const annotatedLines = readFileSync(annotatedPath, "utf8").split("\n");
+
+  const updates = new Map(); // sentenceId → annotation array
+  const presentIds = new Set(); // sentence IDs that have a Vocab block in the file
+  let insideVocab = false;
+  let currentSentenceId = null;
+  let currentBullets = [];
+
+  function flushBullets() {
+    if (currentSentenceId !== null) {
+      presentIds.add(currentSentenceId);
+      if (currentBullets.length > 0) updates.set(currentSentenceId, currentBullets);
+    }
+    currentBullets = [];
+    currentSentenceId = null;
+  }
+
+  for (let li = 0; li < annotatedLines.length; li++) {
+    const line = annotatedLines[li];
+    const trimmed = line.trim();
+
+    if (!insideVocab) {
+      if (/<details[^>]*>/.test(line) && /<summary[^>]*>\s*Vocab\s*<\/summary>/.test(line)) {
+        insideVocab = true;
+        const prevLine = li > 0 ? annotatedLines[li - 1] : "";
+        const strippedPrev = stripRuby(prevLine).trim();
+        currentSentenceId = textToId.get(strippedPrev) ?? null;
+        if (currentSentenceId === null) {
+          console.warn(`  Warning: could not match sentence: ${strippedPrev.slice(0, 60)}`);
+        }
+      }
+      continue;
+    }
+
+    if (/<\/details\b/.test(line)) {
+      insideVocab = false;
+      flushBullets();
+      continue;
+    }
+
+    if (trimmed.startsWith("-")) {
+      const bullet = trimmed.slice(1).trim();
+      if (!bullet) continue;
+
+      // Bare-string annotations pass through unchanged.
+      if (bullet.startsWith("Not in JMDict:") || bullet.startsWith("Proper noun:")) {
+        currentBullets.push(bullet);
+        continue;
+      }
+
+      // Known bare strings from the sidecar (e.g. multi-form entries the LLM
+      // stored without a wordId) pass through without JMDict resolution.
+      if (knownBareStrings.has(bullet)) {
+        currentBullets.push(bullet);
+        continue;
+      }
+
+      // Check sidecar first — covers unchanged bullets without needing JMDict.
+      const known = formToAnnotation.get(bullet);
+      if (known) {
+        // Use sidecar's sense_indices unless the user edited the words section.
+        const sense_indices = sidecarWordSenses.get(known.wordId) ?? known.sense_indices;
+        currentBullets.push({ ...known, sense_indices });
+        continue;
+      }
+
+      // Word ID prefix (e.g. "1631640" or "1198910 とける 解ける") — resolve directly.
+      // Users prepend the JMDict ID to disambiguate bullets that matched multiple entries.
+      const directIdMatch = bullet.match(/^(\d+)(\s|$)/);
+      if (directIdMatch) {
+        const wordId = directIdMatch[1];
+        const [jmWord] = idsToWords(jmdictNode, [wordId]);
+        if (!jmWord) {
+          console.warn(`  Warning: wordId ${wordId} not found in JMDict — storing as bare string`);
+          currentBullets.push(bullet);
+          continue;
+        }
+        // Preserve the user's ID-prefixed bullet as form so done emits it back
+        // unchanged and future reimports find it in the sidecar by form string.
+        const sense_indices = sidecarWordSenses.get(wordId) ?? [0];
+        currentBullets.push({ form: bullet, wordId, sense_indices });
+        continue;
+      }
+
+      // New or changed bullet — resolve via JMDict.
+      const wordId = resolveFormToWordId(bullet);
+      if (wordId === null) {
+        console.warn(`  Warning: could not resolve "${bullet}" to a JMDict entry — storing as bare string`);
+        currentBullets.push(bullet);
+        continue;
+      }
+      const sense_indices = sidecarWordSenses.get(wordId) ?? [0];
+      currentBullets.push({ form: bullet, wordId, sense_indices });
+    }
+  }
+
+  // Write updates back. Only sentences present in the annotated file are touched.
+  // Sentences not in the file are left as-is (still unannotated for further work).
+  const updateStmt = work.prepare("UPDATE sentences SET annotations = ? WHERE id = ?");
+  const updateAll = work.transaction(() => {
+    for (const id of presentIds) {
+      const annotations = updates.get(id) ?? [];
+      updateStmt.run(JSON.stringify(annotations), id);
+    }
+  });
+  updateAll();
+  work.close();
+
+  console.log(`Reimported ${presentIds.size} sentences into ${workPath} (${updates.size} with annotations)`);
+  const notPresent = rows.length - presentIds.size;
+  if (notPresent > 0) {
+    console.log(`  (${notPresent} sentences not in annotated file — left untouched for further work)`);
+  }
+
 } else if (subcommand === "work" || subcommand === "full") {
   // `work` expects an existing work.db; `full` creates one first from a .md file.
   let workDb;

@@ -86,16 +86,22 @@ if (existsSync(vocabJsonPath)) {
   }
 }
 
-// Fall back to a vocab-inline-data.json sidecar (produced by
-// `annotate-harness.mjs done --senses`) for words not covered by vocab.json.
-// The sidecar lives next to the input file, named <basename>.vocab-inline-data.json.
+// Load the vocab-inline-data.json sidecar (produced by `annotate-harness.mjs done`)
+// for per-occurrence sense indices and BCCWJ frequency.
+// Keyed as `${sentenceId}|${wordId}` so the same word can show different senses
+// in different sentences rather than using a single aggregated index.
+const sidecarOccurrenceSenses = new Map(); // `${sentenceId}|${wordId}` → number[]
 const sidecarPath = filePath.replace(/\.md$/, ".vocab-inline-data.json");
 if (existsSync(sidecarPath)) {
   const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
-  for (const [wordId, data] of Object.entries(sidecar.words ?? {})) {
-    if (!senseIndexMap.has(wordId) && Array.isArray(data.sense_indices) && data.sense_indices.length > 0) {
-      senseIndexMap.set(wordId, data.sense_indices);
+  for (const [sentenceId, entries] of Object.entries(sidecar.sentences ?? {})) {
+    for (const entry of entries) {
+      if (typeof entry === "object" && entry.wordId && Array.isArray(entry.sense_indices)) {
+        sidecarOccurrenceSenses.set(`${sentenceId}|${entry.wordId}`, entry.sense_indices);
+      }
     }
+  }
+  for (const [wordId, data] of Object.entries(sidecar.words ?? {})) {
     if (!bccwjMap.has(wordId) && data.bccwjPerMillionWords != null) {
       bccwjMap.set(wordId, data.bccwjPerMillionWords);
     }
@@ -128,8 +134,10 @@ function resolveWord(bullet) {
 }
 
 // Build a compact human-readable annotation string from a JMDict word object.
+// sentenceId is the source-file line index of the containing sentence, used to
+// look up per-occurrence sense indices from the sidecar (most specific source).
 // Returns an HTML <span> with the info, or empty string if nothing useful found.
-function buildAnnotation(word, bullet) {
+function buildAnnotation(word, bullet, sentenceId) {
   if (!word) return "";
 
   // Readings: show all kana readings that apply to the matched kanji form.
@@ -139,12 +147,18 @@ function buildAnnotation(word, bullet) {
 
   let readings = [];
 
-  // Prefer LLM-selected sense indices from vocab.json; fall back to first sense.
+  // Sense lookup priority:
+  //   1. sidecar per-occurrence (most specific — same word can have different
+  //      senses in different sentences)
+  //   2. vocab.json majority-vote across all files (word-level fallback)
+  //   3. first sense (default when nothing else is available)
   let sensesToShow;
   if (allSenses) {
     sensesToShow = word.sense;
   } else {
-    const llmIndices = senseIndexMap.get(word.id);
+    const sidecarKey = sentenceId != null ? `${sentenceId}|${word.id}` : null;
+    const sidecarIndices = sidecarKey ? sidecarOccurrenceSenses.get(sidecarKey) : undefined;
+    const llmIndices = sidecarIndices ?? senseIndexMap.get(word.id);
     if (llmIndices && llmIndices.length > 0) {
       sensesToShow = llmIndices
         .map((i) => word.sense[i])
@@ -195,6 +209,11 @@ const output = [];
 let insideVocab = false;
 let vocabDepth = 0; // nesting depth of <details> while inside a Vocab block
 let bulletDepth = 0; // depth of nested <details> inside the Vocab block body
+// sourceLineIndex counts every source line (not <details> block lines).
+// When a Vocab block opens, sourceLineIndex - 1 is the sentence ID (the
+// line index of the preceding Japanese sentence in the original source file).
+let sourceLineIndex = 0;
+let currentSentenceId = null; // sentence ID for the Vocab block being processed
 
 for (const line of lines) {
   const trimmed = line.trim();
@@ -205,6 +224,7 @@ for (const line of lines) {
       insideVocab = true;
       vocabDepth = 1;
       bulletDepth = 0;
+      currentSentenceId = sourceLineIndex - 1; // preceding source line is the sentence
       output.push(line);
       // Pandoc requires a blank line after the opening tag to treat the
       // contents as Markdown rather than raw HTML.
@@ -212,6 +232,7 @@ for (const line of lines) {
       continue;
     }
     output.push(line);
+    sourceLineIndex++;
     continue;
   }
 
@@ -244,7 +265,7 @@ for (const line of lines) {
     const bullet = trimmed.slice(1).trim();
     if (bullet && !bullet.startsWith("counter:")) {
       const word = resolveWord(bullet);
-      const annotation = buildAnnotation(word, bullet);
+      const annotation = buildAnnotation(word, bullet, currentSentenceId);
       if (annotation) {
         // Append annotation after the bullet text, preserving leading whitespace.
         const leadingSpace = line.match(/^(\s*)/)[1];

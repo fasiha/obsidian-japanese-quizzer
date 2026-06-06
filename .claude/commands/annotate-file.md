@@ -12,7 +12,13 @@ The database has a `sentences` table with columns: `id, text, furigana, morpheme
 
 ## Step 1 — Orient yourself
 
-Show the last three sentences that already have annotations, for tonal context:
+Show the few source-text lines immediately before your range (narrative context, in forward order):
+```bash
+sqlite3 <work.db> ".mode json" "SELECT id, text FROM sentences WHERE id < <from_id> ORDER BY id DESC LIMIT 3"
+```
+Reverse the results so they read chronologically. If `from_id` is 0 or no rows are returned, skip this step.
+
+Also show the last three sentences that already have annotations (to gauge tone and style):
 ```bash
 sqlite3 <work.db> ".mode json" "SELECT id, text FROM sentences WHERE annotations != '[]' ORDER BY id DESC LIMIT 3"
 ```
