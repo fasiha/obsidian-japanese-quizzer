@@ -61,6 +61,8 @@ Read the `hits` array for a sentence. Work through it position by position. For 
 4. If the longest span doesn't fit, try shorter spans at the same start position.
 5. If no hit at this position covers a content word you want to annotate, fall back to `node lookup.mjs {word}` — use this when MeCab clearly misparsed, the reading is unusual, or the word is mimetic/onomatopoeic.
 
+**Homophones:** when two or more entries at the same position share the same reading but differ in written form or meaning (e.g. 沸く vs. 湧く, both read わく), all will appear in `hits`. Do not default to the first entry — use sentence context to pick the semantically correct one. For example, つばがわいてきた describes saliva welling up: 湧く ("to well up; to appear") fits, 沸く ("to boil; to get excited") does not. MeCab sometimes assigns the wrong lemma for a homophone, but the harness searches by reading as well as by lemma, so the correct entry is always present in `hits`.
+
 You do not need to consult `morphemes` for most sentences — `hits` already encodes the content words and their dictionary forms. `morphemes` is available if you need POS details or to resolve a furigana ambiguity.
 
 ### 2c — Write annotations into the database
