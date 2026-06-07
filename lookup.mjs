@@ -22,7 +22,7 @@ if (!lookup) {
   process.exit(1);
 }
 
-var { db, tags } = await setup("jmdict.sqlite");
+var { db, tags } = await setup(path.join(__dirname, "jmdict.sqlite"));
 var words = [];
 
 var ids = new Set();

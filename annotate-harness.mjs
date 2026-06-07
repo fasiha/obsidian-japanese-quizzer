@@ -55,7 +55,11 @@ import { execSync, spawn } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import Database from "better-sqlite3";
 import path from "path";
+import { fileURLToPath } from "url";
 import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
+
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const jmdictDbPath = path.join(scriptDir, "jmdict.sqlite");
 
 // ---------------------------------------------------------------------------
 // UniDic POS / inflection translation tables (ported from mecabUnidic.ts)
@@ -545,7 +549,7 @@ if (subcommand === "start") {
   // (e.g. watch the row count) while processing continues.
   console.log(workPath);
 
-  const jmdict = new Database("jmdict.sqlite", { readonly: true });
+  const jmdict = new Database(jmdictDbPath, { readonly: true });
   jmdict.pragma("journal_mode = WAL");
   const tags = JSON.parse(jmdict.prepare(`SELECT value_json FROM metadata WHERE key = 'tags'`).pluck().get() ?? "{}");
 
@@ -663,14 +667,14 @@ if (subcommand === "start") {
 
     {
       // Look up BCCWJ frequency for each word using the best-matching kanji/reading pair.
-      const bccwjPath = path.join(path.dirname(new URL(import.meta.url).pathname), "bccwj.sqlite");
+      const bccwjPath = path.join(scriptDir, "bccwj.sqlite");
       let bccwjDb = null;
       try {
         bccwjDb = new Database(bccwjPath, { readonly: true });
       } catch {
         // bccwj.sqlite absent — frequency will be omitted
       }
-      const jmdictDb = new Database("jmdict.sqlite", { readonly: true });
+      const jmdictDb = new Database(jmdictDbPath, { readonly: true });
       const entryQuery = jmdictDb.prepare("SELECT entry_json FROM entries WHERE id = ?");
       const bccwjQuery = bccwjDb
         ? bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1")
