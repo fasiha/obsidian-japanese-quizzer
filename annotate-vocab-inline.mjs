@@ -194,7 +194,7 @@ function buildAnnotation(word, bullet, sentenceId) {
   const freq = bccwjMap.get(word.id);
   let freqStr = "";
   if (freq != null) {
-    const saturation = Math.min(1, Math.log10(1 + freq) / 3);
+    const saturation = Math.min(1, Math.log10(1 + freq) / 2.5);
     const color = `hsl(0deg ${(saturation * 100).toFixed(1)}% 50%)`;
     freqStr = ` <span class="bccwj-freq" style="color:${color};font-size:0.8em">${freq.toFixed(1)}/M</span>`;
   }
@@ -209,6 +209,12 @@ const output = [];
 let insideVocab = false;
 let vocabDepth = 0; // nesting depth of <details> while inside a Vocab block
 let bulletDepth = 0; // depth of nested <details> inside the Vocab block body
+// Grammar <details> blocks are also inserted by `annotate-harness.mjs done`,
+// right after the source sentence (before the Vocab block). Like Vocab blocks,
+// their lines must not be counted toward sourceLineIndex, otherwise the
+// reconstructed sentence ID drifts and the per-occurrence sidecar lookup fails.
+let insideGrammar = false;
+let grammarDepth = 0; // nesting depth of <details> while inside a Grammar block
 // sourceLineIndex counts every source line (not <details> block lines).
 // When a Vocab block opens, sourceLineIndex - 1 is the sentence ID (the
 // line index of the preceding Japanese sentence in the original source file).
@@ -217,6 +223,26 @@ let currentSentenceId = null; // sentence ID for the Vocab block being processed
 
 for (const line of lines) {
   const trimmed = line.trim();
+
+  // Pass Grammar <details> blocks through verbatim without annotating, and
+  // without counting their lines toward sourceLineIndex (they are insertions,
+  // not original source lines).
+  if (insideGrammar) {
+    const opens = (line.match(/<details\b/gi) || []).length;
+    const closes = (line.match(/<\/details\b/gi) || []).length;
+    grammarDepth += opens - closes;
+    output.push(line);
+    if (grammarDepth <= 0) insideGrammar = false;
+    continue;
+  }
+  if (!insideVocab) {
+    if (/<details[^>]*>/.test(line) && /<summary[^>]*>\s*Grammar\s*<\/summary>/.test(line)) {
+      insideGrammar = true;
+      grammarDepth = 1;
+      output.push(line);
+      continue;
+    }
+  }
 
   // Detect opening of a Vocab details block.
   if (!insideVocab) {

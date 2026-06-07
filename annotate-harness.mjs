@@ -620,7 +620,7 @@ if (subcommand === "start") {
       for (const grammarLine of grammar.split("\n")) outputLines.push(grammarLine);
     }
     if (entries && entries.length > 0) {
-      outputLines.push("<details><summary>Vocab</summary>");
+      outputLines.push("<details class=\"vocab\"><summary>Vocab</summary>");
       for (const entry of entries) {
         // Bare strings are "Not in JMDict:" and "Proper noun:" annotations.
         const displayString = typeof entry === "string" ? entry : entry.form;
