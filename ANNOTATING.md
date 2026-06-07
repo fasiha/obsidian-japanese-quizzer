@@ -79,7 +79,7 @@ node publish.mjs
 
 ```bash
 node annotate-vocab-inline.mjs "Path/To/Story.annotated.TIMESTAMP.md" \
-  | pandoc -s -o /tmp/preview.html && open /tmp/preview.html
+  | pandoc -s -H header.html -o /tmp/preview.html && open /tmp/preview.html
 ```
 
 This creates an HTML file you can read, similar to the iOS Pug app's document reader.

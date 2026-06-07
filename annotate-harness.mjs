@@ -532,7 +532,8 @@ if (subcommand === "start") {
       morphemes TEXT NOT NULL,
       hits      TEXT NOT NULL DEFAULT '[]',
       annotations TEXT NOT NULL DEFAULT '[]',
-      grammar   TEXT NOT NULL DEFAULT ''
+      grammar   TEXT NOT NULL DEFAULT '',
+      translation TEXT NOT NULL DEFAULT ''
     );
   `);
   work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
@@ -588,20 +589,25 @@ if (subcommand === "start") {
   const workPath = path.resolve(arg);
   const work = new Database(workPath, { readonly: true });
 
-  // Add grammar column if it was created before grammar support was added.
+  // Add grammar/translation columns if the DB predates their support.
   const cols = work.prepare("PRAGMA table_info(sentences)").all();
-  if (!cols.some((c) => c.name === "grammar")) {
+  const missingCols = [];
+  if (!cols.some((c) => c.name === "grammar")) missingCols.push("grammar");
+  if (!cols.some((c) => c.name === "translation")) missingCols.push("translation");
+  if (missingCols.length > 0) {
     // Must reopen read-write to alter schema.
     work.close();
     const rw = new Database(workPath);
-    rw.exec("ALTER TABLE sentences ADD COLUMN grammar TEXT NOT NULL DEFAULT ''");
+    for (const col of missingCols) {
+      rw.exec(`ALTER TABLE sentences ADD COLUMN ${col} TEXT NOT NULL DEFAULT ''`);
+    }
     rw.close();
     // Reopen read-only.
   }
   const workRo = new Database(workPath, { readonly: true });
 
   const sourceFile = workRo.prepare(`SELECT value FROM meta WHERE key = 'sourceFile'`).pluck().get();
-  const rows = workRo.prepare(`SELECT id, annotations, grammar FROM sentences`).all();
+  const rows = workRo.prepare(`SELECT id, annotations, grammar, translation FROM sentences`).all();
   workRo.close();
 
   const sourceText = readFileSync(sourceFile, "utf8");
@@ -609,18 +615,23 @@ if (subcommand === "start") {
 
   const annotationMap = new Map(rows.map((r) => [r.id, JSON.parse(r.annotations)]));
   const grammarMap = new Map(rows.filter((r) => r.grammar).map((r) => [r.id, r.grammar]));
+  const translationMap = new Map(rows.filter((r) => r.translation).map((r) => [r.id, r.translation]));
 
   const outputLines = [];
   for (let i = 0; i < lines.length; i++) {
     outputLines.push(lines[i]);
+    const translation = translationMap.get(i);
     const grammar = grammarMap.get(i);
     const entries = annotationMap.get(i);
-    // Grammar block first, then Vocab block — consistent canonical order.
+    // Canonical order: Translation block, then Grammar block, then Vocab block.
+    if (translation) {
+      for (const translationLine of translation.split("\n")) outputLines.push(translationLine);
+    }
     if (grammar) {
       for (const grammarLine of grammar.split("\n")) outputLines.push(grammarLine);
     }
     if (entries && entries.length > 0) {
-      outputLines.push("<details class=\"vocab\"><summary>Vocab</summary>");
+      outputLines.push("<details><summary>Vocab</summary>");
       for (const entry of entries) {
         // Bare strings are "Not in JMDict:" and "Proper noun:" annotations.
         const displayString = typeof entry === "string" ? entry : entry.form;
@@ -776,15 +787,17 @@ if (subcommand === "start") {
 
   const vocabUpdates = new Map(); // sentenceId → annotation array
   const grammarUpdates = new Map(); // sentenceId → verbatim grammar block string
+  const translationUpdates = new Map(); // sentenceId → verbatim translation block string
   const presentIds = new Set(); // sentence IDs that appeared in the annotated file
 
-  // State machine: idle → vocab or grammar → idle, cycling per sentence.
-  // 'idle' with currentSentenceId set means we're between two consecutive blocks
-  // (grammar then vocab, or vice versa) for the same sentence.
-  let state = "idle"; // "idle" | "vocab" | "grammar"
+  // State machine: idle → vocab, grammar, or translation → idle, cycling per
+  // sentence. 'idle' with currentSentenceId set means we're between consecutive
+  // blocks (any combination of translation/grammar/vocab) for the same sentence.
+  let state = "idle"; // "idle" | "vocab" | "grammar" | "translation"
   let currentSentenceId = null;
   let currentBullets = [];
   let currentGrammarLines = []; // raw lines including opening/closing tags
+  let currentTranslationLines = []; // raw lines including opening/closing tags
 
   function flushSentence() {
     if (currentSentenceId !== null) {
@@ -793,9 +806,13 @@ if (subcommand === "start") {
       if (currentGrammarLines.length > 0) {
         grammarUpdates.set(currentSentenceId, currentGrammarLines.join("\n"));
       }
+      if (currentTranslationLines.length > 0) {
+        translationUpdates.set(currentSentenceId, currentTranslationLines.join("\n"));
+      }
     }
     currentBullets = [];
     currentGrammarLines = [];
+    currentTranslationLines = [];
     currentSentenceId = null;
   }
 
@@ -814,8 +831,9 @@ if (subcommand === "start") {
     if (state === "idle") {
       const isVocab = /<details[^>]*>/.test(line) && /<summary[^>]*>\s*Vocab\s*<\/summary>/.test(line);
       const isGrammar = /<details[^>]*>/.test(line) && /<summary[^>]*>\s*Grammar\s*<\/summary>/.test(line);
+      const isTranslation = /<details[^>]*>/.test(line) && /<summary[^>]*>\s*Translation\s*<\/summary>/.test(line);
 
-      if (isVocab || isGrammar) {
+      if (isVocab || isGrammar || isTranslation) {
         // If no current sentence, identify it from the preceding line.
         // If we already have one (second consecutive block), reuse it.
         if (currentSentenceId === null) {
@@ -829,6 +847,13 @@ if (subcommand === "start") {
             state = "grammar";
             currentGrammarLines = [line];
           }
+        } else if (isTranslation) {
+          if (/<\/details\b/.test(line)) {
+            currentTranslationLines = [line];
+          } else {
+            state = "translation";
+            currentTranslationLines = [line];
+          }
         } else {
           state = "vocab";
         }
@@ -841,6 +866,12 @@ if (subcommand === "start") {
 
     if (state === "grammar") {
       currentGrammarLines.push(line);
+      if (/<\/details\b/.test(line)) state = "idle";
+      continue;
+    }
+
+    if (state === "translation") {
+      currentTranslationLines.push(line);
       if (/<\/details\b/.test(line)) state = "idle";
       continue;
     }
@@ -908,26 +939,30 @@ if (subcommand === "start") {
   }
   flushSentence(); // flush any trailing sentence context at end of file
 
-  // Migrate grammar column for DBs created before grammar support.
+  // Migrate grammar/translation columns for DBs that predate their support.
   const existingCols = work.prepare("PRAGMA table_info(sentences)").all();
   if (!existingCols.some((c) => c.name === "grammar")) {
     work.exec("ALTER TABLE sentences ADD COLUMN grammar TEXT NOT NULL DEFAULT ''");
   }
+  if (!existingCols.some((c) => c.name === "translation")) {
+    work.exec("ALTER TABLE sentences ADD COLUMN translation TEXT NOT NULL DEFAULT ''");
+  }
 
   // Write updates back. Only sentences present in the annotated file are touched.
   // Sentences not in the file are left as-is (still unannotated for further work).
-  const updateStmt = work.prepare("UPDATE sentences SET annotations = ?, grammar = ? WHERE id = ?");
+  const updateStmt = work.prepare("UPDATE sentences SET annotations = ?, grammar = ?, translation = ? WHERE id = ?");
   const updateAll = work.transaction(() => {
     for (const id of presentIds) {
       const annotations = vocabUpdates.get(id) ?? [];
       const grammar = grammarUpdates.get(id) ?? "";
-      updateStmt.run(JSON.stringify(annotations), grammar, id);
+      const translation = translationUpdates.get(id) ?? "";
+      updateStmt.run(JSON.stringify(annotations), grammar, translation, id);
     }
   });
   updateAll();
   work.close();
 
-  console.log(`Reimported ${presentIds.size} sentences into ${workPath} (${vocabUpdates.size} with vocab, ${grammarUpdates.size} with grammar)`);
+  console.log(`Reimported ${presentIds.size} sentences into ${workPath} (${vocabUpdates.size} with vocab, ${grammarUpdates.size} with grammar, ${translationUpdates.size} with translation)`);
   const notPresent = rows.length - presentIds.size;
   if (notPresent > 0) {
     console.log(`  (${notPresent} sentences not in annotated file — left untouched for further work)`);

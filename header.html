@@ -1,0 +1,63 @@
+<style>
+@media (prefers-color-scheme: dark) {
+  :root { background: #0d1117; color: #c9d1d9; }
+  a { color: #58a6ff; }
+  ruby rt { color: #aaa; }
+  /* details:not(:has(+ details)) { margin-bottom: 1rem; } */
+    p {margin-bottom:0;}
+
+}
+
+.furigana-toggle {
+  margin-left: 0.5em;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+</style>
+
+<script>
+// Adds a "ふりがな" toggle button to every Vocab <details> block that contains
+// a hidden .furigana-sentence span (emitted by annotate-vocab-inline.mjs).
+// Clicking it swaps the plain sentence paragraph above the block for the
+// pre-rendered <ruby>-annotated version, and clicking again swaps it back.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll(".furigana-sentence").forEach((span) => {
+    const details = span.closest("details");
+    if (!details) return;
+    const summary = details.querySelector("summary");
+    if (!summary) return;
+
+    // The sentence <p> is the nearest preceding sibling that is not itself a
+    // <details> block — Grammar and/or Translation blocks may sit in between.
+    let sentence = details.previousElementSibling;
+    while (sentence && sentence.tagName === "DETAILS") {
+      sentence = sentence.previousElementSibling;
+    }
+    if (!sentence) return;
+
+    // Swap the sentence paragraph's content directly rather than toggling
+    // `hidden` on two elements — pandoc places the (always-hidden) span
+    // wherever it landed in the Vocab block's bullet list, not next to the
+    // sentence, so toggling visibility in place wouldn't show anything useful.
+    const plainHTML = sentence.innerHTML;
+    const furiganaHTML = span.innerHTML;
+    let showingFurigana = false;
+
+    // Placed in its own <div> right after <summary> — NOT inside <summary> —
+    // because a click anywhere inside <summary> toggles the <details> open
+    // state natively, and that activation behaviour isn't reliably cancelable
+    // by calling preventDefault() on the bubbled click from a child button.
+    const row = document.createElement("div");
+    row.className = "furigana-toggle-row";
+    const button = document.createElement("button");
+    button.textContent = "ふりがな";
+    button.className = "furigana-toggle";
+    button.addEventListener("click", () => {
+      showingFurigana = !showingFurigana;
+      sentence.innerHTML = showingFurigana ? furiganaHTML : plainHTML;
+    });
+    row.appendChild(button);
+    summary.insertAdjacentElement("afterend", row);
+  });
+});
+</script>

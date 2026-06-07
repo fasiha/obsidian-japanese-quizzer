@@ -52,11 +52,15 @@ if (!fm?.["llm-review"]) {
 }
 
 const { db } = await setup(JMDICT_DB);
-const rawTags = new Database(JMDICT_DB)
+const rawDb = new Database(JMDICT_DB);
+const rawTags = rawDb
   .prepare("select value_json from metadata where key='tags'")
   .pluck()
   .get();
 const tags = JSON.parse(rawTags);
+const furiganaStmt = rawDb.prepare(
+  "SELECT segs FROM furigana WHERE text = ? AND reading = ?",
+);
 
 // Build maps from JMDict ID → sense indices and BCCWJ frequency.
 const senseIndexMap = new Map(); // id (string) → number[]
@@ -131,6 +135,146 @@ function resolveWord(bullet) {
 
   const [word] = idsToWords(db, matchIds);
   return word ?? null;
+}
+
+// --- Toggle-furigana feature: build-time sentence ruby resolution ----------
+//
+// For each Vocab block, we resolve a fully ruby-annotated copy of the
+// preceding sentence and embed it as a hidden <span>. A pandoc-header script
+// swaps it in on click, so no dictionary lookups happen at runtime.
+//
+// The resolution mirrors `sentenceFuriganaSegments` in SentenceFuriganaView.swift:
+//   Step 1 — exact-form match: each vocab word's specific (kanji-form, kana
+//            reading) pair — taken straight from the bullet, the same
+//            per-occurrence resolution `lookupFurigana(text:reading:db:)`
+//            performs on the iOS side — is searched for verbatim; first-found
+//            wins and overlapping matches are skipped.
+//   Step 2 — single-kanji fallback: any kanji still unannotated that appears
+//            exactly once and has one agreed reading across all candidates is
+//            annotated individually, covering conjugated forms whose full
+//            dictionary form does not appear verbatim.
+
+// Returns whether a single character is a CJK kanji character.
+function isKanji(ch) {
+  const cp = ch.codePointAt(0);
+  return (cp >= 0x4e00 && cp <= 0x9fff)   // CJK Unified Ideographs
+    || (cp >= 0x3400 && cp <= 0x4dbf)     // CJK Extension A
+    || (cp >= 0xf900 && cp <= 0xfaff);    // CJK Compatibility Ideographs
+}
+
+// Resolves the furigana segments for one vocab bullet by looking up its
+// specific (kanji-form, kana-reading) pair — taken from the bullet text
+// itself — in the furigana table. Returns null for kana-only words, words
+// with no kanji forms, or lookup misses.
+function buildFuriganaCandidate(word, bullet) {
+  if (!word || word.kanji.length === 0) return null;
+  const tokens = extractJapaneseTokens(bullet);
+  if (tokens.length === 0) return null;
+
+  // Vocab bullets are written as "<reading> <kanji form>" (e.g. "おおき 大き"),
+  // or just "<kanji form>" for entries whose bullet omits the reading.
+  const [text, reading] = tokens.length >= 2
+    ? [tokens[1], tokens[0]]
+    : [tokens[0], word.kana[0]?.text];
+  if (!text || !reading) return null;
+
+  const row = furiganaStmt.get(text, reading);
+  if (!row) return null;
+  try {
+    const segs = JSON.parse(row.segs);
+    if (!Array.isArray(segs) || !segs.some((s) => s.rt)) return null;
+    return { text, segs };
+  } catch {
+    return null;
+  }
+}
+
+// Splits a sentence into alternating plain-text and pre-existing-<ruby> chunks.
+// Pre-existing <ruby> spans (inserted by an earlier annotation pass) are kept
+// verbatim and never re-annotated; only the plain-text chunks between them are
+// candidates for new furigana.
+function splitRubyChunks(sentence) {
+  const chunks = [];
+  const re = /<ruby>.*?<\/ruby>/gis;
+  let last = 0;
+  let m;
+  while ((m = re.exec(sentence))) {
+    if (m.index > last) chunks.push({ ruby: false, text: sentence.slice(last, m.index) });
+    chunks.push({ ruby: true, text: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < sentence.length) chunks.push({ ruby: false, text: sentence.slice(last) });
+  return chunks;
+}
+
+// Applies the two-step resolution to one plain-text chunk, returning HTML
+// with new <ruby> spans spliced in around the matched substrings.
+function annotateChunk(text, candidates) {
+  const matches = [];
+  for (const { text: form, segs } of candidates) {
+    let from = 0;
+    let idx;
+    while ((idx = text.indexOf(form, from)) >= 0) {
+      const end = idx + form.length;
+      if (!matches.some((m) => idx < m.end && end > m.start)) {
+        matches.push({ start: idx, end, segs });
+      }
+      from = idx + 1;
+    }
+  }
+
+  // Step 2: build a kanji → reading map from every candidate's segments, then
+  // annotate single-character kanji that occur exactly once and have one
+  // agreed-upon reading across all candidates that mention them.
+  const kanjiReadings = new Map(); // kanji char -> Set<reading>
+  for (const { segs } of candidates) {
+    for (const seg of segs) {
+      if (seg.rt && [...seg.ruby].length === 1 && isKanji(seg.ruby)) {
+        if (!kanjiReadings.has(seg.ruby)) kanjiReadings.set(seg.ruby, new Set());
+        kanjiReadings.get(seg.ruby).add(seg.rt);
+      }
+    }
+  }
+  for (const [kanji, readings] of kanjiReadings) {
+    if (readings.size !== 1) continue;
+    const occurrences = [];
+    let from = 0;
+    let idx;
+    while ((idx = text.indexOf(kanji, from)) >= 0) {
+      occurrences.push(idx);
+      from = idx + 1;
+    }
+    if (occurrences.length !== 1) continue;
+    const [start] = occurrences;
+    const end = start + kanji.length;
+    if (matches.some((m) => start < m.end && end > m.start)) continue;
+    matches.push({ start, end, segs: [{ ruby: kanji, rt: [...readings][0] }] });
+  }
+
+  matches.sort((a, b) => a.start - b.start);
+
+  let html = "";
+  let pos = 0;
+  for (const { start, end, segs } of matches) {
+    html += text.slice(pos, start);
+    for (const seg of segs) {
+      html += seg.rt ? `<ruby>${seg.ruby}<rt>${seg.rt}</rt></ruby>` : seg.ruby;
+    }
+    pos = end;
+  }
+  html += text.slice(pos);
+  return html;
+}
+
+// Resolves a fully ruby-annotated copy of `sentence`, merging furigana from
+// every vocab bullet's candidate. Pre-existing <ruby> spans are preserved
+// verbatim; new <ruby> spans are spliced into the plain-text chunks between them.
+// Returns null when there is no sentence or no candidates to annotate with.
+function resolveSentenceFurigana(sentence, candidates) {
+  if (!sentence || candidates.length === 0) return null;
+  return splitRubyChunks(sentence)
+    .map((chunk) => (chunk.ruby ? chunk.text : annotateChunk(chunk.text, candidates)))
+    .join("");
 }
 
 // Build a compact human-readable annotation string from a JMDict word object.
@@ -209,36 +353,57 @@ const output = [];
 let insideVocab = false;
 let vocabDepth = 0; // nesting depth of <details> while inside a Vocab block
 let bulletDepth = 0; // depth of nested <details> inside the Vocab block body
-// Grammar <details> blocks are also inserted by `annotate-harness.mjs done`,
-// right after the source sentence (before the Vocab block). Like Vocab blocks,
-// their lines must not be counted toward sourceLineIndex, otherwise the
-// reconstructed sentence ID drifts and the per-occurrence sidecar lookup fails.
-let insideGrammar = false;
-let grammarDepth = 0; // nesting depth of <details> while inside a Grammar block
+// Translation and Grammar <details> blocks are also inserted by
+// `annotate-harness.mjs done`, right after the source sentence (before the Vocab
+// block). Like Vocab blocks, their lines must not be counted toward
+// sourceLineIndex, otherwise the reconstructed sentence ID drifts and the
+// per-occurrence sidecar lookup fails. We skip any non-Vocab <details> block
+// generically so future block types don't reintroduce this drift.
+let insideSkipBlock = false;
+let skipBlockDepth = 0; // nesting depth of <details> while inside a skipped block
 // sourceLineIndex counts every source line (not <details> block lines).
 // When a Vocab block opens, sourceLineIndex - 1 is the sentence ID (the
 // line index of the preceding Japanese sentence in the original source file).
 let sourceLineIndex = 0;
 let currentSentenceId = null; // sentence ID for the Vocab block being processed
+// Most recent non-blank "real" source line — the sentence the next Vocab
+// (or skipped Grammar/Translation) block annotates. Used to resolve the
+// toggle-furigana <span> for the Vocab block.
+let lastProseLine = null;
+let vocabSentenceText = null; // sentence text captured when the current Vocab block opened
+let vocabFuriganaCandidates = []; // accumulated furigana candidates for the current Vocab block
 
 for (const line of lines) {
   const trimmed = line.trim();
 
-  // Pass Grammar <details> blocks through verbatim without annotating, and
-  // without counting their lines toward sourceLineIndex (they are insertions,
-  // not original source lines).
-  if (insideGrammar) {
+  // Pass non-Vocab <details> blocks (Translation, Grammar, …) through verbatim
+  // without annotating, and without counting their lines toward sourceLineIndex
+  // (they are insertions, not original source lines).
+  if (insideSkipBlock) {
     const opens = (line.match(/<details\b/gi) || []).length;
     const closes = (line.match(/<\/details\b/gi) || []).length;
-    grammarDepth += opens - closes;
+    skipBlockDepth += opens - closes;
     output.push(line);
-    if (grammarDepth <= 0) insideGrammar = false;
+    if (skipBlockDepth <= 0) insideSkipBlock = false;
     continue;
   }
   if (!insideVocab) {
-    if (/<details[^>]*>/.test(line) && /<summary[^>]*>\s*Grammar\s*<\/summary>/.test(line)) {
-      insideGrammar = true;
-      grammarDepth = 1;
+    // A <details> opening whose summary is not "Vocab" is an inserted block to skip.
+    const isDetailsOpen = /<details[^>]*>/.test(line);
+    const isVocabOpen = isDetailsOpen && /<summary[^>]*>\s*Vocab\s*<\/summary>/.test(line);
+    if (isDetailsOpen && !isVocabOpen) {
+      // Compact one-liner (whole block on one line) needs no state change.
+      const opens = (line.match(/<details\b/gi) || []).length;
+      const closes = (line.match(/<\/details\b/gi) || []).length;
+      if (opens - closes > 0) {
+        insideSkipBlock = true;
+        skipBlockDepth = opens - closes;
+      }
+      // Same blank-line separation as for Vocab blocks: ensure prose before
+      // a Grammar/Translation block gets wrapped in <p> by pandoc.
+      if (output.length && output[output.length - 1] !== "") {
+        output.push("");
+      }
       output.push(line);
       continue;
     }
@@ -251,6 +416,17 @@ for (const line of lines) {
       vocabDepth = 1;
       bulletDepth = 0;
       currentSentenceId = sourceLineIndex - 1; // preceding source line is the sentence
+      vocabSentenceText = lastProseLine;
+      vocabFuriganaCandidates = [];
+      // Separate the preceding prose line from this block with a blank line so
+      // pandoc wraps the prose in its own <p> element instead of absorbing it as
+      // a bare text node into the raw-HTML <details> block. Without a real
+      // element between sentences, CSS sibling selectors (used to add
+      // margin-bottom after the last <details> of each sentence) cannot see the
+      // boundary, because the `+` combinator ignores text nodes.
+      if (output.length && output[output.length - 1] !== "") {
+        output.push("");
+      }
       output.push(line);
       // Pandoc requires a blank line after the opening tag to treat the
       // contents as Markdown rather than raw HTML.
@@ -259,6 +435,7 @@ for (const line of lines) {
     }
     output.push(line);
     sourceLineIndex++;
+    if (trimmed) lastProseLine = line;
     continue;
   }
 
@@ -273,6 +450,12 @@ for (const line of lines) {
 
   if (nextDepth <= 0) {
     // This line contains the closing </details> for the Vocab block itself.
+    // Inject the resolved toggle-furigana sentence (hidden by default; a
+    // pandoc-header script swaps it in on click) before closing the block.
+    const furiganaHtml = resolveSentenceFurigana(vocabSentenceText, vocabFuriganaCandidates);
+    if (furiganaHtml) {
+      output.push(`<span class="furigana-sentence" hidden>${furiganaHtml}</span>`);
+    }
     insideVocab = false;
     output.push(line);
     continue;
@@ -292,6 +475,8 @@ for (const line of lines) {
     if (bullet && !bullet.startsWith("counter:")) {
       const word = resolveWord(bullet);
       const annotation = buildAnnotation(word, bullet, currentSentenceId);
+      const furiganaCandidate = buildFuriganaCandidate(word, bullet);
+      if (furiganaCandidate) vocabFuriganaCandidates.push(furiganaCandidate);
       if (annotation) {
         // Append annotation after the bullet text, preserving leading whitespace.
         const leadingSpace = line.match(/^(\s*)/)[1];
