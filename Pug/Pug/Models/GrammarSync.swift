@@ -41,6 +41,7 @@ struct GrammarTopic: Codable {
     var cautions: [String]?           // common mistakes and edge cases
     var isStub: Bool?           // true if description was generated without any user content sentences
     var classicalJapanese: Bool?  // true if this topic covers a Classical Japanese grammar point
+    var quizDisabled: Bool?       // true if this topic is annotation-only and cannot be enrolled
 
     /// The full source-prefixed identifier, e.g. "genki:potential-verbs".
     var prefixedId: String { "\(source):\(id)" }
@@ -106,6 +107,7 @@ struct GrammarEquivalenceGroup: Codable {
     let cautions: [String]            // common mistakes and edge cases
     let stub: Bool?                   // true if generated without any user content sentences
     let classicalJapanese: Bool?      // true if this group covers a Classical Japanese grammar point
+    let quizDisabled: Bool?           // true if this group is annotation-only and cannot be enrolled
 }
 
 // MARK: - Sync helpers
@@ -199,6 +201,7 @@ enum GrammarSync {
             manifest.topics[key]?.cautions = group.cautions
             manifest.topics[key]?.isStub          = group.stub
             manifest.topics[key]?.classicalJapanese = group.classicalJapanese
+            manifest.topics[key]?.quizDisabled      = group.quizDisabled
         }
     }
 

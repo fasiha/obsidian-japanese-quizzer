@@ -56,6 +56,7 @@ struct GrammarQuizItem: Identifiable {
     let cautions: [String]?
     let isStub: Bool?
     let classicalJapanese: Bool?
+    let quizDisabled: Bool?
     /// The sub-use index to target in the next quiz generation, indexing into `enrolledSubUses`.
     /// Derived from the most recent review's quiz_data sub_use_index, incremented mod enrolledSubUses.count.
     /// Nil when enrolledSubUses is empty/nil or no prior review has recorded a sub_use_index.
@@ -200,12 +201,13 @@ struct GrammarQuizContext {
                     cautions:            topic.cautions,
                     isStub:              topic.isStub,
                     classicalJapanese:   topic.classicalJapanese,
+                    quizDisabled:        topic.quizDisabled,
                     nextSubUseIndex:     nextSubUseIndex
                 ))
             }
         }
 
-        let filtered = items.filter { $0.classicalJapanese != true }
+        let filtered = items.filter { $0.classicalJapanese != true && $0.quizDisabled != true }
         let sorted = filtered.sorted { $0.recall < $1.recall }
         return collapseEquivalenceGroups(sorted)
     }

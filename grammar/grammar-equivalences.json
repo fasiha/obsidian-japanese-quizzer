@@ -1459,5 +1459,23 @@
       "Do not confuse with the noun き (tree/spirit) or the verb stem き from くる — the presence of an adjective stem before き makes it unambiguous"
     ],
     "classicalJapanese": true
+  },
+  {
+    "topics": [
+      "tofugu:verb-stem-form-conjugation"
+    ],
+    "quizDisabled": true,
+    "summary": "The masu stem (V-stem, 連用形) is formed by replacing a godan verb's final vowel with its い-row equivalent (読む→読み, 買う→買い) or by dropping the final る from an ichidan verb (食べる→食べ, 見る→見). Beyond its role as the base for ます-form polite conjugation, the masu stem can stand alone as a noun or combine with another word to form a compound verb or noun.",
+    "subUses": [
+      {
+        "id": "noun-and-compound",
+        "text": "Noun usage and compound formation: the stem names the action as a thing (休み = a rest/day off, 帰り = the trip home, 終わり = an ending) or fuses with another verb stem to form a compound (当たり損ない = a miss, 飛び込む = to jump in)"
+      }
+    ],
+    "cautions": [
+      "This tag covers only the noun/noun-like usage of the masu stem, not its use as the base for ます-form conjugation or other verb endings",
+      "Not every verb's masu stem freely nominalizes — many are idiomatic or fixed expressions; judge by whether the compound or standalone noun form is lexicalized",
+      "The compound-verb use (V-stem + V, like 飛び込む) is grammatically distinct from the standalone noun use (V-stem alone, like 休み), but both fall under this tag"
+    ]
   }
 ]

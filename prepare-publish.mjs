@@ -1435,6 +1435,7 @@ const grammarSources = {
   genki: { name: "Genki I & II", type: "textbook" },
   bunpro: { name: "Bunpro", type: "online" },
   dbjg: { name: "Dictionary of Basic Japanese Grammar", type: "book" },
+  tofugu: { name: "Tofugu", type: "online" },
 };
 
 const grammarTopics = {};
@@ -1524,6 +1525,7 @@ for (const [id, topic] of Object.entries(grammarTopics)) {
     if (group.cautions) topic.cautions = group.cautions;
     if (group.stub) topic.stub = group.stub;
     if (group.classicalJapanese) topic.classicalJapanese = group.classicalJapanese;
+    if (group.quizDisabled) topic.quizDisabled = group.quizDisabled;
   }
 }
 

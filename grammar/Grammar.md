@@ -90,6 +90,32 @@ Example rows:
 | `bound-particles` | Classical | Bound Particles |
 | `the-auxiliary-verb-～ず-i` | Intermediate III | The Auxiliary Verb ～ず (I) |
 
+### Tofugu — `grammar-tofugu.tsv` (~129 entries)
+
+- **Source:** https://www.tofugu.com/japanese-grammar/
+- **Extraction:** Generated script (see file header comment for timestamp)
+- **Columns:** `id`, `href`, `title`, `gloss` — no `level`, no `title-jp`, no `alias-of`
+- **Key format:** English slugs with hyphens, e.g. `verb-stem-form-conjugation`, `adjective-sou`
+- **Coverage:** Practical modern grammar, verb conjugation forms, particles, and sentence patterns — broadly overlapping with Bunpro and DBJG but with its own pedagogical framing and gloss summaries
+- **Note:** Enroll entries selectively; the full site covers ~129 topics. Prefer Bunpro or DBJG for standard grammar points; use Tofugu when it provides a clearer gloss or covers a form the others lack.
+
+Example rows:
+
+| id | title | gloss |
+|----|-------|-------|
+| `adjective-suffix-sa` | Adjective さ (Objective Nouns) | Adding 〜さ to an adjective turns it into a noun, and gives it the nuance that the noun is objective and measurable. |
+| `adjective-sou` | Adjective そう | 〜そう can be added to adjectives to mark them as speculative, such as おいしそう = "looks delicious". |
+
+## Equivalence group flags
+
+Each equivalence group in `grammar-equivalences.json` can carry optional boolean flags that control how the iOS app treats the group:
+
+- **`classicalJapanese: true`** — marks topics that cover exclusively Classical Japanese grammar with no modern-Japanese sub-use. The app shows a "classical" badge, disables enrollment for unenrolled users, and filters these topics out of the quiz pool entirely. Set this when every topic in the group is archaic/classical (e.g. classical auxiliaries, 係り結び) and would not appear in modern reading material.
+
+- **`quizDisabled: true`** — marks topics that exist for annotation purposes only and should never become quiz items. The app shows an "annotation only" badge, disables enrollment, and filters these topics out of the quiz pool. Use this for morphological observations or phenomena that lack a productive drilling format — for example, the masu-stem-as-noun pattern (`tofugu:verb-stem-form-conjugation`), where learners recognize an etymology rather than applying a conjugation rule.
+
+The two flags are independent; a topic can have either, both, or neither.
+
 ## Reference sources (not enrolled as databases)
 
 These sources are not scraped into TSV files and have no topic IDs, but are

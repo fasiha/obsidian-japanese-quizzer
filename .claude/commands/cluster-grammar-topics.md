@@ -54,6 +54,7 @@ hasn't annotated yet:
 - `grammar/grammar-dbjg.tsv` (Dictionary of Basic Japanese Grammar — keys are romaji, e.g. `miru`, `nara`)
 - `grammar/kanshudo-grammar.tsv` (Kanshudo grammar index — columns: id, href, level, title, gloss; keys are English slugs with underscores, e.g. `passive_voice`, `te_form`)
 - `grammar/grammar-imabi.tsv` (IMABI lessons — columns: id, href, level, title; keys are English slugs with hyphens, e.g. `bound-particles`; levels include `Classical`, `Intermediate III`, etc.; **hand-curated, not exhaustive** — only a small set of relevant entries, not a full scrape)
+- `grammar/grammar-tofugu.tsv` (Tofugu grammar guide — columns: id, href, title, gloss; keys are English slugs with hyphens, e.g. `verb-stem-form-conjugation`, `adjective-sou`; no level field)
 
 **Important:** DBJG and Genki TSV keys are romaji, not Japanese script. Kanshudo and IMABI keys are English slugs (underscores for Kanshudo, hyphens for IMABI). When searching for a topic
 like てみる, search both the Japanese form (for Bunpro) and likely romaji equivalents (for DBJG/Genki) and English slug forms (for Kanshudo/IMABI).

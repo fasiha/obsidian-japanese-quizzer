@@ -159,6 +159,14 @@ struct GrammarDetailSheet: View {
                             .background(.purple.opacity(0.15), in: Capsule())
                             .foregroundStyle(.purple)
                     }
+                    if topic.quizDisabled == true && t.prefixedId == topic.prefixedId {
+                        Text("annotation only")
+                            .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.gray.opacity(0.15), in: Capsule())
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
@@ -303,11 +311,16 @@ struct GrammarDetailSheet: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(enrolled ? .red : .accentColor)
-                    .disabled(topic.classicalJapanese == true && !enrolled)
+                    .disabled((topic.classicalJapanese == true || topic.quizDisabled == true) && !enrolled)
                 }
             }
             if topic.classicalJapanese == true && !enrolled {
                 Text("Classical Japanese topics are reference-only and cannot be enrolled.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            if topic.quizDisabled == true && !enrolled {
+                Text("This topic is for annotation only and cannot be enrolled for quizzing.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

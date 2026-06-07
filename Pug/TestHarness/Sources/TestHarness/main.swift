@@ -414,6 +414,10 @@ if isGrammarMode {
         fputs("Warning: topic '\(topicId)' is a Classical Japanese topic (reference-only).\n", stderr)
         fputs("  Classical topics are filtered out of the quiz pool and should not reach the harness.\n", stderr)
     }
+    if topic.quizDisabled == true {
+        fputs("Warning: topic '\(topicId)' is annotation-only (quizDisabled).\n", stderr)
+        fputs("  Quiz-disabled topics are filtered out of the quiz pool and should not reach the harness.\n", stderr)
+    }
 
     // Resolve --extra-grammar topic1,topic2 into GrammarExtraTopic values.
     // Unknown IDs are warned about but not fatal, so the user can still test with partial lists.

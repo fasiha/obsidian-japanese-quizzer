@@ -288,7 +288,7 @@ export const GRAMMAR_DIR = path.join(projectRoot, "grammar");
 /**
  * Load all grammar databases and return a Map<prefixedId, entry>.
  * Each entry: { source, id, prefixedId, titleEn, titleJp?, level, href, aliasOf? }
- * Source prefixes: "genki:", "bunpro:", "dbjg:", "kanshudo:"
+ * Source prefixes: "genki:", "bunpro:", "dbjg:", "kanshudo:", "imabi:", "tofugu:"
  */
 export function loadGrammarDatabases() {
   const map = new Map();
@@ -341,6 +341,11 @@ export function loadGrammarDatabases() {
 
   // IMABI: id, href, level, title  (no titleJp, no alias-of)
   loadTsv(path.join(GRAMMAR_DIR, "grammar-imabi.tsv"), "imabi");
+
+  // Tofugu: id, href, title, gloss  (no level, no titleJp, no alias-of)
+  loadTsv(path.join(GRAMMAR_DIR, "grammar-tofugu.tsv"), "tofugu", {
+    titleEnCol: 2,
+  });
 
   return map;
 }

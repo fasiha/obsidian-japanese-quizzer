@@ -531,7 +531,8 @@ if (subcommand === "start") {
       furigana  TEXT,
       morphemes TEXT NOT NULL,
       hits      TEXT NOT NULL DEFAULT '[]',
-      annotations TEXT NOT NULL DEFAULT '[]'
+      annotations TEXT NOT NULL DEFAULT '[]',
+      grammar   TEXT NOT NULL DEFAULT ''
     );
   `);
   work.prepare(`INSERT INTO meta VALUES ('sourceFile', ?)`).run(filePath);
@@ -587,21 +588,37 @@ if (subcommand === "start") {
   const workPath = path.resolve(arg);
   const work = new Database(workPath, { readonly: true });
 
-  const sourceFile = work.prepare(`SELECT value FROM meta WHERE key = 'sourceFile'`).pluck().get();
-  const rows = work.prepare(`SELECT id, annotations FROM sentences`).all();
-  work.close();
+  // Add grammar column if it was created before grammar support was added.
+  const cols = work.prepare("PRAGMA table_info(sentences)").all();
+  if (!cols.some((c) => c.name === "grammar")) {
+    // Must reopen read-write to alter schema.
+    work.close();
+    const rw = new Database(workPath);
+    rw.exec("ALTER TABLE sentences ADD COLUMN grammar TEXT NOT NULL DEFAULT ''");
+    rw.close();
+    // Reopen read-only.
+  }
+  const workRo = new Database(workPath, { readonly: true });
+
+  const sourceFile = workRo.prepare(`SELECT value FROM meta WHERE key = 'sourceFile'`).pluck().get();
+  const rows = workRo.prepare(`SELECT id, annotations, grammar FROM sentences`).all();
+  workRo.close();
 
   const sourceText = readFileSync(sourceFile, "utf8");
   const lines = sourceText.split("\n");
 
-  const annotationMap = new Map(
-    rows.map((r) => [r.id, JSON.parse(r.annotations)])
-  );
+  const annotationMap = new Map(rows.map((r) => [r.id, JSON.parse(r.annotations)]));
+  const grammarMap = new Map(rows.filter((r) => r.grammar).map((r) => [r.id, r.grammar]));
 
   const outputLines = [];
   for (let i = 0; i < lines.length; i++) {
     outputLines.push(lines[i]);
+    const grammar = grammarMap.get(i);
     const entries = annotationMap.get(i);
+    // Grammar block first, then Vocab block — consistent canonical order.
+    if (grammar) {
+      for (const grammarLine of grammar.split("\n")) outputLines.push(grammarLine);
+    }
     if (entries && entries.length > 0) {
       outputLines.push("<details><summary>Vocab</summary>");
       for (const entry of entries) {
@@ -756,41 +773,80 @@ if (subcommand === "start") {
   // Parse the annotated Markdown line-by-line.
   const annotatedLines = readFileSync(annotatedPath, "utf8").split("\n");
 
-  const updates = new Map(); // sentenceId → annotation array
-  const presentIds = new Set(); // sentence IDs that have a Vocab block in the file
-  let insideVocab = false;
+  const vocabUpdates = new Map(); // sentenceId → annotation array
+  const grammarUpdates = new Map(); // sentenceId → verbatim grammar block string
+  const presentIds = new Set(); // sentence IDs that appeared in the annotated file
+
+  // State machine: idle → vocab or grammar → idle, cycling per sentence.
+  // 'idle' with currentSentenceId set means we're between two consecutive blocks
+  // (grammar then vocab, or vice versa) for the same sentence.
+  let state = "idle"; // "idle" | "vocab" | "grammar"
   let currentSentenceId = null;
   let currentBullets = [];
+  let currentGrammarLines = []; // raw lines including opening/closing tags
 
-  function flushBullets() {
+  function flushSentence() {
     if (currentSentenceId !== null) {
       presentIds.add(currentSentenceId);
-      if (currentBullets.length > 0) updates.set(currentSentenceId, currentBullets);
+      if (currentBullets.length > 0) vocabUpdates.set(currentSentenceId, currentBullets);
+      if (currentGrammarLines.length > 0) {
+        grammarUpdates.set(currentSentenceId, currentGrammarLines.join("\n"));
+      }
     }
     currentBullets = [];
+    currentGrammarLines = [];
     currentSentenceId = null;
+  }
+
+  function matchSentenceFromPrevLine(li) {
+    const prevLine = li > 0 ? annotatedLines[li - 1] : "";
+    const strippedPrev = stripRuby(prevLine).trim();
+    const id = textToId.get(strippedPrev) ?? null;
+    if (id === null) console.warn(`  Warning: could not match sentence: ${strippedPrev.slice(0, 60)}`);
+    return id;
   }
 
   for (let li = 0; li < annotatedLines.length; li++) {
     const line = annotatedLines[li];
     const trimmed = line.trim();
 
-    if (!insideVocab) {
-      if (/<details[^>]*>/.test(line) && /<summary[^>]*>\s*Vocab\s*<\/summary>/.test(line)) {
-        insideVocab = true;
-        const prevLine = li > 0 ? annotatedLines[li - 1] : "";
-        const strippedPrev = stripRuby(prevLine).trim();
-        currentSentenceId = textToId.get(strippedPrev) ?? null;
+    if (state === "idle") {
+      const isVocab = /<details[^>]*>/.test(line) && /<summary[^>]*>\s*Vocab\s*<\/summary>/.test(line);
+      const isGrammar = /<details[^>]*>/.test(line) && /<summary[^>]*>\s*Grammar\s*<\/summary>/.test(line);
+
+      if (isVocab || isGrammar) {
+        // If no current sentence, identify it from the preceding line.
+        // If we already have one (second consecutive block), reuse it.
         if (currentSentenceId === null) {
-          console.warn(`  Warning: could not match sentence: ${strippedPrev.slice(0, 60)}`);
+          currentSentenceId = matchSentenceFromPrevLine(li);
         }
+        if (isGrammar) {
+          // Compact one-liner: entire block on one line — store verbatim and stay idle.
+          if (/<\/details\b/.test(line)) {
+            currentGrammarLines = [line];
+          } else {
+            state = "grammar";
+            currentGrammarLines = [line];
+          }
+        } else {
+          state = "vocab";
+        }
+      } else if (currentSentenceId !== null) {
+        // Non-details line while holding a sentence context — flush and process normally.
+        flushSentence();
       }
       continue;
     }
 
+    if (state === "grammar") {
+      currentGrammarLines.push(line);
+      if (/<\/details\b/.test(line)) state = "idle";
+      continue;
+    }
+
+    // state === "vocab"
     if (/<\/details\b/.test(line)) {
-      insideVocab = false;
-      flushBullets();
+      state = "idle";
       continue;
     }
 
@@ -849,20 +905,28 @@ if (subcommand === "start") {
       currentBullets.push({ form: bullet, wordId, sense_indices });
     }
   }
+  flushSentence(); // flush any trailing sentence context at end of file
+
+  // Migrate grammar column for DBs created before grammar support.
+  const existingCols = work.prepare("PRAGMA table_info(sentences)").all();
+  if (!existingCols.some((c) => c.name === "grammar")) {
+    work.exec("ALTER TABLE sentences ADD COLUMN grammar TEXT NOT NULL DEFAULT ''");
+  }
 
   // Write updates back. Only sentences present in the annotated file are touched.
   // Sentences not in the file are left as-is (still unannotated for further work).
-  const updateStmt = work.prepare("UPDATE sentences SET annotations = ? WHERE id = ?");
+  const updateStmt = work.prepare("UPDATE sentences SET annotations = ?, grammar = ? WHERE id = ?");
   const updateAll = work.transaction(() => {
     for (const id of presentIds) {
-      const annotations = updates.get(id) ?? [];
-      updateStmt.run(JSON.stringify(annotations), id);
+      const annotations = vocabUpdates.get(id) ?? [];
+      const grammar = grammarUpdates.get(id) ?? "";
+      updateStmt.run(JSON.stringify(annotations), grammar, id);
     }
   });
   updateAll();
   work.close();
 
-  console.log(`Reimported ${presentIds.size} sentences into ${workPath} (${updates.size} with annotations)`);
+  console.log(`Reimported ${presentIds.size} sentences into ${workPath} (${vocabUpdates.size} with vocab, ${grammarUpdates.size} with grammar)`);
   const notPresent = rows.length - presentIds.size;
   if (notPresent > 0) {
     console.log(`  (${notPresent} sentences not in annotated file — left untouched for further work)`);

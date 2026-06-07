@@ -112,6 +112,7 @@ func buildGrammarQuizItem(topic: GrammarTopic, path: GrammarPromptPath,
         cautions:            topic.cautions,
         isStub:              topic.isStub,
         classicalJapanese:   topic.classicalJapanese,
+        quizDisabled:        topic.quizDisabled,
         nextSubUseIndex:     nextSubUseIndex
     )
 }

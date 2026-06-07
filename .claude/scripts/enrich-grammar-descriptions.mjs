@@ -395,8 +395,9 @@ function write() {
     // classicalJapanese may come from the payload (skill-detected) or already be in the file
     // (hand-set); either way it is preserved. A payload value of false/absent clears it only
     // if the file also has it absent — a hand-set true is never cleared by an absent payload.
-    const { summary: _s, subUses: _u, cautions: _c, stub: _st, classicalJapanese: _cj, ...preserved } = groups[idx];
+    const { summary: _s, subUses: _u, cautions: _c, stub: _st, classicalJapanese: _cj, quizDisabled: _qd, ...preserved } = groups[idx];
     const classicalJapanese = desc.classicalJapanese || _cj || undefined;
+    const quizDisabled = desc.quizDisabled || _qd || undefined;
     groups[idx] = {
       ...preserved,
       summary: desc.summary,
@@ -404,6 +405,7 @@ function write() {
       cautions: desc.cautions,
       ...(desc.stub ? { stub: true } : {}),
       ...(classicalJapanese ? { classicalJapanese: true } : {}),
+      ...(quizDisabled ? { quizDisabled: true } : {}),
     };
     written++;
   }
