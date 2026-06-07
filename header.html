@@ -13,6 +13,13 @@
   font-size: 0.8em;
   cursor: pointer;
 }
+
+button.sticky {
+  position: fixed;
+  top: 0;
+  right: 0;
+  margin: 1rem;
+}
 </style>
 
 <script>
@@ -21,6 +28,17 @@
 // Clicking it swaps the plain sentence paragraph above the block for the
 // pre-rendered <ruby>-annotated version, and clicking again swaps it back.
 document.addEventListener("DOMContentLoaded", () => {
+  /** Toggle all furigana on/off sticky button */
+  const button = document.createElement('button');
+  {
+    button.className = 'sticky';
+    button.textContent = 'ふりがな';
+    button.addEventListener('click', () => {
+      document.querySelectorAll('button.furigana-toggle').forEach(o => o.click());
+    })
+    document.querySelector('body')?.appendChild(button);
+  }
+
   document.querySelectorAll(".furigana-sentence").forEach((span) => {
     const details = span.closest("details");
     if (!details) return;
