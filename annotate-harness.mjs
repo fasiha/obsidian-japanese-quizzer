@@ -503,7 +503,7 @@ if (!subcommand || (!arg && subcommand !== "help")) {
       "  node annotate-harness.mjs full  <file.md>  [work options]  — start + work + done in one step\n" +
       "  node annotate-harness.mjs start <file.md>  [--mecab-user-dictionary /path/to/user.dic]  — create work database\n" +
       "  node annotate-harness.mjs work     <work.db>  [--morpheme-budget N] [--max-batches N] [--parallel] [--dry-run]  — annotate in batches\n" +
-      "  node annotate-harness.mjs done     <work.db>  — produce annotated Markdown and vocab-inline-data.json sidecar\n" +
+      "  node annotate-harness.mjs done     <work.db>  [--no-timestamp]  — produce annotated Markdown and vocab-inline-data.json sidecar\n" +
       "  node annotate-harness.mjs reimport <work.db> <annotated.md>  — sync edited Markdown back into the work database"
   );
   process.exit(1);
@@ -630,10 +630,11 @@ if (subcommand === "start") {
     }
   }
 
-  const timestamp = Date.now();
+  const overwrite = restArgs.includes("--no-timestamp");
   const sourceDir = path.dirname(sourceFile);
   const sourceBase = path.basename(sourceFile, path.extname(sourceFile));
-  const outputPath = path.join(sourceDir, `${sourceBase}.annotated.${timestamp}.md`);
+  const outputSuffix = overwrite ? "" : `.${Date.now()}`;
+  const outputPath = path.join(sourceDir, `${sourceBase}.annotated${outputSuffix}.md`);
 
   writeFileSync(outputPath, outputLines.join("\n"), "utf8");
 
