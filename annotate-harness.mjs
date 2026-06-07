@@ -1065,7 +1065,15 @@ if (subcommand === "start") {
     const prompt = `/annotate-file "${workDb} ${fromId} ${toId}"`;
     console.log(`\nBatch ${batchIndex + 1}: claude -p '${prompt}'`);
     return new Promise((resolve, reject) => {
-      const child = spawn("claude", ["-p", prompt], { stdio: "inherit" });
+      const child = spawn(
+        "claude",
+        [
+          "-p", prompt,
+          "--allowedTools", `Bash(sqlite3 ${workDb} *)`,
+          "--add-dir", path.dirname(workDb),
+        ],
+        { stdio: "inherit" }
+      );
       child.on("close", (code) => {
         if (code === 0) resolve();
         else reject(new Error(`Batch ${batchIndex + 1} exited with code ${code}`));
