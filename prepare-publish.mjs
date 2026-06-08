@@ -30,7 +30,7 @@
  * Usage: node prepare-publish.mjs [--no-llm] [--max-senses N] [--max-compound-verbs N] [--max-kanji-senses N]
  */
 
-import { setup, findExactIds, idsToWords, kanjiAnywhere } from "jmdict-simplified-node";
+import { setup, idsToWords, kanjiAnywhere } from "jmdict-simplified-node";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
@@ -39,7 +39,8 @@ import {
   findMdFiles,
   extractJapaneseTokens,
   isJapanese,
-  intersectSets,
+  isKanjiChar,
+  resolveTokensToIds,
   parseFrontmatter,
   projectRoot,
   JMDICT_DB,
@@ -307,8 +308,7 @@ for (const filePath of mdFiles) {
       if (tokens.length === 0) continue;
       annotatedForms = tokens;
 
-      const idSets = tokens.map((token) => new Set(findExactIds(db, token)));
-      const matchIds = [...intersectSets(idSets)];
+      const matchIds = resolveTokensToIds(db, tokens);
 
       if (matchIds.length !== 1) {
         errors.push(
@@ -398,15 +398,6 @@ const bccwjOverrides = existsSync(bccwjOverridesPath)
 // Kanji form tags that indicate a non-standard written spelling.
 // Kept in sync with the same constant in kanji-frequency-top10.mjs.
 const EXCLUDED_KANJI_TAGS = new Set(["rK", "iK", "sK", "oK", "ateji"]);
-
-function isKanjiChar(ch) {
-  const cp = ch.codePointAt(0);
-  return (
-    (cp >= 0x4e00 && cp <= 0x9fff) ||
-    (cp >= 0x3400 && cp <= 0x4dbf) ||
-    (cp >= 0x20000 && cp <= 0x2a6df)
-  );
-}
 
 /**
  * Build the kanji-top-usage data structure.

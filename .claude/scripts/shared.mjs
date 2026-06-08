@@ -7,7 +7,7 @@ import { existsSync, readFileSync, readdirSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
-import { setup } from "jmdict-simplified-node";
+import { setup, findExactIds } from "jmdict-simplified-node";
 import { iterateDetailsBlocks, findContextBefore } from "./markdown-ast.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -125,6 +125,20 @@ export function looksLikeJapaneseLine(str) {
   return japaneseCount / chars.length >= 0.5;
 }
 
+// True if `ch` is a single kanji (CJK ideograph) character. Covers the ranges
+// actually seen across JMDict and BCCWJ kanji forms: the main CJK Unified
+// block, Extension A, Compatibility Ideographs, and Extension B (Supplementary
+// Ideographic Plane, used by some rare/proper-noun kanji).
+export function isKanjiChar(ch) {
+  const cp = ch.codePointAt(0);
+  return (
+    (cp >= 0x4e00 && cp <= 0x9fff)    // CJK Unified Ideographs
+    || (cp >= 0x3400 && cp <= 0x4dbf)   // CJK Extension A
+    || (cp >= 0xf900 && cp <= 0xfaff)   // CJK Compatibility Ideographs
+    || (cp >= 0x20000 && cp <= 0x2a6df) // CJK Extension B
+  );
+}
+
 // Extract leading Japanese tokens from a bullet (stop at first non-Japanese token)
 export function extractJapaneseTokens(bulletText) {
   const result = [];
@@ -133,6 +147,19 @@ export function extractJapaneseTokens(bulletText) {
     else break;
   }
   return result;
+}
+
+// Resolves a sequence of Japanese tokens (kanji forms and/or kana readings, in
+// any order — the bullet-disambiguation convention used throughout the
+// annotation pipeline, e.g. listing two kanji forms plus one kana reading to
+// pick out an entry that shares a (kanji, kana) pair with another entry via a
+// second valid kanji form) to the set of JMDict entry IDs whose forms include
+// every token. Returns an array — callers decide what to do when it doesn't
+// contain exactly one ID.
+export function resolveTokensToIds(db, tokens) {
+  if (tokens.length === 0) return [];
+  const idSets = tokens.map((t) => new Set(findExactIds(db, t)));
+  return [...intersectSets(idSets)];
 }
 
 // Intersect multiple Sets, returning a new Set

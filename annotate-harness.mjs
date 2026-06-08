@@ -730,8 +730,8 @@ if (subcommand === "start") {
   // form string; only genuinely new/changed bullets need JMDict resolution.
 
   const { existsSync: fsExistsSync } = await import("fs");
-  const { setup, findExactIds, idsToWords } = await import("jmdict-simplified-node");
-  const { extractJapaneseTokens, intersectSets, JMDICT_DB } = await import("./.claude/scripts/shared.mjs");
+  const { setup, idsToWords } = await import("jmdict-simplified-node");
+  const { extractJapaneseTokens, resolveTokensToIds, JMDICT_DB } = await import("./.claude/scripts/shared.mjs");
 
   const annotatedPath = path.resolve(restArgs[0] ?? "");
   if (!annotatedPath || !fsExistsSync(annotatedPath)) {
@@ -780,8 +780,7 @@ if (subcommand === "start") {
   function resolveFormToWordId(formString) {
     const tokens = extractJapaneseTokens(formString);
     if (tokens.length === 0) return null;
-    const idSets = tokens.map((t) => new Set(findExactIds(jmdictNode, t)));
-    const matchIds = [...intersectSets(idSets)];
+    const matchIds = resolveTokensToIds(jmdictNode, tokens);
     if (matchIds.length !== 1) return null;
     return matchIds[0];
   }

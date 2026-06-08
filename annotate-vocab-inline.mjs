@@ -22,10 +22,11 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import Database from "better-sqlite3";
-import { setup, findExactIds, idsToWords } from "jmdict-simplified-node";
+import { setup, idsToWords } from "jmdict-simplified-node";
 import {
   extractJapaneseTokens,
-  intersectSets,
+  resolveTokensToIds,
+  isKanjiChar,
   parseFrontmatter,
   projectRoot,
   JMDICT_DB,
@@ -123,8 +124,7 @@ function resolveWord(bullet) {
   const tokens = extractJapaneseTokens(bullet);
   if (tokens.length === 0) return null;
 
-  const idSets = tokens.map((t) => new Set(findExactIds(db, t)));
-  const matchIds = [...intersectSets(idSets)];
+  const matchIds = resolveTokensToIds(db, tokens);
 
   if (matchIds.length !== 1) {
     process.stderr.write(
@@ -154,13 +154,6 @@ function resolveWord(bullet) {
 //            annotated individually, covering conjugated forms whose full
 //            dictionary form does not appear verbatim.
 
-// Returns whether a single character is a CJK kanji character.
-function isKanji(ch) {
-  const cp = ch.codePointAt(0);
-  return (cp >= 0x4e00 && cp <= 0x9fff)   // CJK Unified Ideographs
-    || (cp >= 0x3400 && cp <= 0x4dbf)     // CJK Extension A
-    || (cp >= 0xf900 && cp <= 0xfaff);    // CJK Compatibility Ideographs
-}
 
 // Resolves furigana segments for one vocab bullet by looking up each
 // kanji-bearing leading token's (kanji-form, kana-reading) pair — taken from
@@ -178,8 +171,8 @@ function buildFuriganaCandidates(word, bullet) {
   const tokens = extractJapaneseTokens(bullet);
   if (tokens.length === 0) return [];
 
-  const kanjiTokens = tokens.filter((t) => [...t].some(isKanji));
-  const kanaTokens = tokens.filter((t) => ![...t].some(isKanji));
+  const kanjiTokens = tokens.filter((t) => [...t].some(isKanjiChar));
+  const kanaTokens = tokens.filter((t) => ![...t].some(isKanjiChar));
   if (kanjiTokens.length === 0) return [];
   const reading = kanaTokens.length === 1 ? kanaTokens[0] : word.kana[0]?.text;
   if (!reading) return [];
@@ -238,7 +231,7 @@ function annotateChunk(text, candidates) {
   const kanjiReadings = new Map(); // kanji char -> Set<reading>
   for (const { segs } of candidates) {
     for (const seg of segs) {
-      if (seg.rt && [...seg.ruby].length === 1 && isKanji(seg.ruby)) {
+      if (seg.rt && [...seg.ruby].length === 1 && isKanjiChar(seg.ruby)) {
         if (!kanjiReadings.has(seg.ruby)) kanjiReadings.set(seg.ruby, new Set());
         kanjiReadings.get(seg.ruby).add(seg.rt);
       }
