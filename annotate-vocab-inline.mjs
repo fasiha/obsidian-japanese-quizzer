@@ -149,10 +149,11 @@ function resolveWord(bullet) {
 //            per-occurrence resolution `lookupFurigana(text:reading:db:)`
 //            performs on the iOS side — is searched for verbatim; first-found
 //            wins and overlapping matches are skipped.
-//   Step 2 — single-kanji fallback: any kanji still unannotated that appears
-//            exactly once and has one agreed reading across all candidates is
-//            annotated individually, covering conjugated forms whose full
-//            dictionary form does not appear verbatim.
+//   Step 2 — single-kanji fallback: any kanji still unannotated that has one
+//            agreed reading across all candidates is annotated individually at
+//            every occurrence, covering conjugated forms whose full dictionary
+//            form does not appear verbatim (and repeated conjugations of the
+//            same verb within one sentence).
 
 
 // Resolves furigana segments for one vocab bullet by looking up each
@@ -226,8 +227,8 @@ function annotateChunk(text, candidates) {
   }
 
   // Step 2: build a kanji → reading map from every candidate's segments, then
-  // annotate single-character kanji that occur exactly once and have one
-  // agreed-upon reading across all candidates that mention them.
+  // annotate single-character kanji that have one agreed-upon reading across
+  // all candidates that mention them, at every occurrence in the chunk.
   const kanjiReadings = new Map(); // kanji char -> Set<reading>
   for (const { segs } of candidates) {
     for (const seg of segs) {
@@ -239,18 +240,19 @@ function annotateChunk(text, candidates) {
   }
   for (const [kanji, readings] of kanjiReadings) {
     if (readings.size !== 1) continue;
-    const occurrences = [];
+    // Annotate every non-overlapping occurrence of this kanji. Because all
+    // candidates agree on a single reading, repeated occurrences (e.g. the
+    // verb 落ちる conjugated twice in one sentence as 落ちて…落ちて) are just as
+    // safe to annotate as a lone occurrence.
     let from = 0;
     let idx;
     while ((idx = text.indexOf(kanji, from)) >= 0) {
-      occurrences.push(idx);
-      from = idx + 1;
+      const start = idx;
+      const end = start + kanji.length;
+      from = end;
+      if (matches.some((m) => start < m.end && end > m.start)) continue;
+      matches.push({ start, end, segs: [{ ruby: kanji, rt: [...readings][0] }] });
     }
-    if (occurrences.length !== 1) continue;
-    const [start] = occurrences;
-    const end = start + kanji.length;
-    if (matches.some((m) => start < m.end && end > m.start)) continue;
-    matches.push({ start, end, segs: [{ ruby: kanji, rt: [...readings][0] }] });
   }
 
   matches.sort((a, b) => a.start - b.start);
