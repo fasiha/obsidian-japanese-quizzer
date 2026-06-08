@@ -162,31 +162,40 @@ function isKanji(ch) {
     || (cp >= 0xf900 && cp <= 0xfaff);    // CJK Compatibility Ideographs
 }
 
-// Resolves the furigana segments for one vocab bullet by looking up its
-// specific (kanji-form, kana-reading) pair — taken from the bullet text
-// itself — in the furigana table. Returns null for kana-only words, words
-// with no kanji forms, or lookup misses.
-function buildFuriganaCandidate(word, bullet) {
-  if (!word || word.kanji.length === 0) return null;
+// Resolves furigana segments for one vocab bullet by looking up each
+// kanji-bearing leading token's (kanji-form, kana-reading) pair — taken from
+// the bullet text itself — in the furigana table. Following the same
+// disambiguation convention as `resolveFormToWordId` in annotate-harness.mjs
+// (and prepare-publish.mjs), the bullet's leading Japanese tokens — those
+// before the first non-Japanese character — may list any mix of kanji forms
+// and kana readings, in any order, e.g. to disambiguate between JMDict
+// entries that share a (kanji, kana) pair via a second valid kanji form.
+// Returns one candidate per kanji-bearing token that resolves to furigana
+// segments (a sentence may use any of the listed kanji forms), or [] if none
+// resolve.
+function buildFuriganaCandidates(word, bullet) {
+  if (!word || word.kanji.length === 0) return [];
   const tokens = extractJapaneseTokens(bullet);
-  if (tokens.length === 0) return null;
+  if (tokens.length === 0) return [];
 
-  // Vocab bullets are written as "<reading> <kanji form>" (e.g. "おおき 大き"),
-  // or just "<kanji form>" for entries whose bullet omits the reading.
-  const [text, reading] = tokens.length >= 2
-    ? [tokens[1], tokens[0]]
-    : [tokens[0], word.kana[0]?.text];
-  if (!text || !reading) return null;
+  const kanjiTokens = tokens.filter((t) => [...t].some(isKanji));
+  const kanaTokens = tokens.filter((t) => ![...t].some(isKanji));
+  if (kanjiTokens.length === 0) return [];
+  const reading = kanaTokens.length === 1 ? kanaTokens[0] : word.kana[0]?.text;
+  if (!reading) return [];
 
-  const row = furiganaStmt.get(text, reading);
-  if (!row) return null;
-  try {
-    const segs = JSON.parse(row.segs);
-    if (!Array.isArray(segs) || !segs.some((s) => s.rt)) return null;
-    return { text, segs };
-  } catch {
-    return null;
+  const candidates = [];
+  for (const text of kanjiTokens) {
+    const row = furiganaStmt.get(text, reading);
+    if (!row) continue;
+    try {
+      const segs = JSON.parse(row.segs);
+      if (Array.isArray(segs) && segs.some((s) => s.rt)) candidates.push({ text, segs });
+    } catch {
+      // Skip malformed furigana rows.
+    }
   }
+  return candidates;
 }
 
 // Splits a sentence into alternating plain-text and pre-existing-<ruby> chunks.
@@ -475,8 +484,7 @@ for (const line of lines) {
     if (bullet && !bullet.startsWith("counter:")) {
       const word = resolveWord(bullet);
       const annotation = buildAnnotation(word, bullet, currentSentenceId);
-      const furiganaCandidate = buildFuriganaCandidate(word, bullet);
-      if (furiganaCandidate) vocabFuriganaCandidates.push(furiganaCandidate);
+      vocabFuriganaCandidates.push(...buildFuriganaCandidates(word, bullet));
       if (annotation) {
         // Append annotation after the bullet text, preserving leading whitespace.
         const leadingSpace = line.match(/^(\s*)/)[1];
