@@ -8,7 +8,7 @@
 ruby rt { color: light-dark(#888, #aaa); }
 
 li.kanji-hover-highlight {
-  background-color: light-dark(hsla(45deg, 80%, 80%, 80%), hsla(45deg, 80%, 20%, 20%));
+  background-color: light-dark(hsla(45deg, 80%, 80%, 80%), hsla(45deg, 80%, 20%, 40%));
 }
 
 .furigana-toggle {
@@ -81,8 +81,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const rt = ruby.querySelector('rt');
     const kanji = rt ? ruby.textContent.replace(rt.textContent, '') : ruby.textContent;
     if (!kanji.trim()) return;
+    let scrolled = false;
     block.querySelectorAll('li').forEach(li => {
-      if (li.textContent.includes(kanji)) li.classList.add('kanji-hover-highlight');
+      if (li.textContent.includes(kanji)) {
+        li.classList.add('kanji-hover-highlight');
+        if (!scrolled) {
+          li.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+          scrolled = true;
+        }
+      }
     });
   });
 
