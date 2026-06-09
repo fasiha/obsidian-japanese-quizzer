@@ -1,4 +1,16 @@
 <style>
+:root {
+  color-scheme: light dark;
+  background-color: light-dark(white, #0d1117); 
+  color: light-dark(#444, #c9d1d9);
+}
+
+ruby rt { color: light-dark(#888, #aaa); }
+
+li.kanji-hover-highlight {
+  background-color: light-dark(hsla(45deg, 80%, 80%, 80%), hsla(45deg, 80%, 20%, 20%));
+}
+
 .furigana-toggle {
   margin-left: 0.5em;
   font-size: 0.8em;
@@ -16,31 +28,19 @@
   gap: 0.25rem;
   align-items: center;
 }
+.buttonBox button { cursor: pointer; }
 
 .sentence-block {
   /* No overflow set — required for sticky to work */
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid light-dark(#ddd, #222);
 }
 
+p { margin-bottom: 0; }
 .sentence-block > p:first-child {
   position: sticky;
   top: 0;
   padding: 0.25em 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root { background: #0d1117; color: #c9d1d9; }
-  a { color: #58a6ff; }
-  ruby rt { color: #aaa; }
-  p { margin-bottom: 0; }
-  .sentence-block {
-    border-bottom: 1px solid #222;
-  }
-
-  .sentence-block > p:first-child {
-    background: #0d1117;
-  }
-
+  background-color: light-dark(white, #0d1117); 
 }
 </style>
 
@@ -71,6 +71,20 @@ document.addEventListener("DOMContentLoaded", () => {
     buttonBox.appendChild(button);
   }
   document.querySelector('body')?.appendChild(buttonBox);
+
+  // Highlight vocab list items in the same sentence-block when clicking a <ruby>.
+  document.body.addEventListener('click', e => {
+    const ruby = e.target.closest('ruby');
+    const block = ruby?.closest('.sentence-block');
+    block?.querySelectorAll('li.kanji-hover-highlight').forEach(li => li.classList.remove('kanji-hover-highlight'));
+    if (!ruby || !block) return;
+    const rt = ruby.querySelector('rt');
+    const kanji = rt ? ruby.textContent.replace(rt.textContent, '') : ruby.textContent;
+    if (!kanji.trim()) return;
+    block.querySelectorAll('li').forEach(li => {
+      if (li.textContent.includes(kanji)) li.classList.add('kanji-hover-highlight');
+    });
+  });
 
   // Adds a "ふりがな" toggle button to every Vocab <details> block that contains
   // a hidden .furigana-sentence span (emitted by annotate-vocab-inline.mjs).
