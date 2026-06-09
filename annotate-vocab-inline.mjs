@@ -354,6 +354,7 @@ function buildAnnotation(word, bullet, sentenceId) {
 // <details> block, and appending annotations to bullet lines.
 const lines = content.split("\n");
 const output = [];
+let firstSentenceSeen = false; // whether we've opened the first sentence-block div
 let insideVocab = false;
 let vocabDepth = 0; // nesting depth of <details> while inside a Vocab block
 let bulletDepth = 0; // depth of nested <details> inside the Vocab block body
@@ -437,9 +438,34 @@ for (const line of lines) {
       output.push("");
       continue;
     }
+    // Pandoc fenced-div markers (:::) and lone line-break markers (\) are
+    // structural, not prose — wrapping them in a sentence-block div would
+    // create unmatched nesting with pandoc's own div processing.
+    // Close any open sentence-block div before a fenced-div boundary so
+    // our raw <div> never straddles a pandoc-native div boundary.
+    const isStructural = trimmed.startsWith(":::") || trimmed === "\\";
+    if (isStructural && firstSentenceSeen) {
+      output.push("");
+      output.push("</div>");
+      firstSentenceSeen = false;
+    }
+    if (trimmed && !isStructural) {
+      // Each non-blank prose line starts a new sentence-block div. The div
+      // stays open and naturally contains any following <details> blocks.
+      // Blank lines around the raw HTML tags are required for pandoc to
+      // treat them as block-level HTML rather than inline content.
+      if (firstSentenceSeen) {
+        output.push("");
+        output.push("</div>");
+      }
+      output.push("");
+      output.push('<div class="sentence-block">');
+      output.push("");
+      firstSentenceSeen = true;
+      lastProseLine = line;
+    }
     output.push(line);
     sourceLineIndex++;
-    if (trimmed) lastProseLine = line;
     continue;
   }
 
@@ -492,4 +518,5 @@ for (const line of lines) {
   output.push(line);
 }
 
+if (firstSentenceSeen) { output.push(""); output.push("</div>"); }
 process.stdout.write(output.join("\n"));

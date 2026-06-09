@@ -1,44 +1,81 @@
 <style>
-@media (prefers-color-scheme: dark) {
-  :root { background: #0d1117; color: #c9d1d9; }
-  a { color: #58a6ff; }
-  ruby rt { color: #aaa; }
-  /* details:not(:has(+ details)) { margin-bottom: 1rem; } */
-    p {margin-bottom:0;}
-
-}
-
 .furigana-toggle {
   margin-left: 0.5em;
   font-size: 0.8em;
   cursor: pointer;
 }
 
-button.sticky {
+.buttonBox {
   position: fixed;
   top: 0;
   right: 0;
   margin: 1rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.sentence-block {
+  /* No overflow set — required for sticky to work */
+  border-bottom: 1px solid #ddd;
+}
+
+.sentence-block > p:first-child {
+  position: sticky;
+  top: 0;
+  padding: 0.25em 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { background: #0d1117; color: #c9d1d9; }
+  a { color: #58a6ff; }
+  ruby rt { color: #aaa; }
+  p { margin-bottom: 0; }
+  .sentence-block {
+    border-bottom: 1px solid #222;
+  }
+
+  .sentence-block > p:first-child {
+    background: #0d1117;
+  }
+
 }
 </style>
 
 <script>
-// Adds a "ふりがな" toggle button to every Vocab <details> block that contains
-// a hidden .furigana-sentence span (emitted by annotate-vocab-inline.mjs).
-// Clicking it swaps the plain sentence paragraph above the block for the
-// pre-rendered <ruby>-annotated version, and clicking again swaps it back.
 document.addEventListener("DOMContentLoaded", () => {
-  /** Toggle all furigana on/off sticky button */
-  const button = document.createElement('button');
+  const buttonBox = document.createElement('div');
+  buttonBox.className = 'buttonBox';
+
   {
-    button.className = 'sticky';
+    /** Toggle all furigana on/off button */
+    const button = document.createElement('button');
     button.textContent = 'ふりがな';
     button.addEventListener('click', () => {
       document.querySelectorAll('button.furigana-toggle').forEach(o => o.click());
     })
-    document.querySelector('body')?.appendChild(button);
+    buttonBox.appendChild(button);
   }
+  {
+    /** Scroll to the last translation */
+    const button = document.createElement('button');
+    button.textContent = 'Last tl';
+    button.addEventListener('click', () => {
+      const arr = Array.from(document.querySelectorAll('details summary')).filter(o => o.textContent?.includes?.('Translation'));
+      const last = arr.at(-1);
+      last?.parentElement?.parentElement?.scrollIntoView()
+      
+    })
+    buttonBox.appendChild(button);
+  }
+  document.querySelector('body')?.appendChild(buttonBox);
 
+  // Adds a "ふりがな" toggle button to every Vocab <details> block that contains
+  // a hidden .furigana-sentence span (emitted by annotate-vocab-inline.mjs).
+  // Clicking it swaps the plain sentence paragraph above the block for the
+  // pre-rendered <ruby>-annotated version, and clicking again swaps it back.
   document.querySelectorAll(".furigana-sentence").forEach((span) => {
     const details = span.closest("details");
     if (!details) return;
