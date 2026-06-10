@@ -119,6 +119,30 @@ if (existsSync(sidecarPath)) {
   }
 }
 
+// Map from stripped sentence text → sentence ID, loaded from the work
+// database (`<basename>-annotations.db`, sibling of `<basename>.annotated.md`).
+// This is the same lookup `annotate-harness.mjs reimport` uses, and lets us
+// reconstruct the sentence IDs that the vocab-inline-data.json sidecar is
+// keyed by (database row IDs, not source-file line indices).
+const textToSentenceId = new Map();
+const workDbPath = filePath.replace(/\.annotated\.md$/, "-annotations.db");
+if (existsSync(workDbPath)) {
+  const workDb = new Database(workDbPath, { readonly: true });
+  for (const row of workDb.prepare("SELECT id, text FROM sentences").all()) {
+    textToSentenceId.set(row.text.trim(), row.id);
+  }
+  workDb.close();
+}
+
+// Strip <ruby>/<rt>/<rp> markup down to the plain text, mirroring
+// `stripRuby` in annotate-harness.mjs.
+function stripRuby(line) {
+  let r = line.replace(/<rp>[^<]*<\/rp>/g, "");
+  r = r.replace(/<rt>[^<]*<\/rt>/g, "");
+  r = r.replace(/<\/?ruby>/g, "");
+  return r;
+}
+
 // Resolve a bullet text to a JMDict word object, or null with a warning.
 function resolveWord(bullet) {
   const directIdMatch = bullet.match(/^\d+/);
@@ -288,8 +312,9 @@ function resolveSentenceFurigana(sentence, candidates) {
 }
 
 // Build a compact human-readable annotation string from a JMDict word object.
-// sentenceId is the source-file line index of the containing sentence, used to
-// look up per-occurrence sense indices from the sidecar (most specific source).
+// sentenceId is the database row ID of the containing sentence (looked up from
+// the work db via its text), used to look up per-occurrence sense indices from
+// the sidecar (most specific source).
 // Returns an HTML <span> with the info, or empty string if nothing useful found.
 function buildAnnotation(word, bullet, sentenceId) {
   if (!word) return "";
@@ -378,17 +403,11 @@ let insideVocab = false;
 let vocabDepth = 0; // nesting depth of <details> while inside a Vocab block
 let bulletDepth = 0; // depth of nested <details> inside the Vocab block body
 // Translation and Grammar <details> blocks are also inserted by
-// `annotate-harness.mjs done`, right after the source sentence (before the Vocab
-// block). Like Vocab blocks, their lines must not be counted toward
-// sourceLineIndex, otherwise the reconstructed sentence ID drifts and the
-// per-occurrence sidecar lookup fails. We skip any non-Vocab <details> block
-// generically so future block types don't reintroduce this drift.
+// `annotate-harness.mjs done`, right after the source sentence (before the
+// Vocab block). We pass these through verbatim without treating their lines
+// as prose, so `lastProseLine` keeps pointing at the actual sentence.
 let insideSkipBlock = false;
 let skipBlockDepth = 0; // nesting depth of <details> while inside a skipped block
-// sourceLineIndex counts every source line (not <details> block lines).
-// When a Vocab block opens, sourceLineIndex - 1 is the sentence ID (the
-// line index of the preceding Japanese sentence in the original source file).
-let sourceLineIndex = 0;
 let currentSentenceId = null; // sentence ID for the Vocab block being processed
 // Most recent non-blank "real" source line — the sentence the next Vocab
 // (or skipped Grammar/Translation) block annotates. Used to resolve the
@@ -401,8 +420,7 @@ for (const line of lines) {
   const trimmed = line.trim();
 
   // Pass non-Vocab <details> blocks (Translation, Grammar, …) through verbatim
-  // without annotating, and without counting their lines toward sourceLineIndex
-  // (they are insertions, not original source lines).
+  // without annotating (they are insertions, not original source lines).
   if (insideSkipBlock) {
     const opens = (line.match(/<details\b/gi) || []).length;
     const closes = (line.match(/<\/details\b/gi) || []).length;
@@ -439,7 +457,11 @@ for (const line of lines) {
       insideVocab = true;
       vocabDepth = 1;
       bulletDepth = 0;
-      currentSentenceId = sourceLineIndex - 1; // preceding source line is the sentence
+      // Look up the preceding sentence's database row ID — the same ID the
+      // vocab-inline-data.json sidecar is keyed by.
+      currentSentenceId = lastProseLine != null
+        ? textToSentenceId.get(stripRuby(lastProseLine).trim()) ?? null
+        : null;
       vocabSentenceText = lastProseLine;
       vocabFuriganaCandidates = [];
       // Separate the preceding prose line from this block with a blank line so
@@ -484,7 +506,6 @@ for (const line of lines) {
       lastProseLine = line;
     }
     output.push(line);
-    sourceLineIndex++;
     continue;
   }
 
