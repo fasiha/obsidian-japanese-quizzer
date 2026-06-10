@@ -8,13 +8,19 @@ import {
   kanjiAnywhere,
 } from "jmdict-simplified-node";
 import { wordFormsPart, wordMeanings } from "./.claude/scripts/shared.mjs";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 import Database from "better-sqlite3";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BCCWJ_PATH = path.join(__dirname, "bccwj.sqlite");
+const BCCWJ_OVERRIDES_PATH = path.join(__dirname, "bccwj-overrides.json");
+
+let bccwjOverrides = {};
+if (existsSync(BCCWJ_OVERRIDES_PATH)) {
+  bccwjOverrides = JSON.parse(readFileSync(BCCWJ_OVERRIDES_PATH, "utf8")).overrides;
+}
 
 var lookup = process.argv[2];
 if (!lookup) {
@@ -86,11 +92,8 @@ let getBccwjFrequency = null;
 if (existsSync(BCCWJ_PATH)) {
   try {
     bccwjDb = new Database(BCCWJ_PATH, { readonly: true });
-    const stmt = bccwjDb.prepare("SELECT pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1");
-    getBccwjFrequency = (kanji, reading) => {
-      const row = stmt.get(kanji, reading);
-      return row ? row.pmw : null;
-    };
+    const stmt = bccwjDb.prepare("SELECT frequency, pmw FROM bccwj WHERE kanji = ? AND reading = ? LIMIT 1");
+    getBccwjFrequency = (kanji, reading) => stmt.get(kanji, reading) ?? null;
   } catch (err) {
     console.error("Warning: could not open bccwj.sqlite:", err.message);
   }
@@ -107,13 +110,24 @@ for (const word of deduped.values()) {
     const kanji = word.kanji.filter((k) => !k.tags.includes("iK")).map((k) => k.text);
     const kana = word.kana.filter((k) => !k.tags.includes("ik")).map((k) => k.text);
 
-    // Try each kanji form
-    for (const form of kanji) {
-      const result = getBccwjFrequency(form, kana[0]);
+    const override = bccwjOverrides[String(word.id)];
+    if (override) {
+      const result = getBccwjFrequency(override.kanji, override.reading);
       if (result) {
-        pmw = result;
-        frequencyInfo = `pmw:${result}`;
-        break;
+        pmw = result.pmw;
+        frequencyInfo = `freq:${result.frequency} pmw:${result.pmw}`;
+      }
+    }
+
+    // Try each kanji form
+    if (!frequencyInfo) {
+      for (const form of kanji) {
+        const result = getBccwjFrequency(form, kana[0]);
+        if (result) {
+          pmw = result.pmw;
+          frequencyInfo = `freq:${result.frequency} pmw:${result.pmw}`;
+          break;
+        }
       }
     }
 

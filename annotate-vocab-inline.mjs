@@ -66,6 +66,12 @@ const furiganaStmt = rawDb.prepare(
 // Build maps from JMDict ID → sense indices and BCCWJ frequency.
 const senseIndexMap = new Map(); // id (string) → number[]
 const bccwjMap = new Map();      // id (string) → perMillionWords (number)
+const occurrenceCounts = new Map(); // id (string) → times annotated so far in this file
+// Sentinel woven into the output for each annotated bullet, later rewritten to
+// the (running/total) occurrence counter once every total is known. Each
+// placeholder is `@@OCC:<jmdictId>:<runningCount> `; the post-processing pass
+// rewrites it once every word's grand total is known.
+const OCCURRENCE_PLACEHOLDER = "@@OCC:";
 const vocabJsonPath = path.join(projectRoot, "vocab.json");
 if (existsSync(vocabJsonPath)) {
   const vocab = JSON.parse(readFileSync(vocabJsonPath, "utf8"));
@@ -347,7 +353,20 @@ function buildAnnotation(word, bullet, sentenceId) {
     freqStr = ` <span class="bccwj-freq" style="color:${color};font-size:0.8em">${freq.toFixed(1)}/M</span>`;
   }
 
-  return ` <span class="jmdict-info" style="color:#888;font-size:0.85em">${readingStr}${separator}${parts.join(" / ")}</span>${freqStr}`;
+  // Running count of how many times this JMDict ID has been annotated so far
+  // in this file (counting the current occurrence). Keyed only on the JMDict
+  // ID, ignoring which sense applied. Words not in JMDict (e.g. names) never
+  // reach here, since `word` is null for them and we return "" above.
+  //
+  // We don't yet know each word's *total* count (that's only final after the
+  // whole file is processed), so emit a placeholder carrying the ID and the
+  // running count. A post-processing pass below rewrites it to (running/total)
+  // — e.g. (1/4) for the first of four occurrences, (1/1) for a word used once.
+  const occurrence = (occurrenceCounts.get(word.id) ?? 0) + 1;
+  occurrenceCounts.set(word.id, occurrence);
+  const occurrenceStr = `${OCCURRENCE_PLACEHOLDER}${word.id}:${occurrence} `;
+
+  return ` <span class="jmdict-info" style="color:#888;font-size:0.85em">${readingStr}${separator}${parts.join(" / ")}</span>${freqStr}${occurrenceStr}`;
 }
 
 // Process the file line-by-line, tracking whether we're inside a Vocab
@@ -519,4 +538,17 @@ for (const line of lines) {
 }
 
 if (firstSentenceSeen) { output.push(""); output.push("</div>"); }
-process.stdout.write(output.join("\n"));
+
+// Now that the whole file is processed, `occurrenceCounts` holds each JMDict
+// ID's grand total. Rewrite every `@@OCC:<id>:<running> ` placeholder into a
+// (running/total) occurrence counter span — e.g. (1/4), or (1/1) for a word
+// used only once (a hapax legomenon).
+let rendered = output.join("\n");
+rendered = rendered.replace(
+  /@@OCC:(\d+):(\d+) /g,
+  (_match, id, running) => {
+    const total = occurrenceCounts.get(id) ?? running;
+    return ` <span class="jmdict-occurrence" style="color:#888;font-size:0.8em">(${running}/${total})</span>`;
+  },
+);
+process.stdout.write(rendered);

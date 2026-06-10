@@ -674,6 +674,9 @@ if (subcommand === "start") {
       } catch {
         // bccwj.sqlite absent — frequency will be omitted
       }
+      const bccwjOverrides = JSON.parse(
+        readFileSync(path.join(scriptDir, "bccwj-overrides.json"), "utf8"),
+      ).overrides;
       const jmdictDb = new Database(jmdictDbPath, { readonly: true });
       const entryQuery = jmdictDb.prepare("SELECT entry_json FROM entries WHERE id = ?");
       const bccwjQuery = bccwjDb
@@ -689,9 +692,11 @@ if (subcommand === "start") {
           const entry = JSON.parse(row.entry_json);
           const kanjiTexts = (entry.kanji ?? []).map((k) => k.text);
           const readingTexts = (entry.kana ?? []).map((k) => k.text);
-          const pairs = kanjiTexts.length > 0
+          let pairs = kanjiTexts.length > 0
             ? kanjiTexts.flatMap((k) => readingTexts.map((r) => [k, r]))
             : readingTexts.map((r) => [r, r]);
+          const override = bccwjOverrides[wordId];
+          if (override) pairs = [[override.kanji, override.reading], ...pairs];
           for (const [kanji, reading] of pairs) {
             const hit = bccwjQuery.get(kanji, reading);
             if (hit && (bccwjPerMillionWords === null || hit.pmw > bccwjPerMillionWords)) {
