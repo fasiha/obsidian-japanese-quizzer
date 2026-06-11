@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!kanji.trim()) return;
     let scrolled = false;
     block.querySelectorAll('li').forEach(li => {
-      if (li.textContent.includes(kanji)) {
+      if (li.firstChild?.textContent.includes(kanji)) {
         li.classList.add('kanji-hover-highlight');
         if (!scrolled) {
           li.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
