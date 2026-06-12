@@ -751,17 +751,24 @@ if (subcommand === "start") {
   //   sentences: { [sentenceId]: annotation[] }  — full objects, for reimport
   //   words:     { [wordId]: { sense_indices, bccwjPerMillionWords } }
   const sidecarPath = annotatedPath.replace(/\.md$/, ".vocab-inline-data.json");
-  // form string → annotation object, built from sidecar sentences
+  // sentenceId → (form string → annotation object), built from sidecar sentences.
+  // Keyed per-sentence because the same form/wordId can appear in multiple
+  // sentences with different sense_indices (different senses in context).
   const formToAnnotation = new Map();
   // wordId → sense_indices from edited words section (user may have tweaked these)
   const sidecarWordSenses = new Map();
   const knownBareStrings = new Set(); // bare strings from sidecar → pass through without JMDict
   if (fsExistsSync(sidecarPath)) {
     const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
-    for (const entries of Object.values(sidecar.sentences ?? {})) {
+    for (const [sentenceId, entries] of Object.entries(sidecar.sentences ?? {})) {
       for (const entry of entries) {
         if (typeof entry === "object" && entry.form) {
-          formToAnnotation.set(entry.form, entry);
+          let perSentence = formToAnnotation.get(sentenceId);
+          if (!perSentence) {
+            perSentence = new Map();
+            formToAnnotation.set(sentenceId, perSentence);
+          }
+          perSentence.set(entry.form, entry);
         } else if (typeof entry === "string") {
           knownBareStrings.add(entry);
         }
@@ -908,7 +915,7 @@ if (subcommand === "start") {
       }
 
       // Check sidecar first — covers unchanged bullets without needing JMDict.
-      const known = formToAnnotation.get(bullet);
+      const known = formToAnnotation.get(String(currentSentenceId))?.get(bullet);
       if (known) {
         // Use sidecar's sense_indices unless the user edited the words section.
         const sense_indices = sidecarWordSenses.get(known.wordId) ?? known.sense_indices;

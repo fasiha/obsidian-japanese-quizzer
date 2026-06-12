@@ -1,7 +1,7 @@
 See `README.md` for a full project overview. The bulk of this repo is an iOS app (Pug).
 Node.js scripts in `.claude/scripts/` and in `./` exist to support content development.
 
-Claude never writes directly to SQLite and never writes to the user's Markdown content.
+Claude never writes directly to SQLite and never writes to the user's Markdown content. (Exceptions: ephemeral databases that the annotate-file.md skill operates on, which are sufficient statistics of the user's Markdown file.)
 
 The iOS app bundles a complete copy of JMDict (all ~200 k entries) and all of
 JmdictFurigana in `jmdict.sqlite`. Any feature that needs dictionary lookups,
