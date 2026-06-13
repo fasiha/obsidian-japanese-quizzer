@@ -364,7 +364,7 @@ function buildAnnotation(word, bullet, sentenceId) {
     const dedupedPosStr = seenPos.has(posStr) ? '' : posStr;
     seenPos.add(posStr);
     const senseNum = allSenses && word.sense.length > 1 ? `${i + 1}. ` : "";
-    return `${senseNum}${dedupedPosStr}${glosses.join("; ")}${infoNotes}`;
+    return `${senseNum}${glosses.join("; ")} ${dedupedPosStr}${infoNotes}`;
   });
 
   const readingStr = readings.length ? readings.join("・") : "";
