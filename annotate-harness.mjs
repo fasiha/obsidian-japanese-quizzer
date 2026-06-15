@@ -611,7 +611,7 @@ if (subcommand === "start") {
   const workRo = new Database(workPath, { readonly: true });
 
   const sourceFile = workRo.prepare(`SELECT value FROM meta WHERE key = 'sourceFile'`).pluck().get();
-  const rows = workRo.prepare(`SELECT id, annotations, grammar, translation FROM sentences`).all();
+  const rows = workRo.prepare(`SELECT id, text, annotations, grammar, translation FROM sentences`).all();
   workRo.close();
 
   const sourceText = readFileSync(sourceFile, "utf8");
@@ -718,8 +718,16 @@ if (subcommand === "start") {
           .filter(([, entries]) => entries.length > 0)
           .map(([id, entries]) => [id, entries])
       );
+      // sentenceTexts: stripped sentence text for every sentence ID appearing
+      // in `sentences`. Lets annotate-vocab-inline.mjs match a Vocab block to
+      // its sidecar entry by sentence text alone, without needing the
+      // (ephemeral, /tmp-only) work database.
+      const textById = new Map(rows.map((r) => [r.id, r.text]));
+      const sentenceTexts = Object.fromEntries(
+        Object.keys(sentences).map((id) => [id, textById.get(Number(id))])
+      );
       const sidecarPath = outputPath.replace(/\.md$/, ".vocab-inline-data.json");
-      writeFileSync(sidecarPath, JSON.stringify({ sentences, words }, null, 2), "utf8");
+      writeFileSync(sidecarPath, JSON.stringify({ sentences, sentenceTexts, words }, null, 2), "utf8");
       console.log(`Wrote ${sidecarPath} — ${wordIds.size} words in sidecar`);
     }
   }

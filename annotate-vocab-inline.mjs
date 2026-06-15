@@ -102,6 +102,11 @@ if (existsSync(vocabJsonPath)) {
 // Keyed as `${sentenceId}|${wordId}` so the same word can show different senses
 // in different sentences rather than using a single aggregated index.
 const sidecarOccurrenceSenses = new Map(); // `${sentenceId}|${wordId}` → number[]
+// Map from stripped sentence text → sentence ID, built from the sidecar's
+// `sentenceTexts` map. Lets us reconstruct the sentence IDs that
+// `sidecarOccurrenceSenses` is keyed by, purely from the sidecar — no
+// dependency on the (ephemeral, /tmp-only) work database.
+const textToSentenceId = new Map();
 const sidecarPath = filePath.replace(/\.md$/, ".vocab-inline-data.json");
 if (existsSync(sidecarPath)) {
   const sidecar = JSON.parse(readFileSync(sidecarPath, "utf8"));
@@ -112,26 +117,14 @@ if (existsSync(sidecarPath)) {
       }
     }
   }
+  for (const [sentenceId, text] of Object.entries(sidecar.sentenceTexts ?? {})) {
+    if (typeof text === "string") textToSentenceId.set(text.trim(), sentenceId);
+  }
   for (const [wordId, data] of Object.entries(sidecar.words ?? {})) {
     if (!bccwjMap.has(wordId) && data.bccwjPerMillionWords != null) {
       bccwjMap.set(wordId, data.bccwjPerMillionWords);
     }
   }
-}
-
-// Map from stripped sentence text → sentence ID, loaded from the work
-// database (`<basename>-annotations.db`, sibling of `<basename>.annotated.md`).
-// This is the same lookup `annotate-harness.mjs reimport` uses, and lets us
-// reconstruct the sentence IDs that the vocab-inline-data.json sidecar is
-// keyed by (database row IDs, not source-file line indices).
-const textToSentenceId = new Map();
-const workDbPath = filePath.replace(/\.annotated\.md$/, "-annotations.db");
-if (existsSync(workDbPath)) {
-  const workDb = new Database(workDbPath, { readonly: true });
-  for (const row of workDb.prepare("SELECT id, text FROM sentences").all()) {
-    textToSentenceId.set(row.text.trim(), row.id);
-  }
-  workDb.close();
 }
 
 // Strip <ruby>/<rt>/<rp> markup down to the plain text, mirroring
