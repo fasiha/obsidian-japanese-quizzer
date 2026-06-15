@@ -1028,9 +1028,13 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
   // Lazy cache of vocab-inline-data.json sidecars, keyed by the file title
   // (relative path without .md extension, matching word.references keys).
   // Produced by `annotate-harness.mjs done`. When present for a title,
-  // per-occurrence sense indices are read from sidecar.sentences[lineIndex]
-  // instead of calling Haiku.
-  const sidecarCache = new Map(); // title → { sentences: { [lineIndex]: annotation[] }, words: { [wordId]: { bccwjPerMillionWords } } } | null
+  // per-occurrence sense indices are read from sidecar.sentences[sentenceId]
+  // instead of calling Haiku. sentenceId is looked up via sentenceTexts —
+  // the sidecar's sentence ids are line numbers in the pre-annotation source
+  // file, which no longer match `ref.line` (line numbers in the annotated
+  // file, shifted by inserted Translation/Vocab blocks) — so matching is done
+  // by normalized sentence text instead.
+  const sidecarCache = new Map(); // title → { sentences, sentenceTexts, words, sentenceIdByText } | null
   function getSidecar(title) {
     if (sidecarCache.has(title)) return sidecarCache.get(title);
     const sidecarPath = path.join(projectRoot, `${title}.vocab-inline-data.json`);
@@ -1038,6 +1042,12 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
     if (existsSync(sidecarPath)) {
       try {
         data = JSON.parse(readFileSync(sidecarPath, "utf8"));
+        data.sentenceIdByText = new Map(
+          Object.entries(data.sentenceTexts ?? {}).map(([id, text]) => [
+            normalizeContextForCache(text),
+            id,
+          ]),
+        );
       } catch {
         // Malformed sidecar — treat as absent
       }
@@ -1096,10 +1106,14 @@ let counterSkippedCount = 0;        // those skipped due to --max-senses or --no
               ref.llm_sense = cached;
             } else {
               // Check sidecar for per-occurrence sense indices before queuing a Haiku call.
-              // sentences[ref.line] holds an array of annotation objects for that
-              // source line — find the one matching this word and use its sense_indices.
+              // Match the sentence by its normalized text (sidecar sentence ids are
+              // line numbers from the pre-annotation source file and don't align with
+              // ref.line), then find the annotation for this word and use its sense_indices.
               const sidecar = getSidecar(title);
-              const sidecarSentenceEntries = sidecar?.sentences?.[ref.line];
+              const sentenceId = ref.context
+                ? sidecar?.sentenceIdByText?.get(normalizeContextForCache(ref.context))
+                : undefined;
+              const sidecarSentenceEntries = sentenceId !== undefined ? sidecar?.sentences?.[sentenceId] : undefined;
               const sidecarAnnotation = Array.isArray(sidecarSentenceEntries)
                 ? sidecarSentenceEntries.find(
                     (e) => typeof e === "object" && e.wordId === String(word.id)
