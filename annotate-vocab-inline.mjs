@@ -192,7 +192,12 @@ function resolveWord(bullet) {
 // resolve.
 function buildFuriganaCandidates(word, bullet) {
   if (!word || word.kanji.length === 0) return [];
-  const tokens = extractJapaneseTokens(bullet);
+  // Bullets may start with an explicit JMDict ID for disambiguation (the same
+  // convention `resolveWord` handles above); strip it before tokenizing, since
+  // `extractJapaneseTokens` stops at the first non-Japanese token and would
+  // otherwise see the leading digits and return no tokens at all.
+  const bulletTextOnly = bullet.replace(/^\d+\s*/, "");
+  const tokens = extractJapaneseTokens(bulletTextOnly);
   if (tokens.length === 0) return [];
 
   const kanjiTokens = tokens.filter((t) => [...t].some(isKanjiChar));
