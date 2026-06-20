@@ -326,11 +326,17 @@ function isParticleMorpheme(m) {
 
 /**
  * For a span of morphemes, produce the set of search strings to try.
- * Returns { readingSearches: string[], kanjiSearches: string[] }.
+ * Returns { readingSearches: string[], kanjiSearches: string[], nearReadingQueries: string[], nearKanjiQueries: string[] }.
  *
  * Reading searches: cartesian product of (pronunciationHiragana, lemmaReadingHiragana) per morpheme.
  * Kanji searches: cartesian product of (literal, lemma) per morpheme, filtered to kanji-containing strings.
- * Particle-skipped reading: same as reading searches but with particle morphemes removed from the span.
+ *
+ * NEAR queries: handle collocations where the text's particle doesn't match the
+ * dictionary headword's particle (e.g. text has 居心地の悪い, dictionary has
+ * 居心地が悪い). The span is split into contiguous content-word segments
+ * separated by particle segments; each content segment becomes an FTS5 phrase,
+ * joined with NEAR(phrase1 phrase2 ..., distance) so any particle (or none) can
+ * fill the gap, rather than requiring the exact literal particle or its absence.
  */
 function spanSearchStrings(span) {
   // Per-morpheme reading alternatives: pronunciation + lemma reading (deduplicated).
@@ -359,27 +365,62 @@ function spanSearchStrings(span) {
     .map((parts) => parts.join(""))
     .filter(hasKanji);
 
-  // Particle-stripped reading: remove particle morphemes and punctuation (empty
-  // pronunciation) to prevent collapsed queries that over-match short entries.
-  const contentMorphemes = span.filter((m) => !isParticleMorpheme(m) && m.pronunciationHiragana);
-  let particleStrippedSearches = [];
-  if (contentMorphemes.length >= 2 && contentMorphemes.length < span.length) {
-    const strippedChoices = contentMorphemes.map((m) => {
-      const forms = [m.pronunciationHiragana];
-      if (m.lemmaReadingHiragana !== m.pronunciationHiragana) {
-        forms.push(m.lemmaReadingHiragana);
-      }
-      return [...new Set(forms)];
-    });
-    particleStrippedSearches = forkingPaths(strippedChoices).map((parts) =>
-      parts.join("")
+  // Group the span into contiguous content/particle segments.
+  const segments = [];
+  for (const m of span) {
+    const type = isParticleMorpheme(m) ? "particle" : "content";
+    const last = segments[segments.length - 1];
+    if (last && last.type === type) last.morphemes.push(m);
+    else segments.push({ type, morphemes: [m] });
+  }
+  const contentSegments = segments.filter((s) => s.type === "content");
+  const particleSegments = segments.filter((s) => s.type === "particle");
+
+  let nearReadingQueries = [];
+  let nearKanjiQueries = [];
+
+  if (contentSegments.length >= 2 && particleSegments.length >= 1) {
+    // Single NEAR distance for the whole query — use the longest particle gap
+    // (in characters) so any gap in the span is covered.
+    const nearDistance = Math.max(
+      1,
+      ...particleSegments.map((s) =>
+        s.morphemes.reduce((sum, m) => sum + m.literal.length, 0)
+      )
     );
+
+    const segReadingChoices = contentSegments.map((seg) => {
+      const perMorpheme = seg.morphemes.map((m) => {
+        const forms = [m.pronunciationHiragana];
+        if (m.lemmaReadingHiragana !== m.pronunciationHiragana) {
+          forms.push(m.lemmaReadingHiragana);
+        }
+        return [...new Set(forms)];
+      });
+      return forkingPaths(perMorpheme).map((parts) => parts.join(""));
+    });
+    const segKanjiChoices = contentSegments.map((seg) => {
+      const perMorpheme = seg.morphemes.map((m) => [...new Set([m.literal, m.lemma])]);
+      return forkingPaths(perMorpheme).map((parts) => parts.join(""));
+    });
+
+    nearReadingQueries = forkingPaths(segReadingChoices).map(
+      (tuple) =>
+        `NEAR(${tuple.map((t) => `"${tokenize(t)}"`).join(" ")}, ${nearDistance})`
+    );
+    nearKanjiQueries = forkingPaths(segKanjiChoices)
+      .filter((tuple) => tuple.some(hasKanji))
+      .map(
+        (tuple) =>
+          `NEAR(${tuple.map((t) => `"${tokenize(t)}"`).join(" ")}, ${nearDistance})`
+      );
   }
 
   return {
     readingSearches: [...new Set(readingSearches)],
     kanjiSearches: [...new Set(kanjiSearches)],
-    particleStrippedSearches: [...new Set(particleStrippedSearches)],
+    nearReadingQueries: [...new Set(nearReadingQueries)],
+    nearKanjiQueries: [...new Set(nearKanjiQueries)],
   };
 }
 
@@ -417,8 +458,10 @@ function runFts5Query(db, table, query) {
  *   1. Full span reading — cartesian product of (pronunciationHiragana, lemmaReadingHiragana)
  *      per morpheme; particles use literal (orthographic) form to avoid は→わ artifacts
  *   2. Full span kanji — cartesian product of (literal, lemma), filtered to kanji-containing
- *   3. Particle-stripped reading — same as (1) but particle morphemes removed from span,
- *      catching entries like おなかがへる from the span [おなか, が, へる]
+ *   3. NEAR queries — content-word segments of the span joined with FTS5 NEAR(), letting
+ *      any particle (or none) fill the gap. Catches both entries with no particle at all
+ *      (おなかがへる as おなか/へる) and entries whose particle differs from the text's
+ *      (text 居心地の悪い vs dictionary 居心地が悪い).
  */
 function buildSentenceHits(morphemes, jmdict, tags) {
   const exactStmt = jmdict.prepare(`
@@ -470,7 +513,7 @@ function buildSentenceHits(morphemes, jmdict, tags) {
       end--
     ) {
       const span = morphemes.slice(start, end);
-      const { readingSearches, kanjiSearches, particleStrippedSearches } = spanSearchStrings(span);
+      const { readingSearches, kanjiSearches, nearReadingQueries, nearKanjiQueries } = spanSearchStrings(span);
 
       for (const search of readingSearches) {
         for (const row of runFts5Query(jmdict, "kanas", `^"${tokenize(search)}"`)) {
@@ -482,8 +525,13 @@ function buildSentenceHits(morphemes, jmdict, tags) {
           addHit(start, end, JSON.parse(row));
         }
       }
-      for (const search of particleStrippedSearches) {
-        for (const row of runFts5Query(jmdict, "kanas", `^"${tokenize(search)}"`)) {
+      for (const query of nearReadingQueries) {
+        for (const row of runFts5Query(jmdict, "kanas", query)) {
+          addHit(start, end, JSON.parse(row));
+        }
+      }
+      for (const query of nearKanjiQueries) {
+        for (const row of runFts5Query(jmdict, "kanjis", query)) {
           addHit(start, end, JSON.parse(row));
         }
       }
