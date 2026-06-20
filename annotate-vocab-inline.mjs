@@ -237,13 +237,16 @@ function splitRubyChunks(sentence) {
 // with new <ruby> spans spliced in around the matched substrings.
 function annotateChunk(text, candidates) {
   const matches = [];
-  for (const { text: form, segs } of candidates) {
+  const exactMatchedCandidates = new Set(); // candidates that found at least one exact-form match
+  for (const candidate of candidates) {
+    const { text: form, segs } = candidate;
     let from = 0;
     let idx;
     while ((idx = text.indexOf(form, from)) >= 0) {
       const end = idx + form.length;
       if (!matches.some((m) => idx < m.end && end > m.start)) {
         matches.push({ start: idx, end, segs });
+        exactMatchedCandidates.add(candidate);
       }
       from = idx + 1;
     }
@@ -252,8 +255,15 @@ function annotateChunk(text, candidates) {
   // Step 2: build a kanji → reading map from every candidate's segments, then
   // annotate single-character kanji that have one agreed-upon reading across
   // all candidates that mention them, at every occurrence in the chunk.
+  // Candidates already satisfied by an exact-form match in Step 1 are excluded
+  // here so their reading doesn't spuriously conflict with (and block) a
+  // fallback annotation for a *different* word sharing the same kanji — e.g.
+  // 会話 (話→わ) exactly matching its own occurrence shouldn't prevent 話す's
+  // conjugated occurrence (話していた) from being annotated with 話→はな.
   const kanjiReadings = new Map(); // kanji char -> Set<reading>
-  for (const { segs } of candidates) {
+  for (const candidate of candidates) {
+    if (exactMatchedCandidates.has(candidate)) continue;
+    const { segs } = candidate;
     for (const seg of segs) {
       if (seg.rt && [...seg.ruby].length === 1 && isKanjiChar(seg.ruby)) {
         if (!kanjiReadings.has(seg.ruby)) kanjiReadings.set(seg.ruby, new Set());
