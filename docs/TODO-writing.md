@@ -47,8 +47,10 @@ daily, before any analysis infrastructure exists.
   works fine on the phone. Each line in a card's attempt area is one attempt;
   prefix/suffix it with the Obsidian "insert timestamp" template so the future
   parser can order revisions.
-- Filesystem is the version history: regenerate a fresh dated deck per session
-  rather than tracking revisions inside one file.
+- Filesystem is the version history: each run writes a fresh, timestamped deck
+  (`{source}.WRITING-PRACTICE.{YYYY-MM-DD-HH.MM.SS}.md`, readable local time, not
+  a Unix timestamp), so doing the same passage again days later produces a new
+  file rather than overwriting — the dated decks become the longitudinal record.
 
 ### On vocabulary hints (deferred, not rejected)
 
@@ -90,3 +92,47 @@ blank actually derails a card. Until then: original-only answer key.
    prescriptions, and the migration of individual words across the
    circumlocution → match → upgrade boundary — the most motivating, least
    reductive progress signal.
+
+## Appendix: gloss quality is the sleeper risk
+
+Back-translation is a noisy-channel round-trip:
+`Original(J) → [gloss] → Gloss(E) → [back-translate] → Attempt(J′)`. We want to
+measure the *decode* step (production), but the *encode* step (glossing) is also
+variable and lossy, and its noise contaminates the measurement.
+
+- **The variability biases upward, asymmetrically.** Syntax-hugging "faithful"
+  glosses *leak the answer* — back-translation becomes transcription of your own
+  calque — which **inflates** measured ability. Natural/idiomatic glosses
+  *underdetermine* the target (many valid Japanese renderings), which is *harder
+  but honest*. Rule of thumb: for cards meant for back-translation, write the
+  gloss **natural, not faithful**. (Faithful glosses remain fine for the reading
+  comprehension they were invented for.)
+- **A second upward bias: self-priming.** Even a natural gloss *you wrote* lets
+  you recall *your own English choices* rather than produce from Japanese
+  competence. An externally generated gloss you've never seen removes this. So
+  human-gloss back-translation overestimates ability via two compounding routes
+  (leakage + priming); the purest measurement uses a fresh external gloss.
+- **Stationarity.** A multi-year dashboard needs a *stationary stimulus process*.
+  If your gloss style drifts toward natural English as you mature, divergence
+  rises and the dashboard misreads it as production *worsening*. This is the
+  strongest argument for eventually standardizing the measurement-track gloss.
+- **Structural blind spots no gloss quality can fix.** English glosses cannot
+  carry register/politeness (行った vs 行きました vs 参りました), は-vs-が,
+  synonym selection (成功した vs うまくいった), sentence-final nuance (ね/よ/んだ),
+  or some aspect. So back-translation-from-gloss **cannot fairly test register or
+  particle competence** — the very colloquial/written/keigo axis the dashboard
+  most wants. That axis needs a *different* mechanism (annotate a target register
+  on the card, or a dedicated transformation drill), not a better gloss.
+
+**Proposed resolution (defer building until the confound is felt):** separate the
+two glosses by purpose. The human gloss stays in the annotated file (reading aid,
+J→E, may be clumsy). A *standardized* prompt-gloss — generated from the original
+Japanese to a fixed natural-English, leak-controlled spec — feeds the measurement
+deck. This preserves the valued "I read and annotated this myself" engagement
+(unchanged upstream) while making the channel stationary and unprimed. Adding an
+LLM glosser costs tokens (currently the pipeline is free/deterministic — ask
+first), so the near-term move is: collect data with human glosses, introspect
+per card on whether it felt like transcription vs real production, and only build
+the standardized glosser once the effect size justifies it. A later refinement
+could emit a *ladder* of glosses at controlled leakage levels (decoupled default,
+more-literal optional reveal-tier), folding into the deferred vocab-hint idea.

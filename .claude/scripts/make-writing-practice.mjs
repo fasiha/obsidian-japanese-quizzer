@@ -71,12 +71,20 @@ if (cards.length === 0) {
 }
 
 // --- Render the practice deck ----------------------------------------------
-const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+// Readable local timestamp like "2026-06-14-11.31.31" — used in both the
+// frontmatter and the output filename so re-running on the same source produces
+// a fresh, separate deck (you do the same passage again days later, and the
+// dated decks become your version history). NOT a Unix timestamp on purpose.
+const now = new Date();
+const pad = (n) => String(n).padStart(2, '0');
+const stamp =
+  `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
+  `-${pad(now.getHours())}.${pad(now.getMinutes())}.${pad(now.getSeconds())}`;
 
 const header = `---
 writing-practice: true
 source: ${inputPath}
-generated: ${today}
+generated: ${stamp}
 ---
 
 # Back-translation practice
@@ -108,7 +116,8 @@ ${quotedGloss}
   })
   .join('\n');
 
-const outputPath = inputPath.replace(/\.md$/, '') + '.WRITING-PRACTICE.md';
+const outputPath =
+  inputPath.replace(/\.md$/, '') + `.WRITING-PRACTICE.${stamp}.md`;
 writeFileSync(outputPath, header + renderedCards + '\n');
 
 console.log(`Wrote ${cards.length} cards to ${outputPath}`);
