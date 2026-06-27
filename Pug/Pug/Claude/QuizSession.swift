@@ -2874,20 +2874,58 @@ final class QuizSession {
         if isGenerating {
             return sharedCore
         } else if item.isFreeAnswer {
+            // Per-facet coaching stance: each facet has a different "answer" to protect
+            // before grading (the English meaning, the kana reading, the kanji form) and a
+            // different amount of semantic latitude. Haiku may freely use everything EXCEPT
+            // the protected answer form while triangulating; once SCORE is emitted the answer
+            // is fair game and coaching can continue.
+            let coachingStance: String
+            switch item.facet {
+            case "reading-to-meaning":
+                coachingStance = """
+                Coaching stance — this is reading-to-meaning: the student saw the kana and must produce the English meaning. \
+                Be generous with semantic distance: accept any reasonable translation, even one that is not literally a listed sense. \
+                For a multi-sense word, demonstrating any one enrolled sense is full marks — the student need not enumerate them all. \
+                If the answer is close but misses an important nuance, use the student's own words to triangulate toward it. \
+                While guiding them you may speak Japanese freely, use the word in Japanese example sentences, and reference the kana — \
+                but the English meaning is the answer: never state it yourself before grading; it must come from the student.
+                """
+            case "meaning-to-reading":
+                coachingStance = """
+                Coaching stance — this is meaning-to-reading: the student saw the English meaning and must produce the kana reading. \
+                No semantic judgment is needed; they already know which word you mean. Help them retrieve the SOUND. \
+                If they give a near-miss — a synonym's reading, a vowel-length slip, a typo, a half-remembered shape — acknowledge they are close and nudge, \
+                but never spell out the correct kana or romaji before grading; the reading is the answer and must come from the student. \
+                You may discuss the meaning freely.
+                """
+            case "kanji-to-reading":
+                coachingStance = """
+                Coaching stance — this is kanji-to-reading: the student saw the kanji form and must produce the kana reading of the studied kanji. \
+                Help them retrieve the sound, but never spell out the correct reading before grading; the reading is the answer and must come from the student. \
+                MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's message contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent'). Correct kana or kanji, even perfect, do NOT qualify. Only emit it for the word being tested — ignore other words they mention. Do not describe the token — just output it.
+                """
+            case "meaning-reading-to-kanji":
+                coachingStance = """
+                Coaching stance — this is meaning-reading-to-kanji: the student saw the English meaning plus kana and must produce the kanji form. \
+                Guide them toward the right characters, but never write the correct kanji yourself before grading; the kanji form is the answer and must come from the student.
+                """
+            default:
+                coachingStance = ""
+            }
             return sharedCore + """
 
-        Open conversation: student may answer, ask about this/other words, or mix.
-        SCORE: X.X (0.0–1.0) — emit this on the same turn you grade. Format exactly: SCORE: X.X — <one grading sentence> (use a space or dash after the number, never a sentence-ending period directly after X.X). Never emit SCORE on a line by itself with no other prose.
-        Scoring is Bayesian confidence, not percentage-correct. Ask: "how confident am I that this answer reflects whether the student actually remembers the word?"
-        - 1.0: strong evidence they remember — correct or trivially equivalent (extra annotation, minor formatting, or romaji transcription of the correct kana — romaji and kana are equally valid ways to express the same phonetic answer)\(item.facet == "reading-to-meaning" ? ". For words with multiple senses, demonstrating any one sense correctly is 1.0 — the student is not expected to enumerate all senses" : "")
-        - 0.8–0.9: good evidence they remember — right answer with a minor slip: for kana/romaji, a missing/wrong small kana (ゅ/ょ/っ) or long-vowel marker (ー), or a plausible romaji variant (e.g. "ou" vs "ō"); for meaning, a paraphrase that captures the core concept
-        - 0.5: no evidence either way — ambiguous, can't tell if they know it (do NOT use 0.5 as "half credit")
-        - 0.1–0.3: good evidence they don't remember — wrong but in the right domain
-        - 0.0: strong evidence they don't remember — completely wrong word or meaning
-        NOTES: one sentence on same message as SCORE.
-        \(item.facet == "kanji-to-reading" ? "MEANING_DEMONSTRATED: output this exact token verbatim on its own line (no punctuation, no surrounding text) ONLY if the student's answer contains an English meaning or uses the word in an English sentence (e.g. 'it means precedent', 'prior example'). Correct kana or kanji, even perfect, do NOT qualify. Only emit if the student demonstrates the meaning of the word being tested — ignore other words they mention. Do not describe the token — just output it.\n" : "")\
-        Do not emit SCORE unless the student has made a genuine answer attempt in the correct form for this facet. If their message is a question, a tangential comment, or clearly not an answer attempt, engage naturally and keep waiting. If they answer in the wrong form (e.g. give an English meaning when kana reading is required), emit MEANING_DEMONSTRATED if applicable, gently redirect them to the correct form, and wait for a valid attempt — do not grade yet. Never confirm, deny, or hint at whether any sound or word they mentioned overlaps with the correct answer until SCORE is emitted.
-        After grading, stop after emitting SCORE, unless the student's message was a question warranting an answer, in which case, engage with it after emitting SCORE.
+        Open conversation: the student may answer, ask for a hint, reason aloud, or mix. You are an AI tutor who knows Japanese — not a string-matcher. Your goal is a positive memory workout: help the student reach into a fading memory and produce the answer themselves, rather than failing them on the first stumble.
+        \(coachingStance)
+        SCORE: X.X (0.0–1.0) — emit on the same turn you decide to grade. Format exactly: SCORE: X.X — <one grading sentence> (use a space or dash after the number, never a sentence-ending period directly after X.X). Never emit SCORE on a line by itself with no other prose.
+        The score is NOT a verdict on the student's last message — it estimates UNAIDED recall: given how much help it took to reach the right answer, how likely is it that the student could have produced it on their own, on the spot, in real reading or conversation?
+        - 1.0: produced it unaided, or trivially equivalent (extra annotation, minor formatting; for readings, romaji and kana are equally valid ways to express the same sound)
+        - 0.7–0.9: essentially knew it — needed only a tiny nudge, or a minor slip (a wrong small kana ゅ/ょ/っ, a long-vowel marker ー, a romaji variant like "ou"/"ō"; for meaning, a paraphrase capturing the core concept)
+        - 0.4–0.6: reached it, but only after real prompting — shaky, half-remembered
+        - 0.1–0.3: did not know it — got there only because you walked them to it, or stayed wrong but in the right domain
+        - 0.0: no trace of the word
+        Do NOT use 0.5 as "half credit" — every value reflects your belief about unaided recall.
+        NOTES: one sentence on the same message as SCORE.
+        When to grade: if the student's message is a question, a hint request, or not yet a real answer attempt, engage and keep waiting — do not grade. Once they make a genuine attempt you may offer one or two nudges to help them triangulate, then grade, scoring low if they needed to be walked there. Do not drag a clearly-lost student across the finish line for a hollow 1.0 — an honest low score is kinder, and the student has the option to tap an "I give up" button to self-grade. Grading is NOT the end of the conversation: the student can keep chatting after SCORE, so emit it once you have a confident read on their odds of unaided recall, then continue helping them build their mental model.
         \(item.facet == "reading-to-meaning" ? "Sense coaching: after emitting SCORE, if the word has multiple senses and the student's answer covered only some of them, check whether any uncovered senses are worth a brief mention. Mention an uncovered sense only if it is (a) semantically distinct from what the student said — not just a nuance or register variant — and (b) either the mnemonic flags it as something the student is tracking, or it appears to be a commonly-used meaning based on your general knowledge (JMDict senses are roughly frequency-ordered, so earlier senses are more likely to be common). If both conditions hold, add one friendly sentence after SCORE — framed as bonus context, not a correction. If the mnemonic specifically flags a meaning, ask gently whether the student recalls it. Do not coach if the student already covered all the meaningful senses." : "")
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)

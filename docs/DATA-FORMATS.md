@@ -431,6 +431,33 @@ CREATE TABLE model_events (
 
 ---
 
+## `chat.sqlite` — Conversation history with Haiku
+
+Records every turn in LLM conversations during quizzes and study sessions. Used for auditing grading decisions, analyzing model behavior, and debugging quiz interactions.
+
+### `turns` table
+
+One row per message exchanged with Haiku.
+
+```sql
+CREATE TABLE turns (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts           INTEGER NOT NULL,        -- UNIX timestamp (seconds)
+  context      TEXT NOT NULL,           -- conversation scope (e.g. "quiz:1234567:reading-to-meaning:uuid")
+  role         TEXT NOT NULL,           -- "system", "user", or "assistant"
+  content      TEXT NOT NULL,           -- message text (system prompt, user answer, Haiku response)
+  template_id  TEXT                     -- optional: template name for generated prompts (null for dynamic messages)
+);
+```
+
+**context format:** Structured as one of:
+- `quiz:<word_id>:<facet>:<session_uuid>` — vocabulary or kanji quiz turn
+- `grammar:<topic_id>:<facet>:<session_uuid>` — grammar quiz turn
+
+The context uniquely identifies a conversation thread and allows grouping related turns.
+
+---
+
 ## `jmdict.sqlite` — `entries` table
 
 ```sql
