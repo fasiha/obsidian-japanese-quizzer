@@ -56,6 +56,14 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Multiple choice only", isOn: $prefs.multipleChoiceOnly)
+                } header: {
+                    Text("Free-text quizzes")
+                } footer: {
+                    Text("When on, every quiz is multiple choice.")
+                }
+
+                Section {
                     if let folderURL = audioFolderURL {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(folderURL.lastPathComponent)

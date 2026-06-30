@@ -1015,6 +1015,12 @@ final class QuizSession {
 
     // MARK: - Private: free-answer stem builder
 
+    /// Returns true when this item should be presented as a free-answer quiz,
+    /// taking the user's multiple-choice-only preference into account.
+    private func isFreeAnswer(_ item: QuizItem) -> Bool {
+        !preferences.multipleChoiceOnly && item.isFreeAnswer
+    }
+
     /// Build the question stem app-side for free-answer facets (no LLM needed).
     func freeAnswerStem(for item: QuizItem) -> String {
         let kana = item.committedReading ?? item.kanaTexts.first ?? "?"
@@ -1207,7 +1213,7 @@ final class QuizSession {
                 chatMessages = []
                 multipleChoiceResult = nil
                 phase = .awaitingTap(multipleChoice)
-            } else if item.isFreeAnswer {
+            } else if isFreeAnswer(item) {
                 phase = .awaitingText(pf.question)
             } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji" {
                 // Prefetch stored a nil multipleChoice for a facet that requires it — parse failed.
@@ -1331,7 +1337,7 @@ final class QuizSession {
         }
 
         // Free-answer: construct stem app-side, no LLM call needed.
-        if item.isFreeAnswer {
+        if isFreeAnswer(item) {
             let stem = freeAnswerStem(for: item)
             currentQuestion = stem
             print("[QuizSession] free-answer stem (app-side) for \(item.wordText): \(stem)")
@@ -1837,7 +1843,7 @@ final class QuizSession {
         }
 
         // Free-answer: stem is app-side — instant, no network call.
-        if item.isFreeAnswer {
+        if isFreeAnswer(item) {
             guard currentIndex <= index else { return }
             let stem = freeAnswerStem(for: item)
             prefetched = (index: index, question: stem, multipleChoice: nil,
@@ -2050,7 +2056,7 @@ final class QuizSession {
         var finalMultipleChoice: MultipleChoiceQuestion? = nil
         var finalMsgs: [AnthropicMessage] = []
         let isPrefetch = label == "prefetch" ? 1 : 0
-        let qFormat = item.isFreeAnswer ? "free_answer" : "multiple_choice"
+        let qFormat = isFreeAnswer(item) ? "free_answer" : "multiple_choice"
         for attempt in 1...2 {
             let (raw, msgs, meta) = try await client.send(
                 messages: [initMsg],
@@ -2840,7 +2846,7 @@ final class QuizSession {
             ebisuLine = "new word"
         }
         let distractorLine: String
-        if !isGenerating || item.isFreeAnswer {
+        if !isGenerating || isFreeAnswer(item) {
             distractorLine = ""
         } else {
             switch item.facet {
@@ -2873,7 +2879,7 @@ final class QuizSession {
         """
         if isGenerating {
             return sharedCore
-        } else if item.isFreeAnswer {
+        } else if isFreeAnswer(item) {
             // Per-facet coaching stance: each facet has a different "answer" to protect
             // before grading (the English meaning, the kana reading, the kanji form) and a
             // different amount of semantic latitude. Haiku may freely use everything EXCEPT

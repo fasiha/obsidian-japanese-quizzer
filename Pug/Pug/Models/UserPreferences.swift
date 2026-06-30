@@ -93,6 +93,11 @@ final class UserPreferences {
         didSet { UserDefaults.standard.set(audioFolderBookmark, forKey: Keys.audioFolderBookmark) }
     }
 
+    /// When true, all quizzes are presented as multiple choice even if the item has graduated to free-answer.
+    var multipleChoiceOnly: Bool {
+        didSet { UserDefaults.standard.set(multipleChoiceOnly, forKey: Keys.multipleChoiceOnly) }
+    }
+
     init() {
         let storedStyle = UserDefaults.standard.string(forKey: Keys.quizStyle) ?? ""
         quizStyle = QuizStyle(rawValue: storedStyle) ?? .varied
@@ -105,12 +110,15 @@ final class UserPreferences {
 
         let storedDistractor = UserDefaults.standard.string(forKey: Keys.distractorSource) ?? ""
         distractorSource = DistractorSource(rawValue: storedDistractor) ?? .ai
+
+        multipleChoiceOnly = UserDefaults.standard.bool(forKey: Keys.multipleChoiceOnly)
     }
 
     private enum Keys {
-        static let quizStyle          = "quizStyle"
+        static let quizStyle           = "quizStyle"
         static let audioFolderBookmark = "audioFolderBookmark"
-        static let sessionLength      = "sessionLength"
-        static let distractorSource   = "distractorSource"
+        static let sessionLength       = "sessionLength"
+        static let distractorSource    = "distractorSource"
+        static let multipleChoiceOnly  = "multipleChoiceOnly"
     }
 }
