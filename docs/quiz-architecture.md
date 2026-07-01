@@ -129,6 +129,8 @@ Partial commitment affects kanji facet quizzes: only committed kanji are tested.
 
 All facets start as multiple choice and graduate to free-answer once the facet has ≥ 3 reviews **and** halflife ≥ 48 hours. The one exception: `meaning-reading-to-kanji` is **always** multiple choice (never free-answer).
 
+Users can opt out of free-answer quizzes entirely via the **"Free-text quizzes"** toggle in Settings. When "Multiple choice only" is enabled, all quizzes are presented as multiple choice regardless of halflife or review count.
+
 ## Who generates and grades
 
 - **Multiple choice**: LLM generates the question, or the app builds it locally if conditions allow (see below). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.

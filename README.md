@@ -127,7 +127,8 @@ only 前 in 前例 means the quiz shows 前れい).
 scored instantly). After 3+ reviews and halflife of 48+ hours, the facet graduates to
 free-answer (student types, and if they just typed the answer, the app grades locally, but
 if they typed more than just the answer, Claude grades, with a Bayesian confidence score
-0.0–1.0). Exception: meaning-reading-to-kanji is always multiple choice.
+0.0–1.0). Exception: meaning-reading-to-kanji is always multiple choice. If you prefer
+multiple choice only, toggle "Multiple choice only" in Settings → Free-text quizzes.
 
 **Conversational grading:** After each answer, the conversation continues freely. Claude
 has access to JMDict lookups, KANJIDIC2 and Wanikani kanji breakdowns, the student's full
