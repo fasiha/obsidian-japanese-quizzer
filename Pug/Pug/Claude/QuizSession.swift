@@ -1922,6 +1922,34 @@ final class QuizSession {
         return response
     }
 
+    /// Replay a fixed multi-turn conversation against the grading prompt for a given item.
+    /// Unlike gradeAnswerForTesting (one independent turn per call), this accumulates real
+    /// conversation history across turns — needed to reproduce/inspect badgering behavior
+    /// (does Haiku keep nudging across turns when an earlier turn already deserved SCORE?)
+    /// and answer-leakage that only shows up after a few turns of back-and-forth.
+    /// Intended for CLI test harness use only; bypasses phase state machine entirely.
+    func gradeConversationForTesting(item: QuizItem, stem: String, turns: [String]) async throws -> [(userTurn: String, response: String)] {
+        let system = systemPrompt(for: item)  // isGenerating=false → grading prompt
+        var messages: [AnthropicMessage] = []
+        var results: [(userTurn: String, response: String)] = []
+        for (i, turn) in turns.enumerated() {
+            let userText = i == 0 ? "Question you asked me: \(stem)\nMy answer: \(turn)" : turn
+            messages.append(AnthropicMessage(role: "user", content: [.text(userText)]))
+            let (response, _, _) = try await client.send(
+                messages: messages,
+                system: system,
+                tools: [.lookupJmdict, .lookupKanjidic, .getMnemonic, .setMnemonic],
+                maxTokens: 1024,
+                toolHandler: makeToolHandler(),
+                chatContext: .vocabQuiz(wordId: item.wordId, facet: item.facet, sessionId: item.id.uuidString),
+                templateId: "vocab-llm-grade"
+            )
+            messages.append(AnthropicMessage(role: "assistant", content: [.text(response)]))
+            results.append((userTurn: turn, response: response))
+        }
+        return results
+    }
+
     /// Tools to use during question generation, based on facet.
     /// reading-to-meaning/meaning-to-reading/kanji-to-reading produce kana or English distractors — no lookup needed.
     /// meaning-reading-to-kanji: Haiku thinks of candidates itself, then verifies with jmdict — no kanjidic needed.
@@ -2892,9 +2920,8 @@ final class QuizSession {
                 Coaching stance — this is reading-to-meaning: the student saw the kana and must produce the English meaning. \
                 Be generous with semantic distance: accept any reasonable translation, even one that is not literally a listed sense. \
                 For a multi-sense word, demonstrating any one enrolled sense is full marks — the student need not enumerate them all. \
-                If the answer is close but misses an important nuance, use the student's own words to triangulate toward it. \
-                While guiding them you may speak Japanese freely, use the word in Japanese example sentences, and reference the kana — \
-                but the English meaning is the answer: never state it yourself before grading; it must come from the student.
+                When judging a multi-part answer, use the best part: if any phrase already conveys an enrolled sense, the answer is correct — do not ask them to narrow a spray to one canonical word or sharpen already-correct wording. \
+                While guiding them you may speak Japanese freely and use the word in Japanese example sentences — but the English meaning is the answer: never state or list it yourself before grading (not even reciting the enrolled senses back as "the word can mean…"); it must come from the student.
                 """
             case "meaning-to-reading":
                 coachingStance = """
@@ -2924,14 +2951,14 @@ final class QuizSession {
         \(coachingStance)
         SCORE: X.X (0.0–1.0) — emit on the same turn you decide to grade. Format exactly: SCORE: X.X — <one grading sentence> (use a space or dash after the number, never a sentence-ending period directly after X.X). Never emit SCORE on a line by itself with no other prose.
         The score is NOT a verdict on the student's last message — it estimates UNAIDED recall: given how much help it took to reach the right answer, how likely is it that the student could have produced it on their own, on the spot, in real reading or conversation?
-        - 1.0: produced it unaided, or trivially equivalent (extra annotation, minor formatting; for readings, romaji and kana are equally valid ways to express the same sound)
+        - 1.0: produced it unaided, or trivially equivalent (extra annotation, minor formatting; for readings, romaji and kana are equally valid ways to express the same sound)\(item.facet == "reading-to-meaning" ? "; for this facet, any natural-English phrase whose best part conveys an enrolled sense counts as 1.0 — people explain word meanings in their own words, not dictionary glosses, so \"rip and tear\" for はがす or \"somehow, a vague feeling\" for どことなく are full marks" : "")
         - 0.7–0.9: essentially knew it — needed only a tiny nudge, or a minor slip (a wrong small kana ゅ/ょ/っ, a long-vowel marker ー, a romaji variant like "ou"/"ō"; for meaning, a paraphrase capturing the core concept)
         - 0.4–0.6: reached it, but only after real prompting — shaky, half-remembered
         - 0.1–0.3: did not know it — got there only because you walked them to it, or stayed wrong but in the right domain
         - 0.0: no trace of the word
         Do NOT use 0.5 as "half credit" — every value reflects your belief about unaided recall.
         NOTES: one sentence on the same message as SCORE.
-        When to grade: if the student's message is a question, a hint request, or not yet a real answer attempt, engage and keep waiting — do not grade. Once they make a genuine attempt you may offer one or two nudges to help them triangulate, then grade, scoring low if they needed to be walked there. Do not drag a clearly-lost student across the finish line for a hollow 1.0 — an honest low score is kinder, and the student has the option to tap an "I give up" button to self-grade. Grading is NOT the end of the conversation: the student can keep chatting after SCORE, so emit it once you have a confident read on their odds of unaided recall, then continue helping them build their mental model.
+        When to grade: if the student's message is a question, a hint request, or not yet a real answer attempt, engage and keep waiting — do not grade. Once they make a genuine attempt, check whether any part of it already satisfies the facet's answer criterion — if yes, grade immediately (1.0 or close, reflecting strong unaided recall). Only nudge if the attempt is genuinely missing, incomplete, or unclear, and score lower the more help was needed. Do not drag a clearly-lost student across the finish line for a hollow 1.0 — an honest low score is kinder, and the student has the option to tap an "I give up" button to self-grade. Grading is NOT the end of the conversation: the student can keep chatting after SCORE, so emit it once you have a confident read on their odds of unaided recall, then continue helping them build their mental model.
         \(item.facet == "reading-to-meaning" ? "Sense coaching: after emitting SCORE, if the word has multiple senses and the student's answer covered only some of them, check whether any uncovered senses are worth a brief mention. Mention an uncovered sense only if it is (a) semantically distinct from what the student said — not just a nuance or register variant — and (b) either the mnemonic flags it as something the student is tracking, or it appears to be a commonly-used meaning based on your general knowledge (JMDict senses are roughly frequency-ordered, so earlier senses are more likely to be common). If both conditions hold, add one friendly sentence after SCORE — framed as bonus context, not a correction. If the mnemonic specifically flags a meaning, ask gently whether the student recalls it. Do not coach if the student already covered all the meaningful senses." : "")
         set_mnemonic overwrites — always merge with existing mnemonic before saving.
         \(mnemonicBlock)

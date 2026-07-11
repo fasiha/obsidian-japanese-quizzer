@@ -17,6 +17,20 @@ swift build
 .build/debug/TestHarness <word_id> [facet] --grade "answer1" "answer2"
 # e.g.: .build/debug/TestHarness 1358340 meaning-to-reading --grade "たべもの" "tabemono"
 
+# Replay a multi-turn grading conversation, carrying real history across turns (calls Claude API):
+# Use this instead of --grade to reproduce reported badgering/leakage — --grade sends each
+# answer as an independent single-turn call, so it can't show how Haiku behaves across turns.
+.build/debug/TestHarness <word_id> [facet] --grade-turns "turn1" "turn2" ...
+# e.g. replaying a reported どことなく transcript where the student's first answer already
+# contained an enrolled sense but Haiku kept asking for a single canonical word:
+.build/debug/TestHarness 1189020 reading-to-meaning --grade-turns \
+  "\"Where I can't say\", somehow, a vague feeling of something" \
+  "No I think my spray of meanings nicely hovers the semantics of this word" \
+  "Somehow"
+# Prints each turn's response, flags whether/when SCORE was emitted, and (for reading-to-meaning)
+# warns if a pre-SCORE response contains an enrolled gloss verbatim — a sign Haiku leaked the
+# answer instead of eliciting it.
+
 # Generate a meaning-reading-to-kanji question with full commitment (all kanji known):
 .build/debug/TestHarness 1394190 meaning-reading-to-kanji --committed-kanji 前,例
 # Generate with partial commitment (only 前 committed; 例 shown as kana in the template):
@@ -39,7 +53,8 @@ swift build
 
 **Modes**:
 - **generate** (default): builds a `QuizItem`, calls `generateQuestionForTesting()`, prints the multiple-choice question. All four facets are supported. kanji-to-reading and meaning-reading-to-kanji require `--committed-kanji <kanji1,kanji2,...>` to specify which kanji the student has committed to learning; provide all kanji for full commitment or a strict subset for partial commitment.
-- **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. reading-to-meaning and meaning-to-reading only (kanji facets are always multiple choice in the app).
+- **grade**: builds the app-side free-answer stem, then calls `gradeAnswerForTesting()` for each answer. reading-to-meaning and meaning-to-reading only (kanji facets are always multiple choice in the app). Each answer is graded independently from scratch — no shared history between them.
+- **grade-turns**: builds the app-side free-answer stem, then calls `gradeConversationForTesting()` to replay all given turns as one continuous conversation with real accumulated history. Use this to reproduce reported multi-turn behavior (badgering past a correct answer, answer leakage that only appears a few turns in) that `--grade` cannot show since it never carries history across answers.
 - **dump-prompts**: iterates a triple loop over **facet × mode × commitment** and prints every system prompt + user message. Covers all 4–10 paths depending on word shape. No API key needed. Requires `JmdictFurigana.json` (see below).
 - **live**: sends all prompt paths to Haiku (or `ANTHROPIC_MODEL`) and validates responses automatically — checks for answer leakage, correct-answer accuracy, SCORE parsing, and A/B/C/D contamination. Requires API key and `JmdictFurigana.json`. Flags: `--facet <name>` restricts the run to a single facet (omit for all); `--repeat N` repeats each generation path N times; `--gen-only` skips free-text grading paths.
 

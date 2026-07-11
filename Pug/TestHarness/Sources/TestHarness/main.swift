@@ -167,7 +167,16 @@ if let gradeIdx = args.firstIndex(of: "--grade") {
     gradeAnswers = Array(args[(gradeIdx + 1)...])
 }
 
+// --grade-turns "turn1" "turn2" ...: replay a single continuous conversation (real history
+// carried across turns), unlike --grade which grades each answer independently from scratch.
+// Use this to reproduce reported badgering/leakage transcripts turn-by-turn.
+var gradeTurns: [String] = []
+if let turnsIdx = args.firstIndex(of: "--grade-turns") {
+    gradeTurns = Array(args[(turnsIdx + 1)...])
+}
+
 let isGradeMode = !gradeAnswers.isEmpty
+let isGradeTurnsMode = !gradeTurns.isEmpty
 
 // --committed-kanji 前,例 : comma-separated kanji characters the user has committed to learning.
 // Provide all kanji in the word for full commitment; a strict subset for partial commitment.
@@ -669,7 +678,7 @@ let item = QuizItem(
     kanaTexts: entry.kanaTexts,
     hasKanji: hasKanji,
     facet: facet,
-    status: .reviewed(recall: 0.5, isFree: isGradeMode, halflife: 24.0),
+    status: .reviewed(recall: 0.5, isFree: isGradeMode || isGradeTurnsMode, halflife: 24.0),
     senseExtras: Array(entry.senseExtras.prefix(5)),
     committedKanji: itemCommittedKanji,
     partialKanjiTemplate: itemPartialKanjiTemplate,
@@ -703,10 +712,11 @@ let session     = QuizSession(client: client, toolHandler: toolHandler, db: quiz
 
 session.allCandidates = []  // no vocab context needed for generation test
 
-if isGradeMode {
+if isGradeMode || isGradeTurnsMode {
     // Build the app-side stem (same logic as QuizSession.freeAnswerStem, reproduced here)
     let kana = entry.kanaTexts.first ?? "?"
-    let meanings = entry.senseExtras.flatMap(\.glosses).prefix(3).joined(separator: "; ")
+    let allMeanings = entry.senseExtras.flatMap(\.glosses)
+    let meanings = allMeanings.prefix(3).joined(separator: "; ")
     let stem: String
     switch facet {
     case "meaning-to-reading":
@@ -721,6 +731,39 @@ if isGradeMode {
     }
 
     print("Stem:     \(stem)\n")
+
+    if isGradeTurnsMode {
+        // Crude leak heuristic for reading-to-meaning: warn if two-or-more-word enrolled
+        // glosses ("to go into", "step in (a house)") show up verbatim in a pre-SCORE
+        // response — a sign Haiku recited the answer instead of eliciting it.
+        let leakCandidates = facet == "reading-to-meaning"
+            ? allMeanings.map { $0.lowercased() }.filter { $0.split(separator: " ").count >= 2 }
+            : []
+        var sawScore = false
+        let start = Date()
+        do {
+            let results = try await session.gradeConversationForTesting(item: item, stem: stem, turns: gradeTurns)
+            let elapsed = Date().timeIntervalSince(start)
+            for (i, turn) in results.enumerated() {
+                print("── Turn \(i + 1) — student: \"\(turn.userTurn)\" ──")
+                print(turn.response)
+                let hasScore = turn.response.contains("SCORE:")
+                if hasScore { sawScore = true }
+                if !sawScore {
+                    let lowered = turn.response.lowercased()
+                    let leaked = leakCandidates.filter { lowered.contains($0) }
+                    if !leaked.isEmpty {
+                        print("⚠️  possible pre-SCORE leak of enrolled sense(s): \(leaked.joined(separator: ", "))")
+                    }
+                }
+                print("")
+            }
+            print("turns: \(results.count)   SCORE emitted: \(sawScore)   elapsed: \(String(format: "%.1f", elapsed))s")
+        } catch {
+            fputs("Error grading conversation: \(error)\n", stderr)
+        }
+        exit(0)
+    }
 
     for (i, answer) in gradeAnswers.enumerated() {
         print("── Answer \(i + 1): \"\(answer)\" ──")
