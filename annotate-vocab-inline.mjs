@@ -423,6 +423,7 @@ let currentSentenceId = null; // sentence ID for the Vocab block being processed
 let lastProseLine = null;
 let vocabSentenceText = null; // sentence text captured when the current Vocab block opened
 let vocabFuriganaCandidates = []; // accumulated furigana candidates for the current Vocab block
+let lastProseOutputIndex = null; // index in `output` of the most recent prose line
 
 for (const line of lines) {
   const trimmed = line.trim();
@@ -481,7 +482,8 @@ for (const line of lines) {
       if (output.length && output[output.length - 1] !== "") {
         output.push("");
       }
-      output.push(line);
+      // The class lets header.html's CSS show the ruby sentence while this block is open.
+      output.push(line.replace(/<details\b/, '<details class="vocab-details"'));
       // Pandoc requires a blank line after the opening tag to treat the
       // contents as Markdown rather than raw HTML.
       output.push("");
@@ -512,6 +514,7 @@ for (const line of lines) {
       output.push("");
       firstSentenceSeen = true;
       lastProseLine = line;
+      lastProseOutputIndex = output.length;
     }
     output.push(line);
     continue;
@@ -528,11 +531,14 @@ for (const line of lines) {
 
   if (nextDepth <= 0) {
     // This line contains the closing </details> for the Vocab block itself.
-    // Inject the resolved toggle-furigana sentence (hidden by default; a
-    // pandoc-header script swaps it in on click) before closing the block.
+    // Add a ruby copy of the sentence right after the plain sentence. The CSS in
+    // header.html hides the plain sentence and shows the ruby copy while this
+    // Vocab block is open.
     const furiganaHtml = resolveSentenceFurigana(vocabSentenceText, vocabFuriganaCandidates);
     if (furiganaHtml) {
-      output.push(`<span class="furigana-sentence" hidden>${furiganaHtml}</span>`);
+      // Blank lines keep pandoc parsing the div's contents as Markdown, the same
+      // way as the sentence-block div.
+      output.splice(lastProseOutputIndex + 1, 0, "", '<div class="sentence-furigana">', "", furiganaHtml, "", "</div>");
     }
     insideVocab = false;
     output.push(line);
