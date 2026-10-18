@@ -166,6 +166,19 @@ final class QuizSession {
     // In-flight prefetch task, so generateQuestion() can await it instead of restarting.
     private var prefetchTask: Task<Void, Never>? = nil
 
+    // MARK: - Drill mode state
+
+    /// Word IDs answered or skipped this sitting. Drills never re-add these.
+    private(set) var seenWordIds: Set<String> = []
+    /// Shown under the drill buttons after a tap ("Added N"). Cleared when the next question starts.
+    var drillConfirmation: String? = nil
+    /// Sentence and document groupings, built in loadItems from the cached vocab manifest.
+    private var drillIndex: DrillIndex? = nil
+    /// Enrolled items from the unscoped pool, keyed by word ID. Resolves saved queues and supplies drill candidates.
+    private var enrolledById: [String: QuizItem] = [:]
+    /// Last queue write in the serial chain built by `enqueueQueueWrite`.
+    private var queueWriteTask: Task<Void, Never>? = nil
+
 
     init(client: AnthropicClient, toolHandler: ToolHandler, db: QuizDB,
          preferences: UserPreferences) {
@@ -182,6 +195,8 @@ final class QuizSession {
         currentIndex = 0
         prefetched = nil
         prefetchTask = nil
+        seenWordIds = []
+        drillConfirmation = nil
         phase = .loadingItems
         Task { await loadItems() }
     }
@@ -194,10 +209,19 @@ final class QuizSession {
         Task { await doChatTurn(text) }
     }
 
+    /// Advances past the current item, whether it was graded or skipped. Skipping evicts the word
+    /// from the saved queue, so it does not come back on the next launch. Removing an already-graded
+    /// word is a harmless no-op, because grading removes it too.
     func nextQuestion() {
+        if let item = currentItem {
+            seenWordIds.insert(item.wordId)
+            let wordId = item.wordId
+            enqueueQueueWrite { [db] in try? await db.removeFromSession(wordId: wordId) }
+        }
+        drillConfirmation = nil
         currentIndex += 1
         if currentIndex >= items.count {
-            Task { try? await db.clearSession() }
+            enqueueQueueWrite { [db] in try? await db.clearSession() }
             phase = .finished
         } else {
             Task { await generateQuestion() }
@@ -918,6 +942,8 @@ final class QuizSession {
         currentIndex = 0
         prefetched = nil
         prefetchTask = nil
+        seenWordIds = []
+        drillConfirmation = nil
         conversation = []
         currentQuestion = ""
         chatMessages = []
@@ -925,11 +951,64 @@ final class QuizSession {
         isSendingChat = false
         gradedScore = nil
         phase = .loadingItems
-        // Clear the DB session first, then load — serialised to avoid a race where
-        // loadItems() calls sessionWordIds() before clearSession() has committed.
-        Task {
-            try? await db.clearSession()
-            await loadItems()
+        // Clear the DB session first, then load. loadItems() waits for queued writes, so it
+        // never reads the queue before this clear has committed.
+        enqueueQueueWrite { [db] in try? await db.clearSession() }
+        Task { await loadItems() }
+    }
+
+    // MARK: - Drill mode
+
+    enum DrillScope { case sentences, documents }
+
+    /// Swap probability for the noisy sort in `drillBatch`. See docs/TODO-drill-mode.md.
+    static let drillSwapProbability = 0.25
+
+    func drillSentences() { drill(.sentences) }
+    func drillDocuments() { drill(.documents) }
+
+    /// Enrolled words a drill in `scope` would append now, in queue order. The buttons' counts and the
+    /// taps both come from here, so a button's number always matches what a tap adds. Empty unless a
+    /// vocabulary item is on screen.
+    func pendingDrillIds(_ scope: DrillScope) -> [String] {
+        guard let item = currentItem, item.wordType == "jmdict", let index = drillIndex else { return [] }
+        let siblingIds = scope == .sentences
+            ? index.sentenceSiblings(of: item.wordId)
+            : index.documentSiblings(of: item.wordId)
+        let candidates = siblingIds.compactMap { wordId -> DrillCandidate? in
+            guard let sibling = enrolledById[wordId], sibling.wordType == "jmdict" else { return nil }
+            return DrillCandidate(wordId: wordId, recall: sibling.recall)
+        }
+        let queuedIds = Set(items[currentIndex...].map(\.wordId))
+        var generator = SystemRandomNumberGenerator()
+        return drillBatch(siblings: candidates, seen: seenWordIds, queued: queuedIds,
+                          swapProbability: Self.drillSwapProbability, using: &generator)
+    }
+
+    /// Appends the drill batch to the end of the queue and rewrites the saved queue. Only allowed after
+    /// grading: appending never changes the next slot, so a prefetched next question stays valid.
+    private func drill(_ scope: DrillScope) {
+        guard gradedScore != nil, phase == .chatting else { return }
+        let batchIds = pendingDrillIds(scope)
+        items.append(contentsOf: batchIds.compactMap { enrolledById[$0] })
+        drillConfirmation = "Added \(batchIds.count)"
+        persistQueue()
+    }
+
+    /// Rewrites the saved queue as the items after the current one. The current word is left out,
+    /// because grading or skipping has already removed it from the saved queue.
+    private func persistQueue() {
+        let remainingIds = items[(currentIndex + 1)...].map(\.wordId)
+        enqueueQueueWrite { [db] in try? await db.saveSession(wordIds: remainingIds) }
+    }
+
+    /// Runs queue writes one after another, in request order. A write is either a whole-queue snapshot
+    /// or a single-word removal, so an older snapshot landing late would undo a newer change.
+    private func enqueueQueueWrite(_ write: @escaping () async -> Void) {
+        let previous = queueWriteTask
+        queueWriteTask = Task {
+            await previous?.value
+            await write()
         }
     }
 
@@ -937,6 +1016,7 @@ final class QuizSession {
 
     private func loadItems() async {
         print("[QuizSession] loadItems: building quiz context")
+        await queueWriteTask?.value
         do {
             statusMessage = "Loading items…"
             let allBuilt = try await QuizContext.build(db: db, jmdict: toolHandler.jmdict, kanjidic: toolHandler.kanjidic, pairCorpus: pairCorpus, counterCorpus: counterCorpus)
@@ -958,7 +1038,11 @@ final class QuizSession {
             // Kanji quiz items (word_type="kanji") appear regardless of document scope —
             // their identity is the character itself, not tied to any one parent word.
             allEnrolledCandidates = candidates
-            if let scope = documentScope, let manifest = VocabSync.cached() {
+            enrolledById = Dictionary(candidates.map { ($0.wordId, $0) }, uniquingKeysWith: { first, _ in first })
+            let manifest = VocabSync.cached()
+            drillIndex = manifest.map { DrillIndex(manifest: $0) }
+
+            if let scope = documentScope, let manifest {
                 let scopedIds = Set(manifest.words.filter { $0.sources.contains(scope) }.map(\.id))
                 candidates = candidates.filter { item in
                     if item.wordType == "kanji" { return true }
@@ -970,12 +1054,12 @@ final class QuizSession {
             print("[QuizSession] loadItems: \(candidates.count) candidate(s)")
             if candidates.isEmpty { phase = .noItems; return }
 
-            // Resume saved session if available.
+            // Resume saved session if available. Resolve against the unscoped pool: a drill can queue
+            // words outside the document scope, and dropping them here would lose them.
             let savedIds = try await db.sessionWordIds()
             if !savedIds.isEmpty {
                 print("[QuizSession] resuming saved session: \(savedIds.count) item(s) remaining")
-                let byId = Dictionary(candidates.map { ($0.wordId, $0) }, uniquingKeysWith: { f, _ in f })
-                items = savedIds.compactMap { byId[$0] }
+                items = savedIds.compactMap { enrolledById[$0] }
             }
 
             // No valid session found — select a fresh set algorithmically.

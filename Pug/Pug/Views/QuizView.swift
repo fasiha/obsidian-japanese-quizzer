@@ -351,6 +351,10 @@ struct QuizView: View {
 
     private var chattingView: some View {
         let isLast = session.currentIndex + 1 >= session.items.count
+        // Drill buttons need a graded ordinary vocabulary item: sentence and document siblings only exist for those.
+        let drillAvailable = session.gradedScore != nil && session.currentItem?.wordType == "jmdict"
+        let onDrillSentences: (() -> Void)? = drillAvailable ? { session.drillSentences() } : nil
+        let onDrillDocuments: (() -> Void)? = drillAvailable ? { session.drillDocuments() } : nil
         let tutorAction: (() -> Void)? = {
             if session.canStartTutorSession { return session.startTutorSession }
             if session.canStartTransitiveDrillTutorSession { return session.startTransitiveDrillTutorSession }
@@ -372,7 +376,12 @@ struct QuizView: View {
             onReportProblem: { session.reportProblem() },
             onUncertain: { score in session.tapFreeAnswerUncertain(score: score) },
             uncertaintyUnlocked: session.uncertaintyUnlocked,
-            onToggleUncertainty: { session.uncertaintyUnlocked = !session.uncertaintyUnlocked }
+            onToggleUncertainty: { session.uncertaintyUnlocked = !session.uncertaintyUnlocked },
+            onDrillSentences: onDrillSentences,
+            onDrillDocuments: onDrillDocuments,
+            drillSentenceCount: drillAvailable ? session.pendingDrillIds(.sentences).count : 0,
+            drillDocumentCount: drillAvailable ? session.pendingDrillIds(.documents).count : 0,
+            drillConfirmation: session.drillConfirmation
         )
     }
 

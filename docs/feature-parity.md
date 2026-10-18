@@ -28,6 +28,7 @@ opens `WordDetailSheet` or `TransitivePairDetailSheet` depending on `wordType`).
 | Chat tools: `get_mnemonic`          | yes        | yes               |
 | Chat tools: `set_mnemonic`          | yes        | yes               |
 | Tutor me button (wrong answers)     | yes        | yes               |
+| Drill sentences / documents buttons (vocabulary only, after grading) | yes | no |
 
 When adding a new quiz type, implement both phases from an existing quiz view:
 pre-answer controls (Don't know, Inkling, Skip, Report problem) and post-answer controls

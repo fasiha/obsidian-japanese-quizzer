@@ -58,6 +58,7 @@ Columns are view × phase combinations. "ungr." = ungraded (score not yet set); 
 | Audio playback | — | — | — | — | — | ✓ | — | — | — |
 | Vocabulary hints | — | — | — | — | — | ✓ | — | — | — |
 | "Another example" (counters only) | — | counter ⁶ | — | — | — | — | — | — | — |
+| Drill sentences / Drill documents | — | — | — | — | ✓ ⁷ | — | — | — | — |
 
 **View key:** QV = QuizView (vocab SRS), GQ = GrammarQuizView, PV = PlantView.
 
@@ -68,6 +69,7 @@ Columns are view × phase combinations. "ungr." = ungraded (score not yet set); 
 4. "Tutor me" appears only when `canStartTutorSession` is true: wrong answer, tutor not yet started, spinner not running.
 5. GrammarQuizView only reaches `.chatting` after tapping a multiple-choice answer, so the score is always set before chatting begins — there is no "GQ: chat ungr." column.
 6. Counter words in `QV: text` show an "Another example" button that reveals up to three additional usage examples one at a time. No other word type uses this control in `awaitingText`.
+7. Drill buttons appear only for ordinary vocabulary (`wordType == "jmdict"`) after grading. Counter, transitive-pair and kanji items have no sentence or document siblings to drill.
 
 ### Problem reporting
 
@@ -186,6 +188,30 @@ Whenever you add a new word type or facet:
 ## State changes and Ebisu models
 
 Whenever you add a new state-change action in `WordDetailSheet` (reading, kanji, counter, etc.), **always call `await loadEbisuModels()` after the state is persisted**. This ensures the Ebisu halflives section refreshes to show the newly created models without requiring the user to close and reopen the sheet. See `setReadingState()`, `setKanjiState()`, and the counter enrollment picker for examples.
+
+## Skip eviction and drill mode
+
+**Skip evicts.** `QuizSession.nextQuestion()` removes the current word from the saved queue (`quiz_session`) and adds it to `seenWordIds`. This runs for manual skips, automatic skips after a generation failure, and "Next Question →". Removing an already-graded word is a harmless no-op, because `recordReview` removes it too. A skipped word therefore does not come back on the next launch.
+
+**Drill buttons** (`PostAnswerChatView`, shown by `QuizView` only after grading a vocabulary item) append every enrolled word that shares a sentence or a document with the current word:
+
+- **Sentence siblings** share `(source, context)` in `references`. A reference with a nil or empty `context` joins no sentence.
+- **Document siblings** share a `source` in `sources`.
+- Both come from `DrillIndex` in [DrillBatch.swift](../Pug/Pug/Models/DrillBatch.swift), built once in `loadItems()` from the cached `vocab.json`. Taps never re-decode the file.
+- Candidates come from the **unscoped** enrolled pool (`enrolledById`), so a document-scoped quiz can drill into other documents. Siblings that are not enrolled are skipped silently.
+- `drillBatch(...)` removes words already seen or already queued, sorts the rest weakest-first, then applies the noisy sort (adjacent swaps with probability 0.25). The batch is appended to the end of `items`.
+- The button counts and the tap both call `pendingDrillIds(_:)`, so a button's number always matches what a tap adds. After a tap, both counts update. Because sentence siblings are a subset of document siblings, the sentence count can drop to 0 while the document count is still positive.
+- After appending, the saved queue is rewritten as `items[(currentIndex + 1)...]`. The current word is excluded because grading has already removed it.
+- Drills are allowed only after grading and in the `.chatting` phase. Appending never changes the next slot, so a prefetched next question stays valid. If the drilled item was the last one, the advance button changes from "Finish" to "Next Question →" and `generateQuestion()` runs without a prefetch.
+- Queue writes (evictions, saves, the final clear and the New Session clear) go through `enqueueQueueWrite`, a serial chain, so an older whole-queue snapshot cannot land after a newer one. `loadItems()` waits for the chain before it reads the saved queue.
+
+**Known limitation.** `seenWordIds` lives in memory. After an app restart, a drill can re-add a word answered earlier in the same sitting. Persisting `seen` would fix this.
+
+**Scope on resume.** A saved queue resolves against the unscoped pool, not the document-scoped candidates. A document-scoped launch therefore resumes the whole saved queue. The scope still narrows fresh selection only. Dropping out-of-scope words on resume would silently lose drilled words.
+
+Fuzz coverage: `TestHarness --fuzz drill` checks the sibling index (symmetry, self-exclusion, sentences ⊆ documents, nil and empty contexts) and `drillBatch` (duplicate-free, no seen or queued words, a permutation of the eligible words, weakest-first at probability 0, and an empty second drill).
+
+---
 
 ## Testing
 

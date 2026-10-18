@@ -1,7 +1,8 @@
 // Fuzz.swift
 // Randomized / property-based fuzz tests for non-UI logic.
 // Invoked via: TestHarness --fuzz <area>
-// Areas: jmdict, furigana, fillin
+// Areas: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression,
+// kanjidic2, counters, written-form-picker, drill, all
 
 import Foundation
 import GRDB
@@ -20,6 +21,7 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
     case "kanjidic2":        try await fuzzKanjidic2(jmdict: jmdict)
     case "counters":         fuzzCounters()
     case "written-form-picker": try await fuzzWrittenFormPicker(jmdict: jmdict)
+    case "drill":            fuzzDrill()
     case "all":
         try await fuzzJmdict(jmdict: jmdict)
         try await fuzzFurigana(jmdict: jmdict)
@@ -31,8 +33,9 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
         try await fuzzKanjidic2(jmdict: jmdict)
         fuzzCounters()
         try await fuzzWrittenFormPicker(jmdict: jmdict)
+        fuzzDrill()
     default:
-        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, all\n", stderr)
+        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, drill, all\n", stderr)
         exit(1)
     }
 }
@@ -1025,4 +1028,168 @@ func fuzzWrittenFormPicker(jmdict: DatabaseQueue) async throws {
     print("  Entries with 2+ forms: \(checkedEntries)")
     print("  Entries with raw (text, formReading) duplicates (handled by deduplication): \(rawDuplicateEntries)")
     report(area: "written-form-picker", checked: checkedEntries, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area O: Drill mode sibling index and batch ordering
+
+/// Seeded generator so every drill fuzz run is reproducible.
+private struct DrillFuzzGenerator: RandomNumberGenerator {
+    var state: UInt64
+    mutating func next() -> UInt64 {
+        state ^= state &<< 13
+        state ^= state >> 7
+        state ^= state &<< 17
+        return state
+    }
+}
+
+/// Builds a vocab manifest with a small pool of stories and contexts, so that many words collide
+/// on the same sentence and the same document.
+private func randomDrillManifest(wordCount: Int, using generator: inout DrillFuzzGenerator) -> VocabManifest {
+    let sourcePool = ["A", "B", "C", "D", "E"]
+    let contextPool: [String?] = [nil, "", "s1", "s2", "s3", "s4", "s5", "s6"]
+    var words: [VocabWordEntry] = []
+    for index in 0..<wordCount {
+        let sourceCount = Int.random(in: 0...3, using: &generator)
+        let sources = Array(sourcePool.shuffled(using: &generator).prefix(sourceCount))
+        var references: [String: [VocabReference]] = [:]
+        for source in sources {
+            let referenceCount = Int.random(in: 0...2, using: &generator)
+            references[source] = (0..<referenceCount).map { _ in
+                let context = contextPool.randomElement(using: &generator) ?? nil
+                return VocabReference(line: 1, bulletIndex: nil, context: context, narration: nil,
+                                      counter: nil, llmSense: nil, annotatedForms: nil)
+            }
+        }
+        words.append(VocabWordEntry(id: "\(index + 1)", sources: sources, writtenForms: nil,
+                                    references: references, bccwjPerMillionWords: nil, kanjiMeanings: nil))
+    }
+    return VocabManifest(generatedAt: "fuzz", stories: [], words: words, sourceOrders: nil)
+}
+
+func fuzzDrill() {
+    print("=== FUZZ: drill sibling index and batch ordering ===")
+
+    var failures: [(String, String)] = []
+    var checkedWords = 0
+    var checkedBatches = 0
+
+    // 1. Hand-written case: the sentence and document rules, with nil and empty contexts.
+    let handWritten = VocabManifest(generatedAt: "fuzz", stories: [], words: [
+        VocabWordEntry(id: "1", sources: ["A"], writtenForms: nil, references: ["A": [
+            VocabReference(line: 1, bulletIndex: nil, context: "x", narration: nil, counter: nil, llmSense: nil, annotatedForms: nil)]],
+            bccwjPerMillionWords: nil, kanjiMeanings: nil),
+        VocabWordEntry(id: "2", sources: ["A"], writtenForms: nil, references: ["A": [
+            VocabReference(line: 2, bulletIndex: nil, context: "x", narration: nil, counter: nil, llmSense: nil, annotatedForms: nil)]],
+            bccwjPerMillionWords: nil, kanjiMeanings: nil),
+        VocabWordEntry(id: "3", sources: ["A"], writtenForms: nil, references: ["A": [
+            VocabReference(line: 3, bulletIndex: nil, context: "y", narration: nil, counter: nil, llmSense: nil, annotatedForms: nil)]],
+            bccwjPerMillionWords: nil, kanjiMeanings: nil),
+        VocabWordEntry(id: "4", sources: ["B"], writtenForms: nil, references: ["B": [
+            VocabReference(line: 1, bulletIndex: nil, context: "x", narration: nil, counter: nil, llmSense: nil, annotatedForms: nil)]],
+            bccwjPerMillionWords: nil, kanjiMeanings: nil),
+        VocabWordEntry(id: "5", sources: ["A"], writtenForms: nil, references: ["A": [
+            VocabReference(line: 5, bulletIndex: nil, context: nil, narration: nil, counter: nil, llmSense: nil, annotatedForms: nil),
+            VocabReference(line: 6, bulletIndex: nil, context: "", narration: nil, counter: nil, llmSense: nil, annotatedForms: nil)]],
+            bccwjPerMillionWords: nil, kanjiMeanings: nil),
+    ], sourceOrders: nil)
+    let handIndex = DrillIndex(manifest: handWritten)
+    let handExpectations: [(String, sentence: Set<String>, document: Set<String>)] = [
+        ("1", ["2"], ["2", "3", "5"]),   // shares sentence "x" with 2; document A has 2, 3, 5
+        ("3", [], ["1", "2", "5"]),      // sentence "y" is unshared
+        ("4", [], []),                   // document B holds only word 4
+        ("5", [], ["1", "2", "3"]),      // nil and empty contexts join no sentence
+    ]
+    for (wordId, expectedSentence, expectedDocument) in handExpectations {
+        checkedWords += 1
+        let sentence = handIndex.sentenceSiblings(of: wordId)
+        let document = handIndex.documentSiblings(of: wordId)
+        if sentence != expectedSentence {
+            failures.append(("hand-written word \(wordId)", "sentence siblings \(sentence.sorted()), expected \(expectedSentence.sorted())"))
+        }
+        if document != expectedDocument {
+            failures.append(("hand-written word \(wordId)", "document siblings \(document.sorted()), expected \(expectedDocument.sorted())"))
+        }
+    }
+
+    // 2. Random manifests: sibling index invariants.
+    var generator = DrillFuzzGenerator(state: 0x5EED_D21C_0FFE_E123)
+    for round in 0..<200 {
+        let manifest = randomDrillManifest(wordCount: 30, using: &generator)
+        let index = DrillIndex(manifest: manifest)
+        let wordIds = manifest.words.map(\.id)
+        var sentenceOf: [String: Set<String>] = [:]
+        var documentOf: [String: Set<String>] = [:]
+        for wordId in wordIds {
+            checkedWords += 1
+            sentenceOf[wordId] = index.sentenceSiblings(of: wordId)
+            documentOf[wordId] = index.documentSiblings(of: wordId)
+            let context = "round \(round), word \(wordId)"
+            // A word is never its own sibling.
+            if sentenceOf[wordId]!.contains(wordId) || documentOf[wordId]!.contains(wordId) {
+                failures.append((context, "word listed as its own sibling"))
+            }
+            // A shared sentence implies a shared document.
+            if !sentenceOf[wordId]!.isSubset(of: documentOf[wordId]!) {
+                failures.append((context, "sentence siblings \(sentenceOf[wordId]!.sorted()) not a subset of document siblings \(documentOf[wordId]!.sorted())"))
+            }
+        }
+        // Sibling relations are symmetric.
+        for wordId in wordIds {
+            for other in sentenceOf[wordId]! where !sentenceOf[other, default: []].contains(wordId) {
+                failures.append(("round \(round), word \(wordId)", "sentence sibling \(other) does not list \(wordId) back"))
+            }
+            for other in documentOf[wordId]! where !documentOf[other, default: []].contains(wordId) {
+                failures.append(("round \(round), word \(wordId)", "document sibling \(other) does not list \(wordId) back"))
+            }
+        }
+    }
+
+    // 3. Random candidate lists: batch ordering invariants.
+    for round in 0..<2_000 {
+        // Recalls are multiples of 0.1, so ties occur and exercise the word-ID tie-break.
+        let candidates: [DrillCandidate] = (0..<Int.random(in: 0...12, using: &generator)).map { _ in
+            DrillCandidate(wordId: "\(Int.random(in: 1...15, using: &generator))",
+                           recall: Double(Int.random(in: 0...10, using: &generator)) / 10)
+        }
+        let seen = Set((0..<Int.random(in: 0...4, using: &generator)).map { _ in "\(Int.random(in: 1...15, using: &generator))" })
+        let queued = Set((0..<Int.random(in: 0...4, using: &generator)).map { _ in "\(Int.random(in: 1...15, using: &generator))" })
+        let eligible = Set(candidates.map(\.wordId)).subtracting(seen).subtracting(queued)
+        let context = "batch round \(round)"
+        checkedBatches += 1
+
+        // Swap probability 0: weakest-first, so recall never decreases along the output.
+        var zeroSwapGenerator = generator
+        let ordered = drillBatch(siblings: candidates, seen: seen, queued: queued,
+                                 swapProbability: 0, using: &zeroSwapGenerator)
+        var firstRecall: [String: Double] = [:]
+        for candidate in candidates where firstRecall[candidate.wordId] == nil {
+            firstRecall[candidate.wordId] = candidate.recall
+        }
+        for (previous, current) in zip(ordered, ordered.dropFirst()) {
+            if firstRecall[previous]! > firstRecall[current]! {
+                failures.append((context, "swap probability 0 broke weakest-first: \(previous) (\(firstRecall[previous]!)) before \(current) (\(firstRecall[current]!))"))
+            }
+        }
+
+        // Any swap probability: duplicate-free permutation of the eligible words.
+        let swapProbability = Double.random(in: 0...1, using: &generator)
+        let batch = drillBatch(siblings: candidates, seen: seen, queued: queued,
+                               swapProbability: swapProbability, using: &generator)
+        if Set(batch).count != batch.count {
+            failures.append((context, "duplicate word in batch \(batch)"))
+        }
+        if Set(batch) != eligible {
+            failures.append((context, "batch \(batch.sorted()) is not the eligible set \(eligible.sorted()) (p=\(swapProbability))"))
+        }
+
+        // Re-running with the batch already queued yields nothing new.
+        let rerun = drillBatch(siblings: candidates, seen: seen, queued: queued.union(batch),
+                               swapProbability: swapProbability, using: &generator)
+        if !rerun.isEmpty {
+            failures.append((context, "second drill added \(rerun) after the first added \(batch)"))
+        }
+    }
+
+    report(area: "drill", checked: checkedWords + checkedBatches, silentlySkipped: 0, failures: failures)
 }

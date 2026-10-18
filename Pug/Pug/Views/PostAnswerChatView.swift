@@ -31,6 +31,13 @@ struct PostAnswerChatView: View {
     let onUncertain: ((Double) -> Void)?
     let uncertaintyUnlocked: Bool
     let onToggleUncertainty: (() -> Void)?
+    /// Nil = hide the drill row. Set only for ordinary vocabulary items after grading.
+    var onDrillSentences: (() -> Void)? = nil
+    var onDrillDocuments: (() -> Void)? = nil
+    var drillSentenceCount: Int = 0
+    var drillDocumentCount: Int = 0
+    /// Shown under the drill buttons after a tap, e.g. "Added 5".
+    var drillConfirmation: String? = nil
 
     @FocusState private var isChatFocused: Bool
 
@@ -126,6 +133,36 @@ struct PostAnswerChatView: View {
                         }
                         .disabled(chatInput.trimmingCharacters(in: .whitespaces).isEmpty)
                         .padding(.bottom, 2)
+                    }
+                }
+
+                // Drill row: append every word that shares a sentence or document with this one
+                if let drillSentences = onDrillSentences, let drillDocuments = onDrillDocuments {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 8) {
+                            Button { drillSentences() } label: {
+                                Text("Drill sentences +\(drillSentenceCount)")
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(drillSentenceCount == 0)
+
+                            Button { drillDocuments() } label: {
+                                Text("Drill documents +\(drillDocumentCount)")
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(drillDocumentCount == 0)
+                        }
+                        if let confirmation = drillConfirmation {
+                            Text(confirmation)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
