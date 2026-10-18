@@ -193,7 +193,7 @@ Whenever you add a new state-change action in `WordDetailSheet` (reading, kanji,
 
 **Skip evicts.** `QuizSession.nextQuestion()` removes the current word from the saved queue (`quiz_session`) and adds it to `seenWordIds`. This runs for manual skips, automatic skips after a generation failure, and "Next Question →". Removing an already-graded word is a harmless no-op, because `recordReview` removes it too. A skipped word therefore does not come back on the next launch.
 
-**Drill buttons** (`PostAnswerChatView`, shown by `QuizView` only after grading a vocabulary item) append every enrolled word that shares a sentence or a document with the current word:
+**Drill buttons** (`PostAnswerChatView`, shown by `QuizView` only after grading a vocabulary item) append every enrolled word that shares a sentence or a document with the current word. They sit at the bottom of the page, below "Report problem", behind a collapsed "Drill" button; tapping it reveals "Drill sentences" and "Drill documents":
 
 - **Sentence siblings** share `(source, context)` in `references`. A reference with a nil or empty `context` joins no sentence.
 - **Document siblings** share a `source` in `sources`.

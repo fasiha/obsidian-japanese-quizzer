@@ -383,6 +383,8 @@ struct QuizView: View {
             drillDocumentCount: drillAvailable ? session.pendingDrillIds(.documents).count : 0,
             drillConfirmation: session.drillConfirmation
         )
+        // Recreate the chat view per question so the drill section starts collapsed again.
+        .id(session.currentIndex)
     }
 
     // MARK: - End states

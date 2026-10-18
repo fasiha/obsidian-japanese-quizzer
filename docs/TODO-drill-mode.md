@@ -110,6 +110,7 @@ Differences from the design above, and why:
 - **Skip evicts everywhere.** `nextQuestion()` evicts the current word, so automatic skips (after a generation failure) evict too, not only manual skips.
 - **The queue rewrite excludes the current word.** It writes `items[(currentIndex + 1)...]` plus the batch. The design's `items[currentIndex...]` would have put the graded word back in the saved queue, and it would have returned on the next launch.
 - **Drill buttons appear only after grading.** This matches "Details…", and it keeps the next item fixed while Claude is still grading a free answer.
+- **Drill buttons sit behind a "Drill" button, below "Report problem".** Design item 3 put them beside "Next Question →", where they were too easy to tap by accident. The "Drill" button reveals the two drill buttons. Each question starts collapsed, because `QuizView` keys the chat view by `currentIndex`.
 - **Saved queues resolve against the unscoped pool.** The design left this open. A document-scoped launch resumes the whole saved queue, so drilled words outside the scope are kept. The scope still narrows fresh selection only. Revert to the scoped `byId` in `loadItems` if you would rather a scoped launch show only its own words.
 - **Counts and taps share one function**, `pendingDrillIds(_:)`, so a button's number always matches what a tap adds.
 - **Known gap:** `seenWordIds` is in memory. After an app restart, a drill can re-add a word answered earlier in the same sitting.

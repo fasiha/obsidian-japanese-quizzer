@@ -7,6 +7,7 @@
 //   • Score badge with optional "Tutor me" button
 //   • Chat input field for optional follow-up questions
 //   • "Details…" button (optional) + advance button (Next Question / Continue / Finish)
+//   • "Report problem", then (optional) a collapsed "Drill" button that reveals the drill buttons
 
 import SwiftUI
 
@@ -40,6 +41,8 @@ struct PostAnswerChatView: View {
     var drillConfirmation: String? = nil
 
     @FocusState private var isChatFocused: Bool
+    /// Drill buttons stay hidden until the student taps "Drill". QuizView keys this view by question index, so each question starts collapsed.
+    @State private var isDrillExpanded = false
 
     var body: some View {
         ScrollView {
@@ -136,36 +139,6 @@ struct PostAnswerChatView: View {
                     }
                 }
 
-                // Drill row: append every word that shares a sentence or document with this one
-                if let drillSentences = onDrillSentences, let drillDocuments = onDrillDocuments {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 8) {
-                            Button { drillSentences() } label: {
-                                Text("Drill sentences +\(drillSentenceCount)")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(drillSentenceCount == 0)
-
-                            Button { drillDocuments() } label: {
-                                Text("Drill documents +\(drillDocumentCount)")
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.7)
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .disabled(drillDocumentCount == 0)
-                        }
-                        if let confirmation = drillConfirmation {
-                            Text(confirmation)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
                 // Advance row: optional "Details…" on the left, advance button on the right
                 HStack {
                     if let details = onShowDetails {
@@ -178,6 +151,45 @@ struct PostAnswerChatView: View {
                         .frame(maxWidth: onShowDetails == nil ? .infinity : nil)
                 }
                 if let action = onReportProblem { ReportProblemButton(action: action) }
+
+                // Drill row: append every word that shares a sentence or document with this one.
+                // Collapsed behind a "Drill" button, well away from "Next Question →", so it is not tapped by accident.
+                if let drillSentences = onDrillSentences, let drillDocuments = onDrillDocuments {
+                    if isDrillExpanded {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                Button { drillSentences() } label: {
+                                    Text("Drill sentences +\(drillSentenceCount)")
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(drillSentenceCount == 0)
+
+                                Button { drillDocuments() } label: {
+                                    Text("Drill documents +\(drillDocumentCount)")
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.7)
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.bordered)
+                                .disabled(drillDocumentCount == 0)
+                            }
+                            if let confirmation = drillConfirmation {
+                                Text(confirmation)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } else {
+                        Button("Drill") { isDrillExpanded = true }
+                            .buttonStyle(.bordered)
+                            .tint(.secondary)
+                            .font(.subheadline)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
             .padding()
         }
