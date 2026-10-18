@@ -1437,32 +1437,35 @@ final class QuizSession {
             return
         }
 
+        let pinnedAnswer = pinnedReadingToMeaningAnswer(for: item)
+        if item.facet == "reading-to-meaning", pinnedAnswer == nil {
+            skipAfterFailedMultipleChoice(item)
+            return
+        }
+
         phase = .generating
         print("[QuizSession] generating multiple choice question for \(item.wordText) (id:\(item.wordId)) facet:\(item.facet)")
 
         let system = systemPrompt(for: item, isGenerating: true,
-                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife)
-        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
+                                  preRecall: preQuizRecall, preHalflife: preQuizHalflife,
+                                  pinnedAnswer: pinnedAnswer)
+        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item, pinnedAnswer: pinnedAnswer))])
 
         do {
             let (finalQuestion, finalMultipleChoice, finalMsgs) = try await runGenerationLoop(
                 for: item, system: system, initMsg: initMsg, label: "generate",
-                preRecall: preQuizRecall)
+                preRecall: preQuizRecall, pinnedAnswer: pinnedAnswer)
             currentQuestion = finalQuestion
             print("[QuizSession] question ready (\(finalQuestion.count) chars):\n\(finalQuestion)")
             if let multipleChoice = finalMultipleChoice {
                 conversation = []
                 chatMessages = []
                 phase = .awaitingTap(multipleChoice)
-            } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji" {
+            } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji"
+                        || item.facet == "reading-to-meaning" {
                 // MCQ parse failed after all retries for a facet that requires multiple choice.
                 // Auto-advance rather than showing raw LLM reasoning to the student.
-                print("[QuizSession] MCQ parse failed for \(item.wordText) (\(item.facet)) after retries, skipping")
-                pendingReport = ProblemReport(
-                    message: "Auto-skip at \(ProblemReport.timestamp()): multiple-choice quiz for \(item.wordText) (\(item.facet)) failed to generate. Please share with the quiz admin.",
-                    timestamp: Date()
-                )
-                nextQuestion()
+                skipAfterFailedMultipleChoice(item)
             } else {
                 conversation = finalMsgs
                 chatMessages = [(isUser: false, text: finalQuestion)]
@@ -1951,15 +1954,19 @@ final class QuizSession {
             return
         }
 
+        let pinnedAnswer = pinnedReadingToMeaningAnswer(for: item)
+        // Not prefetched: the generate path skips this item when the student reaches it.
+        if item.facet == "reading-to-meaning", pinnedAnswer == nil { return }
         let system  = systemPrompt(for: item, isGenerating: true,
-                                   preRecall: preRecall, preHalflife: preHalflife)
-        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
+                                   preRecall: preRecall, preHalflife: preHalflife,
+                                   pinnedAnswer: pinnedAnswer)
+        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item, pinnedAnswer: pinnedAnswer))])
 
         print("[QuizSession] prefetch multiple choice: starting for index \(index): \(item.wordText) facet:\(item.facet)")
         do {
             let (finalQuestion, finalMultipleChoice, finalMsgs) = try await runGenerationLoop(
                 for: item, system: system, initMsg: initMsg, label: "prefetch",
-                preRecall: preRecall)
+                preRecall: preRecall, pinnedAnswer: pinnedAnswer)
             guard currentIndex <= index else {
                 print("[QuizSession] prefetch for index \(index) is stale, discarding")
                 return
@@ -1983,9 +1990,13 @@ final class QuizSession {
     /// Generate a question for a given item and return the question text + raw conversation.
     /// Intended for CLI test harness use only; bypasses phase state machine entirely.
     func generateQuestionForTesting(item: QuizItem) async throws -> (question: String, multipleChoice: MultipleChoiceQuestion?, conversation: [AnthropicMessage]) {
-        let system = systemPrompt(for: item, isGenerating: true)
-        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item))])
-        return try await runGenerationLoop(for: item, system: system, initMsg: initMsg, label: "test")
+        let pinnedAnswer = pinnedReadingToMeaningAnswer(for: item)
+        if item.facet == "reading-to-meaning", pinnedAnswer == nil {
+            throw PinnedAnswerError.noSenseWithGloss
+        }
+        let system = systemPrompt(for: item, isGenerating: true, pinnedAnswer: pinnedAnswer)
+        let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item, pinnedAnswer: pinnedAnswer))])
+        return try await runGenerationLoop(for: item, system: system, initMsg: initMsg, label: "test", pinnedAnswer: pinnedAnswer)
     }
 
     /// Grade a free-text answer for a given item. Returns Claude's full response text.
@@ -2160,7 +2171,8 @@ final class QuizSession {
     func runGenerationLoop(for item: QuizItem, system: String,
                                    initMsg: AnthropicMessage, label: String,
                                    tools: [AnthropicTool]? = nil,
-                                   preRecall: Double? = nil)
+                                   preRecall: Double? = nil,
+                                   pinnedAnswer: String? = nil)
         async throws -> (question: String, multipleChoice: MultipleChoiceQuestion?, conversation: [AnthropicMessage])
     {
         let resolvedTools = tools ?? Self.generationTools(for: item.facet)
@@ -2201,6 +2213,11 @@ final class QuizSession {
                         correctAnswer: correctAnswer,
                         forbiddenForms: Set(item.kanaTexts).union(item.siblingKanaReadings))
                 }
+            } else if item.facet == "reading-to-meaning", let pinnedAnswer {
+                parsedMC = Self.parseReadingToMeaningConfusers(
+                    raw, pinnedAnswer: pinnedAnswer,
+                    entryGlosses: item.senseExtras.flatMap(\.glosses),
+                    kana: item.committedReading ?? item.kanaTexts.first ?? "?")
             } else {
                 parsedMC = parseMultipleChoiceJSON(raw)
             }
@@ -2336,6 +2353,62 @@ final class QuizSession {
         var choices = [correctForm] + distractors
         choices.swapAt(0, newCorrectIndex)
         return MultipleChoiceQuestion(stem: stem, choices: choices, correctIndex: newCorrectIndex)
+    }
+
+    /// Reduces a JMDict gloss to its headword for comparison: lowercased, parenthetical notes removed,
+    /// leading "to " dropped. "to wake up (someone; by calling out)" and "to wake up" both give "wake up".
+    static func glossHeadword(_ gloss: String) -> String {
+        let withoutNotes = gloss.lowercased()
+            .replacingOccurrences(of: #"\([^)]*\)"#, with: " ", options: .regularExpression)
+        var words = withoutNotes.split(whereSeparator: \.isWhitespace).map(String.init)
+        if words.first == "to" { words.removeFirst() }
+        return words.joined(separator: " ")
+    }
+
+    /// reading-to-meaning (AI mode): the app supplies the correct answer and Haiku supplies confusers as a
+    /// JSON array; the first three acceptable ones become the wrong choices. A confuser is rejected if any
+    /// of its glosses shares a headword with any sense of the word's JMDict entry (see glossHeadword), so a
+    /// confuser is very unlikely to be a second correct answer. Exact matching is not enough: "to wake up; to
+    /// rouse from sleep" repeats a JMDict sense whose gloss is "to wake up (someone; by calling out)". Reworded
+    /// senses (synonyms, "bring back memories") can still get through; the prompt's off-limits list covers most.
+    static func parseReadingToMeaningConfusers(_ raw: String, pinnedAnswer: String,
+                                               entryGlosses: [String], kana: String) -> MultipleChoiceQuestion? {
+        func extractArray() -> String? {
+            var search = raw[...]
+            while let fenceStart = search.range(of: "```") {
+                let afterFence = search[fenceStart.upperBound...]
+                let body = afterFence.drop(while: { $0 != "\n" }).dropFirst()
+                if let closeRange = body.range(of: "```") {
+                    let candidate = String(body[..<closeRange.lowerBound])
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    if candidate.hasPrefix("[") { return candidate }
+                    search = body[closeRange.upperBound...]
+                } else { break }
+            }
+            if let open = raw.firstIndex(of: "["), let close = raw.lastIndex(of: "]") {
+                return String(raw[open...close])
+            }
+            return nil
+        }
+        guard let jsonText = extractArray(),
+              let data = jsonText.data(using: .utf8),
+              let confusers = try? JSONSerialization.jsonObject(with: data) as? [String]
+        else { return nil }
+        let entryHeadwords = Set(entryGlosses.map(glossHeadword).filter { !$0.isEmpty })
+        var valid: [String] = []
+        var seen = Set<String>()
+        for confuser in confusers {
+            let trimmed = confuser.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seen.insert(trimmed.lowercased()).inserted else { continue }
+            let headwords = trimmed.components(separatedBy: "; ").map(glossHeadword)
+            guard !headwords.contains(where: { entryHeadwords.contains($0) }) else { continue }
+            valid.append(trimmed)
+        }
+        guard valid.count >= 3 else { return nil }
+        let correctIndex = Int.random(in: 0..<4)
+        var choices = Array(valid.prefix(3))
+        choices.insert(pinnedAnswer, at: correctIndex)
+        return MultipleChoiceQuestion(stem: "What does \(kana) mean?", choices: choices, correctIndex: correctIndex)
     }
 
     private func parseMultipleChoiceJSON(_ raw: String) -> MultipleChoiceQuestion? {
@@ -2521,6 +2594,34 @@ final class QuizSession {
     }
 
     // MARK: - Private: prompt helpers
+
+    /// Thrown by the test-harness question generator when a reading-to-meaning word has no gloss to pin.
+    enum PinnedAnswerError: Error {
+        case noSenseWithGloss
+    }
+
+    /// reading-to-meaning (AI mode): the app picks the correct answer, so Haiku never writes it.
+    /// Picks one corpus-attested sense at random and joins its first three glosses with "; ".
+    /// Returns nil for other facets, which keep the full LLM-generated question, and for reading-to-meaning
+    /// items with no sense that has a gloss (words missing from jmdict.sqlite); callers skip those items.
+    func pinnedReadingToMeaningAnswer(for item: QuizItem) -> String? {
+        guard item.facet == "reading-to-meaning" else { return nil }
+        // Same fallback as freeAnswerStem: with no attested corpus sense, use the entry's senses.
+        let senses = (item.corpusSenses.isEmpty ? item.senseExtras : item.corpusSenses)
+            .filter { !$0.glosses.isEmpty }
+        guard let sense = senses.randomElement() else { return nil }
+        return sense.glosses.prefix(3).joined(separator: "; ")
+    }
+
+    /// Skips an item whose multiple-choice question could not be generated, and reports it to the quiz admin.
+    private func skipAfterFailedMultipleChoice(_ item: QuizItem) {
+        print("[QuizSession] multiple choice unavailable for \(item.wordText) (\(item.facet)), skipping")
+        pendingReport = ProblemReport(
+            message: "Auto-skip at \(ProblemReport.timestamp()): multiple-choice quiz for \(item.wordText) (\(item.facet)) failed to generate. Please share with the quiz admin.",
+            timestamp: Date()
+        )
+        nextQuestion()
+    }
 
     /// Build a multiple-choice question entirely in Swift from corpus candidates, no LLM call.
     /// Returns nil if there are not enough distinct candidates to form 3 distractors.
@@ -2748,7 +2849,8 @@ final class QuizSession {
 
     func systemPrompt(for item: QuizItem, isGenerating: Bool = false,
                               preRecall: Double? = nil, preHalflife: Double? = nil,
-                              postHalflife: Double? = nil, mnemonicBlock: String = "") -> String {
+                              postHalflife: Double? = nil, mnemonicBlock: String = "",
+                              pinnedAnswer: String? = nil) -> String {
         // Kanji quiz items (word_type="kanji") use a coaching prompt focused on the character.
         // Question generation is fully app-side; this prompt is only used for post-answer discussion.
         if item.wordType == "kanji", let kd = item.kanjiQuizData {
@@ -2899,8 +3001,15 @@ final class QuizSession {
         switch item.facet {
         case "reading-to-meaning":
             if isGenerating {
-                let stemKana = item.committedReading ?? item.kanaTexts.first ?? "unknown"
-                facetRule = "Show kana ONLY (never kanji). The kana to show in the stem is: \(stemKana). Ask for English meaning. All A/B/C/D options MUST be in English. Student is learning these enrolled senses only: \(allMeanings). Do not use other JMDict senses as the correct answer or as distractors."
+                // Every generation caller pins the answer for this facet (see pinnedReadingToMeaningAnswer).
+                guard let pinnedAnswer else {
+                    preconditionFailure("reading-to-meaning generation requires a pinned answer")
+                }
+                // Haiku cannot avoid a sense it was never shown, so every meaning in the entry is listed as off-limits.
+                let entryMeanings = extras.flatMap(\.glosses).joined(separator: "; ")
+                let offLimitsSentence = entryMeanings.isEmpty ? ""
+                    : " Every meaning of this word is off-limits as a distractor, even reworded: \(entryMeanings)."
+                facetRule = "Ask for English meaning. All options MUST be in English. The correct answer is fixed by the app: \"\(pinnedAnswer)\". Do not write it or any of its senses as a distractor. Student is learning these enrolled senses only: \(allMeanings).\(offLimitsSentence)"
                 wordLine = "Word: \(entryRef)."
             } else {
                 facetRule = "Facet tested: reading-to-meaning (student sees kana, answers with English meaning). Enrolled senses: \(allMeanings)."
@@ -2963,7 +3072,15 @@ final class QuizSession {
         } else {
             switch item.facet {
             case "reading-to-meaning":
-                distractorLine = "\nDistractors: write 3 wrong English meanings directly — no lookup needed. Pick meanings from the same semantic field (similar topic but clearly distinguishable). Bare phrases only, no parenthetical notes."
+                // The app wrote the correct answer, so Haiku only writes confusers. When the answer has
+                // several glosses, the confusers take the same shape so the shape doesn't give it away.
+                guard let pinnedAnswer else {
+                    preconditionFailure("reading-to-meaning generation requires a pinned answer")
+                }
+                let shapeLine = pinnedAnswer.contains("; ")
+                    ? " Write each distractor as 2–3 semicolon-separated senses, like the correct answer; within one distractor, the senses must not be synonyms of each other."
+                    : ""
+                distractorLine = "\nDistractors: write 3 wrong English meanings directly — no lookup needed. Pick meanings from the same broad area as the correct answer but a different sub-field, so a student who knows the correct answer's sub-field cannot spot it by topic. Do not pick neighbours of the correct answer: no synonyms, broader terms or narrower terms of any of its meanings. Fairness check: a student who understood the Japanese word could not reasonably argue for a distractor as a correct meaning; if one could, pick another. Keep the distractors clearly distinct from each other. Bare phrases only, no parenthetical notes.\(shapeLine)"
             case "meaning-to-reading":
                 distractorLine = "\nDistractors: write 3 wrong kana readings directly — no lookup needed. Use readings of real Japanese words that are semantically related (same general topic or domain) but clearly distinguishable in meaning, or plausible non-words. Avoid synonyms: pick words such that the learner must truly know the target word to choose correctly. Prefer words of approximately the same mora length as the correct answer."
             case "kanji-to-reading":
@@ -2978,7 +3095,8 @@ final class QuizSession {
             }
         }
         let stemLeakGuard: String
-        if isGenerating && item.facet != "meaning-reading-to-kanji" {
+        // reading-to-meaning stems are built in Swift, so the model never writes one to leak into.
+        if isGenerating && item.facet != "meaning-reading-to-kanji" && item.facet != "reading-to-meaning" {
             stemLeakGuard = "\nCRITICAL: Never leak the answer form into the question stem. Silently verify before outputting."
         } else {
             stemLeakGuard = ""
@@ -3061,8 +3179,15 @@ final class QuizSession {
         }
     }
 
-    func questionRequest(for item: QuizItem) -> String {
+    func questionRequest(for item: QuizItem, pinnedAnswer: String? = nil) -> String {
         // Free-answer stems are built app-side (freeAnswerStem); only multiple-choice generation goes through the LLM.
+        if item.facet == "reading-to-meaning", pinnedAnswer != nil {
+            return """
+            Think first if helpful, then end with a ```json code block containing exactly a 3-element array of wrong English meanings:
+            ["distractor 1", "distractor 2", "distractor 3"]
+            No other keys or wrapper — just the array.
+            """
+        }
         if item.facet == "meaning-reading-to-kanji" {
             let substitutableKanji: [String]
             if let committed = item.committedKanji, !committed.isEmpty {

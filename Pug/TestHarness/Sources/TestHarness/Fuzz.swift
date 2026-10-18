@@ -22,6 +22,7 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
     case "counters":         fuzzCounters()
     case "written-form-picker": try await fuzzWrittenFormPicker(jmdict: jmdict)
     case "drill":            fuzzDrill()
+    case "reading-to-meaning": try await fuzzReadingToMeaning(jmdict: jmdict)
     case "all":
         try await fuzzJmdict(jmdict: jmdict)
         try await fuzzFurigana(jmdict: jmdict)
@@ -34,8 +35,9 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
         fuzzCounters()
         try await fuzzWrittenFormPicker(jmdict: jmdict)
         fuzzDrill()
+        try await fuzzReadingToMeaning(jmdict: jmdict)
     default:
-        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, drill, all\n", stderr)
+        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, drill, reading-to-meaning, all\n", stderr)
         exit(1)
     }
 }
@@ -1192,4 +1194,194 @@ func fuzzDrill() {
     }
 
     report(area: "drill", checked: checkedWords + checkedBatches, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area P: reading-to-meaning confusers and JMDict sense shape
+
+/// Seeded generator so every reading-to-meaning fuzz run is reproducible.
+private struct ConfuserFuzzGenerator: RandomNumberGenerator {
+    var state: UInt64
+    mutating func next() -> UInt64 {
+        state ^= state &<< 13
+        state ^= state >> 7
+        state ^= state &<< 17
+        return state
+    }
+}
+
+/// Serializes a list of strings as a JSON array, the shape Haiku is asked to return.
+private func jsonArrayText(_ values: [String]) -> String {
+    String(data: (try? JSONSerialization.data(withJSONObject: values)) ?? Data(), encoding: .utf8) ?? ""
+}
+
+// Two oracles:
+//   1. Parser. For random enrolled senses, a pinned answer, and a mix of valid, rejected, and
+//      duplicate confusers, the parser returns a question exactly when three acceptable confusers
+//      exist. A returned question has four distinct choices (case-insensitively), the answer at
+//      correctIndex, the first three acceptable confusers in order, and no confuser sharing a headword
+//      with the entry. Rejected confusers are built from known rewordings of entry senses (other case,
+//      parenthetical dropped, "to" dropped), so the oracle does not depend on the parser's own matching.
+//      The same confusers parse identically when wrapped in prose and a code fence and when bare.
+//   2. Data. Every JMDict entry has at least one sense, and every sense has at least one gloss, all
+//      with non-empty text. The app relies on this when it pins the correct answer.
+@MainActor
+func fuzzReadingToMeaning(jmdict: DatabaseQueue) async throws {
+    print("=== FUZZ: reading-to-meaning confusers and JMDict sense shape ===")
+
+    var failures: [(String, String)] = []
+    var checkedParses = 0
+    var generator = ConfuserFuzzGenerator(state: 0x9E37_79B9_7F4A_7C15)
+    let vocabulary = ["look", "down", "gaze", "steal", "rob", "carry", "hold", "watch", "cross",
+                      "peer", "stare", "glance", "sweep", "admire", "despise", "rush", "wander", "linger"]
+    let kana = "みおろす"
+    var novelCounter = 0
+
+    // Known case from real data: 呼び覚ます has an unenrolled sense "to wake up (someone; by calling out)".
+    // Haiku once offered "to wake up; to rouse from sleep" as a wrong answer, which is that sense. The reply
+    // also repeats "to forget; to lose track of" in another case, which must count as a duplicate.
+    let awakenEntry = ["to bring back (e.g. memories)", "to evoke", "to recall",
+                       "to wake up (someone; by calling out)", "to awaken"]
+    let awakenPinned = "to bring back (e.g. memories); to evoke; to recall"
+    let awakenReply = """
+    ```json
+    ["to forget; to lose track of", "to wake up; to rouse from sleep", "To Forget; To Lose Track Of",
+     "to summon; to call upon someone", "to ignore; to disregard"]
+    ```
+    """
+    let awakenExpected = ["to forget; to lose track of", "to summon; to call upon someone", "to ignore; to disregard"]
+    checkedParses += 1
+    if let awakenQuestion = QuizSession.parseReadingToMeaningConfusers(
+        awakenReply, pinnedAnswer: awakenPinned, entryGlosses: awakenEntry, kana: "よびさます") {
+        let awakenConfusers = awakenQuestion.choices.indices.filter { $0 != awakenQuestion.correctIndex }
+            .map { awakenQuestion.choices[$0] }
+        if awakenConfusers != awakenExpected {
+            failures.append(("呼び覚ます reply", "confusers \(awakenConfusers), expected \(awakenExpected)"))
+        }
+    } else {
+        failures.append(("呼び覚ます reply", "returned nil; expected three acceptable confusers"))
+    }
+
+    for trial in 0..<3000 {
+        // Some glosses carry a parenthetical note, as real JMDict glosses do.
+        let enrolled: [String] = (0..<Int.random(in: 1...4, using: &generator)).map { _ in
+            let base = "to \(vocabulary.randomElement(using: &generator)!)"
+            return Bool.random(using: &generator) ? "\(base) (someone)" : base
+        }
+        let pinned = enrolled.prefix(Int.random(in: 1...3, using: &generator)).joined(separator: "; ")
+
+        // Mix acceptable confusers with the kinds the parser must reject.
+        var candidates: [String] = []
+        var acceptable: [String] = []
+        for _ in 0..<Int.random(in: 0...8, using: &generator) {
+            switch Int.random(in: 0..<8, using: &generator) {
+            case 0:
+                novelCounter += 1
+                let novel = "to \(vocabulary.randomElement(using: &generator)!) \(novelCounter)"
+                candidates.append(novel)
+                acceptable.append(novel)
+            case 1:
+                candidates.append(pinned)
+            case 2:
+                candidates.append(enrolled.randomElement(using: &generator)!)
+            case 3:
+                novelCounter += 1
+                candidates.append("to rush \(novelCounter); \(enrolled.randomElement(using: &generator)!)")
+            case 4:
+                if let repeated = acceptable.randomElement(using: &generator) {
+                    // An exact repeat, or the same text in another case: both duplicate an earlier confuser.
+                    candidates.append(Bool.random(using: &generator) ? repeated : repeated.uppercased())
+                }
+            case 5:
+                candidates.append("")
+            case 6:
+                candidates.append(enrolled.randomElement(using: &generator)!.uppercased())
+            default:
+                // An entry sense reworded: same headword, no "to" and no parenthetical note.
+                let entrySense = enrolled.randomElement(using: &generator)!
+                    .replacingOccurrences(of: " (someone)", with: "")
+                candidates.append(String(entrySense.dropFirst(3)))
+            }
+        }
+
+        let context = "trial \(trial)"
+        let expectedConfusers = Array(acceptable.prefix(3))
+        let fenced = "Think first.\n```json\n\(jsonArrayText(candidates))\n```"
+        let parsed = QuizSession.parseReadingToMeaningConfusers(
+            fenced, pinnedAnswer: pinned, entryGlosses: enrolled, kana: kana)
+        checkedParses += 1
+
+        guard acceptable.count >= 3 else {
+            if parsed != nil {
+                failures.append((context, "parsed a question from \(acceptable.count) acceptable confuser(s); expected nil"))
+            }
+            continue
+        }
+        guard let question = parsed else {
+            failures.append((context, "returned nil with \(acceptable.count) acceptable confuser(s)"))
+            continue
+        }
+        guard question.choices.count == 4, question.choices.indices.contains(question.correctIndex) else {
+            failures.append((context, "malformed question: \(question.choices.count) choice(s), correctIndex \(question.correctIndex)"))
+            continue
+        }
+        if question.choices[question.correctIndex] != pinned {
+            failures.append((context, "pinned answer is not at correctIndex"))
+        }
+        if question.stem != "What does \(kana) mean?" {
+            failures.append((context, "stem is \"\(question.stem)\""))
+        }
+        let confusers = question.choices.indices.filter { $0 != question.correctIndex }.map { question.choices[$0] }
+        if confusers != expectedConfusers {
+            failures.append((context, "confusers \(confusers), expected \(expectedConfusers)"))
+        }
+        if Set(question.choices.map { $0.lowercased() }).count != 4 {
+            failures.append((context, "duplicate choices: \(question.choices)"))
+        }
+        let entryHeadwords = Set(enrolled.map(QuizSession.glossHeadword))
+        for confuser in confusers where confuser.components(separatedBy: "; ").map(QuizSession.glossHeadword).contains(where: { entryHeadwords.contains($0) }) {
+            failures.append((context, "confuser \"\(confuser)\" shares a headword with the entry"))
+        }
+
+        // The same confusers, bare and without prose, must parse to the same confusers.
+        let bare = "Here you go: \(jsonArrayText(candidates))"
+        if let bareQuestion = QuizSession.parseReadingToMeaningConfusers(
+            bare, pinnedAnswer: pinned, entryGlosses: enrolled, kana: kana) {
+            let bareConfusers = bareQuestion.choices.indices.filter { $0 != bareQuestion.correctIndex }.map { bareQuestion.choices[$0] }
+            if bareConfusers != expectedConfusers {
+                failures.append((context, "bare array parsed to \(bareConfusers), expected \(expectedConfusers)"))
+            }
+        } else {
+            failures.append((context, "bare array returned nil"))
+        }
+    }
+
+    // Data invariant the app relies on when pinning the correct answer.
+    let entries = try await jmdict.read { db in
+        try Row.fetchAll(db, sql: "SELECT id, entry_json FROM entries").map { row -> (id: String, json: String) in
+            let id: String = row["id"]
+            let json: String = row["entry_json"]
+            return (id, json)
+        }
+    }
+    var checkedEntries = 0
+    for entry in entries {
+        checkedEntries += 1
+        guard let object = try? JSONSerialization.jsonObject(with: Data(entry.json.utf8)) as? [String: Any] else {
+            failures.append(("entry \(entry.id)", "entry_json is not a JSON object"))
+            continue
+        }
+        let senses = object["sense"] as? [[String: Any]] ?? []
+        if senses.isEmpty {
+            failures.append(("entry \(entry.id)", "has no senses"))
+        }
+        for (senseIndex, sense) in senses.enumerated() {
+            let glosses = sense["gloss"] as? [[String: Any]] ?? []
+            let texts = glosses.compactMap { $0["text"] as? String }
+            if glosses.isEmpty || texts.count != glosses.count || texts.contains(where: \.isEmpty) {
+                failures.append(("entry \(entry.id) sense \(senseIndex)", "has no gloss, or a gloss with empty text"))
+            }
+        }
+    }
+
+    report(area: "reading-to-meaning", checked: checkedParses + checkedEntries, silentlySkipped: 0, failures: failures)
 }

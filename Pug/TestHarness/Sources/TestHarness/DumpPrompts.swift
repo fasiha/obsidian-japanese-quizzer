@@ -322,12 +322,13 @@ func printPathHeader(index: Int, total: Int, path: PromptPath) {
         let isGenerating = path.mode == "multiple-choice-generation"
         let item = buildQuizItem(entry: entry, wordId: wordId, path: path, furiganaMap: furiganaMap)
 
+        let pinnedAnswer = isGenerating ? session.pinnedReadingToMeaningAnswer(for: item) : nil
         let system = session.systemPrompt(for: item, isGenerating: isGenerating,
-                                           preRecall: 0.5, preHalflife: 24.0)
+                                           preRecall: 0.5, preHalflife: 24.0, pinnedAnswer: pinnedAnswer)
 
         let userMsg: String
         if isGenerating {
-            userMsg = session.questionRequest(for: item)
+            userMsg = session.questionRequest(for: item, pinnedAnswer: pinnedAnswer)
         } else {
             // For free-text grading, show the stem + a sample student answer
             let stem = session.freeAnswerStem(for: item)

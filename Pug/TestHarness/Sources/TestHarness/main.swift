@@ -559,7 +559,7 @@ let jmdictDB = try DatabaseQueue(path: jmdictPath)
 
 if isFuzzMode {
     guard let area = fuzzArea else {
-        fputs("Error: --fuzz requires an area (e.g. jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, all)\n", stderr)
+        fputs("Error: --fuzz requires an area (e.g. jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, reading-to-meaning, all)\n", stderr)
         exit(1)
     }
     try await runFuzz(area: area, jmdict: jmdictDB)

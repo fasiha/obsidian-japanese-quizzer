@@ -136,7 +136,8 @@ Users can opt out of free-answer quizzes entirely via the **"Free-text quizzes"*
 ## Who generates and grades
 
 - **Multiple choice**: LLM generates the question, or the app builds it locally if conditions allow (see below). App scores instantly (1.0/0.0). LLM then discusses the result in a chat turn but does not emit SCORE.
-  - *reading-to-meaning / meaning-to-reading*: LLM returns a full JSON object `{stem, choices}`.
+  - *reading-to-meaning*: the app pins the correct answer (one corpus-attested sense, first three glosses) and builds the stem (`What does <kana> mean?`) itself. LLM returns a JSON array of wrong English meanings only; the app rejects any that share a headword with a sense of the word's JMDict entry, then shuffles the answer in. Every entry meaning is listed to the LLM as off-limits.
+  - *meaning-to-reading*: LLM returns a full JSON object `{stem, choices}`.
   - *kanji-to-reading / meaning-reading-to-kanji*: substitution-based — LLM fills replacement slots only; the app reconstructs the full question and distractors locally (see **Substitution-based distractor generation** above).
 - **Free-answer**: App builds the question stem locally (no LLM call). Student types answer. LLM grades and emits `SCORE: X.X` (Bayesian confidence 0.0–1.0, not percentage-correct).
 - **Tool usage**: No facet uses tools. reading-to-meaning and meaning-to-reading draw distractors from the corpus of enrolled words (or LLM knowledge as fallback). kanji-to-reading and meaning-reading-to-kanji use substitution prompts with no tool calls.
@@ -163,6 +164,17 @@ When building a question for `reading-to-meaning` or `meaning-to-reading`, the a
 **Sense selection strategy:**
 
 Both correct answers and distractors use two-stage random selection: pick one random corpus-attested sense (equal weight per sense), then pick one random gloss string within that sense (equal weight per gloss). This prevents senses with more gloss strings from being over-represented and produces clean, singular answers like "to eat" instead of "to eat, to consume; to live on, to subsist on, …".
+
+## Semantic distance in multiple-choice confusers
+
+Confusers for `reading-to-meaning` (AI mode) pull in two directions. This section records the trade-offs so future prompt edits know what they are trading.
+
+- **Too close: a second correct answer.** A synonym, a broader term or a narrower term of the correct meaning can be just as right, so the learner is marked wrong. Guards: the off-limits list of every entry meaning in the prompt; "avoid synonyms, broader and narrower terms" in the distractor line; and the parser's headword check (`glossHeadword`), which catches only exact headword overlap. The parser cannot catch synonyms or rewordings such as "burglar" next to "burglary", so the prompt carries that load.
+- **Too clustered: a topic giveaway.** If all four choices sit in the answer's sub-field, a learner who has just studied one word from that sub-field can pick it out without knowing the meaning. The current wording, "same broad area but a different sub-field", keeps distractors in the answer's area on purpose. Test runs still produced clusters (sleep-state verbs for 呼び覚ます, visual-watching verbs for 見下ろす). This is the accepted trade-off for now.
+- **Too far: trivial elimination.** A distractor from an unrelated area is easy to rule out, which teaches less. Not yet tested against the current wording. A "different broad area, same part of speech" wording is the candidate if clustering becomes the bigger problem.
+- **Shape gives it away.** Choices that differ in format (a parenthetical note on the correct answer only, or the correct answer bundling more senses than the distractors) let a learner pick by shape. The distractor line asks for bare phrases and matching sense counts, but a parenthetical on the correct answer is not yet handled.
+
+Precedents: the meaning-to-reading distractor line says "avoid synonyms … such that the learner must truly know the target word", and the grammar confuser prompt uses a fairness check ("could a student who understood the sentence still argue for a distractor?"). Both are the same guard applied to other facets.
 
 ## Prompt variations
 
