@@ -208,17 +208,13 @@ struct ToolHandler: Sendable {
 
         // Collect all characters we'll need meanings for (radicals + WK components)
         // so we can batch-query them in a single db.read.
-        var allLookupChars = Set<String>()
-        for k in kanjis {
-            if let components = wanikani.kanjiToComponents[k] {
-                for c in components { allLookupChars.insert(c) }
-            }
-        }
+        let allLookupChars = Set(kanjis.flatMap { wanikani.kanjiToComponents[$0] ?? [] })
         // We also need radical meanings, but those depend on each kanji's row data,
         // so we fetch all kanji rows + all component meanings in one read.
         let wkExtra = wanikani.extraDescriptions
 
-        let queryResults: [(String, Row?, [String], [[String: String]])] = (try? db.read { db in
+        // Build the JSON inside the read: GRDB's Row is not Sendable, so rows cannot leave the closure.
+        let json = try? await db.read { db -> String in
             // Pre-fetch meanings for all WK component characters in one pass.
             var meaningCache: [String: String] = [:]
             for c in allLookupChars {
@@ -230,8 +226,9 @@ struct ToolHandler: Sendable {
                 }
             }
 
-            var rows: [(String, Row?, [String], [[String: String]])] = []
+            var results: [[String: Any]] = []
             for k in kanjis {
+                var entry: [String: Any] = ["literal": k]
                 let row = try Row.fetchOne(db, sql: "SELECT * FROM kanji WHERE literal = ?", arguments: [k])
 
                 // Kanjidic radical labels (kradfile-sourced).
@@ -270,43 +267,37 @@ struct ToolHandler: Sendable {
                     }
                 }
 
-                rows.append((k, row, radicalLabels, wkEntries))
+                if let row = row {
+                    if let strokes = row["strokes"] as? Int64 { entry["strokes"] = strokes }
+                    if let grade   = row["grade"]   as? Int64 { entry["grade"]   = "G\(grade)" }
+                    if let jlpt    = row["jlpt"]    as? Int64 { entry["jlpt"]    = "N\(jlpt + 1)" }
+                    if let onJSON  = row["on_readings"]  as? String,
+                       let on      = try? JSONSerialization.jsonObject(with: Data(onJSON.utf8)) as? [String] {
+                        entry["on"] = on
+                    }
+                    if let kunJSON = row["kun_readings"] as? String,
+                       let kun     = try? JSONSerialization.jsonObject(with: Data(kunJSON.utf8)) as? [String] {
+                        entry["kun"] = kun
+                    }
+                    if let mJSON   = row["meanings"] as? String,
+                       let meanings = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String] {
+                        entry["meanings"] = meanings
+                    }
+                    if !radicalLabels.isEmpty {
+                        entry["radicals"] = radicalLabels
+                    }
+                } else {
+                    entry["error"] = "not in kanjidic2"
+                }
+                if !wkEntries.isEmpty {
+                    entry["wanikani_components"] = wkEntries
+                }
+                results.append(entry)
             }
-            return rows
-        }) ?? []
-
-        var results: [[String: Any]] = []
-        for (k, row, radicalLabels, wkEntries) in queryResults {
-            var entry: [String: Any] = ["literal": k]
-            if let row = row {
-                if let strokes = row["strokes"] as? Int64 { entry["strokes"] = strokes }
-                if let grade   = row["grade"]   as? Int64 { entry["grade"]   = "G\(grade)" }
-                if let jlpt    = row["jlpt"]    as? Int64 { entry["jlpt"]    = "N\(jlpt + 1)" }
-                if let onJSON  = row["on_readings"]  as? String,
-                   let on      = try? JSONSerialization.jsonObject(with: Data(onJSON.utf8)) as? [String] {
-                    entry["on"] = on
-                }
-                if let kunJSON = row["kun_readings"] as? String,
-                   let kun     = try? JSONSerialization.jsonObject(with: Data(kunJSON.utf8)) as? [String] {
-                    entry["kun"] = kun
-                }
-                if let mJSON   = row["meanings"] as? String,
-                   let meanings = try? JSONSerialization.jsonObject(with: Data(mJSON.utf8)) as? [String] {
-                    entry["meanings"] = meanings
-                }
-                if !radicalLabels.isEmpty {
-                    entry["radicals"] = radicalLabels
-                }
-            } else {
-                entry["error"] = "not in kanjidic2"
-            }
-            if !wkEntries.isEmpty {
-                entry["wanikani_components"] = wkEntries
-            }
-            results.append(entry)
+            let data = (try? JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])) ?? Data()
+            return String(data: data, encoding: .utf8) ?? "[]"
         }
-        let data = (try? JSONSerialization.data(withJSONObject: results, options: [.sortedKeys])) ?? Data()
-        return String(data: data, encoding: .utf8) ?? "[]"
+        return json ?? "[]"
     }
 
     /// Look up kun readings and English meanings for a single kanji character from kanjidic2.
