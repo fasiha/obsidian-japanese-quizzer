@@ -61,9 +61,18 @@ There are several options for `work`:
 
 > Cost note: annotate-harness.mjs calls `claude -p` and will use your monthly Claude Code subscription (and contributes to 5-hour and weekly limits). It does NOT use Claude API like prepare-publish.mjs does.
 
+## Optional: Render a document in HTML
+
+```bash
+node annotate-vocab-inline.mjs "Path/To/Story.annotated.TIMESTAMP.md" \
+  | pandoc -s -H header.html -o /tmp/preview.html && open /tmp/preview.html
+```
+
+This creates an HTML file you can read, similar to the iOS Pug app's document reader.
+
 ## Publish all documents for iOS
 
-1. Rename your file to remove the `.annotated.TIMESTAMP`.
+1. Rename your files to remove the `.annotated.TIMESTAMP` (both markdown and `vocab-inline-data.json`)
 2. Make sure you have the `llm-review: true` YAML frontmatter at the top.
 3. Run the traditional publish scripts:
 
@@ -74,12 +83,3 @@ node --env-file=.env prepare-publish.mjs # --max-senses, --max-kanji-senses etc.
 node publish.mjs
 # Pushes vocab.json to GitHub
 ```
-
-## Render a document in HTML
-
-```bash
-node annotate-vocab-inline.mjs "Path/To/Story.annotated.TIMESTAMP.md" \
-  | pandoc -s -H header.html -o /tmp/preview.html && open /tmp/preview.html
-```
-
-This creates an HTML file you can read, similar to the iOS Pug app's document reader.
