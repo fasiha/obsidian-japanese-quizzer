@@ -41,6 +41,10 @@ final class TransitivePairCorpus {
     private(set) var items: [TransitivePairItem] = []
     private(set) var isLoading = false
     private(set) var syncError: String? = nil
+    /// Test seam: replaces the loaded items without reading the pair data files.
+    func setItemsForTesting(_ newItems: [TransitivePairItem]) {
+        items = newItems
+    }
 
     // MARK: - Load
 

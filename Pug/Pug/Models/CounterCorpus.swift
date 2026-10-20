@@ -60,6 +60,11 @@ final class CounterCorpus {
     private(set) var isLoading = false
     private(set) var syncError: String? = nil
 
+    /// Test seam: replaces the loaded items without reading counters.json or quiz.sqlite.
+    func setItemsForTesting(_ newItems: [CounterItem]) {
+        items = newItems
+    }
+
     /// Lookup by JMDict ID — used by WordDetailSheet to find counters for a vocab word.
     func items(forJMDictId jmdictId: String) -> [CounterItem] {
         items.filter { $0.counter.jmdict?.id == jmdictId }

@@ -2,6 +2,22 @@
 
 This document will contain brief notes on changes made, so that in the future when we're debugging something, we can look back through Git history and have some natural words explaining the problem we faced, some idea of the solutions tried, what we settled on, and how we tested/validated.
 
+## 2026-10-19
+
+### Fix: counter answers went to Haiku, and stale state leaked into the next quiz item
+
+Problem: with "always ask multiple choice questions" on, a counter quiz (6 + 個) appeared as a chat message instead of a text box. The typed answer (ろっこ) went to Haiku, which had no question to answer, so Haiku replied "I'm not sure what you're asking about." Nothing was graded, and the item stayed in the saved queue.
+
+Root cause: after a multiple-choice grade, the next item is built ahead of time (its prefetch). Two parts of consuming that prefetch were wrong:
+- Counter items fell through to the chat branch whenever "multiple choice only" was on, because that setting turns off `isFreeAnswer`. Counter items are built free, and the direct path already sent them to the typed-answer branch.
+- The prefetch path cleared the previous item's multiple-choice result and tutor prompts only in the multiple-choice branch. The other branches kept them, so Haiku saw a stale "Multiple choice result: …" line about the previous word.
+
+What changed:
+- `QuizSession`: a `clearPreviousItemTutorState()` helper clears the multiple-choice result and tutor state. Both the prefetch path and the direct path call it. Counter items always take the typed-answer branch. `currentCounterNumber` is left alone, because the prefetch sets it.
+- Test seams for the harness: `QuizSession` (prefetch wait, prefetch index, advance wait), `CounterCorpus.setItemsForTesting`, and `TransitivePairCorpus.setItemsForTesting`.
+
+Testing: `TestHarness --fuzz prefetch-consume` (no API calls). It runs every ordered pair of item kinds (multiple choice, free answer, counter number-to-reading, counter meaning-to-reading, transitive pair both legs, transitive pair intransitive leg), plus a few triples, through the prefetch path and the direct path, with "multiple choice only" both on and off. Each run must match the direct path, with no early prefetch, no stale state, and a score of 1.0 for each correct answer. Before the fix, every checked sequence failed (207 failures). After the fix, all pass. The file was also compiled by the macOS harness, which symlinks the app source. The iOS target was not built for this change.
+
 ## 2026-10-17
 
 ### Feature: drill mode (sentence and document drills)

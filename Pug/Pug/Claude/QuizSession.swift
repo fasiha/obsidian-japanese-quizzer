@@ -1260,6 +1260,20 @@ final class QuizSession {
 
     // MARK: - Private: generate question
 
+    /// Clears the multiple-choice result and tutor state left by the previous item. Both advance paths
+    /// call this. The prefetch path skips the common reset further down, so without this the previous
+    /// result and tutor prompt would carry into the next item. Leaves `currentCounterNumber` alone: a
+    /// prefetch sets it while building the counter stem, and grading reads it.
+    private func clearPreviousItemTutorState() {
+        multipleChoiceResult = nil
+        lastPairQuestion = nil
+        lastPairAnswers = nil
+        currentPairSystemPrompt = nil
+        lastCounterQuestion = nil
+        lastCounterAnswer = nil
+        currentCounterSystemPrompt = nil
+    }
+
     private func generateQuestion() async {
         guard let item = currentItem else { phase = .finished; return }
 
@@ -1286,6 +1300,7 @@ final class QuizSession {
             preQuizRecall   = pf.preRecall
             preQuizHalflife = pf.preHalflife
             print("[QuizSession] consumed prefetch for index \(currentIndex): \(item.wordText)")
+            clearPreviousItemTutorState()
             if let pairQuestion = pf.pairQuestion {
                 conversation = []
                 chatMessages = []
@@ -1295,9 +1310,9 @@ final class QuizSession {
             } else if let multipleChoice = pf.multipleChoice {
                 conversation = []
                 chatMessages = []
-                multipleChoiceResult = nil
                 phase = .awaitingTap(multipleChoice)
-            } else if isFreeAnswer(item) {
+            } else if isFreeAnswer(item) || item.wordType == "counter" {
+                // Counters are graded locally whether or not they are free, so they always wait for typed input.
                 phase = .awaitingText(pf.question)
             } else if item.facet == "kanji-to-reading" || item.facet == "meaning-reading-to-kanji" {
                 // Prefetch stored a nil multipleChoice for a facet that requires it — parse failed.
@@ -1324,16 +1339,10 @@ final class QuizSession {
         isSendingChat = false
         counterExampleQueue = []
         counterAdditionalExamples = []
-        lastCounterQuestion = nil
-        lastCounterAnswer = nil
-        currentCounterSystemPrompt = nil
+        clearPreviousItemTutorState()
         currentCounterNumber = nil
         gradedScore       = nil
         gradedHalflife    = nil
-        multipleChoiceResult = nil
-        lastPairQuestion = nil
-        lastPairAnswers = nil
-        currentPairSystemPrompt = nil
         meaningBonusApplied = false
         uncertaintyUnlocked = false
         if case .reviewed(let recall, _, let halflife) = item.status {
@@ -1997,6 +2006,34 @@ final class QuizSession {
         let system = systemPrompt(for: item, isGenerating: true, pinnedAnswer: pinnedAnswer)
         let initMsg = AnthropicMessage(role: "user", content: [.text(questionRequest(for: item, pinnedAnswer: pinnedAnswer))])
         return try await runGenerationLoop(for: item, system: system, initMsg: initMsg, label: "test", pinnedAnswer: pinnedAnswer)
+    }
+
+    /// Waits until the prefetch for `index` is stored. `applyLocalGrade` stores it in a nested Task
+    /// after `recordReview`, so a caller that advances straight away would miss it.
+    func awaitPrefetchForTesting(index: Int) async -> Bool {
+        for _ in 0..<500 {
+            if prefetched?.index == index { return true }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        return false
+    }
+
+    /// Index of the item whose prefetch is stored, or nil when nothing is prefetched.
+    var prefetchedIndexForTesting: Int? { prefetched?.index }
+
+    /// Drops any stored prefetch, so the next advance takes the direct (non-prefetch) path.
+    func discardPrefetchForTesting() {
+        prefetched = nil
+        prefetchTask = nil
+    }
+
+    /// Waits until the advance started by `nextQuestion()` sets a phase. Callers set `phase = .idle`
+    /// first, because the advance can settle on `.chatting` and that would look like no progress.
+    func awaitAdvanceForTesting() async {
+        for _ in 0..<500 {
+            guard case .idle = phase else { return }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
     }
 
     /// Grade a free-text answer for a given item. Returns Claude's full response text.

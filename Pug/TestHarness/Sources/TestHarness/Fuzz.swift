@@ -23,6 +23,7 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
     case "written-form-picker": try await fuzzWrittenFormPicker(jmdict: jmdict)
     case "drill":            fuzzDrill()
     case "reading-to-meaning": try await fuzzReadingToMeaning(jmdict: jmdict)
+    case "prefetch-consume":   try await fuzzPrefetchConsume()
     case "all":
         try await fuzzJmdict(jmdict: jmdict)
         try await fuzzFurigana(jmdict: jmdict)
@@ -36,13 +37,17 @@ func runFuzz(area: String, jmdict: DatabaseQueue) async throws {
         try await fuzzWrittenFormPicker(jmdict: jmdict)
         fuzzDrill()
         try await fuzzReadingToMeaning(jmdict: jmdict)
+        try await fuzzPrefetchConsume()
     default:
-        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, drill, reading-to-meaning, all\n", stderr)
+        fputs("Unknown fuzz area '\(area)'. Valid: jmdict, furigana, fillin, ebisu, partial-template, romaji, commit-progression, kanjidic2, counters, written-form-picker, drill, reading-to-meaning, prefetch-consume, all\n", stderr)
         exit(1)
     }
 }
 
 // MARK: - Shared reporter
+
+/// Areas that printed a failure this run. `main.swift` exits non-zero if any area failed.
+var fuzzFailedAreas: [String] = []
 
 private func report(area: String, checked: Int, silentlySkipped: Int, failures: [(String, String)]) {
     print("")
@@ -51,6 +56,7 @@ private func report(area: String, checked: Int, silentlySkipped: Int, failures: 
     if failures.isEmpty {
         print("[PASS] \(area): no failures.")
     } else {
+        fuzzFailedAreas.append(area)
         print("[FAIL] \(area): \(failures.count) failure(s):")
         for (ctx, reason) in failures.prefix(30) {
             print("  [\(ctx)] \(reason)")
@@ -1384,4 +1390,341 @@ func fuzzReadingToMeaning(jmdict: DatabaseQueue) async throws {
     }
 
     report(area: "reading-to-meaning", checked: checkedParses + checkedEntries, silentlySkipped: 0, failures: failures)
+}
+
+// MARK: - Area Q: prefetch consume across item-kind sequences
+
+/// Item kinds the check can answer offline. Each is answered the way the app expects for that kind.
+private enum PrefetchKind: CaseIterable {
+    case multipleChoice, freeAnswer, counterNumber, counterMeaning, pairBoth, pairIntransitive
+
+    var label: String {
+        switch self {
+        case .multipleChoice: return "multiple choice (jmdict)"
+        case .freeAnswer: return "free answer (jmdict, meaning-to-reading)"
+        case .counterNumber: return "counter number-to-reading"
+        case .counterMeaning: return "counter meaning-to-reading"
+        case .pairBoth: return "transitive pair (both legs)"
+        case .pairIntransitive: return "transitive pair (intransitive leg)"
+        }
+    }
+
+    /// The phase the app should show this kind in, once it arrives.
+    var expectedPhase: String {
+        switch self {
+        case .multipleChoice: return "awaitingTap"
+        case .freeAnswer, .counterNumber, .counterMeaning: return "awaitingText"
+        case .pairBoth, .pairIntransitive: return "awaitingPair"
+        }
+    }
+}
+
+/// What one item looks like when it arrives, and how it was answered.
+private struct PrefetchStep: Equatable {
+    let kind: String
+    let arrivalPhase: String
+    /// True if the next item was already prefetched while this item was still on screen.
+    let nextPrefetchedBeforeAnswer: Bool
+    let staleMultipleChoiceResult: Bool
+    let staleTutorPrompt: Bool
+    let answerScore: Double?
+
+    var summary: String {
+        "\(kind): phase=\(arrivalPhase) prefetchedEarly=\(nextPrefetchedBeforeAnswer) staleResult=\(staleMultipleChoiceResult) staleTutor=\(staleTutorPrompt) score=\(answerScore.map { String($0) } ?? "nil")"
+    }
+}
+
+/// Shared test data for the sequence runner.
+private struct PrefetchFixtures {
+    let counter: Counter
+    let counterCorpus: CounterCorpus
+    let pairCorpus: TransitivePairCorpus
+    let client: AnthropicClient
+    let toolHandler: ToolHandler
+    let db: QuizDB
+
+    static let multipleChoiceQuestion = QuizSession.MultipleChoiceQuestion(
+        stem: "What does おいかける mean?",
+        choices: ["to drive; to propel", "to drag; to haul; to pull", "to overtake; to pass", "to chase; to run after; to pursue"],
+        correctIndex: 3)
+
+    func item(for kind: PrefetchKind) -> QuizItem {
+        switch kind {
+        case .multipleChoice:
+            return prefetchFuzzItem(wordType: "jmdict", wordId: "1608720", wordText: "追いかける", kana: "おいかける",
+                                    facet: "reading-to-meaning", isFree: false)
+        case .freeAnswer:
+            return prefetchFuzzItem(wordType: "jmdict", wordId: "1309430", wordText: "食べ物", kana: "たべもの",
+                                    facet: "meaning-to-reading", isFree: true)
+        case .counterNumber:
+            return prefetchFuzzItem(wordType: "counter", wordId: counter.id, wordText: counter.kanji, kana: "",
+                                    facet: "counter-number-to-reading", isFree: true)
+        case .counterMeaning:
+            return prefetchFuzzItem(wordType: "counter", wordId: counter.id, wordText: counter.kanji, kana: "",
+                                    facet: "meaning-to-reading", isFree: true)
+        case .pairBoth:
+            return prefetchFuzzItem(wordType: "transitive-pair", wordId: "1350040-1350110", wordText: "消える ↔ 消す", kana: "",
+                                    facet: "pair-discrimination", isFree: true)
+        case .pairIntransitive:
+            return prefetchFuzzItem(wordType: "transitive-pair", wordId: "1350040-1350110", wordText: "消える ↔ 消す", kana: "",
+                                    facet: "intransitive", isFree: true)
+        }
+    }
+
+    /// Types or taps the correct answer for `kind`, and returns the score it earned.
+    @MainActor
+    func answerCorrectly(_ kind: PrefetchKind, session: QuizSession) async -> Double? {
+        switch kind {
+        case .multipleChoice:
+            session.tapChoice(3)
+        case .freeAnswer:
+            session.chatInput = "たべもの"
+            await session.submitFreeAnswer()
+        case .counterNumber:
+            session.chatInput = session.currentCounterNumber.flatMap { counter.pronunciations[$0]?.primary.first } ?? ""
+            await session.submitFreeAnswer()
+        case .counterMeaning:
+            session.chatInput = counter.reading
+            await session.submitFreeAnswer()
+        case .pairBoth:
+            session.pairIntransitiveInput = "きえる"
+            session.pairTransitiveInput = "けす"
+            session.submitTransitivePairDrillAnswer()
+        case .pairIntransitive:
+            session.pairIntransitiveInput = "きえる"
+            session.submitTransitivePairDrillAnswer()
+        }
+        return session.gradedScore
+    }
+}
+
+/// Runs one sequence of kinds through a session. The sequence starts with a multiple-choice warm-up
+/// unless its first kind is multiple choice, so every later item arrives through a grade and a prefetch.
+/// `usePrefetch: false` discards each stored prefetch before advancing, so the item takes the direct path.
+@MainActor
+private func runPrefetchSequence(kinds: [PrefetchKind], usePrefetch: Bool, multipleChoiceOnly: Bool,
+                                 fixtures: PrefetchFixtures, preferences: UserPreferences)
+    async -> (steps: [PrefetchStep], problem: String?) {
+    preferences.multipleChoiceOnly = multipleChoiceOnly
+    let session = QuizSession(client: fixtures.client, toolHandler: fixtures.toolHandler,
+                              db: fixtures.db, preferences: preferences)
+    session.counterCorpus = fixtures.counterCorpus
+    session.pairCorpus = fixtures.pairCorpus
+
+    // `kindOfItem[i]` is the kind of item i, or nil for the multiple-choice warm-up.
+    var items: [QuizItem] = []
+    var kindOfItem: [PrefetchKind?] = []
+    if kinds.first != .multipleChoice {
+        items.append(fixtures.item(for: .multipleChoice))
+        kindOfItem.append(nil)
+    }
+    for kind in kinds {
+        items.append(fixtures.item(for: kind))
+        kindOfItem.append(kind)
+    }
+    session.items = items
+    session.currentIndex = 0
+    session.phase = .awaitingTap(PrefetchFixtures.multipleChoiceQuestion)
+
+    var steps: [PrefetchStep] = []
+    for index in items.indices {
+        let kind = kindOfItem[index]
+        // The item is on screen. Record how it arrived before the student answers it.
+        let arrivalPhase = phaseName(session.phase)
+        let nextPrefetchedEarly = session.prefetchedIndexForTesting != nil
+        let staleResult = session.multipleChoiceResult != nil
+        let staleTutor = session.currentCounterSystemPrompt != nil || session.currentPairSystemPrompt != nil
+
+        let score: Double?
+        if let kind {
+            score = await fixtures.answerCorrectly(kind, session: session)
+            steps.append(PrefetchStep(kind: kind.label, arrivalPhase: arrivalPhase,
+                                      nextPrefetchedBeforeAnswer: nextPrefetchedEarly,
+                                      staleMultipleChoiceResult: staleResult, staleTutorPrompt: staleTutor,
+                                      answerScore: score))
+        } else {
+            // Warm-up: a multiple-choice question answered correctly to start the sequence.
+            session.tapChoice(3)
+            score = session.gradedScore
+        }
+        guard score != nil || kind == nil else { return (steps, "item \(index) was not graded") }
+
+        guard index + 1 < items.count else { break }
+        guard await session.awaitPrefetchForTesting(index: index + 1) else {
+            return (steps, "prefetch was never stored for item \(index + 1)")
+        }
+        if !usePrefetch { session.discardPrefetchForTesting() }
+        // Tutor prompts left by an earlier tutor session. Both advance paths must leave them cleared.
+        session.currentCounterSystemPrompt = "STALE counter tutor prompt"
+        session.currentPairSystemPrompt = "STALE pair tutor prompt"
+        session.phase = .idle
+        session.nextQuestion()
+        await session.awaitAdvanceForTesting()
+    }
+    return (steps, nil)
+}
+
+/// Every ordered pair of kinds (the second kind cannot be multiple choice, which needs Haiku to generate),
+/// plus a few triples that check counter-to-counter and multiple-choice-to-counter-to-counter transitions.
+private func prefetchSequences() -> [[PrefetchKind]] {
+    let secondKinds = PrefetchKind.allCases.filter { $0 != .multipleChoice }
+    var sequences: [[PrefetchKind]] = []
+    for first in PrefetchKind.allCases {
+        for second in secondKinds {
+            sequences.append([first, second])
+        }
+    }
+    sequences += [
+        [.multipleChoice, .counterNumber, .counterMeaning],
+        [.multipleChoice, .counterNumber, .counterNumber],
+        [.pairBoth, .counterNumber, .counterNumber],
+        [.counterNumber, .pairBoth, .counterNumber],
+        [.counterNumber, .counterMeaning, .pairIntransitive],
+        [.freeAnswer, .counterNumber, .freeAnswer],
+    ]
+    return sequences
+}
+
+/// Free oracle: for every sequence of items, the prefetch path and the direct path must show each item
+/// in the same phase with the same answer score. Every item must arrive in the phase its kind expects,
+/// with no prefetch of the next item started while it was on screen, and no multiple-choice result or tutor
+/// prompt carried over from the previous item. Each item must score 1.0 when answered correctly.
+///
+/// Reproduces a reported bug. Counter items are always built free (QuizContext), so the prefetch
+/// consume path only fell through to `.chatting` when "multiple choice only" was on, because that turns
+/// off `isFreeAnswer`. The student then saw the counter question in chat, and a typed answer went to Haiku.
+///
+/// Free-answer items do not exist when "multiple choice only" is on, so those sequences run only with it off.
+@MainActor
+func fuzzPrefetchConsume() async throws {
+    print("=== FUZZ: prefetch consume across item-kind sequences (prefetch path vs direct path) ===")
+
+    let tmpPath = NSTemporaryDirectory() + "fuzz-prefetch-\(ProcessInfo.processInfo.processIdentifier).sqlite"
+    defer { try? FileManager.default.removeItem(atPath: tmpPath) }
+    let db = try QuizDB.open(path: tmpPath)
+    let client = AnthropicClient(apiKey: "not-needed", model: "not-needed")
+    let toolHandler = try ToolHandler(jmdict: DatabaseQueue(), kanjidic: nil,
+                                      wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]),
+                                      quizDB: db, chatDB: nil)
+
+    guard let countersPath = findFile("Counters/counters.json"),
+          let data = try? Data(contentsOf: URL(fileURLWithPath: countersPath)),
+          let counters = try? JSONDecoder().decode([Counter].self, from: data),
+          let counter = counters.first(where: { $0.kanji == "個" && $0.pronunciations["6"] != nil }) else {
+        report(area: "prefetch-consume", checked: 0, silentlySkipped: 0,
+               failures: [("setup", "no 個 counter with a \"6\" pronunciation in Counters/counters.json")])
+        return
+    }
+    let counterCorpus = CounterCorpus()
+    counterCorpus.setItemsForTesting([CounterItem(counter: counter)])
+
+    let pairJSON = """
+    {"intransitive": {"kana": "きえる", "jmdictId": "1350040", "kanji": ["消える"], "bccwjPerMillionWords": null},
+     "transitive": {"kana": "けす", "jmdictId": "1350110", "kanji": ["消す"], "bccwjPerMillionWords": null},
+     "examples": {"intransitive": null, "transitive": null},
+     "ambiguousReason": null,
+     "drills": [{"intransitive": {"en": "The streetlights went out.", "ja": "街灯が消えた。", "jaFurigana": null},
+                 "transitive": {"en": "He switched off the lights.", "ja": "電気を消した。", "jaFurigana": null}}]}
+    """
+    let pair = try JSONDecoder().decode(TransitivePair.self, from: Data(pairJSON.utf8))
+    let pairCorpus = TransitivePairCorpus()
+    pairCorpus.setItemsForTesting([TransitivePairItem(pair: pair)])
+
+    let fixtures = PrefetchFixtures(counter: counter, counterCorpus: counterCorpus, pairCorpus: pairCorpus,
+                                    client: client, toolHandler: toolHandler, db: db)
+
+    // The preference is backed by UserDefaults, so put back whatever the developer had set.
+    let preferences = UserPreferences()
+    let originalMultipleChoiceOnly = preferences.multipleChoiceOnly
+    defer { preferences.multipleChoiceOnly = originalMultipleChoiceOnly }
+
+    var failures: [(String, String)] = []
+    var checked = 0
+    var skipped = 0
+    for kinds in prefetchSequences() {
+        for multipleChoiceOnly in [false, true] {
+            let label = kinds.map(\.label).joined(separator: " → ")
+                + (multipleChoiceOnly ? " [multiple choice only]" : " [free answer allowed]")
+            if multipleChoiceOnly && kinds.contains(.freeAnswer) {
+                skipped += 1
+                continue
+            }
+            checked += 1
+            let direct = await runPrefetchSequence(kinds: kinds, usePrefetch: false, multipleChoiceOnly: multipleChoiceOnly,
+                                                   fixtures: fixtures, preferences: preferences)
+            let prefetched = await runPrefetchSequence(kinds: kinds, usePrefetch: true, multipleChoiceOnly: multipleChoiceOnly,
+                                                       fixtures: fixtures, preferences: preferences)
+            if let problem = direct.problem ?? prefetched.problem {
+                failures.append((label, problem))
+                print("  [FAIL] \(label): \(problem)")
+                continue
+            }
+            var sequenceFailed = false
+            if prefetched.steps != direct.steps {
+                sequenceFailed = true
+                failures.append((label, "prefetch path differs from direct path\n      prefetch: \(prefetched.steps.map(\.summary))\n      direct:   \(direct.steps.map(\.summary))"))
+            }
+            for step in prefetched.steps {
+                let kindName = step.kind
+                let expected = PrefetchKind.allCases.first { $0.label == kindName }?.expectedPhase ?? "?"
+                if step.arrivalPhase != expected {
+                    failures.append((label, "\(kindName) arrived in \(step.arrivalPhase), expected \(expected)")); sequenceFailed = true
+                }
+                if step.nextPrefetchedBeforeAnswer {
+                    failures.append((label, "\(kindName): the next item was prefetched while this one was still on screen")); sequenceFailed = true
+                }
+                if step.staleMultipleChoiceResult {
+                    failures.append((label, "\(kindName): a multiple-choice result from the previous item leaked in")); sequenceFailed = true
+                }
+                if step.staleTutorPrompt {
+                    failures.append((label, "\(kindName): a tutor prompt from the previous item survived the advance")); sequenceFailed = true
+                }
+                if step.answerScore != 1.0 {
+                    failures.append((label, "\(kindName): correct answer scored \(step.answerScore.map { String($0) } ?? "nil")")); sequenceFailed = true
+                }
+            }
+            print("  [\(sequenceFailed ? "FAIL" : "PASS")] \(label)")
+        }
+    }
+    print("Skipped \(skipped) free-answer sequence(s) with multiple choice only on (free-answer items do not exist in that mode).")
+    report(area: "prefetch-consume", checked: checked, silentlySkipped: skipped, failures: failures)
+}
+
+/// Builds a minimal quiz item for the prefetch check. Only fields the consume path reads matter.
+private func prefetchFuzzItem(wordType: String, wordId: String, wordText: String, kana: String,
+                              facet: String, isFree: Bool) -> QuizItem {
+    QuizItem(
+        wordType: wordType,
+        wordId: wordId,
+        wordText: wordText,
+        writtenTexts: [],
+        kanaTexts: kana.isEmpty ? [] : [kana],
+        hasKanji: false,
+        facet: facet,
+        status: .reviewed(recall: 0.5, isFree: isFree, halflife: isFree ? 72.0 : 24.0),
+        senseExtras: [],
+        committedKanji: nil,
+        partialKanjiTemplate: nil,
+        committedReading: nil,
+        committedWrittenText: nil,
+        committedFurigana: nil,
+        siblingKanaReadings: [],
+        corpusSenseIndices: [0],
+        kanjiQuizData: nil
+    )
+}
+
+private func phaseName(_ phase: QuizSession.Phase) -> String {
+    switch phase {
+    case .idle: return "idle"
+    case .loadingItems: return "loadingItems"
+    case .generating: return "generating"
+    case .awaitingTap: return "awaitingTap"
+    case .awaitingText: return "awaitingText"
+    case .awaitingPair: return "awaitingPair"
+    case .chatting: return "chatting"
+    case .noItems: return "noItems"
+    case .finished: return "finished"
+    case .error(let message): return "error(\(message))"
+    }
 }

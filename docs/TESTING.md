@@ -90,6 +90,27 @@ Skip rules enforced in the loop:
 - `quiz.sqlite` — optional; used for telemetry logging so test runs appear in `telemetry-report.mjs` output
 - `ANTHROPIC_API_KEY` in `.env` — required for generate, grade, and live modes (not dump-prompts)
 
+**Fuzz areas (no API calls)**: `.build/debug/TestHarness --fuzz <area>`, where `<area>` is one of the
+areas listed in [TODO-fuzzing.md](TODO-fuzzing.md). `--fuzz all` runs every area. CLAUDE.md requires a
+fuzz run after any `QuizSession` edit.
+
+**Prefetch consume** (`--fuzz prefetch-consume`): reproduces and guards the bug where, after a
+multiple-choice grade, the next item's prefetch was consumed into the wrong phase. The check runs
+sequences of quiz items. Each sequence runs once through the stored prefetch and once through the
+direct path. Every item must match between the two paths, and must:
+- arrive in the phase its kind expects, with no next item prefetched while it was on screen;
+- carry no multiple-choice result or tutor prompt from the previous item;
+- score 1.0 when answered correctly.
+
+The sequences are every ordered pair of six kinds, plus six triples. Each runs with "multiple choice
+only" on and off; free-answer sequences run only with it off. The check sets that preference and
+restores the developer's value afterwards.
+
+Not covered offline: kanji quiz items, free answers that Haiku grades, non-free jmdict items, wrong
+answers, the "No idea" and "Inkling" taps, and real tutor sessions (tutor prompts are seeded).
+`--fuzz` exits 1 if any area prints `[FAIL]` (and 0 when all pass), so scripts and CI can rely on the exit code.
+Expected output: `[PASS] prefetch-consume: no failures.`
+
 **Entry point added to `QuizSession`**: `generateQuestionForTesting(item:)` and
 `gradeAnswerForTesting(item:stem:answer:)` are `internal` methods that bypass the phase
 state machine. Helpers (`systemPrompt`, `questionRequest`, `freeAnswerStem`,
