@@ -169,6 +169,10 @@ struct AnthropicClient: Sendable {
     /// Optional chat log. When `send()` is called with a non-nil `chatContext`,
     /// the outgoing user message and the final assistant response are persisted here.
     let chatDB: ChatDB?
+    /// Test-only. When set, `callAPI` answers from this closure instead of the network. Returning `nil`
+    /// means the test did not expect this call, so `callAPI` throws `AnthropicError.unstubbedCall`.
+    /// The app never sets it; `TestHarness --fuzz` does.
+    var replyStub: (@Sendable (_ messages: [AnthropicMessage], _ system: String?) -> String?)? = nil
 
     var model: String { modelProvider() }
 
@@ -299,6 +303,14 @@ struct AnthropicClient: Sendable {
         tools: [AnthropicTool]?,
         maxTokens: Int
     ) async throws -> AnthropicResponse {
+        if let replyStub {
+            guard let text = replyStub(messages, system) else {
+                throw AnthropicError.unstubbedCall(system: system ?? "")
+            }
+            return AnthropicResponse(id: "stub", type: "message", role: "assistant",
+                                     content: [.text(text)], stopReason: "end_turn",
+                                     usage: .init(inputTokens: 0, outputTokens: 0))
+        }
         let requestBody = AnthropicRequest(
             model: model,
             maxTokens: maxTokens,
@@ -348,6 +360,7 @@ enum AnthropicError: Error, LocalizedError {
     case invalidResponse
     case apiError(statusCode: Int, body: String)
     case toolCallWithoutHandler([String])
+    case unstubbedCall(system: String)
 
     var errorDescription: String? {
         switch self {
@@ -357,6 +370,8 @@ enum AnthropicError: Error, LocalizedError {
             return "Anthropic API error \(code): \(body)"
         case .toolCallWithoutHandler(let names):
             return "Tool call(s) received with no handler: \(names.joined(separator: ", "))"
+        case .unstubbedCall(let system):
+            return "Unexpected model call in a test (system prompt starts: \(system.prefix(60)))"
         }
     }
 }

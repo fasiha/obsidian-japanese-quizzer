@@ -1417,21 +1417,148 @@ private enum PrefetchKind: CaseIterable {
         case .pairBoth, .pairIntransitive: return "awaitingPair"
         }
     }
+
+    /// Whether the result bubble starts with ✓ or ✗. An exact-match free answer shows just the typed text.
+    var marksResultBubble: Bool { self != .freeAnswer }
+
+    /// Model calls an answer of this kind and outcome should make. A pair drill "don't know" is graded locally,
+    /// so it makes none. Every other uncertain outcome makes one: the opening explanation turn.
+    func expectedModelCalls(for outcome: PrefetchOutcome) -> Int {
+        if (self == .pairBoth || self == .pairIntransitive) && outcome == .noIdea { return 0 }
+        return outcome.expectedModelCalls
+    }
+
+    /// Outcomes the runner covers for this kind. Wrong free answers and wrong pair drills are graded by Haiku,
+    /// so they are left out until a phase scripts their replies. "While grading" outcomes need a Haiku-graded
+    /// free answer, so only free answers have them.
+    var outcomes: [PrefetchOutcome] {
+        switch self {
+        case .multipleChoice, .counterNumber, .counterMeaning:
+            return [.correct, .wrong, .noIdea, .inkling]
+        case .freeAnswer:
+            return [.correct, .noIdea, .inkling, .noIdeaWhileGrading, .inklingWhileGrading]
+        case .pairBoth, .pairIntransitive:
+            return [.correct, .noIdea]
+        }
+    }
+}
+
+/// How the student answered an item.
+private enum PrefetchOutcome: String {
+    case correct, wrong
+    /// "No idea" or "Inkling" tapped before anything is submitted.
+    case noIdea = "no idea"
+    case inkling
+    /// "No idea" or "Inkling" tapped after a free answer was submitted, while Haiku is still grading it.
+    case noIdeaWhileGrading = "no idea while grading"
+    case inklingWhileGrading = "inkling while grading"
+
+    /// The score the app should record for this answer. A self-reported score must survive Haiku's grade.
+    var expectedScore: Double {
+        switch self {
+        case .correct: return 1.0
+        case .wrong, .noIdea, .noIdeaWhileGrading: return 0.0
+        case .inkling, .inklingWhileGrading: return 0.25
+        }
+    }
+
+    /// The first character of the result bubble the app should show: ✓ or ✗. Uncertain outcomes show the
+    /// student's admission instead, so there is no mark to check.
+    var expectedResultMark: String? {
+        switch self {
+        case .correct: return "✓"
+        case .wrong: return "✗"
+        case .noIdea, .inkling, .noIdeaWhileGrading, .inklingWhileGrading: return nil
+        }
+    }
+
+    /// Model calls the answer should make, counting the opening explanation turn after an admission of
+    /// uncertainty and the Haiku grade of a submitted free answer. Local grading makes none.
+    var expectedModelCalls: Int {
+        switch self {
+        case .correct, .wrong: return 0
+        case .noIdea, .inkling, .noIdeaWhileGrading, .inklingWhileGrading: return 1
+        }
+    }
+}
+
+/// One answer in a sequence: the item kind and how the student answered it.
+private struct PrefetchStop {
+    let kind: PrefetchKind
+    let outcome: PrefetchOutcome
+
+    static func correct(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .correct) }
+    static func wrong(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .wrong) }
+    static func noIdea(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .noIdea) }
+    static func inkling(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .inkling) }
+    static func noIdeaWhileGrading(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .noIdeaWhileGrading) }
+    static func inklingWhileGrading(_ kind: PrefetchKind) -> PrefetchStop { PrefetchStop(kind: kind, outcome: .inklingWhileGrading) }
+
+    var label: String { "\(kind.label) [\(outcome.rawValue)]" }
 }
 
 /// What one item looks like when it arrives, and how it was answered.
 private struct PrefetchStep: Equatable {
-    let kind: String
+    let kind: PrefetchKind
+    let outcome: PrefetchOutcome
     let arrivalPhase: String
+    /// State left over from the previous item when this one arrived. Empty means the item started clean.
+    let dirtyFieldsAtArrival: [String]
     /// True if the next item was already prefetched while this item was still on screen.
     let nextPrefetchedBeforeAnswer: Bool
     let staleMultipleChoiceResult: Bool
     let staleTutorPrompt: Bool
     let answerScore: Double?
+    /// The first character of the result bubble the answer produced, or "" if there is none.
+    let resultMark: String
+    /// Model calls made while the answer was graded, including any chat turn it started.
+    let answerModelCalls: Int
+
+    var expectedModelCalls: Int { kind.expectedModelCalls(for: outcome) }
 
     var summary: String {
-        "\(kind): phase=\(arrivalPhase) prefetchedEarly=\(nextPrefetchedBeforeAnswer) staleResult=\(staleMultipleChoiceResult) staleTutor=\(staleTutorPrompt) score=\(answerScore.map { String($0) } ?? "nil")"
+        "\(kind.label) [\(outcome.rawValue)]: phase=\(arrivalPhase) dirty=\(dirtyFieldsAtArrival) prefetchedEarly=\(nextPrefetchedBeforeAnswer) staleResult=\(staleMultipleChoiceResult) staleTutor=\(staleTutorPrompt) score=\(answerScore.map { String($0) } ?? "nil") mark=\(resultMark) modelCalls=\(answerModelCalls)"
     }
+}
+
+/// Result of one sequence run: the steps, a problem that stopped the run (if any), and every model call it made.
+private struct PrefetchRun {
+    let steps: [PrefetchStep]
+    let problem: String?
+    let totalModelCalls: Int
+}
+
+/// Stands in for the Anthropic API inside `fuzzPrefetchConsume`. Records every model call so the oracles can
+/// count them, and answers the calls the runner expects. Any other call gets nil, which the client reports as
+/// an unexpected call, so the run fails. Phase 3 adds replies for the tutor sessions.
+private final class ScriptedReplies: @unchecked Sendable {
+    private let lock = NSLock()
+    private var recordedCalls: [String] = []
+
+    func respond(messages: [AnthropicMessage], system: String?) -> String? {
+        let lastUserText = messages.last(where: { $0.role == "user" })?.content.compactMap { block -> String? in
+            if case .text(let text) = block { return text }
+            return nil
+        }.joined(separator: "\n") ?? ""
+        lock.withLock { recordedCalls.append(system ?? "") }
+        return Self.reply(toLastUserText: lastUserText)
+    }
+
+    /// The canned reply for each call the runner expects. The text is generic on purpose: the oracles check
+    /// the app's state around the reply, not what Haiku says. A grading reply uses the real `SCORE:` and `NOTES:` lines.
+    private static func reply(toLastUserText text: String) -> String? {
+        if text.hasPrefix("I had no idea") || text.hasPrefix("I had a vague inkling") {
+            return "Here is an explanation of the word and the meaning it is usually taken to have."
+        }
+        if text.hasPrefix("Question: ") {
+            return "The answer covers part of the meaning.\n\nSCORE: 0.5\nNOTES: partial meaning, not the full sense."
+        }
+        return nil
+    }
+
+    var callCount: Int { lock.withLock { recordedCalls.count } }
+
+    func reset() { lock.withLock { recordedCalls = [] } }
 }
 
 /// Shared test data for the sequence runner.
@@ -1440,6 +1567,7 @@ private struct PrefetchFixtures {
     let counterCorpus: CounterCorpus
     let pairCorpus: TransitivePairCorpus
     let client: AnthropicClient
+    let replies: ScriptedReplies
     let toolHandler: ToolHandler
     let db: QuizDB
 
@@ -1447,6 +1575,12 @@ private struct PrefetchFixtures {
         stem: "What does おいかける mean?",
         choices: ["to drive; to propel", "to drag; to haul; to pull", "to overtake; to pass", "to chase; to run after; to pursue"],
         correctIndex: 3)
+
+    /// A typed counter reading that no counter accepts, so typing it always grades wrong.
+    static let wrongCounterReading = "まちがい"
+
+    /// A partly right free answer. It is not an exact match, so the app sends it to Haiku.
+    static let partialFreeAnswer = "食べること"
 
     func item(for kind: PrefetchKind) -> QuizItem {
         switch kind {
@@ -1471,56 +1605,121 @@ private struct PrefetchFixtures {
         }
     }
 
-    /// Types or taps the correct answer for `kind`, and returns the score it earned.
+    /// Answers `stop` the way its outcome says, and returns the score the app recorded straight away.
+    /// For outcomes that start a chat turn, the caller waits for that turn before reading the score again.
     @MainActor
-    func answerCorrectly(_ kind: PrefetchKind, session: QuizSession) async -> Double? {
-        switch kind {
+    func answer(_ stop: PrefetchStop, session: QuizSession) async -> Double? {
+        let isCorrect = stop.outcome == .correct
+        let uncertaintyScore: Double? = switch stop.outcome {
+        case .noIdea: 0.0
+        case .inkling: 0.25
+        default: nil
+        }
+        switch stop.kind {
         case .multipleChoice:
-            session.tapChoice(3)
+            // Index 3 is the correct choice; index 0 is a wrong one.
+            if let uncertaintyScore {
+                session.tapUncertain(score: uncertaintyScore)
+            } else {
+                session.tapChoice(isCorrect ? 3 : 0)
+            }
         case .freeAnswer:
-            session.chatInput = "たべもの"
-            await session.submitFreeAnswer()
+            switch stop.outcome {
+            case .noIdeaWhileGrading, .inklingWhileGrading:
+                // Submit a partly right answer, then tap the admission before Haiku's grade has come back.
+                // The submit only starts the grading turn, so the admission lands while it is still in flight.
+                session.chatInput = Self.partialFreeAnswer
+                await session.submitFreeAnswer()
+                session.tapFreeAnswerUncertain(score: stop.outcome == .noIdeaWhileGrading ? 0.0 : 0.25)
+            default:
+                if let uncertaintyScore {
+                    session.tapTextUncertain(score: uncertaintyScore)
+                } else {
+                    session.chatInput = "たべもの"
+                    await session.submitFreeAnswer()
+                }
+            }
         case .counterNumber:
-            session.chatInput = session.currentCounterNumber.flatMap { counter.pronunciations[$0]?.primary.first } ?? ""
-            await session.submitFreeAnswer()
+            if let uncertaintyScore {
+                session.tapTextUncertain(score: uncertaintyScore)
+            } else {
+                let accepted = session.currentCounterNumber.flatMap { counter.pronunciations[$0]?.primary.first } ?? ""
+                session.chatInput = isCorrect ? accepted : Self.wrongCounterReading
+                await session.submitFreeAnswer()
+            }
         case .counterMeaning:
-            session.chatInput = counter.reading
-            await session.submitFreeAnswer()
+            if let uncertaintyScore {
+                session.tapTextUncertain(score: uncertaintyScore)
+            } else {
+                session.chatInput = isCorrect ? counter.reading : Self.wrongCounterReading
+                await session.submitFreeAnswer()
+            }
         case .pairBoth:
-            session.pairIntransitiveInput = "きえる"
-            session.pairTransitiveInput = "けす"
-            session.submitTransitivePairDrillAnswer()
+            if stop.outcome == .noIdea {
+                session.tapTransitiveDrillDontKnow()
+            } else {
+                session.pairIntransitiveInput = "きえる"
+                session.pairTransitiveInput = "けす"
+                session.submitTransitivePairDrillAnswer()
+            }
         case .pairIntransitive:
-            session.pairIntransitiveInput = "きえる"
-            session.submitTransitivePairDrillAnswer()
+            if stop.outcome == .noIdea {
+                session.tapTransitiveDrillDontKnow()
+            } else {
+                session.pairIntransitiveInput = "きえる"
+                session.submitTransitivePairDrillAnswer()
+            }
         }
         return session.gradedScore
     }
+
+    /// Fields that still hold the previous item's state when an item arrives. Empty when the item starts clean.
+    @MainActor
+    func dirtyFields(_ session: QuizSession) -> [String] {
+        var dirty: [String] = []
+        if !session.chatInput.isEmpty { dirty.append("chatInput") }
+        if session.isSendingChat { dirty.append("isSendingChat") }
+        if session.uncertaintyUnlocked { dirty.append("uncertaintyUnlocked") }
+        if session.gradedScore != nil { dirty.append("gradedScore") }
+        return dirty
+    }
 }
 
-/// Runs one sequence of kinds through a session. The sequence starts with a multiple-choice warm-up
-/// unless its first kind is multiple choice, so every later item arrives through a grade and a prefetch.
+/// Waits until no chat turn is in flight, so a turn that an answer started is counted and its state is in place.
+/// The replies are stubbed, so a turn finishes in milliseconds. Returns false if one is still running after a
+/// quarter second. The cap is short on purpose: a broken app that never finishes a turn fails every such step.
+@MainActor
+private func awaitChatIdle(_ session: QuizSession) async -> Bool {
+    for _ in 0..<25 {
+        if !session.isSendingChat { return true }
+        try? await Task.sleep(nanoseconds: 10_000_000)
+    }
+    return !session.isSendingChat
+}
+
+/// Runs one sequence of stops through a session. The sequence starts with a multiple-choice warm-up
+/// unless its first stop is multiple choice, so every later item arrives through a grade and a prefetch.
 /// `usePrefetch: false` discards each stored prefetch before advancing, so the item takes the direct path.
 @MainActor
-private func runPrefetchSequence(kinds: [PrefetchKind], usePrefetch: Bool, multipleChoiceOnly: Bool,
-                                 fixtures: PrefetchFixtures, preferences: UserPreferences)
-    async -> (steps: [PrefetchStep], problem: String?) {
+private func runPrefetchSequence(stops: [PrefetchStop], usePrefetch: Bool, multipleChoiceOnly: Bool,
+                                 fixtures: PrefetchFixtures, preferences: UserPreferences) async -> PrefetchRun {
     preferences.multipleChoiceOnly = multipleChoiceOnly
+    fixtures.replies.reset()
     let session = QuizSession(client: fixtures.client, toolHandler: fixtures.toolHandler,
                               db: fixtures.db, preferences: preferences)
     session.counterCorpus = fixtures.counterCorpus
     session.pairCorpus = fixtures.pairCorpus
 
-    // `kindOfItem[i]` is the kind of item i, or nil for the multiple-choice warm-up.
+    // `stopOfItem[i]` is the stop for item i, or nil for the multiple-choice warm-up.
     var items: [QuizItem] = []
-    var kindOfItem: [PrefetchKind?] = []
-    if kinds.first != .multipleChoice {
+    var stopOfItem: [PrefetchStop?] = []
+    if stops.first?.kind != .multipleChoice {
         items.append(fixtures.item(for: .multipleChoice))
-        kindOfItem.append(nil)
+        stopOfItem.append(nil)
     }
-    for kind in kinds {
-        items.append(fixtures.item(for: kind))
-        kindOfItem.append(kind)
+    for stop in stops {
+        items.append(fixtures.item(for: stop.kind))
+        stopOfItem.append(stop)
     }
     session.items = items
     session.currentIndex = 0
@@ -1528,30 +1727,43 @@ private func runPrefetchSequence(kinds: [PrefetchKind], usePrefetch: Bool, multi
 
     var steps: [PrefetchStep] = []
     for index in items.indices {
-        let kind = kindOfItem[index]
+        let stop = stopOfItem[index]
         // The item is on screen. Record how it arrived before the student answers it.
         let arrivalPhase = phaseName(session.phase)
+        let dirtyFields = fixtures.dirtyFields(session)
         let nextPrefetchedEarly = session.prefetchedIndexForTesting != nil
         let staleResult = session.multipleChoiceResult != nil
         let staleTutor = session.currentCounterSystemPrompt != nil || session.currentPairSystemPrompt != nil
 
         let score: Double?
-        if let kind {
-            score = await fixtures.answerCorrectly(kind, session: session)
-            steps.append(PrefetchStep(kind: kind.label, arrivalPhase: arrivalPhase,
+        if let stop {
+            let callsBefore = fixtures.replies.callCount
+            score = await fixtures.answer(stop, session: session)
+            guard await awaitChatIdle(session) else {
+                return PrefetchRun(steps: steps, problem: "chat turn for item \(index) never finished",
+                                   totalModelCalls: fixtures.replies.callCount)
+            }
+            let answerCalls = fixtures.replies.callCount - callsBefore
+            let resultMark = String(session.chatMessages.last?.text.prefix(1) ?? "")
+            steps.append(PrefetchStep(kind: stop.kind, outcome: stop.outcome, arrivalPhase: arrivalPhase,
+                                      dirtyFieldsAtArrival: dirtyFields,
                                       nextPrefetchedBeforeAnswer: nextPrefetchedEarly,
                                       staleMultipleChoiceResult: staleResult, staleTutorPrompt: staleTutor,
-                                      answerScore: score))
+                                      answerScore: session.gradedScore, resultMark: resultMark,
+                                      answerModelCalls: answerCalls))
         } else {
             // Warm-up: a multiple-choice question answered correctly to start the sequence.
             session.tapChoice(3)
             score = session.gradedScore
         }
-        guard score != nil || kind == nil else { return (steps, "item \(index) was not graded") }
+        guard score != nil || stop == nil else {
+            return PrefetchRun(steps: steps, problem: "item \(index) was not graded", totalModelCalls: fixtures.replies.callCount)
+        }
 
         guard index + 1 < items.count else { break }
         guard await session.awaitPrefetchForTesting(index: index + 1) else {
-            return (steps, "prefetch was never stored for item \(index + 1)")
+            return PrefetchRun(steps: steps, problem: "prefetch was never stored for item \(index + 1)",
+                               totalModelCalls: fixtures.replies.callCount)
         }
         if !usePrefetch { session.discardPrefetchForTesting() }
         // Tutor prompts left by an earlier tutor session. Both advance paths must leave them cleared.
@@ -1561,34 +1773,49 @@ private func runPrefetchSequence(kinds: [PrefetchKind], usePrefetch: Bool, multi
         session.nextQuestion()
         await session.awaitAdvanceForTesting()
     }
-    return (steps, nil)
+    return PrefetchRun(steps: steps, problem: nil, totalModelCalls: fixtures.replies.callCount)
 }
 
-/// Every ordered pair of kinds (the second kind cannot be multiple choice, which needs Haiku to generate),
+/// Every ordered pair of stops (the second stop cannot be multiple choice, which needs Haiku to generate),
 /// plus a few triples that check counter-to-counter and multiple-choice-to-counter-to-counter transitions.
-private func prefetchSequences() -> [[PrefetchKind]] {
-    let secondKinds = PrefetchKind.allCases.filter { $0 != .multipleChoice }
-    var sequences: [[PrefetchKind]] = []
-    for first in PrefetchKind.allCases {
-        for second in secondKinds {
+private func prefetchSequences() -> [[PrefetchStop]] {
+    let stops = PrefetchKind.allCases.flatMap { kind in
+        kind.outcomes.map { PrefetchStop(kind: kind, outcome: $0) }
+    }
+    let secondStops = stops.filter { $0.kind != .multipleChoice }
+    var sequences: [[PrefetchStop]] = []
+    for first in stops {
+        for second in secondStops {
             sequences.append([first, second])
         }
     }
     sequences += [
-        [.multipleChoice, .counterNumber, .counterMeaning],
-        [.multipleChoice, .counterNumber, .counterNumber],
-        [.pairBoth, .counterNumber, .counterNumber],
-        [.counterNumber, .pairBoth, .counterNumber],
-        [.counterNumber, .counterMeaning, .pairIntransitive],
-        [.freeAnswer, .counterNumber, .freeAnswer],
+        [.correct(.multipleChoice), .correct(.counterNumber), .correct(.counterMeaning)],
+        [.correct(.multipleChoice), .correct(.counterNumber), .correct(.counterNumber)],
+        [.correct(.pairBoth), .correct(.counterNumber), .correct(.counterNumber)],
+        [.correct(.counterNumber), .correct(.pairBoth), .correct(.counterNumber)],
+        [.correct(.counterNumber), .correct(.counterMeaning), .correct(.pairIntransitive)],
+        [.correct(.freeAnswer), .correct(.counterNumber), .correct(.freeAnswer)],
+        // Wrong answers in a row, and a wrong answer between two right ones.
+        [.wrong(.multipleChoice), .wrong(.counterNumber), .wrong(.counterMeaning)],
+        [.correct(.multipleChoice), .wrong(.counterNumber), .correct(.counterMeaning)],
+        [.wrong(.counterMeaning), .correct(.counterNumber), .wrong(.counterNumber)],
+        // Admissions of uncertainty next to each other, and an admission between two right answers.
+        [.correct(.multipleChoice), .noIdea(.counterNumber), .inkling(.counterMeaning)],
+        [.noIdea(.multipleChoice), .noIdea(.counterNumber), .correct(.counterMeaning)],
+        [.correct(.counterNumber), .inkling(.freeAnswer), .inklingWhileGrading(.freeAnswer)],
+        [.noIdea(.pairBoth), .noIdeaWhileGrading(.freeAnswer), .correct(.counterNumber)],
     ]
     return sequences
 }
 
 /// Free oracle: for every sequence of items, the prefetch path and the direct path must show each item
 /// in the same phase with the same answer score. Every item must arrive in the phase its kind expects,
-/// with no prefetch of the next item started while it was on screen, and no multiple-choice result or tutor
-/// prompt carried over from the previous item. Each item must score 1.0 when answered correctly.
+/// clean (no leftover input, chat turn, unlock, or score), with no prefetch of the next item started while it
+/// was on screen, and no multiple-choice result or tutor prompt carried over from the previous item.
+/// A correct answer must score 1.0 and a wrong one 0.0. "No idea" scores 0.0 and "Inkling" 0.25, even when Haiku
+/// grades a free answer that was submitted first. The result bubble must say so (✓ or ✗) for every kind and
+/// outcome that prints one. Each answer makes exactly the model calls its outcome expects, and no others.
 ///
 /// Reproduces a reported bug. Counter items are always built free (QuizContext), so the prefetch
 /// consume path only fell through to `.chatting` when "multiple choice only" was on, because that turns
@@ -1602,7 +1829,9 @@ func fuzzPrefetchConsume() async throws {
     let tmpPath = NSTemporaryDirectory() + "fuzz-prefetch-\(ProcessInfo.processInfo.processIdentifier).sqlite"
     defer { try? FileManager.default.removeItem(atPath: tmpPath) }
     let db = try QuizDB.open(path: tmpPath)
-    let client = AnthropicClient(apiKey: "not-needed", model: "not-needed")
+    let replies = ScriptedReplies()
+    var client = AnthropicClient(apiKey: "not-needed", model: "not-needed")
+    client.replyStub = { messages, system in replies.respond(messages: messages, system: system) }
     let toolHandler = try ToolHandler(jmdict: DatabaseQueue(), kanjidic: nil,
                                       wanikani: WanikaniData(kanjiToComponents: [:], extraDescriptions: [:]),
                                       quizDB: db, chatDB: nil)
@@ -1631,7 +1860,7 @@ func fuzzPrefetchConsume() async throws {
     pairCorpus.setItemsForTesting([TransitivePairItem(pair: pair)])
 
     let fixtures = PrefetchFixtures(counter: counter, counterCorpus: counterCorpus, pairCorpus: pairCorpus,
-                                    client: client, toolHandler: toolHandler, db: db)
+                                    client: client, replies: replies, toolHandler: toolHandler, db: db)
 
     // The preference is backed by UserDefaults, so put back whatever the developer had set.
     let preferences = UserPreferences()
@@ -1641,18 +1870,18 @@ func fuzzPrefetchConsume() async throws {
     var failures: [(String, String)] = []
     var checked = 0
     var skipped = 0
-    for kinds in prefetchSequences() {
+    for stops in prefetchSequences() {
         for multipleChoiceOnly in [false, true] {
-            let label = kinds.map(\.label).joined(separator: " → ")
+            let label = stops.map(\.label).joined(separator: " → ")
                 + (multipleChoiceOnly ? " [multiple choice only]" : " [free answer allowed]")
-            if multipleChoiceOnly && kinds.contains(.freeAnswer) {
+            if multipleChoiceOnly && stops.contains(where: { $0.kind == .freeAnswer }) {
                 skipped += 1
                 continue
             }
             checked += 1
-            let direct = await runPrefetchSequence(kinds: kinds, usePrefetch: false, multipleChoiceOnly: multipleChoiceOnly,
+            let direct = await runPrefetchSequence(stops: stops, usePrefetch: false, multipleChoiceOnly: multipleChoiceOnly,
                                                    fixtures: fixtures, preferences: preferences)
-            let prefetched = await runPrefetchSequence(kinds: kinds, usePrefetch: true, multipleChoiceOnly: multipleChoiceOnly,
+            let prefetched = await runPrefetchSequence(stops: stops, usePrefetch: true, multipleChoiceOnly: multipleChoiceOnly,
                                                        fixtures: fixtures, preferences: preferences)
             if let problem = direct.problem ?? prefetched.problem {
                 failures.append((label, problem))
@@ -1664,23 +1893,39 @@ func fuzzPrefetchConsume() async throws {
                 sequenceFailed = true
                 failures.append((label, "prefetch path differs from direct path\n      prefetch: \(prefetched.steps.map(\.summary))\n      direct:   \(direct.steps.map(\.summary))"))
             }
+            // Every model call must belong to a step's expected count. Warm-up and prefetch make none.
+            for run in [prefetched, direct] {
+                let expectedTotal = run.steps.reduce(0) { $0 + $1.expectedModelCalls }
+                if run.totalModelCalls != expectedTotal {
+                    sequenceFailed = true
+                    failures.append((label, "made \(run.totalModelCalls) model call(s), expected \(expectedTotal)"))
+                }
+            }
             for step in prefetched.steps {
-                let kindName = step.kind
-                let expected = PrefetchKind.allCases.first { $0.label == kindName }?.expectedPhase ?? "?"
-                if step.arrivalPhase != expected {
-                    failures.append((label, "\(kindName) arrived in \(step.arrivalPhase), expected \(expected)")); sequenceFailed = true
+                let name = "\(step.kind.label) [\(step.outcome.rawValue)]"
+                if step.arrivalPhase != step.kind.expectedPhase {
+                    failures.append((label, "\(step.kind.label) arrived in \(step.arrivalPhase), expected \(step.kind.expectedPhase)")); sequenceFailed = true
+                }
+                if !step.dirtyFieldsAtArrival.isEmpty {
+                    failures.append((label, "\(step.kind.label) arrived with leftover state: \(step.dirtyFieldsAtArrival.joined(separator: ", "))")); sequenceFailed = true
                 }
                 if step.nextPrefetchedBeforeAnswer {
-                    failures.append((label, "\(kindName): the next item was prefetched while this one was still on screen")); sequenceFailed = true
+                    failures.append((label, "\(step.kind.label): the next item was prefetched while this one was still on screen")); sequenceFailed = true
                 }
                 if step.staleMultipleChoiceResult {
-                    failures.append((label, "\(kindName): a multiple-choice result from the previous item leaked in")); sequenceFailed = true
+                    failures.append((label, "\(step.kind.label): a multiple-choice result from the previous item leaked in")); sequenceFailed = true
                 }
                 if step.staleTutorPrompt {
-                    failures.append((label, "\(kindName): a tutor prompt from the previous item survived the advance")); sequenceFailed = true
+                    failures.append((label, "\(step.kind.label): a tutor prompt from the previous item survived the advance")); sequenceFailed = true
                 }
-                if step.answerScore != 1.0 {
-                    failures.append((label, "\(kindName): correct answer scored \(step.answerScore.map { String($0) } ?? "nil")")); sequenceFailed = true
+                if step.answerScore != step.outcome.expectedScore {
+                    failures.append((label, "\(name): scored \(step.answerScore.map { String($0) } ?? "nil"), expected \(step.outcome.expectedScore)")); sequenceFailed = true
+                }
+                if step.kind.marksResultBubble, let expectedMark = step.outcome.expectedResultMark, step.resultMark != expectedMark {
+                    failures.append((label, "\(name): result bubble starts with \"\(step.resultMark)\", expected \(expectedMark)")); sequenceFailed = true
+                }
+                if step.answerModelCalls != step.expectedModelCalls {
+                    failures.append((label, "\(name): made \(step.answerModelCalls) model call(s), expected \(step.expectedModelCalls)")); sequenceFailed = true
                 }
             }
             print("  [\(sequenceFailed ? "FAIL" : "PASS")] \(label)")

@@ -4,6 +4,7 @@ My current (2026-04-13) workflow involves wanting a new feature, discussing and 
 
 | File | Status | Notes | Row Last Updated |
 |------|--------|-------|------------------|
+| [TODO-fuzz-quiz-pairs.md](TODO-fuzz-quiz-pairs.md) | **in progress: phases 1–2 done** | Extend `TestHarness --fuzz prefetch-consume` to cover every normal Vocab quiz answer combination: wrong answers, "No idea" / "Inkling" taps, Haiku-graded answers and tutor sessions, and kanji items. Adds a test-only reply stub to `AnthropicClient` so no fuzzer run reaches the network. Phases 3–5 (tutor sessions, kanji, coverage matrix and docs) remain. No app bugs found so far. | 2026-10-19 |
 | [TODO-drill-mode.md](TODO-drill-mode.md) | **design agreed, not started** | "Drill sentences / documents" buttons after a vocab quiz answer: append all sibling words (noisy weakest-first order) to the saved queue. Skip now evicts from the queue; bail via ⋯ → New Session. | 2026-10-17 |
 | TODO-writing.md | Started, collecting data | How can we incorporate writing practice? Start with back-translation | 2026-06-14 |
 | [TODO-html-reader.md](TODO-html-reader.md) | **done** | Enhancements to the `annotate-vocab-inline.mjs \| pandoc` HTML reading workflow to add furigana output | 2026-06-07 |
