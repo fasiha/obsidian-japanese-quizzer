@@ -22,6 +22,7 @@ Pug/*.xcworkspace/xcuserdata/
 Pug/Pug.xcodeproj/xcuserdata/
 Pug/Pug.xcodeproj/project.xcworkspace/xcuserdata/
 Pug/Pug.xcodeproj/xcshareddata/xcschemes/
+Pug/build/XCBuildData/*
 
 # Personal files
 *.md
